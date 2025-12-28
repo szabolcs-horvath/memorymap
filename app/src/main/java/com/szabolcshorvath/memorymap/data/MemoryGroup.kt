@@ -1,0 +1,45 @@
+package com.szabolcshorvath.memorymap.data
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
+
+@Entity(tableName = "memory_groups")
+data class MemoryGroup(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val title: String,
+    val latitude: Double,
+    val longitude: Double,
+    val startDate: ZonedDateTime,
+    val endDate: ZonedDateTime,
+    val isAllDay: Boolean
+) {
+    fun getFormattedDate(): String {
+        // Use FormatStyle to respect locale settings
+        val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+        val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
+
+        val startDay = startDate.format(dateFormatter)
+        val endDay = endDate.format(dateFormatter)
+
+        if (isAllDay) {
+            return if (startDay == endDay) {
+                startDay
+            } else {
+                "$startDay - $endDay"
+            }
+        } else {
+            val startTime = startDate.format(timeFormatter)
+            val endTime = endDate.format(timeFormatter)
+            
+            return if (startDay == endDay) {
+                "$startDay $startTime - $endTime"
+            } else {
+                "$startDay $startTime - $endDay $endTime"
+            }
+        }
+    }
+}
