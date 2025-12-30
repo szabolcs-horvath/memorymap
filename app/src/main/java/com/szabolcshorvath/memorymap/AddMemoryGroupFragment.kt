@@ -156,9 +156,13 @@ class AddMemoryGroupFragment : Fragment() {
         if (isAllDay) {
             binding.startTimeButton.visibility = View.GONE
             binding.endTimeButton.visibility = View.GONE
+            binding.startSeparator.visibility = View.GONE
+            binding.endSeparator.visibility = View.GONE
         } else {
             binding.startTimeButton.visibility = View.VISIBLE
             binding.endTimeButton.visibility = View.VISIBLE
+            binding.startSeparator.visibility = View.VISIBLE
+            binding.endSeparator.visibility = View.VISIBLE
             binding.startTimeButton.text = startDateTime.format(timeFormatter)
             binding.endTimeButton.text = endDateTime.format(timeFormatter)
         }

@@ -56,20 +56,31 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <Button
                 android:id="@+id/startDateButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:text="Start Date" />
+            
+            <TextView
+                android:id="@+id/startSeparator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" - "
+                android:textStyle="bold"
+                android:paddingHorizontal="4dp"/>
 
             <Button
                 android:id="@+id/startTimeButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:text="Start Time" />
         </LinearLayout>
 
@@ -83,20 +94,31 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <Button
                 android:id="@+id/endDateButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:text="End Date" />
+            
+            <TextView
+                android:id="@+id/endSeparator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" - "
+                android:textStyle="bold"
+                android:paddingHorizontal="4dp"/>
 
             <Button
                 android:id="@+id/endTimeButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:text="End Time" />
         </LinearLayout>
 
