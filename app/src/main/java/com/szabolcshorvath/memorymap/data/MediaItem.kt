@@ -19,7 +19,11 @@ data class MediaItem(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val groupId: Int,
     val uri: String, // URI of the image or video
-    val type: MediaType // Enum to distinguish between Image and Video
+    val deviceId: String,
+    val type: MediaType, // Enum to distinguish between Image and Video
+    val originalFileName: String,
+    val fileSize: Long,
+    val dateTaken: Long
 )
 
 enum class MediaType {

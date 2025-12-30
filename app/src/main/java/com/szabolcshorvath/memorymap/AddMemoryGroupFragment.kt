@@ -5,6 +5,9 @@ import android.app.TimePickerDialog
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
+import android.provider.OpenableColumns
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -223,8 +226,12 @@ class AddMemoryGroupFragment : Fragment() {
         val finalStart = if (isAllDay) startDateTime.toLocalDate().atStartOfDay(ZoneId.systemDefault()) else startDateTime
         val finalEnd = if (isAllDay) endDateTime.toLocalDate().atTime(23, 59, 59).atZone(ZoneId.systemDefault()) else endDateTime
 
+        val context = requireContext()
+        val contentResolver = context.contentResolver
+        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)!!
+
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = StoryMapDatabase.getDatabase(context.applicationContext)
             val group = MemoryGroup(
                 title = title,
                 latitude = lat,
@@ -236,10 +243,45 @@ class AddMemoryGroupFragment : Fragment() {
             val groupId = db.memoryGroupDao().insertGroup(group)
             
             val mediaItems = selectedMediaUris.map { (uri, type) ->
+                var name = "unknown"
+                var size = 0L
+                var date = 0L
+
+                try {
+                    contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                            if (nameIdx != -1) {
+                                name = cursor.getString(nameIdx)
+                            } else {
+                                throw Exception("Name not found for $uri")
+                            }
+                            val sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE)
+                            if (sizeIdx != -1) {
+                                size = cursor.getLong(sizeIdx)
+                            } else {
+                                throw Exception("Size not found for $uri")
+                            }
+                            val dateIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+                            if (dateIdx != -1) {
+                                date = cursor.getLong(dateIdx)
+                            } else {
+                                throw Exception("Date taken not found for $uri")
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
                 MediaItem(
                     groupId = groupId.toInt(),
                     uri = uri.toString(),
-                    type = type
+                    type = type,
+                    originalFileName = name,
+                    fileSize = size,
+                    dateTaken = date,
+                    deviceId = deviceId
                 )
             }
             db.memoryGroupDao().insertMediaItems(mediaItems)
