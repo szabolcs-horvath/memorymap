@@ -60,7 +60,7 @@ class TimelineFragment : Fragment() {
 
     private fun loadMemories() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.Companion.getDatabase(requireContext().applicationContext)
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
             val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
 
             withContext(Dispatchers.Main) {
@@ -111,5 +111,9 @@ class TimelineFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        const val TAG = "TIMELINE_TAG"
     }
 }

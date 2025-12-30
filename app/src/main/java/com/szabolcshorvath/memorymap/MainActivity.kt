@@ -12,6 +12,7 @@ import com.szabolcshorvath.memorymap.fragment.MemoryFragment
 import com.szabolcshorvath.memorymap.fragment.MemoryPagerFragment
 import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
+import java.time.LocalDate
 
 class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, MapFragment.MapListener, AddMemoryGroupFragment.AddMemoryListener, PickLocationFragment.PickLocationListener, MemoryFragment.MemoryFragmentListener {
 
@@ -20,6 +21,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
     private lateinit var mapFragment: MapFragment
     private lateinit var timelineFragment: TimelineFragment
     private lateinit var addMemoryFragment: AddMemoryGroupFragment
+    private lateinit var pickLocationFragment: PickLocationFragment
     
     private var activeFragment: Fragment? = null
     private var isNavigatedFromTimeline = false
@@ -35,23 +37,28 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
             mapFragment = MapFragment()
             timelineFragment = TimelineFragment()
             addMemoryFragment = AddMemoryGroupFragment()
+            pickLocationFragment = PickLocationFragment()
             
             supportFragmentManager.beginTransaction()
-                .add(R.id.fragment_container, mapFragment, "MAP")
-                .add(R.id.fragment_container, timelineFragment, "TIMELINE")
-                .add(R.id.fragment_container, addMemoryFragment, "ADD_MEMORY")
+                .add(R.id.fragment_container, mapFragment, MapFragment.TAG)
+                .add(R.id.fragment_container, timelineFragment, TimelineFragment.TAG)
+                .add(R.id.fragment_container, addMemoryFragment, AddMemoryGroupFragment.TAG)
+                .add(R.id.fragment_container, pickLocationFragment, PickLocationFragment.TAG)
                 .hide(timelineFragment)
                 .hide(addMemoryFragment)
+                .hide(pickLocationFragment)
                 .commit()
                 
             activeFragment = mapFragment
         } else {
-            mapFragment = supportFragmentManager.findFragmentByTag("MAP") as? MapFragment
+            mapFragment = supportFragmentManager.findFragmentByTag(MapFragment.TAG) as? MapFragment
                 ?: MapFragment()
-            timelineFragment = supportFragmentManager.findFragmentByTag("TIMELINE") as? TimelineFragment
+            timelineFragment = supportFragmentManager.findFragmentByTag(TimelineFragment.TAG) as? TimelineFragment
                 ?: TimelineFragment()
-            addMemoryFragment = supportFragmentManager.findFragmentByTag("ADD_MEMORY") as? AddMemoryGroupFragment
+            addMemoryFragment = supportFragmentManager.findFragmentByTag(AddMemoryGroupFragment.TAG) as? AddMemoryGroupFragment
                 ?: AddMemoryGroupFragment()
+            pickLocationFragment = supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment
+                ?: PickLocationFragment()
 
             activeFragment = if (!addMemoryFragment.isHidden) {
                 addMemoryFragment
@@ -69,9 +76,6 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
                 isNavigatedFromMap = false
             }
             
-            // If any fragment is in backstack (PickLocation, MemoryDetails, etc), pop it when switching tabs?
-            // Standard behavior usually clears backstack or keeps it per tab. 
-            // Here we have a simple single backstack. Let's clear it to avoid confusion.
             if (supportFragmentManager.backStackEntryCount > 0) {
                 supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }
@@ -95,16 +99,8 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
         
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // Check if we have fragments in backstack (PickLocation, MemoryDetails, MediaViewer)
                 if (supportFragmentManager.backStackEntryCount > 0) {
-                    // Check if PickLocation is top (special case for activeFragment?)
-                    val pickLocation = supportFragmentManager.findFragmentByTag("PICK_LOCATION")
-                    if (pickLocation != null && pickLocation.isVisible) {
-                        // Restore activeFragment reference if needed, though usually it's still correct under the modal
-                        activeFragment = addMemoryFragment
-                    }
-                    
-                    supportFragmentManager.popBackStackImmediate()
+                    supportFragmentManager.popBackStack()
                     return
                 }
 
@@ -130,10 +126,10 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
                         }
                     }
                     addMemoryFragment -> {
-                        // If we are on Add, where do we go back to?
-                        // If it's treated as a main tab, back usually exits or goes to Home (Map).
-                        // Let's go to Map as default home.
                         binding.bottomNavigation.selectedItemId = R.id.navigation_map
+                    }
+                    pickLocationFragment -> {
+                        binding.bottomNavigation.selectedItemId = R.id.navigation_add
                     }
                     else -> {
                         isEnabled = false
@@ -167,18 +163,26 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
 
     override fun onMemoryClicked(id: Int) {
         val fragment = MemoryPagerFragment.newInstance(id)
-        supportFragmentManager.beginTransaction()
-            .add(R.id.fragment_container, fragment, "MEMORY_DETAILS_PAGER")
-            .addToBackStack("MEMORY_DETAILS_PAGER")
-            .commit()
+        val transaction = supportFragmentManager.beginTransaction()
+            .add(R.id.fragment_container, fragment, MemoryPagerFragment.TAG)
+            .addToBackStack(MemoryPagerFragment.TAG)
+        activeFragment?.let { transaction.hide(it) }
+        transaction.commit()
     }
     
     override fun onMediaClick(mediaItems: ArrayList<String>, types: ArrayList<String>, startPosition: Int) {
         val fragment = MediaViewerFragment.newInstance(mediaItems, types, startPosition)
-        supportFragmentManager.beginTransaction()
-            .add(R.id.fragment_container, fragment, "MEDIA_VIEWER")
-            .addToBackStack("MEDIA_VIEWER")
-            .commit()
+        val memoryPagerFragment = supportFragmentManager.findFragmentByTag(MemoryPagerFragment.TAG)
+
+        val transaction = supportFragmentManager.beginTransaction()
+            .add(R.id.fragment_container, fragment, MediaViewerFragment.TAG)
+            .addToBackStack(MediaViewerFragment.TAG)
+
+        if (memoryPagerFragment != null && memoryPagerFragment.isVisible) {
+            transaction.hide(memoryPagerFragment)
+        }
+
+        transaction.commit()
     }
 
     override fun onBackFromMemory() {
@@ -210,23 +214,24 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
         mapFragment.focusOnMemory(lat, lng, id)
     }
 
-    override fun onPickLocation(currentLat: Double, currentLng: Double) {
-        val fragment = PickLocationFragment()
-        supportFragmentManager.beginTransaction()
-            .add(R.id.fragment_container, fragment, "PICK_LOCATION")
-            .hide(addMemoryFragment) // Hide Add fragment
-            .addToBackStack("PICK_LOCATION")
-            .commit()
+    override fun onPickLocation(lat: Double, lng: Double) {
+        pickLocationFragment.clearSelection()
+        addMemoryFragment.updateLocation(lat, lng)
+        showFragment(pickLocationFragment)
     }
 
-    override fun onMemorySaved() {
+    override fun onMemorySaved(lat: Double, lng: Double, id: Int, startDate: LocalDate, endDate: LocalDate) {
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
+
         mapFragment.refreshData()
         timelineFragment.refreshData()
+
+        mapFragment.setDateFilter(startDate, endDate)
+        mapFragment.focusOnMemory(lat, lng, id)
     }
 
     override fun onLocationConfirmed(lat: Double, lng: Double) {
-        supportFragmentManager.popBackStackImmediate()
+        showFragment(addMemoryFragment)
         addMemoryFragment.updateLocation(lat, lng)
     }
 }

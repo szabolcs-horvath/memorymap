@@ -74,6 +74,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         mMap = googleMap
         mMap.uiSettings.isRotateGesturesEnabled = false
         mMap.uiSettings.isMyLocationButtonEnabled = true
+        mMap.uiSettings.isZoomControlsEnabled = true
 
         requestLocationPermissionIfNeeded()
         selectUserLocation()
@@ -90,7 +91,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun updateSelectedLocation(latLng: LatLng) {
         mMap.clear()
-        mMap.addMarker(MarkerOptions().position(latLng).title("Selected Location"))
+        mMap.addMarker(MarkerOptions()
+            .position(latLng)
+            .title("Selected Location"))?.showInfoWindow()
         selectedLat = latLng.latitude
         selectedLng = latLng.longitude
     }
@@ -131,5 +134,18 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 }
             }
         }
+    }
+
+    fun clearSelection() {
+        selectedLat = null
+        selectedLng = null
+        if (::mMap.isInitialized) {
+            mMap.clear()
+            selectUserLocation()
+        }
+    }
+
+    companion object {
+        const val TAG = "PICK_LOCATION_TAG"
     }
 }

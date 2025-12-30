@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap.adapter
 
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +9,8 @@ import coil3.request.crossfade
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.databinding.ItemMediaFullBinding
+import androidx.core.net.toUri
+import androidx.core.view.isVisible
 
 class MediaPagerAdapter(
     private val mediaUris: List<String>,
@@ -18,7 +19,7 @@ class MediaPagerAdapter(
 
     inner class MediaViewHolder(private val binding: ItemMediaFullBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(uriString: String, typeString: String) {
-            val uri = Uri.parse(uriString)
+            val uri = uriString.toUri()
             val isVideo = typeString == "VIDEO"
 
             if (isVideo) {
@@ -73,7 +74,7 @@ class MediaPagerAdapter(
         }
 
         fun resetVideoState() {
-            if (binding.fullVideoView.visibility == View.VISIBLE) {
+            if (binding.fullVideoView.isVisible) {
                 binding.playIcon.visibility = View.VISIBLE
                 binding.fullImageView.visibility = View.VISIBLE
                 // Ensure video is not playing when restored from cache

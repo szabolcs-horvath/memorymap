@@ -17,8 +17,10 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
@@ -26,6 +28,11 @@ import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -35,6 +42,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var selectedMarker: Marker? = null
     private val markerMap = mutableMapOf<Int, Marker>()
     private var listener: MapListener? = null
+
+    private var allGroups: List<MemoryGroup> = emptyList()
+    private var filterStartDate: LocalDate? = null
+    private var filterEndDate: LocalDate? = null
+    private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
     // Parameters to handle initial selection
     private var initialSelectedLat: Double? = null
@@ -77,8 +89,44 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         binding.overlayActionButton.text = "Show Details"
 
+        binding.btnDateRange.setOnClickListener { showDateRangePicker() }
+
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+    }
+
+    private fun showDateRangePicker() {
+        val builder = MaterialDatePicker.Builder.dateRangePicker()
+        builder.setTitleText("Select dates")
+
+        if (filterStartDate != null && filterEndDate != null) {
+            val startMillis = filterStartDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            val endMillis = filterEndDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            builder.setSelection(androidx.core.util.Pair(startMillis, endMillis))
+        }
+
+        val picker = builder.build()
+        picker.addOnPositiveButtonClickListener { selection ->
+            val startMillis = selection.first
+            val endMillis = selection.second
+
+            filterStartDate = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+            filterEndDate = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+
+            updateDateRangeButtonText()
+            if (::mMap.isInitialized) {
+                updateMapMarkers(adjustCamera = true)
+            }
+        }
+        picker.show(childFragmentManager, picker.toString())
+    }
+
+    private fun updateDateRangeButtonText() {
+        if (filterStartDate != null && filterEndDate != null) {
+            binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
+        } else {
+            binding.btnDateRange.text = "Select Date Range"
+        }
     }
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
@@ -91,10 +139,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    fun setDateFilter(startDate: LocalDate, endDate: LocalDate) {
+        filterStartDate = startDate
+        filterEndDate = endDate
+        if (::mMap.isInitialized) {
+            updateDateRangeButtonText()
+            updateMapMarkers()
+        }
+    }
+
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
         mMap.uiSettings.isRotateGesturesEnabled = false
         mMap.uiSettings.isMyLocationButtonEnabled = true
+        mMap.uiSettings.isZoomControlsEnabled = true
 
         loadMarkers()
         requestLocationPermissionIfNeeded()
@@ -181,25 +239,19 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun loadMarkers() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.Companion.getDatabase(requireContext().applicationContext)
-            val groups = db.memoryGroupDao().getAllGroups()
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            allGroups = db.memoryGroupDao().getAllGroups()
 
             withContext(Dispatchers.Main) {
                 if (::mMap.isInitialized) {
-                    mMap.clear()
-                    markerMap.clear()
-                    val debugText = StringBuilder("Markers:\n")
-                    groups.forEach { group ->
-                        val position = LatLng(group.latitude, group.longitude)
-                        val marker =
-                            mMap.addMarker(MarkerOptions().position(position).title(group.title))
-                        if (marker != null) {
-                            marker.tag = group
-                            markerMap[group.id] = marker
-                            debugText.append("${group.title} (${group.id})\n")
-                        }
+                    if (filterStartDate == null && allGroups.isNotEmpty()) {
+                        val dates = allGroups.flatMap { listOf(it.startDate.toLocalDate(), it.endDate.toLocalDate()) }
+                        filterStartDate = dates.minOrNull()
+                        filterEndDate = dates.maxOrNull()
                     }
-                    binding.debugMarkersList.text = debugText.toString()
+                    
+                    updateDateRangeButtonText()
+                    updateMapMarkers()
 
                     if (initialSelectedLat != null && initialSelectedLng != null) {
                         moveToLocationAndSelectMarker(
@@ -216,6 +268,43 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    private fun updateMapMarkers(adjustCamera: Boolean = false) {
+        mMap.clear()
+        markerMap.clear()
+        val debugText = StringBuilder("Markers:\n")
+
+        val start = filterStartDate ?: LocalDate.MIN
+        val end = filterEndDate ?: LocalDate.MAX
+        
+        val boundsBuilder = LatLngBounds.Builder()
+        var markersCount = 0
+
+        allGroups.forEach { group ->
+            val groupStart = group.startDate.toLocalDate()
+            val groupEnd = group.endDate.toLocalDate()
+
+            // Check if the memory overlaps with the selected range
+            if (!groupEnd.isBefore(start) && !groupStart.isAfter(end)) {
+                val position = LatLng(group.latitude, group.longitude)
+                val marker = mMap.addMarker(MarkerOptions().position(position).title(group.title))
+                if (marker != null) {
+                    marker.tag = group
+                    markerMap[group.id] = marker
+                    debugText.append("${group.title} (${group.id})\n")
+                }
+                boundsBuilder.include(LatLng(group.latitude, group.longitude))
+                markersCount++
+            }
+        }
+        binding.debugMarkersList.text = debugText.toString()
+
+        if (adjustCamera && markersCount > 0) {
+            val bounds = boundsBuilder.build()
+            val padding = 100 // pixels
+            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
+        }
+    }
+
     private fun moveToLocationAndSelectMarker(lat: Double, lng: Double, memoryId: Int) {
         val position = LatLng(lat, lng)
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15f))
@@ -223,23 +312,23 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val marker = markerMap[memoryId]
         if (marker != null) {
             selectedMarker = marker
-            showMarkerDetails(marker)
+            binding.overlayTitle.text = marker.title
+            val group = marker.tag as? MemoryGroup
+            if (group != null) {
+                binding.overlayDescription.text = "Date: ${group.getFormattedDate()}"
+            } else {
+                binding.overlayDescription.text = "Lat: ${marker.position.latitude}, Lng: ${marker.position.longitude}"
+            }
+            binding.overlayCard.visibility = View.VISIBLE
         }
-    }
-
-    private fun showMarkerDetails(marker: Marker) {
-        binding.overlayTitle.text = marker.title
-        val group = marker.tag as? MemoryGroup
-        if (group != null) {
-             binding.overlayDescription.text = "Date: ${group.getFormattedDate()}"
-        } else {
-            binding.overlayDescription.text = "Lat: ${marker.position.latitude}, Lng: ${marker.position.longitude}"
-        }
-        binding.overlayCard.visibility = View.VISIBLE
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        const val TAG = "MAP_TAG"
     }
 }

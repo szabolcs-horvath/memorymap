@@ -78,7 +78,7 @@ class MemoryFragment : Fragment() {
         if (memoryId == -1) return
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.Companion.getDatabase(requireContext().applicationContext)
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
             val memoryGroupWithMedia = db.memoryGroupDao().getGroupWithMedia(memoryId)
 
             withContext(Dispatchers.Main) {

@@ -70,8 +70,8 @@ class AddMemoryGroupFragment : Fragment() {
 
 
     interface AddMemoryListener {
-        fun onPickLocation(currentLat: Double, currentLng: Double)
-        fun onMemorySaved()
+        fun onPickLocation(lat: Double, lng: Double)
+        fun onMemorySaved(lat: Double, lng: Double, id: Int, startDate: LocalDate, endDate: LocalDate)
     }
 
     override fun onAttach(context: Context) {
@@ -240,7 +240,7 @@ class AddMemoryGroupFragment : Fragment() {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)!!
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.Companion.getDatabase(context.applicationContext)
+            val db = StoryMapDatabase.getDatabase(context.applicationContext)
             val group = MemoryGroup(
                 title = title,
                 latitude = lat,
@@ -297,7 +297,7 @@ class AddMemoryGroupFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
-                listener?.onMemorySaved()
+                listener?.onMemorySaved(group.latitude, group.longitude, groupId.toInt(), group.startDate.toLocalDate(), group.endDate.toLocalDate())
                 clearFields()
             }
         }
@@ -312,5 +312,9 @@ class AddMemoryGroupFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        const val TAG = "ADD_MEMORY_GROUP_TAG"
     }
 }
