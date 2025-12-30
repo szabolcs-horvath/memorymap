@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap
+package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -19,6 +19,7 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import com.szabolcshorvath.memorymap.R
 
 class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
@@ -76,17 +77,17 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
         requestLocationPermissionIfNeeded()
         selectUserLocation()
-        
+
         mMap.setOnMapClickListener { latLng ->
             updateSelectedLocation(latLng)
         }
-        
+
         mMap.setOnMyLocationButtonClickListener {
             selectUserLocation()
             true
         }
     }
-    
+
     private fun updateSelectedLocation(latLng: LatLng) {
         mMap.clear()
         mMap.addMarker(MarkerOptions().position(latLng).title("Selected Location"))

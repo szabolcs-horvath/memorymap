@@ -1,8 +1,9 @@
-package com.szabolcshorvath.memorymap
+package com.szabolcshorvath.memorymap.fragment
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -39,15 +40,17 @@ class AddMemoryGroupFragment : Fragment() {
     private val selectedMediaUris = mutableListOf<Pair<Uri, MediaType>>()
     private var lat = 0.0
     private var lng = 0.0
-    
+
     private var startDateTime: ZonedDateTime = ZonedDateTime.now()
     private var endDateTime: ZonedDateTime = ZonedDateTime.now().plusHours(1)
     private var isAllDay = false
-    
+
     private var listener: AddMemoryListener? = null
 
-    private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
-    private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
+    private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(
+        Locale.getDefault())
+    private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(
+        Locale.getDefault())
 
     private val pickMediaLauncher = registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         uris.let {
@@ -60,7 +63,7 @@ class AddMemoryGroupFragment : Fragment() {
             selectedMediaUris.addAll(newItems)
             binding.selectedMediaCount.text = "${selectedMediaUris.size} items selected"
             it.forEach { uri ->
-                contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }
     }
@@ -94,15 +97,15 @@ class AddMemoryGroupFragment : Fragment() {
             lat = savedInstanceState.getDouble("LAT")
             lng = savedInstanceState.getDouble("LNG")
         }
-        
+
         binding.locationText.text = "Location: $lat, $lng"
-        
+
         updateDateTimeButtons()
 
         binding.selectLocationButton.setOnClickListener {
             listener?.onPickLocation(lat, lng)
         }
-        
+
         binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
             isAllDay = isChecked
             updateDateTimeButtons()
@@ -140,7 +143,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.selectedMediaCount.text = "0 items selected"
         binding.allDayCheckbox.isChecked = false
     }
-    
+
     fun updateLocation(newLat: Double, newLng: Double) {
         lat = newLat
         lng = newLng
@@ -148,7 +151,7 @@ class AddMemoryGroupFragment : Fragment() {
             binding.locationText.text = "Location: $lat, $lng"
         }
     }
-    
+
     private fun updateDateTimeButtons() {
         binding.startDateButton.text = startDateTime.format(dateFormatter)
         binding.endDateButton.text = endDateTime.format(dateFormatter)
@@ -167,7 +170,7 @@ class AddMemoryGroupFragment : Fragment() {
             binding.endTimeButton.text = endDateTime.format(timeFormatter)
         }
     }
-    
+
     private fun pickDate(isStart: Boolean) {
         val current = if (isStart) startDateTime else endDateTime
         val datePickerDialog = DatePickerDialog(
@@ -175,12 +178,14 @@ class AddMemoryGroupFragment : Fragment() {
             { _, year, month, dayOfMonth ->
                 val newDate = LocalDate.of(year, month + 1, dayOfMonth)
                 if (isStart) {
-                    startDateTime = newDate.atTime(startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+                    startDateTime =
+                        newDate.atTime(startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
                     if (endDateTime.isBefore(startDateTime)) {
                         endDateTime = startDateTime.plusHours(1)
                     }
                 } else {
-                    endDateTime = newDate.atTime(endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+                    endDateTime =
+                        newDate.atTime(endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
                     if (endDateTime.isBefore(startDateTime)) {
                         startDateTime = endDateTime.minusHours(1)
                     }
@@ -193,7 +198,7 @@ class AddMemoryGroupFragment : Fragment() {
         )
         datePickerDialog.show()
     }
-    
+
     private fun pickTime(isStart: Boolean) {
         val current = if (isStart) startDateTime else endDateTime
         val timePickerDialog = TimePickerDialog(
@@ -226,7 +231,7 @@ class AddMemoryGroupFragment : Fragment() {
             Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
             return
         }
-        
+
         val finalStart = if (isAllDay) startDateTime.toLocalDate().atStartOfDay(ZoneId.systemDefault()) else startDateTime
         val finalEnd = if (isAllDay) endDateTime.toLocalDate().atTime(23, 59, 59).atZone(ZoneId.systemDefault()) else endDateTime
 
@@ -235,7 +240,7 @@ class AddMemoryGroupFragment : Fragment() {
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)!!
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(context.applicationContext)
+            val db = StoryMapDatabase.Companion.getDatabase(context.applicationContext)
             val group = MemoryGroup(
                 title = title,
                 latitude = lat,
@@ -245,7 +250,7 @@ class AddMemoryGroupFragment : Fragment() {
                 isAllDay = isAllDay
             )
             val groupId = db.memoryGroupDao().insertGroup(group)
-            
+
             val mediaItems = selectedMediaUris.map { (uri, type) ->
                 var name = "unknown"
                 var size = 0L
@@ -289,15 +294,15 @@ class AddMemoryGroupFragment : Fragment() {
                 )
             }
             db.memoryGroupDao().insertMediaItems(mediaItems)
-            
+
             withContext(Dispatchers.Main) {
                 Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
                 listener?.onMemorySaved()
-                clearFields() 
+                clearFields()
             }
         }
     }
-    
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putDouble("LAT", lat)

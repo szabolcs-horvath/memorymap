@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap
+package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
 import android.content.Context
@@ -7,7 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -19,6 +19,7 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
@@ -34,14 +35,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var selectedMarker: Marker? = null
     private val markerMap = mutableMapOf<Int, Marker>()
     private var listener: MapListener? = null
-    
+
     // Parameters to handle initial selection
     private var initialSelectedLat: Double? = null
     private var initialSelectedLng: Double? = null
     private var initialSelectedId: Int? = null
 
     private val locationPermissionRequest = registerForActivityResult(
-        RequestMultiplePermissions()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
@@ -52,6 +53,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     interface MapListener {
         fun onNavigateToTimeline(memoryId: Int)
         fun startAddMemoryFlow(lat: Double, lng: Double)
+        fun onMemoryClicked(id: Int)
     }
 
     override fun onAttach(context: Context) {
@@ -72,19 +74,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
-        binding.overlayActionButton.text = "Show in Timeline"
+
+        binding.overlayActionButton.text = "Show Details"
 
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-
-        binding.overlayActionButton.setOnClickListener {
-             // Retrieve the memory ID from the displayed title or current selection
-             // We need to track which marker is selected
-             // We can store it in a variable when we show details
-        }
     }
-    
+
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         if (::mMap.isInitialized) {
             moveToLocationAndSelectMarker(lat, lng, id)
@@ -124,12 +120,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             selectedMarker = null
             false
         }
-        
+
         binding.overlayActionButton.setOnClickListener {
             selectedMarker?.let { marker ->
                  val group = marker.tag as? MemoryGroup
                  if (group != null) {
-                     listener?.onNavigateToTimeline(group.id)
+                     listener?.onMemoryClicked(group.id)
                  }
             }
         }
@@ -185,7 +181,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun loadMarkers() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = StoryMapDatabase.Companion.getDatabase(requireContext().applicationContext)
             val groups = db.memoryGroupDao().getAllGroups()
 
             withContext(Dispatchers.Main) {
@@ -195,7 +191,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     val debugText = StringBuilder("Markers:\n")
                     groups.forEach { group ->
                         val position = LatLng(group.latitude, group.longitude)
-                        val marker = mMap.addMarker(MarkerOptions().position(position).title(group.title))
+                        val marker =
+                            mMap.addMarker(MarkerOptions().position(position).title(group.title))
                         if (marker != null) {
                             marker.tag = group
                             markerMap[group.id] = marker
@@ -203,9 +200,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         }
                     }
                     binding.debugMarkersList.text = debugText.toString()
-                    
+
                     if (initialSelectedLat != null && initialSelectedLng != null) {
-                        moveToLocationAndSelectMarker(initialSelectedLat!!, initialSelectedLng!!, initialSelectedId ?: -1)
+                        moveToLocationAndSelectMarker(
+                            initialSelectedLat!!,
+                            initialSelectedLng!!,
+                            initialSelectedId ?: -1
+                        )
                         initialSelectedLat = null
                         initialSelectedLng = null
                         initialSelectedId = null
@@ -214,11 +215,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
         }
     }
-    
+
     private fun moveToLocationAndSelectMarker(lat: Double, lng: Double, memoryId: Int) {
         val position = LatLng(lat, lng)
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15f))
-        
+
         val marker = markerMap[memoryId]
         if (marker != null) {
             selectedMarker = marker

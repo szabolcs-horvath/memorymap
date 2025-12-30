@@ -20,4 +20,8 @@ interface MemoryGroupDao {
     
     @Query("SELECT * FROM memory_groups")
     suspend fun getAllGroups(): List<MemoryGroup>
+
+    @Transaction
+    @Query("SELECT * FROM memory_groups WHERE id = :id")
+    suspend fun getGroupWithMedia(id: Int): MemoryGroupWithMedia?
 }

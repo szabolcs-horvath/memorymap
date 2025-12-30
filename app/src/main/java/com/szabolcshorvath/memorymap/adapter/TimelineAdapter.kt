@@ -1,7 +1,10 @@
-package com.szabolcshorvath.memorymap
+package com.szabolcshorvath.memorymap.adapter
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
@@ -21,6 +24,22 @@ class TimelineAdapter(
             binding.memoryDate.text = memoryGroup.getFormattedDate()
             binding.root.setOnClickListener { onMemoryClick(memoryGroup) }
         }
+
+        fun flash() {
+            val originalColor = binding.root.cardBackgroundColor.defaultColor
+            val flashColor = "#80AAAAAA".toColorInt()
+
+            val colorAnim = ValueAnimator.ofObject(
+                ArgbEvaluator(),
+                originalColor, flashColor, originalColor
+            )
+            colorAnim.duration = 1000
+            colorAnim.addUpdateListener { animator ->
+                binding.root.setCardBackgroundColor(animator.animatedValue as Int)
+            }
+
+            colorAnim.start()
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TimelineViewHolder {
@@ -37,5 +56,9 @@ class TimelineAdapter(
     fun updateData(newGroups: List<MemoryGroup>) {
         memoryGroups = newGroups
         notifyDataSetChanged()
+    }
+
+    fun getPositionForId(id: Int): Int {
+        return memoryGroups.indexOfFirst { it.id == id }
     }
 }
