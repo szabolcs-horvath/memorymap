@@ -189,14 +189,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 if (::mMap.isInitialized) {
                     mMap.clear()
                     markerMap.clear()
+                    val debugText = StringBuilder("Markers:\n")
                     groups.forEach { group ->
                         val position = LatLng(group.latitude, group.longitude)
                         val marker = mMap.addMarker(MarkerOptions().position(position).title(group.title))
                         if (marker != null) {
                             marker.tag = group
                             markerMap[group.id] = marker
+                            debugText.append("${group.title} (${group.id})\n")
                         }
                     }
+                    binding.debugMarkersList.text = debugText.toString()
                     
                     if (initialSelectedLat != null && initialSelectedLng != null) {
                         moveToLocationAndSelectMarker(initialSelectedLat!!, initialSelectedLng!!, initialSelectedId ?: -1)
