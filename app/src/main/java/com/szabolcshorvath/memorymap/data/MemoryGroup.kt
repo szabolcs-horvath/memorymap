@@ -11,6 +11,7 @@ import java.util.Locale
 data class MemoryGroup(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String,
+    val description: String?,
     val latitude: Double,
     val longitude: Double,
     val startDate: ZonedDateTime,

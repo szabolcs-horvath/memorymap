@@ -65,6 +65,13 @@ class TimelineFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 adapter.updateData(groups)
+                if (groups.isEmpty()) {
+                    binding.emptyView.visibility = View.VISIBLE
+                    binding.timelineRecyclerView.visibility = View.GONE
+                } else {
+                    binding.emptyView.visibility = View.GONE
+                    binding.timelineRecyclerView.visibility = View.VISIBLE
+                }
             }
         }
     }

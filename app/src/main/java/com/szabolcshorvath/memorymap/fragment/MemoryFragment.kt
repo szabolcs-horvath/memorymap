@@ -92,6 +92,14 @@ class MemoryFragment : Fragment() {
     private fun displayDetails(data: MemoryGroupWithMedia) {
         val group = data.group
         binding.titleText.text = group.title
+        
+        if (!group.description.isNullOrEmpty()) {
+            binding.descriptionText.text = group.description
+            binding.descriptionText.visibility = View.VISIBLE
+        } else {
+            binding.descriptionText.visibility = View.GONE
+        }
+        
         binding.dateText.text = group.getFormattedDate()
         binding.locationText.text = "${String.format("%.4f", group.latitude)}, ${String.format("%.4f", group.longitude)}"
 

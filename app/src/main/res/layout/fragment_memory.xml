@@ -24,11 +24,19 @@
                 android:textStyle="bold"
                 tools:text="Trip to Paris" />
 
+            <TextView
+                android:id="@+id/descriptionText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="16sp"
+                tools:text="This was an amazing trip where we saw the Eiffel Tower and ate croissants." />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="16dp"
                 android:gravity="center_vertical">
 
                 <ImageView

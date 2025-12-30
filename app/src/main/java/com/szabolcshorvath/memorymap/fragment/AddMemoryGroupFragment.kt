@@ -93,11 +93,6 @@ class AddMemoryGroupFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (savedInstanceState != null) {
-            lat = savedInstanceState.getDouble("LAT")
-            lng = savedInstanceState.getDouble("LNG")
-        }
-
         binding.locationText.text = "Location: $lat, $lng"
 
         updateDateTimeButtons()
@@ -139,6 +134,7 @@ class AddMemoryGroupFragment : Fragment() {
         selectedMediaUris.clear()
 
         binding.titleInput.text.clear()
+        binding.descriptionInput.text.clear()
         binding.locationText.text = "Location: $lat, $lng"
         binding.selectedMediaCount.text = "0 items selected"
         binding.allDayCheckbox.isChecked = false
@@ -232,6 +228,8 @@ class AddMemoryGroupFragment : Fragment() {
             return
         }
 
+        val description = binding.descriptionInput.text.toString().ifBlank { null }
+
         val finalStart = if (isAllDay) startDateTime.toLocalDate().atStartOfDay(ZoneId.systemDefault()) else startDateTime
         val finalEnd = if (isAllDay) endDateTime.toLocalDate().atTime(23, 59, 59).atZone(ZoneId.systemDefault()) else endDateTime
 
@@ -243,6 +241,7 @@ class AddMemoryGroupFragment : Fragment() {
             val db = StoryMapDatabase.getDatabase(context.applicationContext)
             val group = MemoryGroup(
                 title = title,
+                description = description,
                 latitude = lat,
                 longitude = lng,
                 startDate = finalStart,
@@ -301,12 +300,6 @@ class AddMemoryGroupFragment : Fragment() {
                 clearFields()
             }
         }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putDouble("LAT", lat)
-        outState.putDouble("LNG", lng)
     }
 
     override fun onDestroyView() {

@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.adapter
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.RecyclerView
@@ -21,6 +22,14 @@ class TimelineAdapter(
     inner class TimelineViewHolder(private val binding: ItemTimelineMemoryBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(memoryGroup: MemoryGroup) {
             binding.memoryTitle.text = memoryGroup.title
+            
+            if (!memoryGroup.description.isNullOrEmpty()) {
+                binding.memoryDescription.text = memoryGroup.description
+                binding.memoryDescription.visibility = View.VISIBLE
+            } else {
+                binding.memoryDescription.visibility = View.GONE
+            }
+            
             binding.memoryDate.text = memoryGroup.getFormattedDate()
             binding.root.setOnClickListener { onMemoryClick(memoryGroup) }
         }
