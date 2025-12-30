@@ -133,8 +133,8 @@ class AddMemoryGroupFragment : Fragment() {
         updateDateTimeButtons()
         selectedMediaUris.clear()
 
-        binding.titleInput.text.clear()
-        binding.descriptionInput.text.clear()
+        binding.titleInput.text?.clear()
+        binding.descriptionInput.text?.clear()
         binding.locationText.text = "Location: $lat, $lng"
         binding.selectedMediaCount.text = "0 items selected"
         binding.allDayCheckbox.isChecked = false

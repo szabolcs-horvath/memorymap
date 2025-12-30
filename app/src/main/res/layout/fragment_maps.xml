@@ -5,13 +5,26 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        map:layout_constraintBottom_toBottomOf="parent"
+        map:layout_constraintEnd_toEndOf="parent"
+        map:layout_constraintStart_toStartOf="parent"
+        map:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/date_filter_container"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="8dp"
-        android:background="?android:attr/colorBackground"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@android:color/transparent"
         android:gravity="center_vertical"
         map:layout_constraintTop_toTopOf="parent"
         map:layout_constraintStart_toStartOf="parent"
@@ -22,17 +35,23 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             style="@style/Widget.Material3.Button.OutlinedButton"
+            android:backgroundTint="#80FFFFFF"
+            android:textColor="@color/google_maps_ui_gray"
+            map:cornerRadius="4dp"
+            map:strokeWidth="0dp"
             android:text="Select Date Range" />
 
     </LinearLayout>
 
-    <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/map"
-        android:name="com.google.android.gms.maps.SupportMapFragment"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        map:layout_constraintBottom_toBottomOf="parent"
-        map:layout_constraintEnd_toEndOf="parent"
+    <ImageButton
+        android:id="@+id/btn_toggle_debug"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="8dp"
+        android:src="@android:drawable/ic_menu_info_details"
+        android:background="@drawable/circle_background"
+        android:contentDescription="Toggle Debug Info"
+        android:elevation="4dp"
         map:layout_constraintStart_toStartOf="parent"
         map:layout_constraintTop_toBottomOf="@id/date_filter_container" />
 
@@ -42,8 +61,9 @@
         android:layout_height="200dp"
         android:layout_margin="8dp"
         android:background="#80FFFFFF"
+        android:visibility="gone"
         map:layout_constraintStart_toStartOf="parent"
-        map:layout_constraintTop_toBottomOf="@id/date_filter_container">
+        map:layout_constraintTop_toBottomOf="@id/btn_toggle_debug">
 
         <TextView
             android:id="@+id/debug_markers_list"

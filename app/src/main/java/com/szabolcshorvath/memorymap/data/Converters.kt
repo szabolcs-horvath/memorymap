@@ -5,7 +5,6 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 class Converters {
-    private val formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME
 
     @TypeConverter
     fun toZonedDateTime(value: String?): ZonedDateTime? {
@@ -17,5 +16,9 @@ class Converters {
     @TypeConverter
     fun fromZonedDateTime(date: ZonedDateTime?): String? {
         return date?.format(formatter)
+    }
+
+    companion object {
+        private val formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME
     }
 }

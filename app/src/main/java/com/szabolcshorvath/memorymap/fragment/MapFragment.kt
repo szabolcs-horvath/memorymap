@@ -18,6 +18,7 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.datepicker.MaterialDatePicker
@@ -33,6 +34,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import androidx.core.view.isVisible
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -90,6 +92,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         binding.overlayActionButton.text = "Show Details"
 
         binding.btnDateRange.setOnClickListener { showDateRangePicker() }
+        
+        binding.btnToggleDebug.setOnClickListener {
+            if (binding.debugScrollView.isVisible) {
+                binding.debugScrollView.visibility = View.GONE
+            } else {
+                binding.debugScrollView.visibility = View.VISIBLE
+            }
+        }
 
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
@@ -150,6 +160,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        
+        binding.dateFilterContainer.post {
+            mMap.setPadding(0, binding.dateFilterContainer.height + binding.dateFilterContainer.top, 0, 0)
+        }
+
+        mMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         mMap.uiSettings.isRotateGesturesEnabled = false
         mMap.uiSettings.isMyLocationButtonEnabled = true
         mMap.uiSettings.isZoomControlsEnabled = true

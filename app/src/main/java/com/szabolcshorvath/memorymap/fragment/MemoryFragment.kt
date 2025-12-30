@@ -16,6 +16,7 @@ import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class MemoryFragment : Fragment() {
 
@@ -101,7 +102,7 @@ class MemoryFragment : Fragment() {
         }
         
         binding.dateText.text = group.getFormattedDate()
-        binding.locationText.text = "${String.format("%.4f", group.latitude)}, ${String.format("%.4f", group.longitude)}"
+        binding.locationText.text = "${String.format(Locale.getDefault(), "%.4f", group.latitude)}, ${String.format(Locale.getDefault(), "%.4f", group.longitude)}"
 
         binding.showOnTimelineButton.setOnClickListener {
             listener?.onNavigateToTimeline(group.id)
