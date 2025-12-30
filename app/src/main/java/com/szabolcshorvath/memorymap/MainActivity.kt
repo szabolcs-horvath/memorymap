@@ -18,6 +18,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
     private var activeFragment: Fragment? = null
     private var isNavigatedFromTimeline = false
     private var isNavigatedFromMap = false
+    private var isProgrammaticSelection = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,9 +54,11 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
         }
 
         binding.bottomNavigation.setOnItemSelectedListener { item ->
-            // Clear navigation history flags when manually switching tabs
-            isNavigatedFromTimeline = false 
-            isNavigatedFromMap = false
+            // Clear navigation history flags when manually switching tabs, but not when we switch programmatically
+            if (!isProgrammaticSelection) {
+                isNavigatedFromTimeline = false
+                isNavigatedFromMap = false
+            }
             
             // If we are in PickLocation (which is still a modal/child flow of Add), handle it?
             // If PickLocation is visible, we should probably pop it or handle it.
@@ -150,13 +153,19 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
     }
 
     override fun onMemorySelected(lat: Double, lng: Double, id: Int) {
+        isProgrammaticSelection = true
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
+        isProgrammaticSelection = false
+        
         isNavigatedFromTimeline = true
         mapFragment.focusOnMemory(lat, lng, id)
     }
 
     override fun onNavigateToTimeline(memoryId: Int) {
+        isProgrammaticSelection = true
         binding.bottomNavigation.selectedItemId = R.id.navigation_timeline
+        isProgrammaticSelection = false
+        
         isNavigatedFromMap = true
     }
 
