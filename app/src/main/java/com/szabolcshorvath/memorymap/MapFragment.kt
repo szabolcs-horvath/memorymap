@@ -31,6 +31,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var _binding: FragmentMapsBinding? = null
     private val binding get() = _binding!!
     private lateinit var mMap: GoogleMap
+    private var selectedMarker: Marker? = null
     private val markerMap = mutableMapOf<Int, Marker>()
     private var listener: MapListener? = null
     
@@ -83,8 +84,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
              // We can store it in a variable when we show details
         }
     }
-    
-    private var selectedMarker: Marker? = null
     
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         if (::mMap.isInitialized) {
@@ -175,6 +174,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onResume() {
         super.onResume()
+        refreshData()
+    }
+
+    fun refreshData() {
         if (::mMap.isInitialized) {
             loadMarkers()
         }

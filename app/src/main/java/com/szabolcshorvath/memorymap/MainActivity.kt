@@ -169,41 +169,22 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
     }
 
     override fun onPickLocation(currentLat: Double, currentLng: Double) {
-        val fragment = PickLocationFragment() 
-        // PickLocation is still a modal on top of Add
+        val fragment = PickLocationFragment()
         supportFragmentManager.beginTransaction()
             .add(R.id.fragment_container, fragment, "PICK_LOCATION")
             .hide(addMemoryFragment) // Hide Add fragment
             .addToBackStack("PICK_LOCATION")
             .commit()
-        // activeFragment logic for back press needs to handle this
-        // We don't necessarily update activeFragment to PickLocation if we handle it via backstack check?
-        // But for consistency let's update it?
-        // Actually my showFragment logic relies on activeFragment. 
-        // But PickLocation is not switched to via bottom nav.
-        // So let's just leave activeFragment as AddMemoryFragment?
-        // Or update it?
-        // If I update it, then showFragment might try to hide it?
-        // PickLocation is temporary.
-        // Let's NOT update activeFragment, but handle visibility in back press.
-        // Actually, in `onLocationConfirmed`, we pop back.
-        // But `showFragment` might be called if user taps bottom nav while PickLocation is open.
-        // In that listener, I added logic to pop back stack if PickLocation is visible.
     }
 
     override fun onMemorySaved() {
-        // Memory saved. We should probably go to Map or Timeline?
-        // "The user might want to go to timeline to see it?"
-        // Or just stay? 
-        // Typically after save, we go to list or map.
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
-        mapFragment.onResume() // Refresh
+        mapFragment.refreshData()
         timelineFragment.refreshData()
     }
 
     override fun onLocationConfirmed(lat: Double, lng: Double) {
         supportFragmentManager.popBackStackImmediate()
         addMemoryFragment.updateLocation(lat, lng)
-        // activeFragment is still addMemoryFragment (conceptually)
     }
 }
