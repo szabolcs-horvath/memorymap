@@ -52,7 +52,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.play.services.maps)
     implementation(libs.androidx.constraintlayout)
-    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation(libs.play.services.location)
     
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

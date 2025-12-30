@@ -7,9 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
-import androidx.annotation.RequiresPermission
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -130,7 +128,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         
         binding.overlayActionButton.setOnClickListener {
             selectedMarker?.let { marker ->
-                 val group = marker.tag as? com.szabolcshorvath.memorymap.data.MemoryGroup
+                 val group = marker.tag as? MemoryGroup
                  if (group != null) {
                      listener?.onNavigateToTimeline(group.id)
                  }
@@ -224,7 +222,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun showMarkerDetails(marker: Marker) {
         binding.overlayTitle.text = marker.title
-        val group = marker.tag as? com.szabolcshorvath.memorymap.data.MemoryGroup
+        val group = marker.tag as? MemoryGroup
         if (group != null) {
              binding.overlayDescription.text = "Date: ${group.getFormattedDate()}"
         } else {

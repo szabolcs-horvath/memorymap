@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
 import androidx.fragment.app.Fragment
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 
