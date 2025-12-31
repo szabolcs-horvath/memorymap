@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:map="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -10,38 +10,41 @@
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        map:layout_constraintBottom_toBottomOf="parent"
-        map:layout_constraintEnd_toEndOf="parent"
-        map:layout_constraintStart_toStartOf="parent"
-        map:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/date_filter_container"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp"
         android:layout_marginTop="8dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:background="@android:color/transparent"
-        android:gravity="center_vertical"
-        map:layout_constraintTop_toTopOf="parent"
-        map:layout_constraintStart_toStartOf="parent"
-        map:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <Button
             android:id="@+id/btn_date_range"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
             style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:backgroundTint="#80FFFFFF"
-            android:textColor="@color/google_maps_ui_gray"
-            map:cornerRadius="4dp"
-            map:strokeWidth="0dp"
-            android:text="Select Date Range" />
-
-    </LinearLayout>
+            android:text="Select Date Range"
+            android:textColor="@color/black"
+            app:icon="@android:drawable/ic_menu_my_calendar"
+            app:iconTint="@color/black"
+            app:cornerRadius="4dp"
+            app:strokeWidth="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ImageButton
         android:id="@+id/btn_toggle_debug"
@@ -52,8 +55,8 @@
         android:background="@drawable/circle_background"
         android:contentDescription="Toggle Debug Info"
         android:elevation="4dp"
-        map:layout_constraintStart_toStartOf="parent"
-        map:layout_constraintTop_toBottomOf="@id/date_filter_container" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/date_filter_container" />
 
     <ScrollView
         android:id="@+id/debug_scroll_view"
@@ -62,8 +65,8 @@
         android:layout_margin="8dp"
         android:background="#80FFFFFF"
         android:visibility="gone"
-        map:layout_constraintStart_toStartOf="parent"
-        map:layout_constraintTop_toBottomOf="@id/btn_toggle_debug">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btn_toggle_debug">
 
         <TextView
             android:id="@+id/debug_markers_list"
@@ -81,11 +84,11 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:visibility="gone"
-        map:cardCornerRadius="8dp"
-        map:cardElevation="4dp"
-        map:layout_constraintBottom_toBottomOf="parent"
-        map:layout_constraintEnd_toEndOf="parent"
-        map:layout_constraintStart_toStartOf="parent">
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"

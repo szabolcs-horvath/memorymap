@@ -23,7 +23,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="Memory Title" />
-            
+
+        <TextView
+            android:id="@+id/memoryLocation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            android:textStyle="italic"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/memoryTitle"
+            tools:text="Wembley Stadium, London" />
+
         <TextView
             android:id="@+id/memoryDescription"
             android:layout_width="0dp"
@@ -34,7 +48,7 @@
             android:maxLines="2"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/memoryTitle"
+            app:layout_constraintTop_toBottomOf="@id/memoryLocation"
             tools:text="This is a description of the memory..." />
 
         <TextView

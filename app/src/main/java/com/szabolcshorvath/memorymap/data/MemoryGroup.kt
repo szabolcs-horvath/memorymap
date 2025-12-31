@@ -14,6 +14,8 @@ data class MemoryGroup(
     val description: String?,
     val latitude: Double,
     val longitude: Double,
+    val placeName: String?,
+    val address: String?,
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val isAllDay: Boolean

@@ -23,6 +23,16 @@ class TimelineAdapter(
         fun bind(memoryGroup: MemoryGroup) {
             binding.memoryTitle.text = memoryGroup.title
             
+            if (!memoryGroup.placeName.isNullOrEmpty()) {
+                binding.memoryLocation.text = memoryGroup.placeName
+                binding.memoryLocation.visibility = View.VISIBLE
+            } else if (!memoryGroup.address.isNullOrEmpty()) {
+                binding.memoryLocation.text = memoryGroup.address
+                binding.memoryLocation.visibility = View.VISIBLE
+            } else {
+                binding.memoryLocation.visibility = View.GONE
+            }
+
             if (!memoryGroup.description.isNullOrEmpty()) {
                 binding.memoryDescription.text = memoryGroup.description
                 binding.memoryDescription.visibility = View.VISIBLE

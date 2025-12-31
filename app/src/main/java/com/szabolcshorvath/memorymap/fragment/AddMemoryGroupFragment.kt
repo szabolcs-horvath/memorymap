@@ -40,6 +40,8 @@ class AddMemoryGroupFragment : Fragment() {
     private val selectedMediaUris = mutableListOf<Pair<Uri, MediaType>>()
     private var lat = 0.0
     private var lng = 0.0
+    private var placeName: String? = null
+    private var address: String? = null
 
     private var startDateTime: ZonedDateTime = ZonedDateTime.now()
     private var endDateTime: ZonedDateTime = ZonedDateTime.now().plusHours(1)
@@ -93,7 +95,7 @@ class AddMemoryGroupFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.locationText.text = "Location: $lat, $lng"
+        updateLocationText()
 
         updateDateTimeButtons()
 
@@ -127,6 +129,8 @@ class AddMemoryGroupFragment : Fragment() {
     fun clearFields() {
         lat = 0.0
         lng = 0.0
+        placeName = null
+        address = null
         isAllDay = false
         startDateTime = ZonedDateTime.now()
         endDateTime = ZonedDateTime.now().plusHours(1)
@@ -135,17 +139,31 @@ class AddMemoryGroupFragment : Fragment() {
 
         binding.titleInput.text?.clear()
         binding.descriptionInput.text?.clear()
-        binding.locationText.text = "Location: $lat, $lng"
+        updateLocationText()
         binding.selectedMediaCount.text = "0 items selected"
         binding.allDayCheckbox.isChecked = false
     }
 
-    fun updateLocation(newLat: Double, newLng: Double) {
+    fun updateLocation(newLat: Double, newLng: Double, newPlaceName: String? = null, newAddress: String? = null) {
         lat = newLat
         lng = newLng
+        placeName = newPlaceName
+        address = newAddress
         if (_binding != null) {
-            binding.locationText.text = "Location: $lat, $lng"
+            updateLocationText()
         }
+    }
+
+    private fun updateLocationText() {
+        val locationString = StringBuilder()
+        if (placeName != null) {
+            locationString.append(placeName).append("\n")
+        }
+        if (address != null) {
+            locationString.append(address).append("\n")
+        }
+        locationString.append("$lat, $lng")
+        binding.locationText.text = locationString.toString()
     }
 
     private fun updateDateTimeButtons() {
@@ -244,6 +262,8 @@ class AddMemoryGroupFragment : Fragment() {
                 description = description,
                 latitude = lat,
                 longitude = lng,
+                placeName = placeName,
+                address = address,
                 startDate = finalStart,
                 endDate = finalEnd,
                 isAllDay = isAllDay

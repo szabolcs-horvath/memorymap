@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.play.services.location)
+    implementation(libs.google.places)
     
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

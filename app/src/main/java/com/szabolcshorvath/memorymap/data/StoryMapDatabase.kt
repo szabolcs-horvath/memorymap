@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [MemoryGroup::class, MediaItem::class], version = 4, exportSchema = true)
+@Database(entities = [MemoryGroup::class, MediaItem::class], version = 5, exportSchema = true)
 @TypeConverters(Converters::class)
 abstract class StoryMapDatabase : RoomDatabase() {
     abstract fun memoryGroupDao(): MemoryGroupDao

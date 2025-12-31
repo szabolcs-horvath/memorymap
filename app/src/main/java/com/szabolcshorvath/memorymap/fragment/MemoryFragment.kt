@@ -102,7 +102,19 @@ class MemoryFragment : Fragment() {
         }
         
         binding.dateText.text = group.getFormattedDate()
-        binding.locationText.text = "${String.format(Locale.getDefault(), "%.4f", group.latitude)}, ${String.format(Locale.getDefault(), "%.4f", group.longitude)}"
+
+        val locationString = if (!group.placeName.isNullOrEmpty()) {
+            if (!group.address.isNullOrEmpty()) {
+                 "${group.placeName}\n${group.address}"
+            } else {
+                 group.placeName
+            }
+        } else if (!group.address.isNullOrEmpty()) {
+            group.address
+        } else {
+            "${String.format(Locale.getDefault(), "%.4f", group.latitude)}, ${String.format(Locale.getDefault(), "%.4f", group.longitude)}"
+        }
+        binding.locationText.text = locationString
 
         binding.showOnTimelineButton.setOnClickListener {
             listener?.onNavigateToTimeline(group.id)

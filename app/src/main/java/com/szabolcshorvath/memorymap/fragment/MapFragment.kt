@@ -160,15 +160,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-        
-        binding.dateFilterContainer.post {
-            mMap.setPadding(0, binding.dateFilterContainer.height + binding.dateFilterContainer.top, 0, 0)
-        }
 
         mMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         mMap.uiSettings.isRotateGesturesEnabled = false
         mMap.uiSettings.isMyLocationButtonEnabled = true
         mMap.uiSettings.isZoomControlsEnabled = true
+
+        mMap.setPadding(0, binding.dateFilterContainer.height + binding.dateFilterContainer.top, 0, 0)
 
         loadMarkers()
         requestLocationPermissionIfNeeded()
@@ -193,6 +191,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             binding.overlayCard.visibility = View.GONE
             selectedMarker = null
             false
+        }
+
+        // Prevent clicking on POIs in MapFragment
+        mMap.setOnPoiClickListener {
+            // Do nothing
         }
 
         binding.overlayActionButton.setOnClickListener {
@@ -302,7 +305,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             // Check if the memory overlaps with the selected range
             if (!groupEnd.isBefore(start) && !groupStart.isAfter(end)) {
                 val position = LatLng(group.latitude, group.longitude)
-                val marker = mMap.addMarker(MarkerOptions().position(position).title(group.title))
+                val markerTitle = group.placeName ?: group.title
+                val marker = mMap.addMarker(MarkerOptions().position(position).title(markerTitle))
                 if (marker != null) {
                     marker.tag = group
                     markerMap[group.id] = marker
@@ -331,7 +335,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             binding.overlayTitle.text = marker.title
             val group = marker.tag as? MemoryGroup
             if (group != null) {
-                binding.overlayDescription.text = "Date: ${group.getFormattedDate()}"
+                val description = if (group.placeName != null) {
+                     "${group.placeName}\nDate: ${group.getFormattedDate()}"
+                } else {
+                     "Date: ${group.getFormattedDate()}"
+                }
+                binding.overlayDescription.text = description
             } else {
                 binding.overlayDescription.text = "Lat: ${marker.position.latitude}, Lng: ${marker.position.longitude}"
             }

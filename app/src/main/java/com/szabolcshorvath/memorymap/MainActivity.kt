@@ -1,9 +1,11 @@
 package com.szabolcshorvath.memorymap
 
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import com.google.android.libraries.places.api.Places
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment
 import com.szabolcshorvath.memorymap.fragment.MapFragment
@@ -30,6 +32,18 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize Places
+        try {
+            val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+            val apiKey = appInfo.metaData.getString("com.google.android.geo.API_KEY")
+            if (apiKey != null) {
+                Places.initialize(applicationContext, apiKey)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         binding = ActivityMainContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -230,8 +244,8 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
         mapFragment.focusOnMemory(lat, lng, id)
     }
 
-    override fun onLocationConfirmed(lat: Double, lng: Double) {
+    override fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?) {
         showFragment(addMemoryFragment)
-        addMemoryFragment.updateLocation(lat, lng)
+        addMemoryFragment.updateLocation(lat, lng, placeName, address)
     }
 }
