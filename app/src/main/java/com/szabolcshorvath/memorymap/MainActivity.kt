@@ -5,7 +5,12 @@ import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.google.android.libraries.places.api.Places
+import com.google.android.material.snackbar.Snackbar
+import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment
 import com.szabolcshorvath.memorymap.fragment.MapFragment
@@ -14,6 +19,9 @@ import com.szabolcshorvath.memorymap.fragment.MemoryFragment
 import com.szabolcshorvath.memorymap.fragment.MemoryPagerFragment
 import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, MapFragment.MapListener, AddMemoryGroupFragment.AddMemoryListener, PickLocationFragment.PickLocationListener, MemoryFragment.MemoryFragmentListener {
@@ -247,5 +255,26 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
     override fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?) {
         showFragment(addMemoryFragment)
         addMemoryFragment.updateLocation(lat, lng, placeName, address)
+    }
+
+    override fun onMemoryDeleted(memoryGroup: MemoryGroup, mediaItems: List<MediaItem>) {
+        mapFragment.refreshData()
+        timelineFragment.refreshData()
+
+        val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
+        snackbar.setAction("Undo") {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val db = StoryMapDatabase.getDatabase(applicationContext)
+                val newGroupId = db.memoryGroupDao().insertGroup(memoryGroup)
+                val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
+                db.memoryGroupDao().insertMediaItems(restoredMediaItems)
+                
+                withContext(Dispatchers.Main) {
+                    mapFragment.refreshData()
+                    timelineFragment.refreshData()
+                }
+            }
+        }
+        snackbar.show()
     }
 }
