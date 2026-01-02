@@ -263,10 +263,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
             withContext(Dispatchers.Main) {
                 if (::mMap.isInitialized) {
-                    if (filterStartDate == null && allGroups.isNotEmpty()) {
-                        val dates = allGroups.flatMap { listOf(it.startDate.toLocalDate(), it.endDate.toLocalDate()) }
-                        filterStartDate = dates.minOrNull()
-                        filterEndDate = dates.maxOrNull()
+                    if (filterStartDate == null || filterEndDate == null){
+                        filterStartDate = LocalDate.now()
+                        filterEndDate = LocalDate.now()
                     }
                     
                     updateDateRangeButtonText()
@@ -305,7 +304,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             // Check if the memory overlaps with the selected range
             if (!groupEnd.isBefore(start) && !groupStart.isAfter(end)) {
                 val position = LatLng(group.latitude, group.longitude)
-                val markerTitle = group.placeName ?: group.title
+                val markerTitle = group.title
                 val marker = mMap.addMarker(MarkerOptions().position(position).title(markerTitle))
                 if (marker != null) {
                     marker.tag = group

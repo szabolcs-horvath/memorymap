@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
             val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
             val apiKey = appInfo.metaData.getString("com.google.android.geo.API_KEY")
             if (apiKey != null) {
-                Places.initialize(applicationContext, apiKey)
+                Places.initializeWithNewPlacesApiEnabled(applicationContext, apiKey)
             }
         } catch (e: Exception) {
             e.printStackTrace()

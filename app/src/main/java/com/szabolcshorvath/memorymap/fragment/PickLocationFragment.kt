@@ -11,9 +11,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -22,14 +22,15 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.libraries.places.api.model.AutocompletePrediction
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.widget.Autocomplete
-import com.google.android.libraries.places.widget.AutocompleteActivity
+import com.google.android.libraries.places.api.net.kotlin.awaitFetchPlace
 import com.google.android.libraries.places.widget.PlaceAutocomplete
-import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
+import kotlinx.coroutines.launch
 
 class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
@@ -52,27 +53,38 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private val autocompleteLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == AppCompatActivity.RESULT_OK) {
-            val intent = result.data
-            if (intent != null) {
-                val place = Autocomplete.getPlaceFromIntent(intent)
-                val latLng = place.location
-                if (latLng != null) {
-                    selectedPlaceName = place.displayName
-                    selectedAddress = place.formattedAddress
-                    updateSelectedLocation(latLng, selectedPlaceName)
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+    private val autocompleteLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val intent = result.data
+        if (intent != null) {
+            when (result.resultCode) {
+                PlaceAutocompleteActivity.RESULT_OK -> {
+                    val prediction = PlaceAutocomplete.getPredictionFromIntent(intent)!!
+                    val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
+                    val placesClient = Places.createClient(requireContext())
+
+                    lifecycleScope.launch {
+                        try {
+                            val response = placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
+                                sessionToken = sessionTokenFromIntent
+                            }
+                            val place = response.place
+                            val latLng = place.location
+                            if (latLng != null) {
+                                selectedPlaceName = place.displayName
+                                selectedAddress = place.formattedAddress
+                                updateSelectedLocation(latLng, selectedPlaceName)
+                                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error fetching place details: ${e.message}", e)
+                        }
+                    }
+                }
+                PlaceAutocompleteActivity.RESULT_ERROR -> {
+                    val status = PlaceAutocomplete.getResultStatusFromIntent(intent)
+                    Log.e(TAG, "Autocomplete error: ${status?.statusMessage}")
                 }
             }
-        } else if (result.resultCode == AutocompleteActivity.RESULT_ERROR) {
-             val intent = result.data
-             if (intent != null) {
-                 val status = Autocomplete.getStatusFromIntent(intent)
-                 Log.e(TAG, "Autocomplete error: ${status.statusMessage}")
-             }
         }
     }
 
@@ -114,9 +126,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun startAutocomplete() {
-        val fields = listOf(Place.Field.ID, Place.Field.DISPLAY_NAME, Place.Field.LOCATION, Place.Field.FORMATTED_ADDRESS)
-        val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, fields)
-            .build(requireContext())
+        val sessionToken = AutocompleteSessionToken.newInstance()
+        val intent = PlaceAutocomplete.createIntent(requireContext()) {
+            setAutocompleteSessionToken(sessionToken)
+        }
         autocompleteLauncher.launch(intent)
     }
 
@@ -219,5 +232,6 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         const val TAG = "PICK_LOCATION_TAG"
+        private val placeFields = listOf(Place.Field.ID, Place.Field.DISPLAY_NAME, Place.Field.LOCATION, Place.Field.FORMATTED_ADDRESS)
     }
 }
