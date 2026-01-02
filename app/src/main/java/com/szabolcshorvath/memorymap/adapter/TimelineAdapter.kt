@@ -19,10 +19,11 @@ class TimelineAdapter(
         stateRestorationPolicy = StateRestorationPolicy.PREVENT_WHEN_EMPTY
     }
 
-    inner class TimelineViewHolder(private val binding: ItemTimelineMemoryBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class TimelineViewHolder(private val binding: ItemTimelineMemoryBinding) :
+        RecyclerView.ViewHolder(binding.root) {
         fun bind(memoryGroup: MemoryGroup) {
             binding.memoryTitle.text = memoryGroup.title
-            
+
             if (!memoryGroup.placeName.isNullOrEmpty()) {
                 binding.memoryLocation.text = memoryGroup.placeName
                 binding.memoryLocation.visibility = View.VISIBLE
@@ -39,7 +40,7 @@ class TimelineAdapter(
             } else {
                 binding.memoryDescription.visibility = View.GONE
             }
-            
+
             binding.memoryDate.text = memoryGroup.getFormattedDate()
             binding.root.setOnClickListener { onMemoryClick(memoryGroup) }
         }
@@ -62,7 +63,8 @@ class TimelineAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TimelineViewHolder {
-        val binding = ItemTimelineMemoryBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding =
+            ItemTimelineMemoryBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return TimelineViewHolder(binding)
     }
 

@@ -61,13 +61,16 @@ class MediaViewerFragment : Fragment() {
         private const val ARG_START_POSITION = "start_position"
 
         @JvmStatic
-        fun newInstance(mediaUris: ArrayList<String>, mediaTypes: ArrayList<String>, startPosition: Int) =
-            MediaViewerFragment().apply {
-                arguments = Bundle().apply {
-                    putStringArrayList(ARG_MEDIA_URIS, mediaUris)
-                    putStringArrayList(ARG_MEDIA_TYPES, mediaTypes)
-                    putInt(ARG_START_POSITION, startPosition)
-                }
+        fun newInstance(
+            mediaUris: ArrayList<String>,
+            mediaTypes: ArrayList<String>,
+            startPosition: Int
+        ) = MediaViewerFragment().apply {
+            arguments = Bundle().apply {
+                putStringArrayList(ARG_MEDIA_URIS, mediaUris)
+                putStringArrayList(ARG_MEDIA_TYPES, mediaTypes)
+                putInt(ARG_START_POSITION, startPosition)
             }
+        }
     }
 }

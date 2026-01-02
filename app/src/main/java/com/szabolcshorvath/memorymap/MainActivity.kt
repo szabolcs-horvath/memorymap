@@ -24,15 +24,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
-class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, MapFragment.MapListener, AddMemoryGroupFragment.AddMemoryListener, PickLocationFragment.PickLocationListener, MemoryFragment.MemoryFragmentListener {
+class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
+    MapFragment.MapListener, AddMemoryGroupFragment.AddMemoryListener,
+    PickLocationFragment.PickLocationListener, MemoryFragment.MemoryFragmentListener {
 
     private lateinit var binding: ActivityMainContainerBinding
-    
+
     private lateinit var mapFragment: MapFragment
     private lateinit var timelineFragment: TimelineFragment
     private lateinit var addMemoryFragment: AddMemoryGroupFragment
     private lateinit var pickLocationFragment: PickLocationFragment
-    
+
     private var activeFragment: Fragment? = null
     private var isNavigatedFromTimeline = false
     private var isNavigatedFromMap = false
@@ -40,10 +42,11 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Initialize Places
         try {
-            val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+            val appInfo =
+                packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
             val apiKey = appInfo.metaData.getString("com.google.android.geo.API_KEY")
             if (apiKey != null) {
                 Places.initializeWithNewPlacesApiEnabled(applicationContext, apiKey)
@@ -60,7 +63,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
             timelineFragment = TimelineFragment()
             addMemoryFragment = AddMemoryGroupFragment()
             pickLocationFragment = PickLocationFragment()
-            
+
             supportFragmentManager.beginTransaction()
                 .add(R.id.fragment_container, mapFragment, MapFragment.TAG)
                 .add(R.id.fragment_container, timelineFragment, TimelineFragment.TAG)
@@ -70,17 +73,20 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
                 .hide(addMemoryFragment)
                 .hide(pickLocationFragment)
                 .commit()
-                
+
             activeFragment = mapFragment
         } else {
             mapFragment = supportFragmentManager.findFragmentByTag(MapFragment.TAG) as? MapFragment
                 ?: MapFragment()
-            timelineFragment = supportFragmentManager.findFragmentByTag(TimelineFragment.TAG) as? TimelineFragment
-                ?: TimelineFragment()
-            addMemoryFragment = supportFragmentManager.findFragmentByTag(AddMemoryGroupFragment.TAG) as? AddMemoryGroupFragment
-                ?: AddMemoryGroupFragment()
-            pickLocationFragment = supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment
-                ?: PickLocationFragment()
+            timelineFragment =
+                supportFragmentManager.findFragmentByTag(TimelineFragment.TAG) as? TimelineFragment
+                    ?: TimelineFragment()
+            addMemoryFragment =
+                supportFragmentManager.findFragmentByTag(AddMemoryGroupFragment.TAG) as? AddMemoryGroupFragment
+                    ?: AddMemoryGroupFragment()
+            pickLocationFragment =
+                supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment
+                    ?: PickLocationFragment()
 
             activeFragment = if (!addMemoryFragment.isHidden) {
                 addMemoryFragment
@@ -97,9 +103,12 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
                 isNavigatedFromTimeline = false
                 isNavigatedFromMap = false
             }
-            
+
             if (supportFragmentManager.backStackEntryCount > 0) {
-                supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                supportFragmentManager.popBackStack(
+                    null,
+                    androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+                )
             }
 
             when (item.itemId) {
@@ -107,18 +116,21 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
                     showFragment(mapFragment)
                     true
                 }
+
                 R.id.navigation_timeline -> {
                     showFragment(timelineFragment)
                     true
                 }
+
                 R.id.navigation_add -> {
                     showFragment(addMemoryFragment)
                     true
                 }
+
                 else -> false
             }
         }
-        
+
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (supportFragmentManager.backStackEntryCount > 0) {
@@ -137,6 +149,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
                             isEnabled = true
                         }
                     }
+
                     timelineFragment -> {
                         if (isNavigatedFromMap) {
                             binding.bottomNavigation.selectedItemId = R.id.navigation_map
@@ -147,12 +160,15 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
                             isEnabled = true
                         }
                     }
+
                     addMemoryFragment -> {
                         binding.bottomNavigation.selectedItemId = R.id.navigation_map
                     }
+
                     pickLocationFragment -> {
                         binding.bottomNavigation.selectedItemId = R.id.navigation_add
                     }
+
                     else -> {
                         isEnabled = false
                         onBackPressedDispatcher.onBackPressed()
@@ -162,7 +178,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
             }
         })
     }
-    
+
     private fun showFragment(fragment: Fragment) {
         if (fragment != activeFragment) {
             supportFragmentManager.beginTransaction()
@@ -172,7 +188,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
             activeFragment = fragment
         }
     }
-    
+
     override fun startAddMemoryFlow(lat: Double, lng: Double) {
         addMemoryFragment.clearFields()
         showFragment(addMemoryFragment)
@@ -191,8 +207,12 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
         activeFragment?.let { transaction.hide(it) }
         transaction.commit()
     }
-    
-    override fun onMediaClick(mediaItems: ArrayList<String>, types: ArrayList<String>, startPosition: Int) {
+
+    override fun onMediaClick(
+        mediaItems: ArrayList<String>,
+        types: ArrayList<String>,
+        startPosition: Int
+    ) {
         val fragment = MediaViewerFragment.newInstance(mediaItems, types, startPosition)
         val memoryPagerFragment = supportFragmentManager.findFragmentByTag(MemoryPagerFragment.TAG)
 
@@ -213,25 +233,31 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
 
     override fun onNavigateToTimeline(memoryId: Int) {
         // First pop the back stack to remove the details fragment
-        supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        supportFragmentManager.popBackStack(
+            null,
+            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+        )
 
         isProgrammaticSelection = true
         binding.bottomNavigation.selectedItemId = R.id.navigation_timeline
         isProgrammaticSelection = false
-        
+
         isNavigatedFromMap = true
-        
+
         timelineFragment.scrollToAndFlash(memoryId)
     }
-    
+
     override fun onNavigateToMap(lat: Double, lng: Double, id: Int) {
         // First pop the back stack to remove the details fragment
-        supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        supportFragmentManager.popBackStack(
+            null,
+            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+        )
 
         isProgrammaticSelection = true
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
         isProgrammaticSelection = false
-        
+
         isNavigatedFromTimeline = true
         mapFragment.focusOnMemory(lat, lng, id)
     }
@@ -242,7 +268,13 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
         showFragment(pickLocationFragment)
     }
 
-    override fun onMemorySaved(lat: Double, lng: Double, id: Int, startDate: LocalDate, endDate: LocalDate) {
+    override fun onMemorySaved(
+        lat: Double,
+        lng: Double,
+        id: Int,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ) {
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
 
         mapFragment.refreshData()
@@ -252,7 +284,12 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
         mapFragment.focusOnMemory(lat, lng, id)
     }
 
-    override fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?) {
+    override fun onLocationConfirmed(
+        lat: Double,
+        lng: Double,
+        placeName: String?,
+        address: String?
+    ) {
         showFragment(addMemoryFragment)
         addMemoryFragment.updateLocation(lat, lng, placeName, address)
     }
@@ -266,9 +303,10 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener, Map
             lifecycleScope.launch(Dispatchers.IO) {
                 val db = StoryMapDatabase.getDatabase(applicationContext)
                 val newGroupId = db.memoryGroupDao().insertGroup(memoryGroup)
-                val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
+                val restoredMediaItems =
+                    mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
                 db.memoryGroupDao().insertMediaItems(restoredMediaItems)
-                
+
                 withContext(Dispatchers.Main) {
                     mapFragment.refreshData()
                     timelineFragment.refreshData()

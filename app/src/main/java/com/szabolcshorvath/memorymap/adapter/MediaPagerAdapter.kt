@@ -17,7 +17,8 @@ class MediaPagerAdapter(
     private val mediaTypes: List<String>
 ) : RecyclerView.Adapter<MediaPagerAdapter.MediaViewHolder>() {
 
-    inner class MediaViewHolder(private val binding: ItemMediaFullBinding) : RecyclerView.ViewHolder(binding.root) {
+    class MediaViewHolder(private val binding: ItemMediaFullBinding) :
+        RecyclerView.ViewHolder(binding.root) {
         fun bind(uriString: String, typeString: String) {
             val uri = uriString.toUri()
             val isVideo = typeString == "VIDEO"
@@ -31,7 +32,12 @@ class MediaPagerAdapter(
                 binding.fullImageView.load(uri) {
                     crossfade(true)
                     videoFrameMicros(0)
-                    decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
+                    decoderFactory { result, options, _ ->
+                        VideoFrameDecoder(
+                            result.source,
+                            options
+                        )
+                    }
                 }
 
                 binding.fullVideoView.setVideoURI(uri)
@@ -41,7 +47,8 @@ class MediaPagerAdapter(
                     if (binding.fullVideoView.isPlaying) {
                         binding.fullVideoView.pause()
                         binding.playIcon.visibility = View.VISIBLE
-                        binding.fullImageView.visibility = View.VISIBLE // Show thumbnail when paused
+                        binding.fullImageView.visibility =
+                            View.VISIBLE // Show thumbnail when paused
                     } else {
                         binding.fullVideoView.start()
                         binding.playIcon.visibility = View.GONE
@@ -91,7 +98,8 @@ class MediaPagerAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
-        val binding = ItemMediaFullBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding =
+            ItemMediaFullBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return MediaViewHolder(binding)
     }
 

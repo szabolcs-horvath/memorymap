@@ -32,7 +32,12 @@ class MemoryFragment : Fragment() {
     private var currentMemoryGroup: MemoryGroupWithMedia? = null
 
     interface MemoryFragmentListener {
-        fun onMediaClick(mediaItems: ArrayList<String>, types: ArrayList<String>, startPosition: Int)
+        fun onMediaClick(
+            mediaItems: ArrayList<String>,
+            types: ArrayList<String>,
+            startPosition: Int
+        )
+
         fun onBackFromMemory()
         fun onNavigateToTimeline(memoryId: Int)
         fun onNavigateToMap(lat: Double, lng: Double, id: Int)
@@ -67,7 +72,7 @@ class MemoryFragment : Fragment() {
 
         setupRecyclerView()
         loadMemoryDetails()
-        
+
         binding.deleteButton.setOnClickListener {
             showDeleteConfirmationDialog()
         }
@@ -102,26 +107,38 @@ class MemoryFragment : Fragment() {
     private fun displayDetails(data: MemoryGroupWithMedia) {
         val group = data.group
         binding.titleText.text = group.title
-        
+
         if (!group.description.isNullOrEmpty()) {
             binding.descriptionText.text = group.description
             binding.descriptionText.visibility = View.VISIBLE
         } else {
             binding.descriptionText.visibility = View.GONE
         }
-        
+
         binding.dateText.text = group.getFormattedDate()
 
         val locationString = if (!group.placeName.isNullOrEmpty()) {
             if (!group.address.isNullOrEmpty()) {
-                 "${group.placeName}\n${group.address}"
+                "${group.placeName}\n${group.address}"
             } else {
-                 group.placeName
+                group.placeName
             }
         } else if (!group.address.isNullOrEmpty()) {
             group.address
         } else {
-            "${String.format(Locale.getDefault(), "%.4f", group.latitude)}, ${String.format(Locale.getDefault(), "%.4f", group.longitude)}"
+            "${
+                String.format(
+                    Locale.getDefault(),
+                    "%.4f",
+                    group.latitude
+                )
+            }, ${
+                String.format(
+                    Locale.getDefault(),
+                    "%.4f",
+                    group.longitude
+                )
+            }"
         }
         binding.locationText.text = locationString
 
@@ -157,7 +174,10 @@ class MemoryFragment : Fragment() {
             db.memoryGroupDao().deleteGroup(currentMemoryGroup!!.group)
 
             withContext(Dispatchers.Main) {
-                listener?.onMemoryDeleted(currentMemoryGroup!!.group, currentMemoryGroup!!.mediaItems)
+                listener?.onMemoryDeleted(
+                    currentMemoryGroup!!.group,
+                    currentMemoryGroup!!.mediaItems
+                )
                 listener?.onBackFromMemory()
             }
         }

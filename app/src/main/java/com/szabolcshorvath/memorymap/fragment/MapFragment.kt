@@ -60,7 +60,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
             enableMyLocation()
         }
     }
@@ -103,8 +104,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         builder.setTitleText("Select dates")
 
         if (filterStartDate != null && filterEndDate != null) {
-            val startMillis = filterStartDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
-            val endMillis = filterEndDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            val startMillis =
+                filterStartDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            val endMillis =
+                filterEndDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
             builder.setSelection(androidx.core.util.Pair(startMillis, endMillis))
         }
 
@@ -113,7 +116,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val startMillis = selection.first
             val endMillis = selection.second
 
-            filterStartDate = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+            filterStartDate =
+                Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
             filterEndDate = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
 
             updateDateRangeButtonText()
@@ -126,7 +130,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun updateDateRangeButtonText() {
         if (filterStartDate != null && filterEndDate != null) {
-            binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
+            binding.btnDateRange.text =
+                "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
         } else {
             binding.btnDateRange.text = "Select Date Range"
         }
@@ -138,9 +143,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             setDateFilter(memory)
             moveToLocationAndSelectMarker(lat, lng, memory)
         } else {
-             initialSelectedLat = lat
-             initialSelectedLng = lng
-             initialSelectedId = id
+            initialSelectedLat = lat
+            initialSelectedLng = lng
+            initialSelectedId = id
         }
     }
 
@@ -178,7 +183,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         mMap.setOnMarkerClickListener { marker ->
             selectedMarker = marker
-            moveToLocationAndSelectMarker(marker.position.latitude, marker.position.longitude, marker.tag as? MemoryGroup)
+            moveToLocationAndSelectMarker(
+                marker.position.latitude,
+                marker.position.longitude,
+                marker.tag as? MemoryGroup
+            )
             true
         }
 
@@ -208,10 +217,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         binding.overlayActionButton.setOnClickListener {
             selectedMarker?.let { marker ->
-                 val group = marker.tag as? MemoryGroup
-                 if (group != null) {
-                     listener?.onMemoryClicked(group.id)
-                 }
+                val group = marker.tag as? MemoryGroup
+                if (group != null) {
+                    listener?.onMemoryClicked(group.id)
+                }
             }
         }
     }
@@ -256,14 +265,21 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
         if (hasLocationPermission() && initialSelectedLat == null) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+            val fusedLocationClient =
+                LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
                     val latLng = LatLng(location.latitude, location.longitude)
@@ -295,7 +311,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         withContext(Dispatchers.Main) {
             if (::mMap.isInitialized) {
-                if (filterStartDate == null || filterEndDate == null){
+                if (filterStartDate == null || filterEndDate == null) {
                     filterStartDate = LocalDate.now()
                     filterEndDate = LocalDate.now()
                 }
@@ -323,7 +339,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         val start = filterStartDate ?: LocalDate.MIN
         val end = filterEndDate ?: LocalDate.MAX
-        
+
         val boundsBuilder = LatLngBounds.Builder()
         var markersCount = 0
 
@@ -363,13 +379,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val group = marker.tag as? MemoryGroup
             if (group != null) {
                 val description = if (group.placeName != null) {
-                     "${group.placeName}\nDate: ${group.getFormattedDate()}"
+                    "${group.placeName}\nDate: ${group.getFormattedDate()}"
                 } else {
-                     "Date: ${group.getFormattedDate()}"
+                    "Date: ${group.getFormattedDate()}"
                 }
                 binding.overlayDescription.text = description
             } else {
-                binding.overlayDescription.text = "Lat: ${marker.position.latitude}, Lng: ${marker.position.longitude}"
+                binding.overlayDescription.text =
+                    "Lat: ${marker.position.latitude}, Lng: ${marker.position.longitude}"
             }
             binding.overlayCard.visibility = View.VISIBLE
         }

@@ -47,46 +47,56 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
             enableMyLocation()
             selectUserLocation()
         }
     }
 
-    private val autocompleteLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val intent = result.data
-        if (intent != null) {
-            when (result.resultCode) {
-                PlaceAutocompleteActivity.RESULT_OK -> {
-                    val prediction = PlaceAutocomplete.getPredictionFromIntent(intent)!!
-                    val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
-                    val placesClient = Places.createClient(requireContext())
+    private val autocompleteLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val intent = result.data
+            if (intent != null) {
+                when (result.resultCode) {
+                    PlaceAutocompleteActivity.RESULT_OK -> {
+                        val prediction = PlaceAutocomplete.getPredictionFromIntent(intent)!!
+                        val sessionTokenFromIntent =
+                            PlaceAutocomplete.getSessionTokenFromIntent(intent)
+                        val placesClient = Places.createClient(requireContext())
 
-                    lifecycleScope.launch {
-                        try {
-                            val response = placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
-                                sessionToken = sessionTokenFromIntent
+                        lifecycleScope.launch {
+                            try {
+                                val response =
+                                    placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
+                                        sessionToken = sessionTokenFromIntent
+                                    }
+                                val place = response.place
+                                val latLng = place.location
+                                if (latLng != null) {
+                                    selectedPlaceName = place.displayName
+                                    selectedAddress = place.formattedAddress
+                                    updateSelectedLocation(latLng, selectedPlaceName)
+                                    mMap.animateCamera(
+                                        CameraUpdateFactory.newLatLngZoom(
+                                            latLng,
+                                            15f
+                                        )
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error fetching place details: ${e.message}", e)
                             }
-                            val place = response.place
-                            val latLng = place.location
-                            if (latLng != null) {
-                                selectedPlaceName = place.displayName
-                                selectedAddress = place.formattedAddress
-                                updateSelectedLocation(latLng, selectedPlaceName)
-                                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-                            }
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error fetching place details: ${e.message}", e)
                         }
                     }
-                }
-                PlaceAutocompleteActivity.RESULT_ERROR -> {
-                    val status = PlaceAutocomplete.getResultStatusFromIntent(intent)
-                    Log.e(TAG, "Autocomplete error: ${status?.statusMessage}")
+
+                    PlaceAutocompleteActivity.RESULT_ERROR -> {
+                        val status = PlaceAutocomplete.getResultStatusFromIntent(intent)
+                        Log.e(TAG, "Autocomplete error: ${status?.statusMessage}")
+                    }
                 }
             }
         }
-    }
 
     interface PickLocationListener {
         fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?)
@@ -116,7 +126,12 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
         view.findViewById<Button>(R.id.confirmButton).setOnClickListener {
             if (selectedLat != null && selectedLng != null) {
-                listener?.onLocationConfirmed(selectedLat!!, selectedLng!!, selectedPlaceName, selectedAddress)
+                listener?.onLocationConfirmed(
+                    selectedLat!!,
+                    selectedLng!!,
+                    selectedPlaceName,
+                    selectedAddress
+                )
             }
         }
 
@@ -157,7 +172,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         mMap.setOnPoiClickListener { poi ->
             selectedPlaceName = poi.name
             // We don't get address from Poi click immediately, would need Places API fetch if critical
-            selectedAddress = null 
+            selectedAddress = null
             updateSelectedLocation(poi.latLng, poi.name)
         }
 
@@ -169,9 +184,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun updateSelectedLocation(latLng: LatLng, title: String? = null) {
         mMap.clear()
-        mMap.addMarker(MarkerOptions()
-            .position(latLng)
-            .title(title ?: "Selected Location"))?.showInfoWindow()
+        mMap.addMarker(
+            MarkerOptions()
+                .position(latLng)
+                .title(title ?: "Selected Location")
+        )?.showInfoWindow()
         selectedLat = latLng.latitude
         selectedLng = latLng.longitude
     }
@@ -196,14 +213,21 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
         if (hasLocationPermission()) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+            val fusedLocationClient =
+                LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
                     val latLng = LatLng(location.latitude, location.longitude)
@@ -232,6 +256,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         const val TAG = "PICK_LOCATION_TAG"
-        private val placeFields = listOf(Place.Field.ID, Place.Field.DISPLAY_NAME, Place.Field.LOCATION, Place.Field.FORMATTED_ADDRESS)
+        private val placeFields = listOf(
+            Place.Field.ID,
+            Place.Field.DISPLAY_NAME,
+            Place.Field.LOCATION,
+            Place.Field.FORMATTED_ADDRESS
+        )
     }
 }

@@ -57,7 +57,7 @@ class MemoryPagerFragment : Fragment() {
     private fun setupViewPager() {
         val adapter = MemoryPagerAdapter(this, memoryIds)
         binding.memoryViewPager.adapter = adapter
-        
+
         val initialPosition = memoryIds.indexOf(initialMemoryId)
         if (initialPosition != -1) {
             binding.memoryViewPager.setCurrentItem(initialPosition, false)
@@ -83,7 +83,8 @@ class MemoryPagerFragment : Fragment() {
     }
 }
 
-class MemoryPagerAdapter(fragment: Fragment, private val memoryIds: List<Int>) : FragmentStateAdapter(fragment) {
+class MemoryPagerAdapter(fragment: Fragment, private val memoryIds: List<Int>) :
+    FragmentStateAdapter(fragment) {
     override fun getItemCount(): Int = memoryIds.size
 
     override fun createFragment(position: Int): Fragment {

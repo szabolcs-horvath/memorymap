@@ -22,8 +22,8 @@ abstract class StoryMapDatabase : RoomDatabase() {
                     StoryMapDatabase::class.java,
                     "memory_map_database"
                 )
-                .fallbackToDestructiveMigration(true)
-                .build()
+                    .fallbackToDestructiveMigration(true)
+                    .build()
                 INSTANCE = instance
                 instance
             }

@@ -21,7 +21,7 @@ interface MemoryGroupDao {
     @Transaction
     @Query("SELECT * FROM memory_groups")
     suspend fun getAllGroupsWithMedia(): List<MemoryGroupWithMedia>
-    
+
     @Query("SELECT * FROM memory_groups")
     suspend fun getAllGroups(): List<MemoryGroup>
 

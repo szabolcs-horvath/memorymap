@@ -17,24 +17,32 @@ class MediaAdapter(
     private val onMediaClick: (Int) -> Unit
 ) : RecyclerView.Adapter<MediaAdapter.MediaViewHolder>() {
 
-    inner class MediaViewHolder(private val binding: ItemMediaThumbnailBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class MediaViewHolder(private val binding: ItemMediaThumbnailBinding) :
+        RecyclerView.ViewHolder(binding.root) {
         fun bind(mediaItem: MediaItem, position: Int) {
             binding.thumbnailImage.load(mediaItem.uri) {
                 crossfade(true)
                 if (mediaItem.type == MediaType.VIDEO) {
                     videoFrameMicros(0)
-                    decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
+                    decoderFactory { result, options, _ ->
+                        VideoFrameDecoder(
+                            result.source,
+                            options
+                        )
+                    }
                 }
             }
 
-            binding.videoIcon.visibility = if (mediaItem.type == MediaType.VIDEO) View.VISIBLE else View.GONE
+            binding.videoIcon.visibility =
+                if (mediaItem.type == MediaType.VIDEO) View.VISIBLE else View.GONE
 
             binding.root.setOnClickListener { onMediaClick(position) }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
-        val binding = ItemMediaThumbnailBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding =
+            ItemMediaThumbnailBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return MediaViewHolder(binding)
     }
 

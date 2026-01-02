@@ -50,30 +50,43 @@ class AddMemoryGroupFragment : Fragment() {
     private var listener: AddMemoryListener? = null
 
     private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(
-        Locale.getDefault())
+        Locale.getDefault()
+    )
     private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(
-        Locale.getDefault())
+        Locale.getDefault()
+    )
 
-    private val pickMediaLauncher = registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-        uris.let {
-            val contentResolver = requireContext().contentResolver
-            val newItems = it.map { uri ->
-                val type = contentResolver.getType(uri)
-                val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-                uri to mediaType
-            }
-            selectedMediaUris.addAll(newItems)
-            binding.selectedMediaCount.text = "${selectedMediaUris.size} items selected"
-            it.forEach { uri ->
-                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    private val pickMediaLauncher =
+        registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+            uris.let {
+                val contentResolver = requireContext().contentResolver
+                val newItems = it.map { uri ->
+                    val type = contentResolver.getType(uri)
+                    val mediaType =
+                        if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
+                    uri to mediaType
+                }
+                selectedMediaUris.addAll(newItems)
+                binding.selectedMediaCount.text = "${selectedMediaUris.size} items selected"
+                it.forEach { uri ->
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
             }
         }
-    }
 
 
     interface AddMemoryListener {
         fun onPickLocation(lat: Double, lng: Double)
-        fun onMemorySaved(lat: Double, lng: Double, id: Int, startDate: LocalDate, endDate: LocalDate)
+        fun onMemorySaved(
+            lat: Double,
+            lng: Double,
+            id: Int,
+            startDate: LocalDate,
+            endDate: LocalDate
+        )
     }
 
     override fun onAttach(context: Context) {
@@ -144,7 +157,12 @@ class AddMemoryGroupFragment : Fragment() {
         binding.allDayCheckbox.isChecked = false
     }
 
-    fun updateLocation(newLat: Double, newLng: Double, newPlaceName: String? = null, newAddress: String? = null) {
+    fun updateLocation(
+        newLat: Double,
+        newLng: Double,
+        newPlaceName: String? = null,
+        newAddress: String? = null
+    ) {
         lat = newLat
         lng = newLng
         placeName = newPlaceName
@@ -248,8 +266,10 @@ class AddMemoryGroupFragment : Fragment() {
 
         val description = binding.descriptionInput.text.toString().ifBlank { null }
 
-        val finalStart = if (isAllDay) startDateTime.toLocalDate().atStartOfDay(ZoneId.systemDefault()) else startDateTime
-        val finalEnd = if (isAllDay) endDateTime.toLocalDate().atTime(23, 59, 59).atZone(ZoneId.systemDefault()) else endDateTime
+        val finalStart = if (isAllDay) startDateTime.toLocalDate()
+            .atStartOfDay(ZoneId.systemDefault()) else startDateTime
+        val finalEnd = if (isAllDay) endDateTime.toLocalDate().atTime(23, 59, 59)
+            .atZone(ZoneId.systemDefault()) else endDateTime
 
         val context = requireContext()
         val contentResolver = context.contentResolver
@@ -316,7 +336,13 @@ class AddMemoryGroupFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
-                listener?.onMemorySaved(group.latitude, group.longitude, groupId.toInt(), group.startDate.toLocalDate(), group.endDate.toLocalDate())
+                listener?.onMemorySaved(
+                    group.latitude,
+                    group.longitude,
+                    groupId.toInt(),
+                    group.startDate.toLocalDate(),
+                    group.endDate.toLocalDate()
+                )
                 clearFields()
             }
         }

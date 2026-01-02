@@ -34,7 +34,7 @@ data class MemoryGroup(
         } else {
             val startTime = startDate.format(timeFormatter)
             val endTime = endDate.format(timeFormatter)
-            
+
             return if (startDay == endDay) {
                 "$startDay $startTime - $endTime"
             } else {
@@ -44,7 +44,9 @@ data class MemoryGroup(
     }
 
     companion object {
-        private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
-        private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
+        private val dateFormatter =
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+        private val timeFormatter =
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
     }
 }
