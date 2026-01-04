@@ -1,9 +1,13 @@
 package com.szabolcshorvath.memorymap
 
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.libraries.places.api.Places
@@ -18,11 +22,14 @@ import com.szabolcshorvath.memorymap.fragment.MediaViewerFragment
 import com.szabolcshorvath.memorymap.fragment.MemoryFragment
 import com.szabolcshorvath.memorymap.fragment.MemoryPagerFragment
 import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
+import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
 class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     MapFragment.MapListener, AddMemoryGroupFragment.AddMemoryListener,
@@ -34,6 +41,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     private lateinit var timelineFragment: TimelineFragment
     private lateinit var addMemoryFragment: AddMemoryGroupFragment
     private lateinit var pickLocationFragment: PickLocationFragment
+    private lateinit var settingsFragment: SettingsFragment
 
     private var activeFragment: Fragment? = null
     private var isNavigatedFromTimeline = false
@@ -63,15 +71,18 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
             timelineFragment = TimelineFragment()
             addMemoryFragment = AddMemoryGroupFragment()
             pickLocationFragment = PickLocationFragment()
+            settingsFragment = SettingsFragment()
 
             supportFragmentManager.beginTransaction()
                 .add(R.id.fragment_container, mapFragment, MapFragment.TAG)
                 .add(R.id.fragment_container, timelineFragment, TimelineFragment.TAG)
                 .add(R.id.fragment_container, addMemoryFragment, AddMemoryGroupFragment.TAG)
                 .add(R.id.fragment_container, pickLocationFragment, PickLocationFragment.TAG)
+                .add(R.id.fragment_container, settingsFragment, SettingsFragment.TAG)
                 .hide(timelineFragment)
                 .hide(addMemoryFragment)
                 .hide(pickLocationFragment)
+                .hide(settingsFragment)
                 .commit()
 
             activeFragment = mapFragment
@@ -87,11 +98,16 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
             pickLocationFragment =
                 supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment
                     ?: PickLocationFragment()
+            settingsFragment =
+                supportFragmentManager.findFragmentByTag(SettingsFragment.TAG) as? SettingsFragment
+                    ?: SettingsFragment()
 
             activeFragment = if (!addMemoryFragment.isHidden) {
                 addMemoryFragment
             } else if (!timelineFragment.isHidden) {
                 timelineFragment
+            } else if (!settingsFragment.isHidden) {
+                settingsFragment
             } else {
                 mapFragment
             }
@@ -124,6 +140,11 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
 
                 R.id.navigation_add -> {
                     showFragment(addMemoryFragment)
+                    true
+                }
+
+                R.id.navigation_settings -> {
+                    showFragment(settingsFragment)
                     true
                 }
 
@@ -167,6 +188,10 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
 
                     pickLocationFragment -> {
                         binding.bottomNavigation.selectedItemId = R.id.navigation_add
+                    }
+
+                    settingsFragment -> {
+                        binding.bottomNavigation.selectedItemId = R.id.navigation_map
                     }
 
                     else -> {

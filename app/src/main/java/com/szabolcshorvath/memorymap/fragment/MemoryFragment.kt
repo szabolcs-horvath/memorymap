@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.content.Context
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +10,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
-import com.google.android.material.snackbar.Snackbar
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -151,7 +151,14 @@ class MemoryFragment : Fragment() {
         }
 
         // Sort media by dateTaken
-        mediaItems = data.mediaItems.sortedBy { it.dateTaken }
+        mediaItems = data.mediaItems
+            .filter {
+                it.deviceId == Settings.Secure.getString(
+                    requireContext().contentResolver,
+                    Settings.Secure.ANDROID_ID
+                )!!
+            }
+            .sortedBy { it.dateTaken }
         adapter.updateData(mediaItems)
     }
 

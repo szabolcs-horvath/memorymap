@@ -55,7 +55,7 @@ class MediaViewerFragment : Fragment() {
     }
 
     companion object {
-        const val TAG = "MEDIA_VIEWER_TAG"
+        const val TAG = "MediaViewerFragment"
         private const val ARG_MEDIA_URIS = "media_uris"
         private const val ARG_MEDIA_TYPES = "media_types"
         private const val ARG_START_POSITION = "start_position"

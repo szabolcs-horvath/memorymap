@@ -70,7 +70,7 @@ class MemoryPagerFragment : Fragment() {
     }
 
     companion object {
-        const val TAG = "MEMORY_PAGER_TAG"
+        const val TAG = "MemoryPagerFragment"
         private const val ARG_INITIAL_MEMORY_ID = "initial_memory_id"
 
         @JvmStatic

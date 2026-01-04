@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 
 @Dao
 interface MemoryGroupDao {
@@ -14,6 +15,9 @@ interface MemoryGroupDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMediaItems(items: List<MediaItem>)
+
+    @Update
+    suspend fun updateMediaItems(mediaItems: List<MediaItem>)
 
     @Delete
     suspend fun deleteGroup(group: MemoryGroup)
@@ -28,4 +32,7 @@ interface MemoryGroupDao {
     @Transaction
     @Query("SELECT * FROM memory_groups WHERE id = :id")
     suspend fun getGroupWithMedia(id: Int): MemoryGroupWithMedia?
+
+    @Query("SELECT * FROM media_items")
+    suspend fun getAllMediaItems(): List<MediaItem>
 }

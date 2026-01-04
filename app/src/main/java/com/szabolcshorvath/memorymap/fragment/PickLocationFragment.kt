@@ -43,17 +43,6 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private var selectedAddress: String? = null
     private var listener: PickLocationListener? = null
 
-    private val locationPermissionRequest = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        ) {
-            enableMyLocation()
-            selectUserLocation()
-        }
-    }
-
     private val autocompleteLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val intent = result.data
@@ -140,6 +129,13 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            selectUserLocation()
+        }
+    }
+
     private fun startAutocomplete() {
         val sessionToken = AutocompleteSessionToken.newInstance()
         val intent = PlaceAutocomplete.createIntent(requireContext()) {
@@ -153,15 +149,13 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
         mMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         mMap.uiSettings.isRotateGesturesEnabled = false
+        mMap.uiSettings.isMapToolbarEnabled = false
         mMap.uiSettings.isMyLocationButtonEnabled = true
         mMap.uiSettings.isZoomControlsEnabled = true
 
         val topPadding = binding.searchContainer.height + binding.searchContainer.top
         val bottomPadding = binding.confirmContainer.height + binding.confirmContainer.bottom
         mMap.setPadding(0, topPadding, 0, bottomPadding)
-
-        requestLocationPermissionIfNeeded()
-        selectUserLocation()
 
         mMap.setOnMapClickListener { latLng ->
             selectedPlaceName = null
@@ -191,25 +185,6 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         )?.showInfoWindow()
         selectedLat = latLng.latitude
         selectedLng = latLng.longitude
-    }
-
-    private fun requestLocationPermissionIfNeeded() {
-        if (!hasLocationPermission()) {
-            locationPermissionRequest.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        }
-        enableMyLocation()
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun enableMyLocation() {
-        if (hasLocationPermission()) {
-            mMap.isMyLocationEnabled = true
-        }
     }
 
     private fun hasLocationPermission(): Boolean {
@@ -255,7 +230,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     companion object {
-        const val TAG = "PICK_LOCATION_TAG"
+        const val TAG = "PickLocationFragment"
         private val placeFields = listOf(
             Place.Field.ID,
             Place.Field.DISPLAY_NAME,

@@ -129,6 +129,6 @@ class TimelineFragment : Fragment() {
     }
 
     companion object {
-        const val TAG = "TIMELINE_TAG"
+        const val TAG = "TimelineFragment"
     }
 }

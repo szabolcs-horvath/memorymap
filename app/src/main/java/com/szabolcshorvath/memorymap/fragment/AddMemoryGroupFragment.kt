@@ -7,14 +7,15 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
-import android.provider.OpenableColumns
 import android.provider.Settings
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -22,6 +23,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
+import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,12 +133,23 @@ class AddMemoryGroupFragment : Fragment() {
         }
 
         binding.clearButton.setOnClickListener {
-            clearFields()
+            showClearConfirmationDialog()
         }
 
         binding.saveButton.setOnClickListener {
             saveMemoryGroup()
         }
+    }
+
+    private fun showClearConfirmationDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Clear Fields")
+            .setMessage("Are you sure you want to clear all fields? This action cannot be undone.")
+            .setPositiveButton("Clear") { _, _ ->
+                clearFields()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     fun clearFields() {
@@ -291,45 +304,37 @@ class AddMemoryGroupFragment : Fragment() {
             val groupId = db.memoryGroupDao().insertGroup(group)
 
             val mediaItems = selectedMediaUris.map { (uri, type) ->
-                var name = "unknown"
                 var size = 0L
                 var date = 0L
 
                 try {
-                    contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    contentResolver.query(
+                        uri,
+                        arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN),
+                        null,
+                        null,
+                        null
+                    )?.use { cursor ->
                         if (cursor.moveToFirst()) {
-                            val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                            if (nameIdx != -1) {
-                                name = cursor.getString(nameIdx)
-                            } else {
-                                throw Exception("Name not found for $uri")
-                            }
-                            val sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE)
-                            if (sizeIdx != -1) {
-                                size = cursor.getLong(sizeIdx)
-                            } else {
-                                throw Exception("Size not found for $uri")
-                            }
-                            val dateIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
-                            if (dateIdx != -1) {
-                                date = cursor.getLong(dateIdx)
-                            } else {
-                                throw Exception("Date taken not found for $uri")
-                            }
+                            val sizeIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                            val dateIdx =
+                                cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+                            size = cursor.getLong(sizeIdx)
+                            date = cursor.getLong(dateIdx)
                         }
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e(TAG, "Error getting file size", e)
                 }
 
                 MediaItem(
                     groupId = groupId.toInt(),
                     uri = uri.toString(),
+                    deviceId = deviceId,
                     type = type,
-                    originalFileName = name,
+                    mediaSignature = MediaHasher.calculateMediaSignature(context, uri)!!,
                     fileSize = size,
-                    dateTaken = date,
-                    deviceId = deviceId
+                    dateTaken = date
                 )
             }
             db.memoryGroupDao().insertMediaItems(mediaItems)
@@ -354,6 +359,6 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     companion object {
-        const val TAG = "ADD_MEMORY_GROUP_TAG"
+        const val TAG = "AddMemoryGroupFragment"
     }
 }

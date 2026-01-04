@@ -4,10 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -56,13 +56,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var initialSelectedLng: Double? = null
     private var initialSelectedId: Int? = null
 
+    private var permissionDenied = false
+
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        ) {
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true && permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
             enableMyLocation()
+        } else {
+            permissionDenied = true
+            Toast.makeText(
+                requireContext(),
+                "Both location permissions are required for My Location to work",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -80,9 +87,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMapsBinding.inflate(inflater, container, false)
         return binding.root
@@ -130,8 +135,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun updateDateRangeButtonText() {
         if (filterStartDate != null && filterEndDate != null) {
-            binding.btnDateRange.text =
-                "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
+            if (filterStartDate != filterEndDate) {
+                binding.btnDateRange.text =
+                    "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
+            } else {
+                binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)}"
+            }
         } else {
             binding.btnDateRange.text = "Select Date Range"
         }
@@ -171,22 +180,19 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         mMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         mMap.uiSettings.isRotateGesturesEnabled = false
+        mMap.uiSettings.isMapToolbarEnabled = false
         mMap.uiSettings.isMyLocationButtonEnabled = true
         mMap.uiSettings.isZoomControlsEnabled = true
         setGoogleMapPadding()
 
         lifecycleScope.launch {
             loadMarkers()
-            requestLocationPermissionIfNeeded()
-            zoomToUserLocationIfPossible()
         }
 
         mMap.setOnMarkerClickListener { marker ->
             selectedMarker = marker
             moveToLocationAndSelectMarker(
-                marker.position.latitude,
-                marker.position.longitude,
-                marker.tag as? MemoryGroup
+                marker.position.latitude, marker.position.longitude, marker.tag as? MemoryGroup
             )
             true
         }
@@ -236,17 +242,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 )
             } else {
                 mMap.setPadding(
-                    0,
-                    binding.dateFilterContainer.height + binding.dateFilterContainer.top,
-                    0,
-                    0
+                    0, binding.dateFilterContainer.height + binding.dateFilterContainer.top, 0, 0
                 )
             }
         }
     }
 
     private fun requestLocationPermissionIfNeeded() {
-        if (!hasLocationPermission()) {
+        if (!hasLocationPermission() && !permissionDenied) {
             locationPermissionRequest.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -259,19 +262,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressWarnings("MissingPermission")
     private fun enableMyLocation() {
-        if (hasLocationPermission()) {
+        if (hasLocationPermission() && ::mMap.isInitialized) {
             mMap.isMyLocationEnabled = true
+            permissionDenied = false
         }
     }
 
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
-            requireContext(),
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-                && ContextCompat.checkSelfPermission(
-            requireContext(),
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -292,6 +293,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     override fun onResume() {
         super.onResume()
         refreshData()
+        lifecycleScope.launch {
+            requestLocationPermissionIfNeeded()
+            zoomToUserLocationIfPossible()
+        }
     }
 
     fun refreshData() {
@@ -323,8 +328,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     moveToLocationAndSelectMarker(
                         initialSelectedLat!!,
                         initialSelectedLng!!,
-                        allGroups.find { it.id == initialSelectedId }
-                    )
+                        allGroups.find { it.id == initialSelectedId })
                     initialSelectedLat = null
                     initialSelectedLng = null
                     initialSelectedId = null
@@ -398,6 +402,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     companion object {
-        const val TAG = "MAP_TAG"
+        const val TAG = "MapFragment"
     }
 }

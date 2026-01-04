@@ -21,7 +21,7 @@ data class MediaItem(
     val uri: String, // URI of the image or video
     val deviceId: String,
     val type: MediaType, // Enum to distinguish between Image and Video
-    val originalFileName: String,
+    val mediaSignature: String, // Format: "{SizeBytes}_{PartialHash}"
     val fileSize: Long,
     val dateTaken: Long
 )
