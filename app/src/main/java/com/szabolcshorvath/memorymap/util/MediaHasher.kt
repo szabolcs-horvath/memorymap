@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.util
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import java.io.FileNotFoundException
 import java.security.MessageDigest
 
 object MediaHasher {
@@ -10,14 +11,14 @@ object MediaHasher {
     private const val ALGORITHM = "MD5"
     private const val BUFFER_SIZE = 4096 // 4KB
 
-    fun calculateMediaSignature(context: Context, uri: Uri): String? {
+    fun calculateMediaSignature(context: Context, uri: Uri): String {
         val resolver = context.contentResolver
 
         return try {
             // 1. Get the file size specifically from the FileDescriptor
             val size = resolver.openFileDescriptor(uri, "r")?.use {
                 it.statSize
-            } ?: return null
+            } ?: throw FileNotFoundException("File not found: $uri")
 
             val digest = MessageDigest.getInstance(ALGORITHM)
 
@@ -55,11 +56,11 @@ object MediaHasher {
                             }
                         } else {
                             Log.e(TAG, "Error skipping bytes: $skipped != $skipAmount")
-                            return null
+                            throw IllegalStateException("Error skipping bytes")
                         }
                     }
                 }
-            } ?: return null
+            } ?: throw FileNotFoundException("File not found: $uri")
 
             // Combine Size + Hash for the final ID
             val hashString = digest.digest().joinToString("") { "%02x".format(it) }
@@ -68,7 +69,7 @@ object MediaHasher {
         } catch (e: Exception) {
             // Handle FileNotFoundException or SecurityException
             Log.e(TAG, "Error calculating media signature", e)
-            null
+            throw e
         }
     }
 }

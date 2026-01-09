@@ -332,7 +332,7 @@ class AddMemoryGroupFragment : Fragment() {
                     uri = uri.toString(),
                     deviceId = deviceId,
                     type = type,
-                    mediaSignature = MediaHasher.calculateMediaSignature(context, uri)!!,
+                    mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                     fileSize = size,
                     dateTaken = date
                 )

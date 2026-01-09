@@ -337,7 +337,7 @@ class BackupManager(private val context: Context) {
                     mediaList.add(
                         LocalMediaInfo(
                             uri,
-                            MediaHasher.calculateMediaSignature(context, uri.toUri())!!,
+                            MediaHasher.calculateMediaSignature(context, uri.toUri()),
                             size
                         )
                     )
