@@ -27,18 +27,18 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
+                    android:textAppearance="?attr/textAppearanceHeadlineMedium"
+                    android:textColor="?attr/colorOnSurface"
                     tools:text="Trip to Paris" />
 
                 <ImageButton
                     android:id="@+id/deleteButton"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Delete Memory"
                     android:src="@android:drawable/ic_menu_delete"
-                    app:tint="?android:attr/textColorSecondary" />
+                    app:tint="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
 
             <TextView
@@ -46,7 +46,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:textSize="16sp"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface"
                 tools:text="This was an amazing trip where we saw the Eiffel Tower and ate croissants." />
 
             <LinearLayout
@@ -60,7 +61,7 @@
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:src="@android:drawable/ic_menu_my_calendar"
-                    app:tint="?android:attr/textColorSecondary" />
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
                     android:id="@+id/dateText"
@@ -68,8 +69,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:layout_weight="1"
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:textSize="14sp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     tools:text="Oct 12, 2023 - Oct 15, 2023" />
 
                 <Button
@@ -96,7 +97,7 @@
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:src="@android:drawable/ic_menu_mapmode"
-                    app:tint="?android:attr/textColorSecondary" />
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
                     android:id="@+id/locationText"
@@ -104,8 +105,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:layout_weight="1"
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:textSize="14sp"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     tools:text="48.8566, 2.3522" />
 
                 <Button
@@ -125,15 +126,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginVertical="16dp"
-                android:background="?android:attr/listDivider" />
+                android:background="?attr/colorOutlineVariant" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
                 android:text="Media"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/mediaRecyclerView"

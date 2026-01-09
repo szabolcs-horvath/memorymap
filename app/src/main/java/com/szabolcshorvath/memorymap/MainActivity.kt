@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -49,6 +50,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     private var isProgrammaticSelection = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         // Initialize Places

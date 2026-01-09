@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="?android:attr/colorBackground"
     tools:context=".fragment.SettingsFragment">
 
     <TextView
@@ -16,7 +15,7 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:layout_marginBottom="24dp"
-        android:textColor="?android:attr/textColorPrimary" />
+        android:textColor="?attr/colorOnSurface" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -25,14 +24,14 @@
         android:textSize="18sp"
         android:textStyle="bold"
         android:layout_marginBottom="8dp"
-        android:textColor="?android:attr/textColorPrimary" />
+        android:textColor="?attr/colorOnSurface" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Sign in to Google Drive to enable cloud backups."
         android:layout_marginBottom="16dp"
-        android:textColor="?android:attr/textColorSecondary" />
+        android:textColor="?attr/colorOnSurfaceVariant" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_google_sign_in"
@@ -40,7 +39,7 @@
         android:layout_height="wrap_content"
         android:text="Connect to Google Drive"
         android:layout_marginBottom="16dp"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+        style="@style/Widget.Material3.Button.OutlinedButton" />
 
     <LinearLayout
         android:id="@+id/backup_controls"
@@ -56,14 +55,15 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:text="Signed in as: user@example.com"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_backup_now"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Backup Now"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="8dp"
+            style="@style/Widget.Material3.Button" />
 
         <TextView
             android:id="@+id/tv_last_backup"
@@ -71,14 +71,15 @@
             android:layout_height="wrap_content"
             android:text="Last backup: Never"
             android:layout_marginBottom="16dp"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Available Backups"
             android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="8dp"
+            android:textColor="?attr/colorOnSurface" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_backups"
@@ -94,8 +95,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Disconnect"
-            android:backgroundTint="#D32F2F"
-            android:textColor="@android:color/white" />
+            style="@style/Widget.Material3.Button.TonalButton"
+            app:backgroundTint="?attr/colorError"
+            android:textColor="?attr/colorOnError" />
 
     </LinearLayout>
 
@@ -117,6 +119,6 @@
         android:visibility="gone"
         tools:visibility="visible"
         tools:text="Restoring database..."
-        android:textColor="?android:attr/textColorPrimary" />
+        android:textColor="?attr/colorOnSurface" />
 
 </LinearLayout>
