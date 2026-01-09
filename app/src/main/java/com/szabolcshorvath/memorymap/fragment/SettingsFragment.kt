@@ -25,9 +25,11 @@ import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.dataStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.google.api.services.drive.model.File as DriveFile
 
 class SettingsFragment : Fragment() {
@@ -164,7 +166,8 @@ class SettingsFragment : Fragment() {
     private fun performBackup() {
         binding.btnBackupNow.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
-        binding.tvLastBackup.text = "Backup in progress..."
+        binding.tvStatus.visibility = View.VISIBLE
+        binding.tvStatus.text = "Starting backup..."
 
         lifecycleScope.launch {
             val requestedScopes: List<Scope> = listOf(Scope(DriveScopes.DRIVE_FILE))
@@ -189,6 +192,7 @@ class SettingsFragment : Fragment() {
                     Toast.makeText(requireContext(), "Authorization failed", Toast.LENGTH_SHORT)
                         .show()
                     binding.progressBar.visibility = View.GONE
+                    binding.tvStatus.visibility = View.GONE
                     binding.btnBackupNow.isEnabled = true
                 }
         }
@@ -201,15 +205,19 @@ class SettingsFragment : Fragment() {
                     .firstOrNull()
 
             if (email == null) {
-                // Should not happen if flow is correct
                 binding.btnBackupNow.isEnabled = true
                 binding.progressBar.visibility = View.GONE
+                binding.tvStatus.visibility = View.GONE
                 return@launch
             }
 
             val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
             val success = backupManager.performBackup(credential) { status ->
-                // Update progress status if needed
+                lifecycleScope.launch {
+                    withContext(Dispatchers.Main) {
+                        binding.tvStatus.text = status
+                    }
+                }
             }
 
             if (success) {
@@ -223,6 +231,7 @@ class SettingsFragment : Fragment() {
 
             binding.btnBackupNow.isEnabled = true
             binding.progressBar.visibility = View.GONE
+            binding.tvStatus.visibility = View.GONE
         }
     }
 
@@ -240,12 +249,17 @@ class SettingsFragment : Fragment() {
         val email = binding.tvAccountName.tag as? String ?: return
         lifecycleScope.launch {
             binding.progressBar.visibility = View.VISIBLE
-            Toast.makeText(requireContext(), "Restoring...", Toast.LENGTH_SHORT).show()
+            binding.tvStatus.visibility = View.VISIBLE
+            binding.tvStatus.text = "Starting restore..."
             try {
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val success = backupManager.restoreBackup(credential, file.id) { status ->
-                    // Handle progress
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.Main) {
+                            binding.tvStatus.text = status
+                        }
+                    }
                 }
                 if (success) {
                     Toast.makeText(
@@ -262,6 +276,7 @@ class SettingsFragment : Fragment() {
                     .show()
             } finally {
                 binding.progressBar.visibility = View.GONE
+                binding.tvStatus.visibility = View.GONE
             }
         }
     }

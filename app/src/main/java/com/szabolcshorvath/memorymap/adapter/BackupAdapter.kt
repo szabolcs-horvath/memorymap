@@ -20,7 +20,7 @@ class BackupAdapter(
         RecyclerView.ViewHolder(binding.root) {
         fun bind(backup: File) {
             binding.tvBackupName.text = backup.name
-            
+
             val date = backup.modifiedTime?.value?.let { Date(it) }
             val formattedDate = if (date != null) {
                 SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(date)
@@ -29,7 +29,7 @@ class BackupAdapter(
             }
             binding.tvBackupDate.text = formattedDate
 
-            val size = backup.size?.toLong() ?: 0L
+            val size = backup.size.toLong()
             binding.tvBackupSize.text = Formatter.formatFileSize(binding.root.context, size)
 
             binding.btnRestore.setOnClickListener { onRestoreClick(backup) }
