@@ -10,6 +10,8 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnLayout
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
@@ -35,13 +37,12 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import androidx.core.view.isVisible
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
     private var _binding: FragmentMapsBinding? = null
     private val binding get() = _binding!!
-    private lateinit var mMap: GoogleMap
+    private var mMap: GoogleMap? = null
     private var selectedMarker: Marker? = null
     private val markerMap = mutableMapOf<Int, Marker>()
     private var listener: MapListener? = null
@@ -61,13 +62,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true && permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
             enableMyLocation()
         } else {
             permissionDenied = true
             Toast.makeText(
                 requireContext(),
-                "Both location permissions are required for My Location to work",
+                "Location permissions are required for My Location to work",
                 Toast.LENGTH_SHORT
             ).show()
         }
@@ -97,8 +98,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         super.onViewCreated(view, savedInstanceState)
 
         binding.overlayActionButton.text = "Show Details"
-
         binding.btnDateRange.setOnClickListener { showDateRangePicker() }
+
+        binding.root.doOnLayout {
+            setGoogleMapPadding()
+        }
 
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
@@ -126,9 +130,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             filterEndDate = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
 
             updateDateRangeButtonText()
-            if (::mMap.isInitialized) {
-                updateMapMarkers(adjustCamera = true)
-            }
+            updateMapMarkers(adjustCamera = true)
         }
         picker.show(childFragmentManager, picker.toString())
     }
@@ -147,7 +149,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
-        if (::mMap.isInitialized) {
+        val map = mMap
+        if (map != null) {
             val memory = allGroups.find { it.id == id }
             setDateFilter(memory)
             moveToLocationAndSelectMarker(lat, lng, memory)
@@ -161,10 +164,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     fun setDateFilter(startDate: LocalDate, endDate: LocalDate) {
         filterStartDate = startDate
         filterEndDate = endDate
-        if (::mMap.isInitialized) {
-            updateDateRangeButtonText()
-            updateMapMarkers()
-        }
+        updateDateRangeButtonText()
+        updateMapMarkers()
     }
 
     fun setDateFilter(memory: MemoryGroup?) {
@@ -178,18 +179,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
-        mMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
-        mMap.uiSettings.isRotateGesturesEnabled = false
-        mMap.uiSettings.isMapToolbarEnabled = false
-        mMap.uiSettings.isMyLocationButtonEnabled = true
-        mMap.uiSettings.isZoomControlsEnabled = true
+        googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
+        googleMap.uiSettings.isRotateGesturesEnabled = false
+        googleMap.uiSettings.isMapToolbarEnabled = false
+        googleMap.uiSettings.isMyLocationButtonEnabled = true
+        googleMap.uiSettings.isZoomControlsEnabled = true
+
+        enableMyLocation()
         setGoogleMapPadding()
 
         lifecycleScope.launch {
             loadMarkers()
         }
 
-        mMap.setOnMarkerClickListener { marker ->
+        googleMap.setOnMarkerClickListener { marker ->
             selectedMarker = marker
             moveToLocationAndSelectMarker(
                 marker.position.latitude, marker.position.longitude, marker.tag as? MemoryGroup
@@ -197,23 +200,22 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             true
         }
 
-        mMap.setOnMapLongClickListener { latLng ->
+        googleMap.setOnMapLongClickListener { latLng ->
             listener?.startAddMemoryFlow(latLng.latitude, latLng.longitude)
         }
 
-        mMap.setOnMapClickListener {
+        googleMap.setOnMapClickListener {
             binding.overlayCard.visibility = View.GONE
             selectedMarker = null
         }
 
-        mMap.setOnMyLocationButtonClickListener {
+        googleMap.setOnMyLocationButtonClickListener {
             binding.overlayCard.visibility = View.GONE
             selectedMarker = null
             false
         }
 
-        // Prevent clicking on POIs in MapFragment
-        mMap.setOnPoiClickListener {
+        googleMap.setOnPoiClickListener {
             // Do nothing
         }
 
@@ -232,19 +234,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun setGoogleMapPadding() {
-        if (::mMap.isInitialized) {
-            if (binding.overlayCard.isVisible) {
-                mMap.setPadding(
-                    0,
-                    binding.dateFilterContainer.height + binding.dateFilterContainer.top,
-                    0,
-                    binding.overlayCard.height + 10
-                )
-            } else {
-                mMap.setPadding(
-                    0, binding.dateFilterContainer.height + binding.dateFilterContainer.top, 0, 0
-                )
-            }
+        val map = mMap ?: return
+        val topPadding = binding.dateFilterContainer.height + binding.dateFilterContainer.top
+        if (binding.overlayCard.isVisible) {
+            map.setPadding(0, topPadding, 0, binding.overlayCard.height + 10)
+        } else {
+            map.setPadding(0, topPadding, 0, 0)
         }
     }
 
@@ -262,8 +257,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressWarnings("MissingPermission")
     private fun enableMyLocation() {
-        if (hasLocationPermission() && ::mMap.isInitialized) {
-            mMap.isMyLocationEnabled = true
+        val map = mMap
+        if (hasLocationPermission() && map != null) {
+            map.isMyLocationEnabled = true
             permissionDenied = false
         }
     }
@@ -271,7 +267,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
             requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
@@ -282,9 +278,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val fusedLocationClient =
                 LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
+                val map = mMap
+                if (location != null && map != null) {
                     val latLng = LatLng(location.latitude, location.longitude)
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
                 }
             }
         }
@@ -301,9 +298,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     fun refreshData() {
         lifecycleScope.launch {
-            if (::mMap.isInitialized) {
-                loadMarkers()
-            }
+            loadMarkers()
             if (!allGroups.contains(selectedMarker?.tag)) {
                 binding.overlayCard.visibility = View.GONE
             }
@@ -315,7 +310,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         allGroups = db.memoryGroupDao().getAllGroups()
 
         withContext(Dispatchers.Main) {
-            if (::mMap.isInitialized) {
+            val map = mMap
+            if (map != null) {
                 if (filterStartDate == null || filterEndDate == null) {
                     filterStartDate = LocalDate.now()
                     filterEndDate = LocalDate.now()
@@ -338,7 +334,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateMapMarkers(adjustCamera: Boolean = false) {
-        mMap.clear()
+        val map = mMap ?: return
+        map.clear()
         markerMap.clear()
 
         val start = filterStartDate ?: LocalDate.MIN
@@ -351,11 +348,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val groupStart = group.startDate.toLocalDate()
             val groupEnd = group.endDate.toLocalDate()
 
-            // Check if the memory overlaps with the selected range
             if (!groupEnd.isBefore(start) && !groupStart.isAfter(end)) {
                 val position = LatLng(group.latitude, group.longitude)
                 val markerTitle = group.title
-                val marker = mMap.addMarker(MarkerOptions().position(position).title(markerTitle))
+                val marker = map.addMarker(MarkerOptions().position(position).title(markerTitle))
                 if (marker != null) {
                     marker.tag = group
                     markerMap[group.id] = marker
@@ -368,13 +364,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (adjustCamera && markersCount > 0) {
             val bounds = boundsBuilder.build()
             val padding = 100 // pixels
-            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
         }
     }
 
     private fun moveToLocationAndSelectMarker(lat: Double, lng: Double, memory: MemoryGroup?) {
+        val map = mMap ?: return
         val position = LatLng(lat, lng)
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15f))
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15f))
 
         val marker = markerMap[memory?.id]
         if (marker != null) {

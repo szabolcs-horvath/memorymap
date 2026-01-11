@@ -9,9 +9,10 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
@@ -36,12 +37,30 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private var _binding: FragmentPickLocationBinding? = null
     private val binding get() = _binding!!
-    private lateinit var mMap: GoogleMap
+    private var mMap: GoogleMap? = null
     private var selectedLat: Double? = null
     private var selectedLng: Double? = null
     private var selectedPlaceName: String? = null
     private var selectedAddress: String? = null
     private var listener: PickLocationListener? = null
+
+    private var permissionDenied = false
+
+    private val locationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            enableMyLocation()
+            selectUserLocation()
+        } else {
+            permissionDenied = true
+            Toast.makeText(
+                requireContext(),
+                "Location permissions are required for My Location to work",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     private val autocompleteLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -66,7 +85,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                                     selectedPlaceName = place.displayName
                                     selectedAddress = place.formattedAddress
                                     updateSelectedLocation(latLng, selectedPlaceName)
-                                    mMap.animateCamera(
+                                    mMap?.animateCamera(
                                         CameraUpdateFactory.newLatLngZoom(
                                             latLng,
                                             15f
@@ -113,7 +132,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        view.findViewById<Button>(R.id.confirmButton).setOnClickListener {
+        binding.confirmButton.setOnClickListener {
             if (selectedLat != null && selectedLng != null) {
                 listener?.onLocationConfirmed(
                     selectedLat!!,
@@ -124,16 +143,18 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             }
         }
 
-        view.findViewById<Button>(R.id.searchButton).setOnClickListener {
+        binding.searchButton.setOnClickListener {
             startAutocomplete()
+        }
+
+        binding.root.doOnLayout {
+            setGoogleMapPadding()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        lifecycleScope.launch {
-            selectUserLocation()
-        }
+        requestLocationPermissionIfNeeded()
     }
 
     private fun startAutocomplete() {
@@ -147,44 +168,66 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
-        mMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
-        mMap.uiSettings.isRotateGesturesEnabled = false
-        mMap.uiSettings.isMapToolbarEnabled = false
-        mMap.uiSettings.isMyLocationButtonEnabled = true
-        mMap.uiSettings.isZoomControlsEnabled = true
+        googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
+        googleMap.uiSettings.isRotateGesturesEnabled = false
+        googleMap.uiSettings.isMapToolbarEnabled = false
+        googleMap.uiSettings.isMyLocationButtonEnabled = true
+        googleMap.uiSettings.isZoomControlsEnabled = true
 
-        val topPadding = binding.searchContainer.height + binding.searchContainer.top
-        val bottomPadding = binding.confirmContainer.height + binding.confirmContainer.bottom
-        mMap.setPadding(0, topPadding, 0, bottomPadding)
+        enableMyLocation()
+        setGoogleMapPadding()
 
-        mMap.setOnMapClickListener { latLng ->
+        googleMap.setOnMapClickListener { latLng ->
             selectedPlaceName = null
             selectedAddress = null
             updateSelectedLocation(latLng)
         }
 
-        mMap.setOnPoiClickListener { poi ->
+        googleMap.setOnPoiClickListener { poi ->
             selectedPlaceName = poi.name
-            // We don't get address from Poi click immediately, would need Places API fetch if critical
             selectedAddress = null
             updateSelectedLocation(poi.latLng, poi.name)
         }
 
-        mMap.setOnMyLocationButtonClickListener {
+        googleMap.setOnMyLocationButtonClickListener {
             selectUserLocation()
             true
         }
+
+        if (selectedLat == null) {
+            selectUserLocation()
+        }
+    }
+
+    private fun setGoogleMapPadding() {
+        val map = mMap ?: return
+        val topPadding = binding.searchContainer.height + binding.searchContainer.top
+        val bottomPadding =
+            binding.confirmContainer.height + (binding.root.height - binding.confirmContainer.bottom)
+        map.setPadding(0, topPadding, 0, bottomPadding)
     }
 
     private fun updateSelectedLocation(latLng: LatLng, title: String? = null) {
-        mMap.clear()
-        mMap.addMarker(
+        val map = mMap ?: return
+        map.clear()
+        map.addMarker(
             MarkerOptions()
                 .position(latLng)
                 .title(title ?: "Selected Location")
         )?.showInfoWindow()
         selectedLat = latLng.latitude
         selectedLng = latLng.longitude
+    }
+
+    private fun requestLocationPermissionIfNeeded() {
+        if (!hasLocationPermission() && !permissionDenied) {
+            locationPermissionRequest.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
     }
 
     private fun hasLocationPermission(): Boolean {
@@ -199,15 +242,25 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     @SuppressLint("MissingPermission")
+    private fun enableMyLocation() {
+        val map = mMap
+        if (hasLocationPermission() && map != null) {
+            map.isMyLocationEnabled = true
+            permissionDenied = false
+        }
+    }
+
+    @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
         if (hasLocationPermission()) {
             val fusedLocationClient =
                 LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
+                val map = mMap
+                if (location != null && map != null) {
                     val latLng = LatLng(location.latitude, location.longitude)
                     updateSelectedLocation(latLng)
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
                 }
             }
         }
@@ -218,8 +271,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         selectedLng = null
         selectedPlaceName = null
         selectedAddress = null
-        if (::mMap.isInitialized) {
-            mMap.clear()
+        val map = mMap
+        if (map != null) {
+            map.clear()
             selectUserLocation()
         }
     }
