@@ -20,6 +20,10 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
+# Keep the internal classes and their constructors for the Places SDK
+-keep class com.google.android.libraries.places.internal.** {
+    <init>(...);
+}
 
 -dontwarn org.apache.http.**
 -dontwarn android.net.http.AndroidHttpClient
