@@ -1,0 +1,7 @@
+sdk.dir=/path/to/android/sdk
+MAPS_API_KEY=YOUR_API_KEY
+OAUTH_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID
+RELEASE_STORE_FILE=/path/to/your/keystore/my-release-key.keystore
+RELEASE_STORE_PASSWORD=your-keystore-password
+RELEASE_KEY_ALIAS=my-key-alias
+RELEASE_KEY_PASSWORD=your-key-password

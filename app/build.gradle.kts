@@ -28,16 +28,27 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID") ?: ""
+        val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
         buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
     }
 
     buildFeatures {
         buildConfig = true
+        viewBinding = true
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(localProperties.getProperty("RELEASE_STORE_FILE"))
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+        }
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -46,18 +57,18 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
-    buildFeatures {
-        viewBinding = true
-    }
+
     packaging {
         resources {
             excludes += "META-INF/INDEX.LIST"
