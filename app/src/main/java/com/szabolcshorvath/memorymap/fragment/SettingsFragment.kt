@@ -239,21 +239,40 @@ class SettingsFragment : Fragment() {
     private fun onRestoreBackup(file: DriveFile) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Restore Backup")
-            .setMessage("Are you sure you want to restore from the backup '${file.name}'?\nThis action will overwrite all your current data and it cannot be undone!")
+            .setMessage("Are you sure you want to restore from the backup '${file.name}'?\n\nThis action will overwrite all your current data and it cannot be undone!")
             .setPositiveButton("Restore") { _, _ ->
-                pendingRestoreFile = file
-                val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    arrayOf(
-                        Manifest.permission.READ_MEDIA_IMAGES,
-                        Manifest.permission.READ_MEDIA_VIDEO
-                    )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    showPermissionInfoDialog(file)
                 } else {
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    launchPermissionRequest(file)
                 }
-                restorePermissionLauncher.launch(permissions)
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun showPermissionInfoDialog(file: DriveFile) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Media Access Required")
+            .setMessage("To link your photos and videos correctly after the restore, the app needs access to your entire media library.\n\nIn the next step, please choose 'Allow all' (or 'All photos and videos') to ensure all your memories are restored correctly.")
+            .setPositiveButton("Continue") { _, _ ->
+                launchPermissionRequest(file)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun launchPermissionRequest(file: DriveFile) {
+        pendingRestoreFile = file
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        restorePermissionLauncher.launch(permissions)
     }
 
     private fun executeRestore(file: DriveFile) {
