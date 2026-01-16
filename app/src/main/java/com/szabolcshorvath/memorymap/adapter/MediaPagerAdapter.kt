@@ -19,12 +19,17 @@ class MediaPagerAdapter(
 
     class MediaViewHolder(private val binding: ItemMediaFullBinding) :
         RecyclerView.ViewHolder(binding.root) {
+        
         fun bind(uriString: String, typeString: String) {
             val uri = uriString.toUri()
             val isVideo = typeString == "VIDEO"
 
+            // Reset zoom state before binding new data
+            binding.fullImageView.setScale(1.0f, false)
+
             if (isVideo) {
                 binding.fullImageView.visibility = View.VISIBLE // Keep image visible as thumbnail
+                binding.fullImageView.isZoomable = false // Typically we don't zoom video thumbnails
                 binding.fullVideoView.visibility = View.VISIBLE
                 binding.playIcon.visibility = View.VISIBLE
 
@@ -72,15 +77,19 @@ class MediaPagerAdapter(
                 binding.fullVideoView.visibility = View.GONE
                 binding.playIcon.visibility = View.GONE
                 binding.fullImageView.visibility = View.VISIBLE
+                binding.fullImageView.isZoomable = true // Enable zoom for images
 
                 binding.fullImageView.load(uri) {
                     crossfade(true)
                 }
-                binding.root.setOnClickListener(null) // Clear listener
+                binding.root.setOnClickListener(null) // Clear listener to allow PhotoView to handle touches
             }
         }
 
-        fun resetVideoState() {
+        fun resetState() {
+            // Reset zoom scale when the view is recycled or attached
+            binding.fullImageView.setScale(1.0f, false)
+            
             if (binding.fullVideoView.isVisible) {
                 binding.playIcon.visibility = View.VISIBLE
                 binding.fullImageView.visibility = View.VISIBLE
@@ -94,7 +103,7 @@ class MediaPagerAdapter(
 
     override fun onViewAttachedToWindow(holder: MediaViewHolder) {
         super.onViewAttachedToWindow(holder)
-        holder.resetVideoState()
+        holder.resetState()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {

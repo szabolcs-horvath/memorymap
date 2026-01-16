@@ -112,6 +112,7 @@ dependencies {
 
     implementation(libs.coil)
     implementation(libs.coil.video)
+    implementation(libs.photoview)
 
     implementation(libs.datastore.preferences)
     implementation(libs.play.services.auth)
