@@ -86,6 +86,15 @@ class SettingsFragment : Fragment() {
 
         setupRecyclerView()
 
+        binding.swipeRefresh.setOnRefreshListener {
+            val email = binding.tvAccountName.tag as? String
+            if (email != null) {
+                loadBackups(email)
+            } else {
+                binding.swipeRefresh.isRefreshing = false
+            }
+        }
+
         binding.btnGoogleSignIn.setOnClickListener {
             lifecycleScope.launch {
                 googleAuthManager.signIn { email ->
@@ -155,7 +164,9 @@ class SettingsFragment : Fragment() {
     private fun loadBackups(email: String) {
         lifecycleScope.launch {
             try {
-                binding.progressBar.visibility = View.VISIBLE
+                if (!binding.swipeRefresh.isRefreshing) {
+                    binding.progressBar.visibility = View.VISIBLE
+                }
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val backups = backupManager.listBackups(credential)
@@ -164,6 +175,7 @@ class SettingsFragment : Fragment() {
                 Log.e(TAG, "Failed to list backups", e)
             } finally {
                 binding.progressBar.visibility = View.GONE
+                binding.swipeRefresh.isRefreshing = false
             }
         }
     }

@@ -32,6 +32,15 @@
                     tools:text="Trip to Paris" />
 
                 <ImageButton
+                    android:id="@+id/editButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Edit Memory"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                <ImageButton
                     android:id="@+id/deleteButton"
                     android:layout_width="48dp"
                     android:layout_height="48dp"

@@ -347,4 +347,19 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         }
         snackbar.show()
     }
+
+    override fun onEditMemory(memoryId: Int) {
+        // Pop the back stack to remove the details fragment
+        supportFragmentManager.popBackStack(
+            null,
+            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+        )
+
+        showFragment(addMemoryFragment)
+        addMemoryFragment.setEditMode(memoryId)
+
+        isProgrammaticSelection = true
+        binding.bottomNavigation.selectedItemId = R.id.navigation_add
+        isProgrammaticSelection = false
+    }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -11,35 +11,35 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Backup &amp; Restore"
-        android:textSize="24sp"
-        android:textStyle="bold"
         android:layout_marginBottom="24dp"
-        android:textColor="?attr/colorOnSurface" />
+        android:text="Backup &amp; Restore"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="24sp"
+        android:textStyle="bold" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Google Drive Backup"
-        android:textSize="18sp"
-        android:textStyle="bold"
         android:layout_marginBottom="8dp"
-        android:textColor="?attr/colorOnSurface" />
+        android:text="Google Drive Backup"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Sign in to Google Drive to enable cloud backups."
         android:layout_marginBottom="16dp"
+        android:text="Sign in to Google Drive to enable cloud backups."
         android:textColor="?attr/colorOnSurfaceVariant" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_google_sign_in"
+        style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Connect to Google Drive"
         android:layout_marginBottom="16dp"
-        style="@style/Widget.Material3.Button.OutlinedButton" />
+        android:text="Connect to Google Drive" />
 
     <LinearLayout
         android:id="@+id/backup_controls"
@@ -59,65 +59,72 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_backup_now"
+            style="@style/Widget.Material3.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Backup Now"
             android:layout_marginBottom="8dp"
-            style="@style/Widget.Material3.Button" />
+            android:text="Backup Now" />
 
         <TextView
             android:id="@+id/tv_last_backup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Last backup: Never"
             android:layout_marginBottom="8dp"
+            android:text="Last backup: Never"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progress_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
             android:indeterminate="true"
             android:visibility="gone"
-            app:trackThickness="4dp"
-            android:layout_marginBottom="4dp" />
+            app:trackThickness="4dp" />
 
         <TextView
             android:id="@+id/tv_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
             android:layout_marginBottom="16dp"
+            android:gravity="center"
+            android:textColor="?attr/colorOnSurface"
             android:visibility="gone"
-            tools:visibility="visible"
             tools:text="Restoring database..."
-            android:textColor="?attr/colorOnSurface" />
+            tools:visibility="visible" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Available Backups"
-            android:textStyle="bold"
             android:layout_marginBottom="8dp"
-            android:textColor="?attr/colorOnSurface" />
+            android:text="Available Backups"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_backups"
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
             android:layout_marginBottom="16dp"
-            tools:listitem="@layout/item_backup"
-            tools:itemCount="3" />
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_backups"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                tools:itemCount="3"
+                tools:listitem="@layout/item_backup" />
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_sign_out"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Disconnect"
-            style="@style/Widget.Material3.Button.TonalButton"
-            app:backgroundTint="?attr/colorError"
-            android:textColor="?attr/colorOnError" />
+            android:textColor="?attr/colorOnError"
+            app:backgroundTint="?attr/colorError" />
 
     </LinearLayout>
 

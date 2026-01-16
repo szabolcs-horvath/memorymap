@@ -13,6 +13,9 @@ interface MemoryGroupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGroup(group: MemoryGroup): Long
 
+    @Update
+    suspend fun updateGroup(group: MemoryGroup)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMediaItems(items: List<MediaItem>)
 
@@ -21,6 +24,9 @@ interface MemoryGroupDao {
 
     @Delete
     suspend fun deleteGroup(group: MemoryGroup)
+
+    @Query("DELETE FROM media_items WHERE groupId = :groupId")
+    suspend fun deleteMediaByGroupId(groupId: Int)
 
     @Transaction
     @Query("SELECT * FROM memory_groups")

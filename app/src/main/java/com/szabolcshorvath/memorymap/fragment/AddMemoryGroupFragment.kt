@@ -18,12 +18,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.RecyclerView
+import coil3.load
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
+import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,8 +54,9 @@ class AddMemoryGroupFragment : Fragment() {
     private var isAllDay = false
 
     private var listener: AddMemoryListener? = null
-
     private lateinit var backupManager: BackupManager
+    private var editingMemoryId: Int? = null
+    private lateinit var mediaAdapter: SelectedMediaAdapter
 
     private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(
         Locale.getDefault()
@@ -65,23 +69,30 @@ class AddMemoryGroupFragment : Fragment() {
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
             uris.let {
                 val contentResolver = requireContext().contentResolver
-                val newItems = it.map { uri ->
-                    val type = contentResolver.getType(uri)
-                    val mediaType =
-                        if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-                    uri to mediaType
+                val newItems = it.mapNotNull { uri ->
+                    if (selectedMediaUris.any { it.first == uri }) {
+                        null
+                    } else {
+                        val type = contentResolver.getType(uri)
+                        val mediaType =
+                            if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
+                        uri to mediaType
+                    }
                 }
                 selectedMediaUris.addAll(newItems)
-                binding.selectedMediaCount.text = "${selectedMediaUris.size} items selected"
+                updateMediaUI()
                 it.forEach { uri ->
-                    contentResolver.takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
+                    try {
+                        contentResolver.takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error taking persistable permission for $uri", e)
+                    }
                 }
             }
         }
-
 
     interface AddMemoryListener {
         fun onPickLocation(lat: Double, lng: Double)
@@ -113,9 +124,8 @@ class AddMemoryGroupFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         backupManager = BackupManager(requireContext())
-
+        setupRecyclerView()
         updateLocationText()
-
         updateDateTimeButtons()
 
         binding.selectLocationButton.setOnClickListener {
@@ -133,7 +143,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.endTimeButton.setOnClickListener { pickTime(false) }
 
         binding.pickMediaButton.setOnClickListener {
-            pickMediaLauncher.launch(PickVisualMediaRequest())
+            pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
         }
 
         binding.clearButton.setOnClickListener {
@@ -145,11 +155,24 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
+    private fun setupRecyclerView() {
+        mediaAdapter = SelectedMediaAdapter(selectedMediaUris) { position ->
+            selectedMediaUris.removeAt(position)
+            updateMediaUI()
+        }
+        binding.selectedMediaRecyclerView.adapter = mediaAdapter
+    }
+
+    private fun updateMediaUI() {
+        mediaAdapter.notifyDataSetChanged()
+        binding.selectedMediaCount.text = "${selectedMediaUris.size} items selected"
+    }
+
     private fun showClearConfirmationDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("Clear Fields")
-            .setMessage("Are you sure you want to clear all fields? This action cannot be undone.")
-            .setPositiveButton("Clear") { _, _ ->
+            .setTitle(if (editingMemoryId != null) "Discard Changes" else "Clear Fields")
+            .setMessage(if (editingMemoryId != null) "Are you sure you want to discard your changes?" else "Are you sure you want to clear all fields? This action cannot be undone.")
+            .setPositiveButton(if (editingMemoryId != null) "Discard" else "Clear") { _, _ ->
                 clearFields()
             }
             .setNegativeButton("Cancel", null)
@@ -157,6 +180,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     fun clearFields() {
+        editingMemoryId = null
         lat = 0.0
         lng = 0.0
         placeName = null
@@ -166,12 +190,13 @@ class AddMemoryGroupFragment : Fragment() {
         endDateTime = ZonedDateTime.now().plusHours(1)
         updateDateTimeButtons()
         selectedMediaUris.clear()
+        updateMediaUI()
 
         binding.titleInput.text?.clear()
         binding.descriptionInput.text?.clear()
         updateLocationText()
-        binding.selectedMediaCount.text = "0 items selected"
         binding.allDayCheckbox.isChecked = false
+        binding.saveButton.text = "Save Memory"
     }
 
     fun updateLocation(
@@ -186,6 +211,38 @@ class AddMemoryGroupFragment : Fragment() {
         address = newAddress
         if (_binding != null) {
             updateLocationText()
+        }
+    }
+
+    fun setEditMode(memoryId: Int) {
+        editingMemoryId = memoryId
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val groupWithMedia = db.memoryGroupDao().getGroupWithMedia(memoryId)
+            withContext(Dispatchers.Main) {
+                groupWithMedia?.let { data ->
+                    val group = data.group
+                    lat = group.latitude
+                    lng = group.longitude
+                    placeName = group.placeName
+                    address = group.address
+                    isAllDay = group.isAllDay
+                    startDateTime = group.startDate
+                    endDateTime = group.endDate
+
+                    binding.titleInput.setText(group.title)
+                    binding.descriptionInput.setText(group.description)
+                    binding.allDayCheckbox.isChecked = isAllDay
+
+                    selectedMediaUris.clear()
+                    selectedMediaUris.addAll(data.mediaItems.map { Uri.parse(it.uri) to it.type })
+                    updateMediaUI()
+
+                    updateLocationText()
+                    updateDateTimeButtons()
+                    binding.saveButton.text = "Update Memory"
+                }
+            }
         }
     }
 
@@ -295,6 +352,7 @@ class AddMemoryGroupFragment : Fragment() {
         lifecycleScope.launch(Dispatchers.IO) {
             val db = StoryMapDatabase.getDatabase(context.applicationContext)
             val group = MemoryGroup(
+                id = editingMemoryId ?: 0,
                 title = title,
                 description = description,
                 latitude = lat,
@@ -305,7 +363,18 @@ class AddMemoryGroupFragment : Fragment() {
                 endDate = finalEnd,
                 isAllDay = isAllDay
             )
-            val groupId = db.memoryGroupDao().insertGroup(group)
+
+            val groupId = if (editingMemoryId != null) {
+                db.memoryGroupDao().updateGroup(group)
+                editingMemoryId!!.toLong()
+            } else {
+                db.memoryGroupDao().insertGroup(group)
+            }
+
+            // If editing, we delete the old media associations and re-insert the current selection
+            if (editingMemoryId != null) {
+                db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
+            }
 
             val mediaItems = selectedMediaUris.map { (uri, type) ->
                 var size = 0L
@@ -343,13 +412,16 @@ class AddMemoryGroupFragment : Fragment() {
             }
             db.memoryGroupDao().insertMediaItems(mediaItems)
 
-            // Trigger automatic backup in a separate coroutine to not block the UI completion
             launch {
                 backupManager.triggerAutomaticBackup()
             }
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    if (editingMemoryId != null) "Updated!" else "Saved!",
+                    Toast.LENGTH_SHORT
+                ).show()
                 listener?.onMemorySaved(
                     group.latitude,
                     group.longitude,
@@ -365,6 +437,31 @@ class AddMemoryGroupFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private inner class SelectedMediaAdapter(
+        private val items: List<Pair<Uri, MediaType>>,
+        private val onRemove: (Int) -> Unit
+    ) : RecyclerView.Adapter<SelectedMediaAdapter.ViewHolder>() {
+
+        inner class ViewHolder(val binding: ItemMediaSelectedBinding) :
+            RecyclerView.ViewHolder(binding.root)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val binding =
+                ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return ViewHolder(binding)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val (uri, type) = items[position]
+            holder.binding.thumbnailImage.load(uri)
+            holder.binding.videoIcon.visibility =
+                if (type == MediaType.VIDEO) View.VISIBLE else View.GONE
+            holder.binding.removeButton.setOnClickListener { onRemove(holder.adapterPosition) }
+        }
+
+        override fun getItemCount() = items.size
     }
 
     companion object {

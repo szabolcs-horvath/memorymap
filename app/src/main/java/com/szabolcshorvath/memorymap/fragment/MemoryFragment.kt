@@ -42,6 +42,7 @@ class MemoryFragment : Fragment() {
         fun onNavigateToTimeline(memoryId: Int)
         fun onNavigateToMap(lat: Double, lng: Double, id: Int)
         fun onMemoryDeleted(memoryGroup: MemoryGroup, mediaItems: List<MediaItem>)
+        fun onEditMemory(memoryId: Int)
     }
 
     override fun onAttach(context: Context) {
@@ -72,6 +73,10 @@ class MemoryFragment : Fragment() {
 
         setupRecyclerView()
         loadMemoryDetails()
+
+        binding.editButton.setOnClickListener {
+            listener?.onEditMemory(memoryId)
+        }
 
         binding.deleteButton.setOnClickListener {
             showDeleteConfirmationDialog()

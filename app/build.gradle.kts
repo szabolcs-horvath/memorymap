@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.play.services.location)
     implementation(libs.google.places)
+    implementation(libs.androidx.swiperefreshlayout)
 
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
