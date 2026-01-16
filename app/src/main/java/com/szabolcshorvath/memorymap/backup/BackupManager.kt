@@ -252,15 +252,23 @@ class BackupManager(private val context: Context) {
         val dao = database.memoryGroupDao()
         val mediaItems = dao.getAllMediaItems()
 
+        Log.d(TAG, "Starting media verification for ${mediaItems.size} items")
         val localMediaList = getAllLocalMedia(mediaItems)
+        Log.d(TAG, "Found ${localMediaList.size} potential local matches in MediaStore")
 
         val itemsToUpdate = mutableListOf<MediaItem>()
-        val itemsWithoutLocalEquivalent = mutableListOf<MediaItem>()
 
         for (item in mediaItems) {
-            if (item.deviceId != currentDeviceId) {
+            // Check if URI is a temporary Picker URI or if it comes from another device
+            val isPickerUri = item.uri.contains("com.android.providers.media.photopicker")
+
+            if (item.deviceId != currentDeviceId || isPickerUri) {
                 val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
                 if (candidate != null) {
+                    Log.d(
+                        TAG,
+                        "Matching stable URI found for ${item.mediaSignature}: ${candidate.uri}"
+                    )
                     itemsToUpdate.add(
                         item.copy(
                             deviceId = currentDeviceId,
@@ -268,17 +276,17 @@ class BackupManager(private val context: Context) {
                         )
                     )
                 } else {
-                    Log.w(TAG, "No local file with signature ${item.mediaSignature} found")
-                    itemsWithoutLocalEquivalent.add(item)
+                    Log.w(
+                        TAG,
+                        "No local file match for signature ${item.mediaSignature} found in MediaStore"
+                    )
                 }
             }
         }
 
         if (itemsToUpdate.isNotEmpty()) {
             dao.updateMediaItems(itemsToUpdate)
-        }
-        if (itemsWithoutLocalEquivalent.isNotEmpty()) {
-            Log.w(TAG, "Items without local equivalent: $itemsWithoutLocalEquivalent")
+            Log.d(TAG, "Updated ${itemsToUpdate.size} media items with stable MediaStore URIs")
         }
     }
 
@@ -288,9 +296,12 @@ class BackupManager(private val context: Context) {
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.SIZE,
         )
-        val selection = "${MediaStore.MediaColumns.SIZE} IN (${
-            mediaItems.map { it.fileSize }.joinToString(", ")
-        })"
+
+        // Get unique sizes to optimize query
+        val uniqueSizes = mediaItems.map { it.fileSize }.distinct()
+        if (uniqueSizes.isEmpty()) return emptyList()
+
+        val selection = "${MediaStore.MediaColumns.SIZE} IN (${uniqueSizes.joinToString(", ")})"
 
         // Query Images
         queryMediaStore(
@@ -329,9 +340,11 @@ class BackupManager(private val context: Context) {
 
                 while (cursor.moveToNext()) {
                     val size = cursor.getLong(sizeCol)
+                    val id = cursor.getLong(idCol)
+                    // Construct stable MediaStore URI
                     val uri = android.content.ContentUris.withAppendedId(
                         contentUri,
-                        cursor.getLong(idCol)
+                        id
                     ).toString()
 
                     mediaList.add(
