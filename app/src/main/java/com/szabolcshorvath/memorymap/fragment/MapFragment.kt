@@ -363,15 +363,25 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         if (adjustCamera && markersCount > 0) {
             val bounds = boundsBuilder.build()
-            val padding = 100 // pixels
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding))
+            map.setMaxZoomPreference(MAX_CAMERA_ZOOM)
+            map.animateCamera(
+                CameraUpdateFactory.newLatLngBounds(bounds, ZOOM_PADDING),
+                object : GoogleMap.CancelableCallback {
+                    override fun onFinish() {
+                        map.resetMinMaxZoomPreference()
+                    }
+
+                    override fun onCancel() {
+                        map.resetMinMaxZoomPreference()
+                    }
+                })
         }
     }
 
     private fun moveToLocationAndSelectMarker(lat: Double, lng: Double, memory: MemoryGroup?) {
         val map = mMap ?: return
         val position = LatLng(lat, lng)
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15f))
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, MAX_CAMERA_ZOOM))
 
         val marker = markerMap[memory?.id]
         if (marker != null) {
@@ -400,5 +410,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         const val TAG = "MapFragment"
+        private const val MAX_CAMERA_ZOOM = 15f
+        private const val ZOOM_PADDING = 100
     }
 }
