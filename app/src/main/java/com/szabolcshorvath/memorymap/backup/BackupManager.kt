@@ -11,10 +11,16 @@ import com.google.api.client.http.FileContent
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
+import com.google.api.services.drive.DriveScopes
+import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
+import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -44,8 +50,25 @@ class BackupManager(private val context: Context) {
         credential
     ).setApplicationName("Memory Map").build()
 
+    suspend fun triggerAutomaticBackup() {
+        withContext(Dispatchers.IO) {
+            try {
+                val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull() ?: return@withContext
+                val googleAuthManager = GoogleAuthManager(context)
+                val scopes = listOf(DriveScopes.DRIVE_FILE)
+                val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
+                performBackup(credential, isAutomatic = true) {
+                    Log.d(TAG, "Automatic backup progress: $it")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to trigger automatic backup", e)
+            }
+        }
+    }
+
     suspend fun performBackup(
         credential: GoogleAccountCredential,
+        isAutomatic: Boolean = false,
         onProgress: (String) -> Unit
     ): Boolean {
         return withContext(Dispatchers.IO) {
@@ -55,7 +78,6 @@ class BackupManager(private val context: Context) {
                 val driveService = getDriveService(credential)
 
                 onProgress("Preparing database...")
-                // Checkpoint database to ensure all data is in the main file
                 try {
                     StoryMapDatabase.getDatabase(context).openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)")
                         .close()
@@ -80,7 +102,8 @@ class BackupManager(private val context: Context) {
                     SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
                 )
                 metadata.put("dbSize", dbFile.length())
-                metadata.put("version", 1) // Backup format version
+                metadata.put("version", 1)
+                metadata.put("isAutomatic", isAutomatic)
 
                 val metadataFile = File(tempDir, "metadata.json")
                 metadataFile.writeText(metadata.toString())
@@ -89,11 +112,8 @@ class BackupManager(private val context: Context) {
                 onProgress("Compressing data...")
                 zipFile = File(context.cacheDir, "backup.zip")
                 ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { out ->
-                    // Add DB
                     addToZip(out, dbFile, "database.sqlite")
-                    // Add Metadata
                     addToZip(out, metadataFile, "metadata.json")
-                    // Add SHM and WAL if they exist
                     val walFile = context.getDatabasePath("memory_map_database-wal")
                     if (walFile.exists()) addToZip(out, walFile, "database.sqlite-wal")
                     val shmFile = context.getDatabasePath("memory_map_database-shm")
@@ -101,12 +121,12 @@ class BackupManager(private val context: Context) {
                 }
 
                 onProgress("Uploading to Google Drive...")
-                // Find or create folder
                 val folderId = getOrCreateBackupFolder(driveService)
 
                 // Upload
                 val fileMetadata = DriveFile()
-                fileMetadata.name = "MemoryMap_Backup_${
+                val prefix = if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
+                fileMetadata.name = "$prefix${
                     SimpleDateFormat(
                         "yyyyMMdd_HHmmss",
                         Locale.US
@@ -122,10 +142,9 @@ class BackupManager(private val context: Context) {
 
                 return@withContext true
             } catch (e: Exception) {
-                Log.e("BackupManager", "Backup failed", e)
+                Log.e(TAG, "Backup failed", e)
                 return@withContext false
             } finally {
-                // Cleanup
                 tempDir?.deleteRecursively()
                 zipFile?.delete()
             }
@@ -136,16 +155,13 @@ class BackupManager(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 val driveService = getDriveService(credential)
-
                 val folderId = getOrCreateBackupFolder(driveService)
-
                 val query = "'$folderId' in parents and trashed = false"
                 val result = driveService.files().list()
                     .setQ(query)
                     .setFields("files(id, name, modifiedTime, size)")
                     .setOrderBy("modifiedTime desc")
                     .execute()
-
                 return@withContext result.files ?: emptyList()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -177,12 +193,10 @@ class BackupManager(private val context: Context) {
                 if (tempRestoreDir.exists()) tempRestoreDir.deleteRecursively()
                 tempRestoreDir.mkdirs()
 
-                // Unzip
                 ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zis ->
                     var entry = zis.nextEntry
                     while (entry != null) {
                         val file = File(tempRestoreDir, entry.name)
-                        // canonical path check to prevent zip slip
                         if (file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)) {
                             FileOutputStream(file).use { fos ->
                                 val buffer = ByteArray(1024)
@@ -196,16 +210,13 @@ class BackupManager(private val context: Context) {
                     }
                 }
 
-                // Verify metadata
                 val metadataFile = File(tempRestoreDir, "metadata.json")
                 if (!metadataFile.exists()) {
                     throw Exception("Invalid backup: missing metadata")
                 }
 
-                // Close DB connections
                 StoryMapDatabase.closeDatabase()
 
-                // Copy files back
                 val dbFile = context.getDatabasePath("memory_map_database")
                 val walFile = context.getDatabasePath("memory_map_database-wal")
                 val shmFile = context.getDatabasePath("memory_map_database-shm")
@@ -218,15 +229,15 @@ class BackupManager(private val context: Context) {
                 val restoredWal = File(tempRestoreDir, "database.sqlite-wal")
                 if (restoredWal.exists()) {
                     restoredWal.copyTo(walFile, overwrite = true)
-                } else {
-                    if (walFile.exists()) walFile.delete()
+                } else if (walFile.exists()) {
+                    walFile.delete()
                 }
 
                 val restoredShm = File(tempRestoreDir, "database.sqlite-shm")
                 if (restoredShm.exists()) {
                     restoredShm.copyTo(shmFile, overwrite = true)
-                } else {
-                    if (shmFile.exists()) shmFile.delete()
+                } else if (shmFile.exists()) {
+                    shmFile.delete()
                 }
 
                 onProgress("Verifying media...")
@@ -237,7 +248,6 @@ class BackupManager(private val context: Context) {
                 e.printStackTrace()
                 return@withContext false
             } finally {
-                // Cleanup
                 tempZipFile?.delete()
                 tempRestoreDir?.deleteRecursively()
             }
@@ -245,115 +255,51 @@ class BackupManager(private val context: Context) {
     }
 
     private suspend fun verifyAndFixMediaItems() {
-        val currentDeviceId =
-            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-
+        val currentDeviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
         val database = StoryMapDatabase.getDatabase(context)
         val dao = database.memoryGroupDao()
         val mediaItems = dao.getAllMediaItems()
 
-        Log.d(TAG, "Starting media verification for ${mediaItems.size} items")
         val localMediaList = getAllLocalMedia(mediaItems)
-        Log.d(TAG, "Found ${localMediaList.size} potential local matches in MediaStore")
-
         val itemsToUpdate = mutableListOf<MediaItem>()
 
         for (item in mediaItems) {
-            // Check if URI is a temporary Picker URI or if it comes from another device
             val isPickerUri = item.uri.contains("com.android.providers.media.photopicker")
-
             if (item.deviceId != currentDeviceId || isPickerUri) {
                 val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
                 if (candidate != null) {
-                    Log.d(
-                        TAG,
-                        "Matching stable URI found for ${item.mediaSignature}: ${candidate.uri}"
-                    )
-                    itemsToUpdate.add(
-                        item.copy(
-                            deviceId = currentDeviceId,
-                            uri = candidate.uri
-                        )
-                    )
-                } else {
-                    Log.w(
-                        TAG,
-                        "No local file match for signature ${item.mediaSignature} found in MediaStore"
-                    )
+                    itemsToUpdate.add(item.copy(deviceId = currentDeviceId, uri = candidate.uri))
                 }
             }
         }
 
         if (itemsToUpdate.isNotEmpty()) {
             dao.updateMediaItems(itemsToUpdate)
-            Log.d(TAG, "Updated ${itemsToUpdate.size} media items with stable MediaStore URIs")
         }
     }
 
     private fun getAllLocalMedia(mediaItems: List<MediaItem>): List<LocalMediaInfo> {
         val mediaList = mutableListOf<LocalMediaInfo>()
-        val projection = arrayOf(
-            MediaStore.MediaColumns._ID,
-            MediaStore.MediaColumns.SIZE,
-        )
-
-        // Get unique sizes to optimize query
+        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
         val uniqueSizes = mediaItems.map { it.fileSize }.distinct()
         if (uniqueSizes.isEmpty()) return emptyList()
-
         val selection = "${MediaStore.MediaColumns.SIZE} IN (${uniqueSizes.joinToString(", ")})"
 
-        // Query Images
-        queryMediaStore(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            mediaList
-        )
-        // Query Videos
-        queryMediaStore(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            mediaList
-        )
-
+        queryMediaStore(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, selection, mediaList)
+        queryMediaStore(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, selection, mediaList)
         return mediaList
     }
 
-    private fun queryMediaStore(
-        contentUri: Uri,
-        projection: Array<String>,
-        selection: String?,
-        mediaList: MutableList<LocalMediaInfo>
-    ) {
+    private fun queryMediaStore(contentUri: Uri, projection: Array<String>, selection: String?, mediaList: MutableList<LocalMediaInfo>) {
         try {
-            context.contentResolver.query(
-                contentUri,
-                projection,
-                selection,
-                null,
-                null
-            )?.use { cursor ->
+            context.contentResolver.query(contentUri, projection, selection, null, null)?.use { cursor ->
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-
                 while (cursor.moveToNext()) {
                     val size = cursor.getLong(sizeCol)
                     val id = cursor.getLong(idCol)
-                    // Construct stable MediaStore URI
-                    val uri = android.content.ContentUris.withAppendedId(
-                        contentUri,
-                        id
-                    ).toString()
-
-                    mediaList.add(
-                        LocalMediaInfo(
-                            uri,
-                            MediaHasher.calculateMediaSignature(context, uri.toUri()),
-                            size
-                        )
-                    )
+                    val uri = android.content.ContentUris.withAppendedId(contentUri, id).toString()
+                    mediaList.add(LocalMediaInfo(uri, MediaHasher.calculateMediaSignature(context, uri.toUri()), size))
                 }
             }
         } catch (e: Exception) {
@@ -376,23 +322,14 @@ class BackupManager(private val context: Context) {
 
     private fun getOrCreateBackupFolder(driveService: Drive): String {
         val folderName = "Memory Map Backups"
-        val query =
-            "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
+        val query = "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
         val result = driveService.files().list().setQ(query).setSpaces("drive").execute()
-
-        if (result.files.isNotEmpty()) {
-            return result.files[0].id
+        if (result.files.isNotEmpty()) return result.files[0].id
+        val folderMetadata = DriveFile().apply {
+            name = folderName
+            mimeType = "application/vnd.google-apps.folder"
         }
-
-        val folderMetadata = DriveFile()
-        folderMetadata.name = folderName
-        folderMetadata.mimeType = "application/vnd.google-apps.folder"
-
-        val folder = driveService.files().create(folderMetadata)
-            .setFields("id")
-            .execute()
-
-        return folder.id
+        return driveService.files().create(folderMetadata).setFields("id").execute().id
     }
 
     private fun addToZip(out: ZipOutputStream, file: File, fileName: String) {

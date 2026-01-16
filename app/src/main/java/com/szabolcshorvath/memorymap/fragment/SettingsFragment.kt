@@ -117,10 +117,15 @@ class SettingsFragment : Fragment() {
                 Toast.makeText(requireContext(), "Not signed in", Toast.LENGTH_SHORT).show()
             }
         }
+    }
 
+    override fun onResume() {
+        super.onResume()
         lifecycleScope.launch {
-            updateUI(requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }
-                .firstOrNull())
+            val email = requireContext().dataStore.data
+                .map { preferences -> preferences[USER_EMAIL_KEY] }
+                .firstOrNull()
+            updateUI(email)
         }
     }
 
@@ -157,7 +162,6 @@ class SettingsFragment : Fragment() {
                 backupAdapter.updateBackups(backups)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to list backups", e)
-                // Optionally show a message, but avoid spamming on start
             } finally {
                 binding.progressBar.visibility = View.GONE
             }
@@ -320,18 +324,36 @@ class SettingsFragment : Fragment() {
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val success = backupManager.deleteBackup(credential, file.id)
                 if (success) {
-                    Toast.makeText(requireContext(), "Backup deleted", Toast.LENGTH_SHORT).show()
-                    loadBackups(email)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Backup deleted",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        loadBackups(email)
+                    }
                 } else {
-                    Toast.makeText(requireContext(), "Failed to delete backup", Toast.LENGTH_SHORT)
-                        .show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Failed to delete backup",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Delete error", e)
-                Toast.makeText(requireContext(), "Delete failed: ${e.message}", Toast.LENGTH_SHORT)
-                    .show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Delete failed: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             } finally {
-                binding.progressBar.visibility = View.GONE
+                withContext(Dispatchers.Main) {
+                    binding.progressBar.visibility = View.GONE
+                }
             }
         }
     }

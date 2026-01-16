@@ -19,7 +19,12 @@ class BackupAdapter(
     inner class BackupViewHolder(private val binding: ItemBackupBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(backup: File) {
-            binding.tvBackupName.text = backup.name
+            val name = backup.name
+            binding.tvBackupName.text = when {
+                name.startsWith("MemoryMap_Automatic_Backup_") -> "Automatic Backup"
+                name.startsWith("MemoryMap_Manual_Backup_") -> "Manual Backup"
+                else -> name
+            }
 
             val date = backup.modifiedTime?.value?.let { Date(it) }
             val formattedDate = if (date != null) {

@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.libraries.places.api.Places
 import com.google.android.material.snackbar.Snackbar
+import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
@@ -326,6 +327,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         timelineFragment.refreshData()
 
         val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
+        snackbar.anchorView = binding.bottomNavigation
         snackbar.setAction("Undo") {
             lifecycleScope.launch(Dispatchers.IO) {
                 val db = StoryMapDatabase.getDatabase(applicationContext)
@@ -333,6 +335,9 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
                 val restoredMediaItems =
                     mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
                 db.memoryGroupDao().insertMediaItems(restoredMediaItems)
+
+                // Trigger automatic backup after undo
+                BackupManager(applicationContext).triggerAutomaticBackup()
 
                 withContext(Dispatchers.Main) {
                     mapFragment.refreshData()

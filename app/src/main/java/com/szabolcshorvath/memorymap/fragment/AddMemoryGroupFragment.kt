@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -50,6 +51,8 @@ class AddMemoryGroupFragment : Fragment() {
     private var isAllDay = false
 
     private var listener: AddMemoryListener? = null
+
+    private lateinit var backupManager: BackupManager
 
     private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(
         Locale.getDefault()
@@ -109,6 +112,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        backupManager = BackupManager(requireContext())
 
         updateLocationText()
 
@@ -338,6 +342,11 @@ class AddMemoryGroupFragment : Fragment() {
                 )
             }
             db.memoryGroupDao().insertMediaItems(mediaItems)
+
+            // Trigger automatic backup in a separate coroutine to not block the UI completion
+            launch {
+                backupManager.triggerAutomaticBackup()
+            }
 
             withContext(Dispatchers.Main) {
                 Toast.makeText(requireContext(), "Saved!", Toast.LENGTH_SHORT).show()
