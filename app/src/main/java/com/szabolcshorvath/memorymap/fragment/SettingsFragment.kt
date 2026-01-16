@@ -18,13 +18,14 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
-import com.szabolcshorvath.memorymap.backup.BackupManager
-import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
+import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -236,13 +237,23 @@ class SettingsFragment : Fragment() {
     }
 
     private fun onRestoreBackup(file: DriveFile) {
-        pendingRestoreFile = file
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-        restorePermissionLauncher.launch(permissions)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Restore Backup")
+            .setMessage("Are you sure you want to restore from the backup '${file.name}'?\nThis action will overwrite all your current data and it cannot be undone!")
+            .setPositiveButton("Restore") { _, _ ->
+                pendingRestoreFile = file
+                val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    arrayOf(
+                        Manifest.permission.READ_MEDIA_IMAGES,
+                        Manifest.permission.READ_MEDIA_VIDEO
+                    )
+                } else {
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
+                restorePermissionLauncher.launch(permissions)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun executeRestore(file: DriveFile) {
