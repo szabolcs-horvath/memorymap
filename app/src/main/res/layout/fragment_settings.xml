@@ -44,7 +44,7 @@
     <LinearLayout
         android:id="@+id/backup_controls"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
         android:visibility="gone"
         tools:visibility="visible">
@@ -64,14 +64,6 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
             android:text="Backup Now" />
-
-        <TextView
-            android:id="@+id/tv_last_backup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="Last backup: Never"
-            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progress_bar"

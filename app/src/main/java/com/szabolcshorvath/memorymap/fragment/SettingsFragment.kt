@@ -250,11 +250,9 @@ class SettingsFragment : Fragment() {
 
                 if (success) {
                     Toast.makeText(requireContext(), "Backup successful", Toast.LENGTH_SHORT).show()
-                    binding.tvLastBackup.text = "Last backup: Just now"
                     loadBackups(email)
                 } else {
                     Toast.makeText(requireContext(), "Backup failed", Toast.LENGTH_SHORT).show()
-                    binding.tvLastBackup.text = "Last backup: Failed"
                 }
 
                 binding.btnBackupNow.isEnabled = true
