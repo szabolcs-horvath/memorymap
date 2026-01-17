@@ -28,7 +28,7 @@ class BackupAdapter(
 
             val date = backup.modifiedTime?.value?.let { Date(it) }
             val formattedDate = if (date != null) {
-                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(date)
+                dateTimeFormatter.format(date)
             } else {
                 "Unknown date"
             }
@@ -56,5 +56,10 @@ class BackupAdapter(
     fun updateBackups(newBackups: List<File>) {
         backups = newBackups
         notifyDataSetChanged()
+    }
+
+    companion object {
+        private const val DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss"
+        private val dateTimeFormatter = SimpleDateFormat(DATE_TIME_FORMAT, Locale.getDefault())
     }
 }

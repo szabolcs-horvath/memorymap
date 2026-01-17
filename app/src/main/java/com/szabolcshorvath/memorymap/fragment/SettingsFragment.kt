@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -11,6 +12,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -20,6 +22,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
+import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
@@ -269,7 +272,9 @@ class SettingsFragment : Fragment() {
             .setTitle("Restore Backup")
             .setMessage("Are you sure you want to restore from the backup '${file.name}'?\n\nThis action will overwrite all your current data and it cannot be undone!")
             .setPositiveButton("Restore") { _, _ ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                if (hasMediaPermissions()) {
+                    executeRestore(file)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     showPermissionInfoDialog(file)
                 } else {
                     launchPermissionRequest(file)
@@ -277,6 +282,24 @@ class SettingsFragment : Fragment() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun hasMediaPermissions(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.READ_MEDIA_VIDEO
+                    ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
     }
 
     private fun showPermissionInfoDialog(file: DriveFile) {
@@ -322,9 +345,10 @@ class SettingsFragment : Fragment() {
                 if (success) {
                     Toast.makeText(
                         requireContext(),
-                        "Restore successful. Please restart the app.",
+                        "Restore successful",
                         Toast.LENGTH_LONG
                     ).show()
+                    refreshAppContent()
                 } else {
                     Toast.makeText(requireContext(), "Restore failed", Toast.LENGTH_SHORT).show()
                 }
@@ -337,6 +361,10 @@ class SettingsFragment : Fragment() {
                 binding.tvStatus.visibility = View.GONE
             }
         }
+    }
+
+    private fun refreshAppContent() {
+        (requireActivity() as? MainActivity)?.refreshData()
     }
 
     private fun onDeleteBackup(file: DriveFile) {

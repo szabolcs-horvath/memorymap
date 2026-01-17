@@ -287,6 +287,11 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         }
     }
 
+    fun refreshData() {
+        mapFragment.refreshData()
+        timelineFragment.refreshData()
+    }
+
     override fun startAddMemoryFlow(lat: Double, lng: Double) {
         addMemoryFragment.clearFields()
         showFragment(addMemoryFragment)
@@ -375,8 +380,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     ) {
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
 
-        mapFragment.refreshData()
-        timelineFragment.refreshData()
+        refreshData()
 
         mapFragment.setDateFilter(startDate, endDate)
         mapFragment.focusOnMemory(lat, lng, id)
@@ -393,8 +397,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     }
 
     override fun onMemoryDeleted(memoryGroup: MemoryGroup, mediaItems: List<MediaItem>) {
-        mapFragment.refreshData()
-        timelineFragment.refreshData()
+        refreshData()
 
         val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
         snackbar.anchorView = binding.bottomNavigation
@@ -410,8 +413,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
                 BackupManager(applicationContext).triggerAutomaticBackup()
 
                 withContext(Dispatchers.Main) {
-                    mapFragment.refreshData()
-                    timelineFragment.refreshData()
+                    refreshData()
                 }
             }
         }
