@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
@@ -67,7 +68,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-            uris.let {
+            uris.let { it ->
                 val contentResolver = requireContext().contentResolver
                 val newItems = it.mapNotNull { uri ->
                     if (selectedMediaUris.any { it.first == uri }) {
@@ -235,7 +236,7 @@ class AddMemoryGroupFragment : Fragment() {
                     binding.allDayCheckbox.isChecked = isAllDay
 
                     selectedMediaUris.clear()
-                    selectedMediaUris.addAll(data.mediaItems.map { Uri.parse(it.uri) to it.type })
+                    selectedMediaUris.addAll(data.mediaItems.map { it.uri.toUri() to it.type })
                     updateMediaUI()
 
                     updateLocationText()
@@ -458,7 +459,7 @@ class AddMemoryGroupFragment : Fragment() {
             holder.binding.thumbnailImage.load(uri)
             holder.binding.videoIcon.visibility =
                 if (type == MediaType.VIDEO) View.VISIBLE else View.GONE
-            holder.binding.removeButton.setOnClickListener { onRemove(holder.adapterPosition) }
+            holder.binding.removeButton.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
         }
 
         override fun getItemCount() = items.size

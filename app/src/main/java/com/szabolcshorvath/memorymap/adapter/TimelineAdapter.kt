@@ -90,7 +90,7 @@ class TimelineAdapter(
         }
     }
 
-    inner class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) :
+    class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(date: LocalDate) {
             binding.dateText.text = date.format(dateFormatter)
@@ -111,10 +111,12 @@ class TimelineAdapter(
                 val binding = ItemTimelineMemoryBinding.inflate(inflater, parent, false)
                 TimelineViewHolder(binding)
             }
+
             VIEW_TYPE_SEPARATOR -> {
                 val binding = ItemTimelineDateSeparatorBinding.inflate(inflater, parent, false)
                 DateSeparatorViewHolder(binding)
             }
+
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
@@ -135,8 +137,8 @@ class TimelineAdapter(
     }
 
     fun getPositionForId(id: Int): Int {
-        return adapterItems.indexOfFirst { 
-            it is TimelineItem.Memory && it.memoryGroup.id == id 
+        return adapterItems.indexOfFirst {
+            it is TimelineItem.Memory && it.memoryGroup.id == id
         }
     }
 
