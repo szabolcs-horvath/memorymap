@@ -312,9 +312,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         withContext(Dispatchers.Main) {
             val map = mMap
             if (map != null) {
-                if (filterStartDate == null || filterEndDate == null) {
-                    filterStartDate = LocalDate.now()
-                    filterEndDate = LocalDate.now()
+                if (allGroups.isNotEmpty()) {
+                    val lastMemory = allGroups.maxBy { it.endDate }
+                    filterStartDate = lastMemory.startDate.toLocalDate()
+                    filterEndDate = lastMemory.endDate.toLocalDate()
                 }
 
                 updateDateRangeButtonText()

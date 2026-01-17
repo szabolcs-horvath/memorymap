@@ -24,6 +24,7 @@ googleApiServicesDrive = "v3-rev20251210-2.0.0"
 googleHttpClient = "2.0.3"
 photoview = "2.3.0"
 swiperefreshlayout = "1.2.0"
+materialTapTargetPrompt = "3.3.2"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -56,3 +57,4 @@ google-api-services-drive = { group = "com.google.apis", name = "google-api-serv
 google-http-client-gson = { group = "com.google.http-client", name = "google-http-client-gson", version.ref = "googleHttpClient" }
 photoview = { group = "com.github.chrisbanes", name = "PhotoView", version.ref = "photoview" }
 androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
+material-tap-target-prompt = { group = "uk.co.samuelwall", name = "material-tap-target-prompt", version.ref = "materialTapTargetPrompt" }

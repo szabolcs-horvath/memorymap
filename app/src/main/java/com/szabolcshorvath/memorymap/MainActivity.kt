@@ -3,11 +3,14 @@ package com.szabolcshorvath.memorymap
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -27,8 +30,11 @@ import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uk.co.samuelwall.materialtaptargetprompt.MaterialTapTargetPrompt
 import java.time.LocalDate
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
@@ -205,6 +211,8 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
                 }
             }
         })
+
+        checkFirstRun()
     }
 
     private fun showFragment(fragment: Fragment) {
@@ -214,6 +222,68 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
                 .show(fragment)
                 .commit()
             activeFragment = fragment
+        }
+    }
+
+    private fun checkFirstRun() {
+        lifecycleScope.launch {
+            val isFirstRun = dataStore.data.map { it[IS_FIRST_RUN] ?: true }.first()
+            if (isFirstRun) {
+                // Small delay to ensure UI is ready
+                kotlinx.coroutines.delay(500)
+                showAddMemoryPrompt()
+            }
+        }
+    }
+
+    private fun showAddMemoryPrompt() {
+        MaterialTapTargetPrompt.Builder(this)
+            .setTarget(binding.bottomNavigation.findViewById<View>(R.id.navigation_add))
+            .setPrimaryText("Create memories")
+            .setSecondaryText("You can add new memories here")
+            .setPromptStateChangeListener { _, state ->
+                if (state == MaterialTapTargetPrompt.STATE_FOCAL_PRESSED ||
+                    state == MaterialTapTargetPrompt.STATE_NON_FOCAL_PRESSED
+                ) {
+                    showTimelinePrompt()
+                }
+            }
+            .show()
+    }
+
+    private fun showTimelinePrompt() {
+        MaterialTapTargetPrompt.Builder(this)
+            .setTarget(binding.bottomNavigation.findViewById<View>(R.id.navigation_timeline))
+            .setPrimaryText("View your timeline")
+            .setSecondaryText("All your memories will appear here in chronological order")
+            .setPromptStateChangeListener { _, state ->
+                if (state == MaterialTapTargetPrompt.STATE_FOCAL_PRESSED ||
+                    state == MaterialTapTargetPrompt.STATE_NON_FOCAL_PRESSED
+                ) {
+                    showMapPrompt()
+                }
+            }
+            .show()
+    }
+
+    private fun showMapPrompt() {
+        MaterialTapTargetPrompt.Builder(this)
+            .setTarget(binding.bottomNavigation.findViewById<View>(R.id.navigation_map))
+            .setPrimaryText("View your memories on the map")
+            .setSecondaryText("Your memories will appear on the map")
+            .setPromptStateChangeListener { _, state ->
+                if (state == MaterialTapTargetPrompt.STATE_FOCAL_PRESSED ||
+                    state == MaterialTapTargetPrompt.STATE_NON_FOCAL_PRESSED
+                ) {
+                    markTourAsFinished()
+                }
+            }
+            .show()
+    }
+
+    private fun markTourAsFinished() {
+        lifecycleScope.launch {
+            dataStore.edit { it[IS_FIRST_RUN] = false }
         }
     }
 
@@ -361,5 +431,10 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         isProgrammaticSelection = true
         binding.bottomNavigation.selectedItemId = R.id.navigation_add
         isProgrammaticSelection = false
+    }
+
+    companion object {
+        const val TAG = "MainActivity"
+        private val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
     }
 }
