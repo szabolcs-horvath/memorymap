@@ -41,6 +41,7 @@ class SettingsFragment : Fragment() {
     private lateinit var startAuthorizationIntent: ActivityResultLauncher<IntentSenderRequest>
     private lateinit var backupAdapter: BackupAdapter
     private var pendingRestoreFile: DriveFile? = null
+    private var isBackupRequested = false
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -72,6 +73,7 @@ class SettingsFragment : Fragment() {
                     successfulAuthorization(authorizationResult.grantedScopes)
                 } catch (e: ApiException) {
                     Log.e(TAG, "Authorization failed", e)
+                    isBackupRequested = false
                 }
             }
 
@@ -104,8 +106,9 @@ class SettingsFragment : Fragment() {
                                 preferences[USER_EMAIL_KEY] = email
                             }
                         }
+                        updateUI(email)
+                        requestDriveAuthorization(false)
                     }
-                    updateUI(email)
                 }
             }
         }
@@ -180,75 +183,86 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun performBackup() {
-        binding.btnBackupNow.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
-        binding.tvStatus.visibility = View.VISIBLE
-        binding.tvStatus.text = "Starting backup..."
-
-        lifecycleScope.launch {
-            val requestedScopes: List<Scope> = listOf(Scope(DriveScopes.DRIVE_FILE))
-            Identity.getAuthorizationClient(requireContext())
-                .authorize(
-                    AuthorizationRequest.builder()
-                        .setRequestedScopes(requestedScopes)
-                        .build()
-                )
-                .addOnSuccessListener { authorizationResult ->
-                    if (authorizationResult.hasResolution()) {
-                        val pendingIntent = authorizationResult.pendingIntent
-                        startAuthorizationIntent.launch(
-                            IntentSenderRequest.Builder(pendingIntent!!.intentSender).build()
-                        )
-                    } else {
-                        successfulAuthorization(authorizationResult.grantedScopes)
-                    }
+    private fun requestDriveAuthorization(isBackup: Boolean) {
+        isBackupRequested = isBackup
+        val requestedScopes: List<Scope> = listOf(Scope(DriveScopes.DRIVE_FILE))
+        Identity.getAuthorizationClient(requireContext())
+            .authorize(
+                AuthorizationRequest.builder()
+                    .setRequestedScopes(requestedScopes)
+                    .build()
+            )
+            .addOnSuccessListener { authorizationResult ->
+                if (authorizationResult.hasResolution()) {
+                    val pendingIntent = authorizationResult.pendingIntent
+                    startAuthorizationIntent.launch(
+                        IntentSenderRequest.Builder(pendingIntent!!.intentSender).build()
+                    )
+                } else {
+                    successfulAuthorization(authorizationResult.grantedScopes)
                 }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Failed to authorize", e)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to authorize", e)
+                if (isBackup) {
                     Toast.makeText(requireContext(), "Authorization failed", Toast.LENGTH_SHORT)
                         .show()
                     binding.progressBar.visibility = View.GONE
                     binding.tvStatus.visibility = View.GONE
                     binding.btnBackupNow.isEnabled = true
                 }
-        }
+                isBackupRequested = false
+            }
+    }
+
+    private fun performBackup() {
+        binding.btnBackupNow.isEnabled = false
+        binding.progressBar.visibility = View.VISIBLE
+        binding.tvStatus.visibility = View.VISIBLE
+        binding.tvStatus.text = "Starting backup..."
+        requestDriveAuthorization(true)
     }
 
     private fun successfulAuthorization(scopes: List<String>) {
         lifecycleScope.launch {
             val email =
                 requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }
-                    .firstOrNull()
+                    .firstOrNull() ?: (binding.tvAccountName.tag as? String)
 
             if (email == null) {
                 binding.btnBackupNow.isEnabled = true
                 binding.progressBar.visibility = View.GONE
                 binding.tvStatus.visibility = View.GONE
+                isBackupRequested = false
                 return@launch
             }
 
-            val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-            val success = backupManager.performBackup(credential) { status ->
-                lifecycleScope.launch {
-                    withContext(Dispatchers.Main) {
-                        binding.tvStatus.text = status
+            if (isBackupRequested) {
+                isBackupRequested = false
+                val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
+                val success = backupManager.performBackup(credential) { status ->
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.Main) {
+                            binding.tvStatus.text = status
+                        }
                     }
                 }
-            }
 
-            if (success) {
-                Toast.makeText(requireContext(), "Backup successful", Toast.LENGTH_SHORT).show()
-                binding.tvLastBackup.text = "Last backup: Just now"
-                loadBackups(email)
+                if (success) {
+                    Toast.makeText(requireContext(), "Backup successful", Toast.LENGTH_SHORT).show()
+                    binding.tvLastBackup.text = "Last backup: Just now"
+                    loadBackups(email)
+                } else {
+                    Toast.makeText(requireContext(), "Backup failed", Toast.LENGTH_SHORT).show()
+                    binding.tvLastBackup.text = "Last backup: Failed"
+                }
+
+                binding.btnBackupNow.isEnabled = true
+                binding.progressBar.visibility = View.GONE
+                binding.tvStatus.visibility = View.GONE
             } else {
-                Toast.makeText(requireContext(), "Backup failed", Toast.LENGTH_SHORT).show()
-                binding.tvLastBackup.text = "Last backup: Failed"
+                loadBackups(email)
             }
-
-            binding.btnBackupNow.isEnabled = true
-            binding.progressBar.visibility = View.GONE
-            binding.tvStatus.visibility = View.GONE
         }
     }
 
