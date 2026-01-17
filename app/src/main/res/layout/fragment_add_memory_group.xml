@@ -77,7 +77,17 @@
             android:text="All Day"
             android:textColor="?attr/colorOnSurface" />
 
+        <Button
+            android:id="@+id/dateRangeButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Select Date Range"
+            android:visibility="gone" />
+
         <TextView
+            android:id="@+id/startDateLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -86,6 +96,7 @@
             android:textColor="?attr/colorOnSurface" />
 
         <LinearLayout
+            android:id="@+id/startDateTimeLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
@@ -118,6 +129,7 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/endDateLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -126,6 +138,7 @@
             android:textColor="?attr/colorOnSurface" />
 
         <LinearLayout
+            android:id="@+id/endDateTimeLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"

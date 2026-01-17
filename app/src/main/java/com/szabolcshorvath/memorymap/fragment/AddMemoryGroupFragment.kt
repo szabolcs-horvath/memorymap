@@ -21,6 +21,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
@@ -32,6 +33,7 @@ import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -142,6 +144,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.startTimeButton.setOnClickListener { pickTime(true) }
         binding.endDateButton.setOnClickListener { pickDate(false) }
         binding.endTimeButton.setOnClickListener { pickTime(false) }
+        binding.dateRangeButton.setOnClickListener { pickDateRange() }
 
         binding.pickMediaButton.setOnClickListener {
             pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
@@ -260,22 +263,53 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateDateTimeButtons() {
-        binding.startDateButton.text = startDateTime.format(dateFormatter)
-        binding.endDateButton.text = endDateTime.format(dateFormatter)
-
         if (isAllDay) {
-            binding.startTimeButton.visibility = View.GONE
-            binding.endTimeButton.visibility = View.GONE
-            binding.startSeparator.visibility = View.GONE
-            binding.endSeparator.visibility = View.GONE
+            binding.startDateTimeLayout.visibility = View.GONE
+            binding.endDateTimeLayout.visibility = View.GONE
+            binding.startDateLabel.visibility = View.GONE
+            binding.endDateLabel.visibility = View.GONE
+            binding.dateRangeButton.visibility = View.VISIBLE
+
+            val startStr = startDateTime.format(dateFormatter)
+            val endStr = endDateTime.format(dateFormatter)
+            binding.dateRangeButton.text =
+                if (startStr == endStr) startStr else "$startStr - $endStr"
         } else {
-            binding.startTimeButton.visibility = View.VISIBLE
-            binding.endTimeButton.visibility = View.VISIBLE
-            binding.startSeparator.visibility = View.VISIBLE
-            binding.endSeparator.visibility = View.VISIBLE
+            binding.startDateTimeLayout.visibility = View.VISIBLE
+            binding.endDateTimeLayout.visibility = View.VISIBLE
+            binding.startDateLabel.visibility = View.VISIBLE
+            binding.endDateLabel.visibility = View.VISIBLE
+            binding.dateRangeButton.visibility = View.GONE
+
+            binding.startDateButton.text = startDateTime.format(dateFormatter)
+            binding.endDateButton.text = endDateTime.format(dateFormatter)
             binding.startTimeButton.text = startDateTime.format(timeFormatter)
             binding.endTimeButton.text = endDateTime.format(timeFormatter)
         }
+    }
+
+    private fun pickDateRange() {
+        val builder = MaterialDatePicker.Builder.dateRangePicker()
+        builder.setTitleText("Select Date Range")
+
+        val selection = androidx.core.util.Pair(
+            startDateTime.toInstant().toEpochMilli(),
+            endDateTime.toInstant().toEpochMilli()
+        )
+        builder.setSelection(selection)
+
+        val picker = builder.build()
+        picker.addOnPositiveButtonClickListener { range ->
+            val startMillis = range.first
+            val endMillis = range.second
+
+            if (startMillis != null && endMillis != null) {
+                startDateTime = Instant.ofEpochMilli(startMillis).atZone(ZoneId.systemDefault())
+                endDateTime = Instant.ofEpochMilli(endMillis).atZone(ZoneId.systemDefault())
+                updateDateTimeButtons()
+            }
+        }
+        picker.show(childFragmentManager, "DATE_RANGE_PICKER")
     }
 
     private fun pickDate(isStart: Boolean) {
