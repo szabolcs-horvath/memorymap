@@ -2,11 +2,13 @@ package com.szabolcshorvath.memorymap.adapter
 
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBinding
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
@@ -70,6 +72,10 @@ class TimelineAdapter(
             }
 
             binding.memoryDate.text = memoryGroup.getFormattedDate()
+
+            val hue = memoryGroup.markerHue ?: BitmapDescriptorFactory.HUE_RED
+            binding.colorIndicator.setBackgroundColor(Color.HSVToColor(floatArrayOf(hue, 1f, 1f)))
+
             binding.root.setOnClickListener { onMemoryClick(memoryGroup) }
         }
 
