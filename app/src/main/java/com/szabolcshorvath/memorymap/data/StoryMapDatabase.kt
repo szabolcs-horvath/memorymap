@@ -1,17 +1,25 @@
 package com.szabolcshorvath.memorymap.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [MemoryGroup::class, MediaItem::class], version = 7, exportSchema = true)
+@Database(
+    entities = [MemoryGroup::class, MediaItem::class],
+    version = StoryMapDatabase.DB_VERSION,
+    autoMigrations = [AutoMigration(from = 6, to = 8)],
+    exportSchema = true
+)
 @TypeConverters(Converters::class)
 abstract class StoryMapDatabase : RoomDatabase() {
     abstract fun memoryGroupDao(): MemoryGroupDao
 
     companion object {
+        const val DB_VERSION = 8
+
         @Volatile
         private var INSTANCE: StoryMapDatabase? = null
 
@@ -22,7 +30,7 @@ abstract class StoryMapDatabase : RoomDatabase() {
                     StoryMapDatabase::class.java,
                     "memory_map_database"
                 )
-                    .fallbackToDestructiveMigration(true)
+                    .fallbackToDestructiveMigration(false)
                     .build()
                 INSTANCE = instance
                 instance

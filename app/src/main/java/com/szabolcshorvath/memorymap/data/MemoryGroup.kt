@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.ZonedDateTime
@@ -19,7 +20,8 @@ data class MemoryGroup(
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
     val isAllDay: Boolean,
-    val markerHue: Float?
+    @ColumnInfo(defaultValue = "0.0")
+    val markerHue: Float? = 0.0f
 ) {
     fun getFormattedDate(): String {
         // Use FormatStyle to respect locale settings

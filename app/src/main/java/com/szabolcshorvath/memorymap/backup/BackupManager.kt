@@ -114,7 +114,8 @@ class BackupManager(private val context: Context) {
                     SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
                 )
                 metadata.put("dbSize", dbFile.length())
-                metadata.put("version", 1)
+                metadata.put("version", 2) // Metadata version
+                metadata.put("dbVersion", StoryMapDatabase.DB_VERSION)
                 metadata.put("isAutomatic", isAutomatic)
 
                 val metadataFile = File(tempDir, "metadata.json")
