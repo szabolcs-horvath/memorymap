@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.content.Context
+import android.graphics.Color
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
@@ -10,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -146,6 +148,10 @@ class MemoryFragment : Fragment() {
             }"
         }
         binding.locationText.text = locationString
+
+        val hue = group.markerHue ?: BitmapDescriptorFactory.HUE_RED
+        val hsv = floatArrayOf(hue, 1f, 1f)
+        binding.divider.setBackgroundColor(Color.HSVToColor(hsv))
 
         binding.showOnTimelineButton.setOnClickListener {
             listener?.onNavigateToTimeline(group.id)

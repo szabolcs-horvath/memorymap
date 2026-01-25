@@ -4,6 +4,9 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -12,6 +15,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +25,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -55,6 +60,7 @@ class AddMemoryGroupFragment : Fragment() {
     private var startDateTime: ZonedDateTime = ZonedDateTime.now()
     private var endDateTime: ZonedDateTime = ZonedDateTime.now().plusHours(1)
     private var isAllDay = false
+    private var markerHue: Float = BitmapDescriptorFactory.HUE_RED
 
     private var listener: AddMemoryListener? = null
     private lateinit var backupManager: BackupManager
@@ -130,6 +136,8 @@ class AddMemoryGroupFragment : Fragment() {
         setupRecyclerView()
         updateLocationText()
         updateDateTimeButtons()
+        setupPresetColors()
+        updateHueUI()
 
         binding.selectLocationButton.setOnClickListener {
             listener?.onPickLocation(lat, lng)
@@ -145,6 +153,13 @@ class AddMemoryGroupFragment : Fragment() {
         binding.endDateButton.setOnClickListener { pickDate(false) }
         binding.endTimeButton.setOnClickListener { pickTime(false) }
         binding.dateRangeButton.setOnClickListener { pickDateRange() }
+
+        binding.hueSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                markerHue = value
+                updateHueUI()
+            }
+        }
 
         binding.pickMediaButton.setOnClickListener {
             pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
@@ -172,6 +187,52 @@ class AddMemoryGroupFragment : Fragment() {
         binding.selectedMediaCount.text = "${selectedMediaUris.size} items selected"
     }
 
+    private fun setupPresetColors() {
+        val presets = listOf(
+            BitmapDescriptorFactory.HUE_RED,
+            BitmapDescriptorFactory.HUE_ORANGE,
+            BitmapDescriptorFactory.HUE_YELLOW,
+            BitmapDescriptorFactory.HUE_GREEN,
+            BitmapDescriptorFactory.HUE_CYAN,
+            BitmapDescriptorFactory.HUE_AZURE,
+            BitmapDescriptorFactory.HUE_BLUE,
+            BitmapDescriptorFactory.HUE_VIOLET,
+            BitmapDescriptorFactory.HUE_MAGENTA,
+            BitmapDescriptorFactory.HUE_ROSE
+        )
+
+        binding.presetColorsLayout.removeAllViews()
+        val size = (32 * resources.displayMetrics.density).toInt()
+        val margin = (12 * resources.displayMetrics.density).toInt()
+
+        presets.forEach { hue ->
+            val view = View(requireContext())
+            val params = LinearLayout.LayoutParams(size, size)
+            params.setMargins(0, 0, margin, 0)
+            view.layoutParams = params
+
+            val shape = GradientDrawable()
+            shape.shape = GradientDrawable.OVAL
+            shape.setColor(Color.HSVToColor(floatArrayOf(hue, 1f, 1f)))
+            // Add a stroke to make it look nicer, especially for light colors
+            shape.setStroke((1 * resources.displayMetrics.density).toInt(), Color.LTGRAY)
+            view.background = shape
+
+            view.setOnClickListener {
+                markerHue = hue
+                updateHueUI()
+            }
+            binding.presetColorsLayout.addView(view)
+        }
+    }
+
+    private fun updateHueUI() {
+        binding.hueSlider.value = markerHue
+        val color = Color.HSVToColor(floatArrayOf(markerHue, 1f, 1f))
+        val colorStateList = ColorStateList.valueOf(color)
+        binding.hueSlider.thumbTintList = colorStateList
+    }
+
     private fun showClearConfirmationDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle(if (editingMemoryId != null) "Discard Changes" else "Clear Fields")
@@ -192,7 +253,9 @@ class AddMemoryGroupFragment : Fragment() {
         isAllDay = false
         startDateTime = ZonedDateTime.now()
         endDateTime = ZonedDateTime.now().plusHours(1)
+        markerHue = BitmapDescriptorFactory.HUE_RED
         updateDateTimeButtons()
+        updateHueUI()
         selectedMediaUris.clear()
         updateMediaUI()
 
@@ -233,6 +296,7 @@ class AddMemoryGroupFragment : Fragment() {
                     isAllDay = group.isAllDay
                     startDateTime = group.startDate
                     endDateTime = group.endDate
+                    markerHue = group.markerHue ?: BitmapDescriptorFactory.HUE_RED
 
                     binding.titleInput.setText(group.title)
                     binding.descriptionInput.setText(group.description)
@@ -244,6 +308,7 @@ class AddMemoryGroupFragment : Fragment() {
 
                     updateLocationText()
                     updateDateTimeButtons()
+                    updateHueUI()
                     binding.saveButton.text = "Update Memory"
                 }
             }
@@ -396,7 +461,8 @@ class AddMemoryGroupFragment : Fragment() {
                 address = address,
                 startDate = finalStart,
                 endDate = finalEnd,
-                isAllDay = isAllDay
+                isAllDay = isAllDay,
+                markerHue = markerHue
             )
 
             val groupId = if (editingMemoryId != null) {

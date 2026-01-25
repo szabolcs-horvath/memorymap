@@ -19,6 +19,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapColorScheme
@@ -352,7 +353,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if (!groupEnd.isBefore(start) && !groupStart.isAfter(end)) {
                 val position = LatLng(group.latitude, group.longitude)
                 val markerTitle = group.title
-                val marker = map.addMarker(MarkerOptions().position(position).title(markerTitle))
+                val markerHue = group.markerHue ?: BitmapDescriptorFactory.HUE_RED
+                val marker = map.addMarker(
+                    MarkerOptions()
+                        .position(position)
+                        .title(markerTitle)
+                        .icon(BitmapDescriptorFactory.defaultMarker(markerHue))
+                )
                 if (marker != null) {
                     marker.tag = group
                     markerMap[group.id] = marker

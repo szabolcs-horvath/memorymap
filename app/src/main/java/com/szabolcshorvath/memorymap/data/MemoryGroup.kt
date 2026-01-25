@@ -18,7 +18,8 @@ data class MemoryGroup(
     val address: String?,
     val startDate: ZonedDateTime,
     val endDate: ZonedDateTime,
-    val isAllDay: Boolean
+    val isAllDay: Boolean,
+    val markerHue: Float?
 ) {
     fun getFormattedDate(): String {
         // Use FormatStyle to respect locale settings
