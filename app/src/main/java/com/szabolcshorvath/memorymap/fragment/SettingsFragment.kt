@@ -14,6 +14,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
@@ -90,6 +91,13 @@ class SettingsFragment : Fragment() {
         backupManager = BackupManager(requireContext())
 
         setupRecyclerView()
+
+        setFragmentResultListener(REQUEST_KEY_BACKUP_REFRESH) { _, _ ->
+            val email = binding.tvAccountName.tag as? String
+            if (email != null) {
+                loadBackups(email)
+            }
+        }
 
         binding.swipeRefresh.setOnRefreshListener {
             val email = binding.tvAccountName.tag as? String
@@ -417,5 +425,6 @@ class SettingsFragment : Fragment() {
 
     companion object {
         const val TAG = "SettingsFragment"
+        const val REQUEST_KEY_BACKUP_REFRESH = "backup_refresh"
     }
 }

@@ -126,6 +126,8 @@ dependencies {
 
     implementation(libs.material.tap.target.prompt)
 
+    implementation(libs.androidx.fragment.ktx)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

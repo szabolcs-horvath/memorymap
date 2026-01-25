@@ -6,6 +6,7 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
 import androidx.core.net.toUri
+import androidx.fragment.app.FragmentActivity
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -17,6 +18,7 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -53,12 +55,22 @@ class BackupManager(private val context: Context) {
     suspend fun triggerAutomaticBackup() {
         withContext(Dispatchers.IO) {
             try {
-                val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull() ?: return@withContext
+                val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull()
+                    ?: return@withContext
                 val googleAuthManager = GoogleAuthManager(context)
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                performBackup(credential, isAutomatic = true) {
+                val success = performBackup(credential, isAutomatic = true) {
                     Log.d(TAG, "Automatic backup progress: $it")
+                }
+
+                if (success) {
+                    withContext(Dispatchers.Main) {
+                        (context as? FragmentActivity)?.supportFragmentManager?.setFragmentResult(
+                            SettingsFragment.REQUEST_KEY_BACKUP_REFRESH,
+                            android.os.Bundle()
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to trigger automatic backup", e)
@@ -125,7 +137,8 @@ class BackupManager(private val context: Context) {
 
                 // Upload
                 val fileMetadata = DriveFile()
-                val prefix = if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
+                val prefix =
+                    if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
                 fileMetadata.name = "$prefix${
                     SimpleDateFormat(
                         "yyyyMMdd_HHmmss",
@@ -255,7 +268,8 @@ class BackupManager(private val context: Context) {
     }
 
     private suspend fun verifyAndFixMediaItems() {
-        val currentDeviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        val currentDeviceId =
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
         val database = StoryMapDatabase.getDatabase(context)
         val dao = database.memoryGroupDao()
         val mediaItems = dao.getAllMediaItems()
@@ -285,23 +299,46 @@ class BackupManager(private val context: Context) {
         if (uniqueSizes.isEmpty()) return emptyList()
         val selection = "${MediaStore.MediaColumns.SIZE} IN (${uniqueSizes.joinToString(", ")})"
 
-        queryMediaStore(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, selection, mediaList)
-        queryMediaStore(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, selection, mediaList)
+        queryMediaStore(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            mediaList
+        )
+        queryMediaStore(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            mediaList
+        )
         return mediaList
     }
 
-    private fun queryMediaStore(contentUri: Uri, projection: Array<String>, selection: String?, mediaList: MutableList<LocalMediaInfo>) {
+    private fun queryMediaStore(
+        contentUri: Uri,
+        projection: Array<String>,
+        selection: String?,
+        mediaList: MutableList<LocalMediaInfo>
+    ) {
         try {
-            context.contentResolver.query(contentUri, projection, selection, null, null)?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                while (cursor.moveToNext()) {
-                    val size = cursor.getLong(sizeCol)
-                    val id = cursor.getLong(idCol)
-                    val uri = android.content.ContentUris.withAppendedId(contentUri, id).toString()
-                    mediaList.add(LocalMediaInfo(uri, MediaHasher.calculateMediaSignature(context, uri.toUri()), size))
+            context.contentResolver.query(contentUri, projection, selection, null, null)
+                ?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                    val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                    while (cursor.moveToNext()) {
+                        val size = cursor.getLong(sizeCol)
+                        val id = cursor.getLong(idCol)
+                        val uri =
+                            android.content.ContentUris.withAppendedId(contentUri, id).toString()
+                        mediaList.add(
+                            LocalMediaInfo(
+                                uri,
+                                MediaHasher.calculateMediaSignature(context, uri.toUri()),
+                                size
+                            )
+                        )
+                    }
                 }
-            }
         } catch (e: Exception) {
             Log.e(TAG, "Error querying media store: ${e.message}")
         }
@@ -322,7 +359,8 @@ class BackupManager(private val context: Context) {
 
     private fun getOrCreateBackupFolder(driveService: Drive): String {
         val folderName = "Memory Map Backups"
-        val query = "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
+        val query =
+            "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
         val result = driveService.files().list().setQ(query).setSpaces("drive").execute()
         if (result.files.isNotEmpty()) return result.files[0].id
         val folderMetadata = DriveFile().apply {
