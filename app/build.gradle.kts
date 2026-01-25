@@ -23,8 +23,8 @@ android {
         applicationId = "com.szabolcshorvath.memorymap"
         minSdk = 27
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = 2
+        versionName = "Nagyon_cuki_vagy_<3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
