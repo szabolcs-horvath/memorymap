@@ -1,1 +1,6 @@
 /build
+/schemas
+/debug
+/release
+
+google-services.json
