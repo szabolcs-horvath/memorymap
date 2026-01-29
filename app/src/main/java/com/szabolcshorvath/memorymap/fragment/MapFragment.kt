@@ -353,7 +353,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if (!groupEnd.isBefore(start) && !groupStart.isAfter(end)) {
                 val position = LatLng(group.latitude, group.longitude)
                 val markerTitle = group.title
-                val markerHue = group.markerHue ?: BitmapDescriptorFactory.HUE_RED
+                val markerHue =
+                    group.markerHue?.let { it % 360.0f } ?: BitmapDescriptorFactory.HUE_RED
                 val marker = map.addMarker(
                     MarkerOptions()
                         .position(position)
