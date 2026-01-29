@@ -382,7 +382,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
 
         refreshData()
 
-        mapFragment.setDateFilter(startDate, endDate)
+        mapFragment.updateDateFilterForMemory(startDate, endDate)
         mapFragment.focusOnMemory(lat, lng, id)
     }
 

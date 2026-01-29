@@ -153,7 +153,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val map = mMap
         if (map != null) {
             val memory = allGroups.find { it.id == id }
-            setDateFilter(memory)
+            updateDateFilterForMemory(memory)
             moveToLocationAndSelectMarker(lat, lng, memory)
         } else {
             initialSelectedLat = lat
@@ -162,19 +162,30 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    fun updateDateFilterForMemory(memory: MemoryGroup?) {
+        if (memory != null) {
+            val memoryStart = memory.startDate.toLocalDate()
+            val memoryEnd = memory.endDate.toLocalDate()
+
+            updateDateFilterForMemory(memoryStart, memoryEnd)
+        }
+    }
+
+    fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
+        val currentStart = filterStartDate ?: memoryStart
+        val currentEnd = filterEndDate ?: memoryEnd
+
+        val newStart = if (memoryStart.isBefore(currentStart)) memoryStart else currentStart
+        val newEnd = if (memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
+
+        setDateFilter(newStart, newEnd)
+    }
+
     fun setDateFilter(startDate: LocalDate, endDate: LocalDate) {
         filterStartDate = startDate
         filterEndDate = endDate
         updateDateRangeButtonText()
         updateMapMarkers()
-    }
-
-    fun setDateFilter(memory: MemoryGroup?) {
-        if (memory != null) {
-            val startDate = memory.startDate.toLocalDate()
-            val endDate = memory.endDate.toLocalDate()
-            setDateFilter(startDate, endDate)
-        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -314,9 +325,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val map = mMap
             if (map != null) {
                 if (allGroups.isNotEmpty()) {
-                    val lastMemory = allGroups.maxBy { it.endDate }
-                    filterStartDate = lastMemory.startDate.toLocalDate()
-                    filterEndDate = lastMemory.endDate.toLocalDate()
+                    val minDate = allGroups.minOf { it.startDate.toLocalDate() }
+                    val maxDate = allGroups.maxOf { it.endDate.toLocalDate() }
+
+                    if (filterStartDate == null || filterEndDate == null) {
+                        filterStartDate = minDate
+                        filterEndDate = maxDate
+                    }
                 }
 
                 updateDateRangeButtonText()
