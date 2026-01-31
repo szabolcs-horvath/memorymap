@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -238,7 +237,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
 
     private fun showAddMemoryPrompt() {
         MaterialTapTargetPrompt.Builder(this)
-            .setTarget(binding.bottomNavigation.findViewById<View>(R.id.navigation_add))
+            .setTarget(binding.bottomNavigation.findViewById(R.id.navigation_add))
             .setPrimaryText("Create memories")
             .setSecondaryText("You can add new memories here")
             .setPromptStateChangeListener { _, state ->
@@ -253,7 +252,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
 
     private fun showTimelinePrompt() {
         MaterialTapTargetPrompt.Builder(this)
-            .setTarget(binding.bottomNavigation.findViewById<View>(R.id.navigation_timeline))
+            .setTarget(binding.bottomNavigation.findViewById(R.id.navigation_timeline))
             .setPrimaryText("View your timeline")
             .setSecondaryText("All your memories will appear here in chronological order")
             .setPromptStateChangeListener { _, state ->
@@ -268,7 +267,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
 
     private fun showMapPrompt() {
         MaterialTapTargetPrompt.Builder(this)
-            .setTarget(binding.bottomNavigation.findViewById<View>(R.id.navigation_map))
+            .setTarget(binding.bottomNavigation.findViewById(R.id.navigation_map))
             .setPrimaryText("View your memories on the map")
             .setSecondaryText("Your memories will appear on the map")
             .setPromptStateChangeListener { _, state ->

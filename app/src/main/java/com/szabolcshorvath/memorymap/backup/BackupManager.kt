@@ -111,7 +111,7 @@ class BackupManager(private val context: Context) {
                 metadata.put("timestamp", System.currentTimeMillis())
                 metadata.put(
                     "date",
-                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+                    SimpleDateFormat(BACKUP_METADATA_DATE_FORMAT, Locale.US).format(Date())
                 )
                 metadata.put("dbSize", dbFile.length())
                 metadata.put("version", 2) // Metadata version
@@ -141,10 +141,7 @@ class BackupManager(private val context: Context) {
                 val prefix =
                     if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
                 fileMetadata.name = "$prefix${
-                    SimpleDateFormat(
-                        "yyyyMMdd_HHmmss",
-                        Locale.US
-                    ).format(Date())
+                    SimpleDateFormat(BACKUP_FILE_NAME_DATE_FORMAT, Locale.US).format(Date())
                 }.zip"
                 fileMetadata.parents = listOf(folderId)
 
@@ -383,5 +380,7 @@ class BackupManager(private val context: Context) {
 
     companion object {
         const val TAG = "BackupManager"
+        private const val BACKUP_METADATA_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss"
+        private const val BACKUP_FILE_NAME_DATE_FORMAT = "yyyyMMdd_HHmmss"
     }
 }
