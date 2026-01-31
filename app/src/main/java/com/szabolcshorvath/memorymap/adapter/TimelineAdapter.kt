@@ -99,7 +99,7 @@ class TimelineAdapter(
     class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(date: LocalDate) {
-            binding.dateText.text = date.format(dateFormatter)
+            binding.dateText.text = date.format(dateFormatter.withLocale(Locale.getDefault()))
         }
     }
 
@@ -153,6 +153,6 @@ class TimelineAdapter(
         private const val VIEW_TYPE_SEPARATOR = 1
 
         private val dateFormatter =
-            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
     }
 }

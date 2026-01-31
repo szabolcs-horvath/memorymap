@@ -25,8 +25,8 @@ data class MemoryGroup(
 ) {
     fun getFormattedDate(): String {
         // Use FormatStyle to respect locale settings
-        val startDay = startDate.format(dateFormatter)
-        val endDay = endDate.format(dateFormatter)
+        val startDay = startDate.format(dateFormatter.withLocale(Locale.getDefault()))
+        val endDay = endDate.format(dateFormatter.withLocale(Locale.getDefault()))
 
         if (isAllDay) {
             return if (startDay == endDay) {
@@ -35,8 +35,8 @@ data class MemoryGroup(
                 "$startDay - $endDay"
             }
         } else {
-            val startTime = startDate.format(timeFormatter)
-            val endTime = endDate.format(timeFormatter)
+            val startTime = startDate.format(timeFormatter.withLocale(Locale.getDefault()))
+            val endTime = endDate.format(timeFormatter.withLocale(Locale.getDefault()))
 
             return if (startDay == endDay) {
                 "$startDay $startTime - $endTime"
@@ -48,8 +48,8 @@ data class MemoryGroup(
 
     companion object {
         private val dateFormatter =
-            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
         private val timeFormatter =
-            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
     }
 }
