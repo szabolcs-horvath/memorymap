@@ -4,7 +4,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
@@ -17,83 +16,79 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
-android {
-    namespace = "com.szabolcshorvath.memorymap"
-    compileSdk = 36
-
-    defaultConfig {
-        applicationId = "com.szabolcshorvath.memorymap"
-        minSdk = 27
-        targetSdk = 36
-        versionCode = 3
-        versionName = "crash_mentes_verzio_Timinek_<3"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
-        buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 
-    buildFeatures {
-        buildConfig = true
-        viewBinding = true
-    }
+    android {
+        namespace = "com.szabolcshorvath.memorymap"
+        compileSdk = 36
 
-    signingConfigs {
-        create("release") {
-            storeFile = file(localProperties.getProperty("RELEASE_STORE_FILE"))
-            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
-            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
-            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
-        }
-    }
+        defaultConfig {
+            applicationId = "com.szabolcshorvath.memorymap"
+            minSdk = 27
+            targetSdk = 36
+            versionCode = 3
+            versionName = "crash_mentes_verzio_Timinek_<3"
 
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+            val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
+            buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
         }
 
-        debug {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+        buildFeatures {
+            buildConfig = true
+            viewBinding = true
+        }
+
+        signingConfigs {
+            create("release") {
+                storeFile = localProperties["RELEASE_STORE_FILE"]?.let { file(it) }
+                storePassword = localProperties["RELEASE_STORE_PASSWORD"] as String?
+                keyAlias = localProperties["RELEASE_KEY_ALIAS"] as String?
+                keyPassword = localProperties["RELEASE_KEY_PASSWORD"] as String?
+            }
+        }
+
+        buildTypes {
+            release {
+                signingConfig = signingConfigs.getByName("release")
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+            }
+
+            debug {
+                signingConfig = signingConfigs.getByName("release")
+                isMinifyEnabled = false
+                isShrinkResources = false
+            }
+        }
+
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+
+        packaging {
+            resources {
+                excludes += "META-INF/INDEX.LIST"
+                excludes += "META-INF/DEPENDENCIES"
+                excludes += "META-INF/LICENSE"
+                excludes += "META-INF/LICENSE.txt"
+                excludes += "META-INF/license.txt"
+                excludes += "META-INF/NOTICE"
+                excludes += "META-INF/NOTICE.txt"
+                excludes += "META-INF/notice.txt"
+                excludes += "META-INF/ASL2.0"
+            }
         }
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
-
-    packaging {
-        resources {
-            excludes += "META-INF/INDEX.LIST"
-            excludes += "META-INF/DEPENDENCIES"
-            excludes += "META-INF/LICENSE"
-            excludes += "META-INF/LICENSE.txt"
-            excludes += "META-INF/license.txt"
-            excludes += "META-INF/NOTICE"
-            excludes += "META-INF/NOTICE.txt"
-            excludes += "META-INF/notice.txt"
-            excludes += "META-INF/ASL2.0"
-        }
-    }
-}
-
-configurations.all {
-    exclude(group = "org.apache.httpcomponents", module = "httpclient")
 }
 
 ksp {
@@ -101,39 +96,49 @@ ksp {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
+    // Core & UI
     implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.play.services.maps)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.play.services.location)
-    implementation(libs.google.places)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.datastore.preferences)
+    implementation(libs.material)
+    implementation(libs.material.tap.target.prompt)
 
+    // Google Maps
+    implementation(libs.google.places)
+    implementation(libs.play.services.location)
+    implementation(libs.play.services.maps)
+
+    // Room
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // Media
     implementation(libs.coil)
     implementation(libs.coil.video)
     implementation(libs.photoview)
 
-    implementation(libs.datastore.preferences)
-    implementation(libs.play.services.auth)
+    // Auth
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
-    implementation(libs.googleid)
     implementation(libs.google.api.client.android)
+    implementation(libs.googleid)
+    implementation(libs.play.services.auth)
+
+    // Drive
     implementation(libs.google.api.services.drive)
+
+    // JSON
     implementation(libs.google.http.client.gson)
 
-    implementation(libs.material.tap.target.prompt)
-
-    implementation(libs.androidx.fragment.ktx)
-
+    // Firebase with BOM
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
 
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
