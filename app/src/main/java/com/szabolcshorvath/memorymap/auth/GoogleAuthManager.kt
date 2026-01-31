@@ -10,6 +10,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -38,13 +39,27 @@ class GoogleAuthManager(private val context: Context) {
                 )
 
                 handleSignIn(result, callback)
-            } catch (e: GetCredentialException) {
-                Log.e(TAG, "Sign in failed", e)
-                Toast.makeText(context, "Sign in failed: ${e.message}", Toast.LENGTH_SHORT)
-                    .show()
             } catch (e: Exception) {
-                Log.e(TAG, "Sign in error", e)
-                Toast.makeText(context, "Sign in error", Toast.LENGTH_SHORT).show()
+                when (e) {
+                    is NoCredentialException,
+                    is GetCredentialException -> {
+                        Log.w(TAG, "Sign in failed", e)
+                        Toast.makeText(
+                            context,
+                            "Sign in failed: ${e.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+
+                    else -> {
+                        Log.e(TAG, "Unexpected sign in error", e)
+                        Toast.makeText(
+                            context,
+                            "Unexpected sign in error: ${e.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
         }
     }
