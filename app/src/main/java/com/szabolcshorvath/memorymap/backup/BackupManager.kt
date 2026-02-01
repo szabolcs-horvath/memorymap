@@ -11,11 +11,9 @@ import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
-import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
-import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -243,7 +241,7 @@ class BackupManager(private val context: Context) {
                 }
 
                 onProgress("Verifying media...")
-                verifyAndFixMediaItems()
+                LocalMediaUtil.verifyAndFixMediaItems(context)
 
                 return@withContext true
             } catch (e: Exception) {
@@ -253,37 +251,6 @@ class BackupManager(private val context: Context) {
                 tempZipFile?.delete()
                 tempRestoreDir?.deleteRecursively()
             }
-        }
-    }
-
-    private suspend fun verifyAndFixMediaItems() {
-        val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
-        val dao = StoryMapDatabase.getDatabase(context).memoryGroupDao()
-        val mediaItems = dao.getAllMediaItems()
-        val localMediaList = LocalMediaUtil.getLocalMediaForItems(context, mediaItems)
-        val itemsToUpdate = mutableListOf<MediaItem>()
-
-        for (item in mediaItems) {
-            if (item.deviceId != installationIdentifier
-                || item.uri.contains("photopicker")
-                || !LocalMediaUtil.isSignatureValid(context, item)
-            ) {
-                val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
-                if (candidate != null) {
-                    itemsToUpdate.add(
-                        item.copy(
-                            deviceId = installationIdentifier,
-                            uri = candidate.uri
-                        )
-                    )
-                } else {
-                    Log.w(TAG, "No local media found with signature ${item.mediaSignature}")
-                }
-            }
-        }
-
-        if (itemsToUpdate.isNotEmpty()) {
-            dao.updateMediaItems(itemsToUpdate)
         }
     }
 

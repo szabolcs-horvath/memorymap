@@ -10,6 +10,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -29,9 +30,9 @@ import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
+import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uk.co.samuelwall.materialtaptargetprompt.MaterialTapTargetPrompt
@@ -212,7 +213,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
             }
         })
 
-        checkFirstRun()
+        checkAppStatus()
     }
 
     private fun showFragment(fragment: Fragment) {
@@ -225,14 +226,39 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         }
     }
 
-    private fun checkFirstRun() {
+    private fun checkAppStatus() {
         lifecycleScope.launch {
-            val isFirstRun = dataStore.data.map { it[IS_FIRST_RUN] ?: true }.first()
-            if (isFirstRun) {
-                InstallationIdentifier.getInstallationIdentifier(applicationContext)
-                // Small delay to ensure UI is ready
-                kotlinx.coroutines.delay(500)
-                showAddMemoryPrompt()
+            try {
+                val currentVersion =
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        packageManager.getPackageInfo(packageName, 0).longVersionCode
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                    }
+
+                val prefs = dataStore.data.first()
+                val isFirstRun = prefs[IS_FIRST_RUN] ?: true
+                val lastVersion = prefs[LAST_APP_VERSION] ?: 0L
+
+                if (currentVersion > lastVersion) {
+                    launch {
+                        LocalMediaUtil.verifyAndFixMediaItems(applicationContext)
+                    }
+                }
+
+                if (isFirstRun) {
+                    InstallationIdentifier.getInstallationIdentifier(applicationContext)
+                    // Small delay to ensure UI is ready
+                    kotlinx.coroutines.delay(500)
+                    showAddMemoryPrompt()
+
+                    dataStore.edit {
+                        it[LAST_APP_VERSION] = currentVersion
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -439,5 +465,6 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     companion object {
         const val TAG = "MainActivity"
         private val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
+        private val LAST_APP_VERSION = longPreferencesKey("last_app_version")
     }
 }

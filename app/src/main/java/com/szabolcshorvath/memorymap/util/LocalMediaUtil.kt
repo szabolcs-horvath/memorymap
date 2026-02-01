@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
 import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 
 object LocalMediaUtil {
     private const val TAG = "LocalMediaUtil"
@@ -98,5 +99,36 @@ object LocalMediaUtil {
             Log.e(TAG, "Error querying media store: ${e.message}")
         }
         return mediaList
+    }
+
+    suspend fun verifyAndFixMediaItems(context: Context) {
+        val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
+        val dao = StoryMapDatabase.getDatabase(context).memoryGroupDao()
+        val mediaItems = dao.getAllMediaItems()
+        val localMediaList = getLocalMediaForItems(context, mediaItems)
+        val itemsToUpdate = mutableListOf<MediaItem>()
+
+        for (item in mediaItems) {
+            if (item.deviceId != installationIdentifier
+                || item.uri.contains("photopicker")
+                || !isSignatureValid(context, item)
+            ) {
+                val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
+                if (candidate != null) {
+                    itemsToUpdate.add(
+                        item.copy(
+                            deviceId = installationIdentifier,
+                            uri = candidate.uri
+                        )
+                    )
+                } else {
+                    Log.w(TAG, "No local media found with signature ${item.mediaSignature}")
+                }
+            }
+        }
+
+        if (itemsToUpdate.isNotEmpty()) {
+            dao.updateMediaItems(itemsToUpdate)
+        }
     }
 }
