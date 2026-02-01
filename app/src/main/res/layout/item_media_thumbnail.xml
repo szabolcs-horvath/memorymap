@@ -28,4 +28,16 @@
         app:layout_constraintTop_toTopOf="@+id/thumbnailImage"
         app:tint="@android:color/white" />
 
+    <ImageView
+        android:id="@+id/errorIcon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@android:drawable/ic_dialog_alert"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@+id/thumbnailImage"
+        app:layout_constraintEnd_toEndOf="@+id/thumbnailImage"
+        app:layout_constraintStart_toStartOf="@+id/thumbnailImage"
+        app:layout_constraintTop_toTopOf="@+id/thumbnailImage"
+        app:tint="@android:color/holo_red_dark" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

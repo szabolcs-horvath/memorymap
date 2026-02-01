@@ -9,7 +9,8 @@
         android:id="@+id/thumbnailImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop" />
+        android:scaleType="centerCrop"
+        android:background="#EEEEEE" />
 
     <ImageView
         android:id="@+id/videoIcon"
@@ -19,6 +20,15 @@
         android:src="@android:drawable/ic_media_play"
         android:visibility="gone"
         app:tint="@android:color/white" />
+
+    <ImageView
+        android:id="@+id/errorIcon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="center"
+        android:src="@android:drawable/ic_dialog_alert"
+        android:visibility="gone"
+        app:tint="@android:color/holo_red_dark" />
 
     <ImageButton
         android:id="@+id/removeButton"

@@ -1,10 +1,7 @@
 package com.szabolcshorvath.memorymap.backup
 
 import android.content.Context
-import android.net.Uri
-import android.provider.MediaStore
 import android.util.Log
-import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
@@ -19,7 +16,7 @@ import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
-import com.szabolcshorvath.memorymap.util.MediaHasher
+import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -39,12 +36,6 @@ import java.util.zip.ZipOutputStream
 import com.google.api.services.drive.model.File as DriveFile
 
 class BackupManager(private val context: Context) {
-
-    private data class LocalMediaInfo(
-        val uri: String,
-        val mediaSignature: String,
-        val size: Long
-    )
 
     fun getDriveService(credential: GoogleAccountCredential): Drive = Drive.Builder(
         NetHttpTransport(),
@@ -267,17 +258,15 @@ class BackupManager(private val context: Context) {
 
     private suspend fun verifyAndFixMediaItems() {
         val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
-        val database = StoryMapDatabase.getDatabase(context)
-        val dao = database.memoryGroupDao()
+        val dao = StoryMapDatabase.getDatabase(context).memoryGroupDao()
         val mediaItems = dao.getAllMediaItems()
-
-        val localMediaList = getAllLocalMedia(mediaItems)
+        val localMediaList = LocalMediaUtil.getLocalMediaForItems(context, mediaItems)
         val itemsToUpdate = mutableListOf<MediaItem>()
 
         for (item in mediaItems) {
             if (item.deviceId != installationIdentifier
                 || item.uri.contains("photopicker")
-                || !isItemUriValid(item)
+                || !LocalMediaUtil.isSignatureValid(context, item)
             ) {
                 val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
                 if (candidate != null) {
@@ -287,74 +276,14 @@ class BackupManager(private val context: Context) {
                             uri = candidate.uri
                         )
                     )
+                } else {
+                    Log.w(TAG, "No local media found with signature ${item.mediaSignature}")
                 }
             }
         }
 
         if (itemsToUpdate.isNotEmpty()) {
             dao.updateMediaItems(itemsToUpdate)
-        }
-    }
-
-    private fun isItemUriValid(item: MediaItem): Boolean {
-        val uri = item.uri.toUri()
-        return try {
-            val signatureOfMediaOfUri = MediaHasher.calculateMediaSignature(context, uri)
-            signatureOfMediaOfUri == item.mediaSignature
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    private fun getAllLocalMedia(mediaItems: List<MediaItem>): List<LocalMediaInfo> {
-        val mediaList = mutableListOf<LocalMediaInfo>()
-        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
-        val uniqueSizes = mediaItems.map { it.fileSize }.distinct()
-        if (uniqueSizes.isEmpty()) return emptyList()
-        val selection = "${MediaStore.MediaColumns.SIZE} IN (${uniqueSizes.joinToString(", ")})"
-
-        queryMediaStore(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            mediaList
-        )
-        queryMediaStore(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            mediaList
-        )
-        return mediaList
-    }
-
-    private fun queryMediaStore(
-        contentUri: Uri,
-        projection: Array<String>,
-        selection: String?,
-        mediaList: MutableList<LocalMediaInfo>
-    ) {
-        try {
-            context.contentResolver.query(contentUri, projection, selection, null, null)
-                ?.use { cursor ->
-                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                    val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                    while (cursor.moveToNext()) {
-                        val size = cursor.getLong(sizeCol)
-                        val id = cursor.getLong(idCol)
-                        val uri =
-                            android.content.ContentUris.withAppendedId(contentUri, id).toString()
-                        mediaList.add(
-                            LocalMediaInfo(
-                                uri,
-                                MediaHasher.calculateMediaSignature(context, uri.toUri()),
-                                size
-                            )
-                        )
-                    }
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error querying media store: ${e.message}")
         }
     }
 

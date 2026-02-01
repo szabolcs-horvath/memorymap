@@ -21,9 +21,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
+import coil3.request.crossfade
+import coil3.video.VideoFrameDecoder
+import coil3.video.videoFrameMicros
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.backup.BackupManager
@@ -51,7 +55,14 @@ class AddMemoryGroupFragment : Fragment() {
 
     private var _binding: FragmentAddMemoryGroupBinding? = null
     private val binding get() = _binding!!
-    private val selectedMediaUris = mutableListOf<Pair<Uri, MediaType>>()
+
+    private data class SelectedMedia(
+        val uri: Uri,
+        val type: MediaType,
+        val deviceId: String
+    )
+
+    private val selectedMedia = mutableListOf<SelectedMedia>()
     private var lat = 0.0
     private var lng = 0.0
     private var placeName: String? = null
@@ -78,18 +89,22 @@ class AddMemoryGroupFragment : Fragment() {
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
             uris.let { it ->
                 val contentResolver = requireContext().contentResolver
-                val newItems = it.mapNotNull { uri ->
-                    if (selectedMediaUris.any { it.first == uri }) {
-                        null
-                    } else {
-                        val type = contentResolver.getType(uri)
-                        val mediaType =
-                            if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-                        uri to mediaType
+                lifecycleScope.launch {
+                    val currentDeviceId =
+                        InstallationIdentifier.getInstallationIdentifier(requireContext())
+                    val newItems = it.mapNotNull { uri ->
+                        if (selectedMedia.any { it.uri == uri }) {
+                            null
+                        } else {
+                            val type = contentResolver.getType(uri)
+                            val mediaType =
+                                if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
+                            SelectedMedia(uri, mediaType, currentDeviceId)
+                        }
                     }
+                    selectedMedia.addAll(newItems)
+                    updateMediaUI()
                 }
-                selectedMediaUris.addAll(newItems)
-                updateMediaUI()
                 it.forEach { uri ->
                     try {
                         contentResolver.takePersistableUriPermission(
@@ -177,8 +192,8 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        mediaAdapter = SelectedMediaAdapter(selectedMediaUris) { position ->
-            selectedMediaUris.removeAt(position)
+        mediaAdapter = SelectedMediaAdapter(selectedMedia) { position ->
+            selectedMedia.removeAt(position)
             updateMediaUI()
         }
         binding.selectedMediaRecyclerView.adapter = mediaAdapter
@@ -186,7 +201,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun updateMediaUI() {
         mediaAdapter.notifyDataSetChanged()
-        binding.selectedMediaCount.text = "${selectedMediaUris.size} items selected"
+        binding.selectedMediaCount.text = "${selectedMedia.size} items selected"
     }
 
     private fun setupPresetColors() {
@@ -258,7 +273,7 @@ class AddMemoryGroupFragment : Fragment() {
         markerHue = BitmapDescriptorFactory.HUE_RED
         updateDateTimeButtons()
         updateHueUI()
-        selectedMediaUris.clear()
+        selectedMedia.clear()
         updateMediaUI()
 
         binding.titleInput.text?.clear()
@@ -304,8 +319,10 @@ class AddMemoryGroupFragment : Fragment() {
                     binding.descriptionInput.setText(group.description)
                     binding.allDayCheckbox.isChecked = isAllDay
 
-                    selectedMediaUris.clear()
-                    selectedMediaUris.addAll(data.mediaItems.map { it.uri.toUri() to it.type })
+                    selectedMedia.clear()
+                    selectedMedia.addAll(data.mediaItems.map {
+                        SelectedMedia(it.uri.toUri(), it.type, it.deviceId)
+                    })
                     updateMediaUI()
 
                     updateLocationText()
@@ -449,7 +466,6 @@ class AddMemoryGroupFragment : Fragment() {
 
         val context = requireContext()
         val contentResolver = context.contentResolver
-        val deviceId = InstallationIdentifier.getInstallationIdentifier(context)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val db = StoryMapDatabase.getDatabase(context.applicationContext)
@@ -479,7 +495,7 @@ class AddMemoryGroupFragment : Fragment() {
                 db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
             }
 
-            val mediaItems = selectedMediaUris.map { (uri, type) ->
+            val mediaItems = selectedMedia.map { (uri, type, itemDeviceId) ->
                 var size = 0L
                 var date = 0L
 
@@ -506,7 +522,7 @@ class AddMemoryGroupFragment : Fragment() {
                 MediaItem(
                     groupId = groupId.toInt(),
                     uri = uri.toString(),
-                    deviceId = deviceId,
+                    deviceId = itemDeviceId,
                     type = type,
                     mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                     fileSize = size,
@@ -543,9 +559,20 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private inner class SelectedMediaAdapter(
-        private val items: List<Pair<Uri, MediaType>>,
+        private val items: List<SelectedMedia>,
         private val onRemove: (Int) -> Unit
     ) : RecyclerView.Adapter<SelectedMediaAdapter.ViewHolder>() {
+
+        private var currentDeviceId: String? = null
+
+        override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+            super.onAttachedToRecyclerView(recyclerView)
+            recyclerView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                currentDeviceId =
+                    InstallationIdentifier.getInstallationIdentifier(recyclerView.context)
+                notifyDataSetChanged()
+            }
+        }
 
         inner class ViewHolder(val binding: ItemMediaSelectedBinding) :
             RecyclerView.ViewHolder(binding.root)
@@ -557,10 +584,31 @@ class AddMemoryGroupFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val (uri, type) = items[position]
-            holder.binding.thumbnailImage.load(uri)
-            holder.binding.videoIcon.visibility =
-                if (type == MediaType.VIDEO) View.VISIBLE else View.GONE
+            val item = items[position]
+            val isFromOtherDevice = currentDeviceId != null && item.deviceId != currentDeviceId
+
+            if (isFromOtherDevice) {
+                holder.binding.thumbnailImage.setImageDrawable(null)
+                holder.binding.errorIcon.visibility = View.VISIBLE
+                holder.binding.videoIcon.visibility = View.GONE
+            } else {
+                holder.binding.thumbnailImage.load(item.uri) {
+                    crossfade(true)
+                    if (item.type == MediaType.VIDEO) {
+                        videoFrameMicros(0)
+                        decoderFactory { result, options, _ ->
+                            VideoFrameDecoder(result.source, options)
+                        }
+                    }
+                    listener(
+                        onError = { _, _ -> holder.binding.errorIcon.visibility = View.VISIBLE },
+                        onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE }
+                    )
+                }
+                holder.binding.videoIcon.visibility =
+                    if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
+            }
+
             holder.binding.removeButton.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
         }
 

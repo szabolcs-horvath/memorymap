@@ -17,7 +17,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
-import com.szabolcshorvath.memorymap.util.InstallationIdentifier
+import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -161,14 +161,9 @@ class MemoryFragment : Fragment() {
             listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
 
-        val installationIdentifier =
-            InstallationIdentifier.getInstallationIdentifier(requireContext())
-        // Sort media by dateTaken
-        mediaItems = data.mediaItems
-            .filter {
-                it.deviceId == installationIdentifier
-            }
-            .sortedBy { it.dateTaken }
+        mediaItems = data.mediaItems.sortedBy { it.dateTaken }
+        val hasMissingMedia = LocalMediaUtil.hasMissingMedia(requireContext(), mediaItems)
+        binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
         adapter.updateData(mediaItems)
     }
 

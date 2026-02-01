@@ -139,6 +139,18 @@
                 android:background="?attr/colorOutlineVariant" />
 
             <TextView
+                android:id="@+id/mediaWarningText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="#FFF3E0"
+                android:padding="8dp"
+                android:text="Some media items could not be loaded. They may have been deleted, or are from a different device."
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="#E65100"
+                android:visibility="gone" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
