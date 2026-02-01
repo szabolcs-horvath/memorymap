@@ -35,6 +35,7 @@ class BackupAdapter(
             binding.tvBackupDate.text = formattedDate
 
             // Need to use `getSize()` as the size property resolves to `AbstractMap.size` not the size of the file
+            @Suppress("UsePropertyAccessSyntax")
             val size = backup.getSize() ?: 0L
             binding.tvBackupSize.text = Formatter.formatFileSize(binding.root.context, size)
 

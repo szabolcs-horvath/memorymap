@@ -450,7 +450,7 @@ class AddMemoryGroupFragment : Fragment() {
         timePickerDialog.show()
     }
 
-    private suspend fun saveMemoryGroup() {
+    private fun saveMemoryGroup() {
         val title = binding.titleInput.text.toString()
         if (title.isBlank()) {
             Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
