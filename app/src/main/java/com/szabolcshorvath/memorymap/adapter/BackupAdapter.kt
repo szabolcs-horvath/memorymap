@@ -34,7 +34,8 @@ class BackupAdapter(
             }
             binding.tvBackupDate.text = formattedDate
 
-            val size = backup.size.toLong()
+            // Need to use `getSize()` as the size property resolves to `AbstractMap.size` not the size of the file
+            val size = backup.getSize() ?: 0L
             binding.tvBackupSize.text = Formatter.formatFileSize(binding.root.context, size)
 
             binding.btnRestore.setOnClickListener { onRestoreClick(backup) }
