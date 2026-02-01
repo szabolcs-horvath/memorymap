@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.backup
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
-import android.provider.Settings
 import android.util.Log
 import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
@@ -19,6 +18,7 @@ import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
+import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -266,8 +266,7 @@ class BackupManager(private val context: Context) {
     }
 
     private suspend fun verifyAndFixMediaItems() {
-        val currentDeviceId =
-            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
         val database = StoryMapDatabase.getDatabase(context)
         val dao = database.memoryGroupDao()
         val mediaItems = dao.getAllMediaItems()
@@ -276,17 +275,34 @@ class BackupManager(private val context: Context) {
         val itemsToUpdate = mutableListOf<MediaItem>()
 
         for (item in mediaItems) {
-            val isPickerUri = item.uri.contains("com.android.providers.media.photopicker")
-            if (item.deviceId != currentDeviceId || isPickerUri) {
+            if (item.deviceId != installationIdentifier
+                || item.uri.contains("photopicker")
+                || !isItemUriValid(item)
+            ) {
                 val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
                 if (candidate != null) {
-                    itemsToUpdate.add(item.copy(deviceId = currentDeviceId, uri = candidate.uri))
+                    itemsToUpdate.add(
+                        item.copy(
+                            deviceId = installationIdentifier,
+                            uri = candidate.uri
+                        )
+                    )
                 }
             }
         }
 
         if (itemsToUpdate.isNotEmpty()) {
             dao.updateMediaItems(itemsToUpdate)
+        }
+    }
+
+    private fun isItemUriValid(item: MediaItem): Boolean {
+        val uri = item.uri.toUri()
+        return try {
+            val signatureOfMediaOfUri = MediaHasher.calculateMediaSignature(context, uri)
+            signatureOfMediaOfUri == item.mediaSignature
+        } catch (_: Exception) {
+            false
         }
     }
 

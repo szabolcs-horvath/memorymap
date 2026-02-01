@@ -10,7 +10,6 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
-import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -34,6 +33,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
+import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -170,7 +170,9 @@ class AddMemoryGroupFragment : Fragment() {
         }
 
         binding.saveButton.setOnClickListener {
-            saveMemoryGroup()
+            lifecycleScope.launch {
+                saveMemoryGroup()
+            }
         }
     }
 
@@ -431,7 +433,7 @@ class AddMemoryGroupFragment : Fragment() {
         timePickerDialog.show()
     }
 
-    private fun saveMemoryGroup() {
+    private suspend fun saveMemoryGroup() {
         val title = binding.titleInput.text.toString()
         if (title.isBlank()) {
             Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
@@ -447,7 +449,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         val context = requireContext()
         val contentResolver = context.contentResolver
-        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)!!
+        val deviceId = InstallationIdentifier.getInstallationIdentifier(context)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val db = StoryMapDatabase.getDatabase(context.applicationContext)

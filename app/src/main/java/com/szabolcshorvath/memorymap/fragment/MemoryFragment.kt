@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.fragment
 import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
-import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +17,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
+import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -111,7 +111,7 @@ class MemoryFragment : Fragment() {
         }
     }
 
-    private fun displayDetails(data: MemoryGroupWithMedia) {
+    private suspend fun displayDetails(data: MemoryGroupWithMedia) {
         val group = data.group
         binding.titleText.text = group.title
 
@@ -161,13 +161,12 @@ class MemoryFragment : Fragment() {
             listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
 
+        val installationIdentifier =
+            InstallationIdentifier.getInstallationIdentifier(requireContext())
         // Sort media by dateTaken
         mediaItems = data.mediaItems
             .filter {
-                it.deviceId == Settings.Secure.getString(
-                    requireContext().contentResolver,
-                    Settings.Secure.ANDROID_ID
-                )!!
+                it.deviceId == installationIdentifier
             }
             .sortedBy { it.dateTaken }
         adapter.updateData(mediaItems)

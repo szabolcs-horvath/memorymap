@@ -28,6 +28,7 @@ import com.szabolcshorvath.memorymap.fragment.MemoryPagerFragment
 import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
+import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -228,6 +229,7 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         lifecycleScope.launch {
             val isFirstRun = dataStore.data.map { it[IS_FIRST_RUN] ?: true }.first()
             if (isFirstRun) {
+                InstallationIdentifier.getInstallationIdentifier(applicationContext)
                 // Small delay to ensure UI is ready
                 kotlinx.coroutines.delay(500)
                 showAddMemoryPrompt()
