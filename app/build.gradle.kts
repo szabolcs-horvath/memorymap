@@ -29,8 +29,8 @@ kotlin {
             applicationId = "com.szabolcshorvath.memorymap"
             minSdk = 27
             targetSdk = 36
-            versionCode = 4
-            versionName = "Te vagy a legjobb :)"
+            versionCode = 5
+            versionName = "Legyen csodálatos napod :)"
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
