@@ -4,6 +4,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -31,7 +33,10 @@ import com.google.android.libraries.places.widget.PlaceAutocomplete
 import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
@@ -181,12 +186,14 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             selectedPlaceName = null
             selectedAddress = null
             updateSelectedLocation(latLng)
+            reverseGeocode(latLng)
         }
 
         googleMap.setOnPoiClickListener { poi ->
             selectedPlaceName = poi.name
             selectedAddress = null
             updateSelectedLocation(poi.latLng, poi.name)
+            reverseGeocode(poi.latLng)
         }
 
         googleMap.setOnMyLocationButtonClickListener {
@@ -196,6 +203,61 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
         if (selectedLat == null) {
             selectUserLocation()
+        }
+    }
+
+    private fun reverseGeocode(latLng: LatLng) {
+        // Keep a reference to the coordinates for this specific request
+        val requestLatLng = latLng
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val geocoder = Geocoder(requireContext(), Locale.getDefault())
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1) { addresses ->
+                        // RACE CONDITION CHECK:
+                        // Only process the result if the currently selected location hasn't changed
+                        // since this request was initiated.
+                        if (requestLatLng.latitude != selectedLat || requestLatLng.longitude != selectedLng) {
+                            return@getFromLocation
+                        }
+
+                        if (addresses.isNotEmpty()) {
+                            val address = addresses[0]
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                if (selectedPlaceName == null) {
+                                    selectedPlaceName = address.featureName ?: address.thoroughfare
+                                }
+                                selectedAddress = address.getAddressLine(0)
+                                updateSelectedLocation(latLng, selectedPlaceName)
+                            }
+                        }
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+
+                    // RACE CONDITION CHECK:
+                    // Only process the result if the currently selected location hasn't changed
+                    // since this request was initiated.
+                    if (requestLatLng.latitude != selectedLat || requestLatLng.longitude != selectedLng) {
+                        return@launch
+                    }
+
+                    if (!addresses.isNullOrEmpty()) {
+                        val address = addresses[0]
+                        withContext(Dispatchers.Main) {
+                            if (selectedPlaceName == null) {
+                                selectedPlaceName = address.featureName ?: address.thoroughfare
+                            }
+                            selectedAddress = address.getAddressLine(0)
+                            updateSelectedLocation(latLng, selectedPlaceName)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
+            }
         }
     }
 
@@ -260,6 +322,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 if (location != null && map != null) {
                     val latLng = LatLng(location.latitude, location.longitude)
                     updateSelectedLocation(latLng)
+                    reverseGeocode(latLng)
                     map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
                 }
             }

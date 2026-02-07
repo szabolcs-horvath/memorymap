@@ -54,38 +54,60 @@
         app:layout_constraintStart_toStartOf="parent"
         app:strokeWidth="0dp">
 
-        <LinearLayout
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
             android:padding="16dp">
 
+            <TextView android:id="@+id/overlay_location_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textColor="?attr/colorOnSurface"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="Location Name"
+                xmlns:tools="http://schemas.android.com/tools" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_memories"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                app:layout_constrainedHeight="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHeight_max="240dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/overlay_location_title" />
+
+            <!-- Single memory views kept for reference if needed but hidden -->
             <TextView
                 android:id="@+id/overlay_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Marker Title"
-                android:textAppearance="?attr/textAppearanceTitleLarge"
-                android:textColor="?attr/colorOnSurface" />
+                android:visibility="gone"
+                app:layout_constraintTop_toBottomOf="@id/rv_memories" />
 
             <TextView
                 android:id="@+id/overlay_description"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="This is an interactive overlay."
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:visibility="gone"
+                app:layout_constraintTop_toBottomOf="@id/overlay_title" />
 
             <Button
                 android:id="@+id/overlay_action_button"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Action" />
+                android:visibility="gone"
+                app:layout_constraintTop_toBottomOf="@id/overlay_description"
+                app:layout_constraintStart_toStartOf="parent" />
 
-        </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

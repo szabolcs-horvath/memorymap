@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.data
 
+import android.location.Location
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -46,7 +47,45 @@ data class MemoryGroup(
         }
     }
 
+    /**
+     * Determines if another MemoryGroup is at the same location.
+     * Groups are considered same if their metadata (place name and address) match,
+     * or if they are within a 20-meter radius.
+     */
+    fun isSameLocationAs(other: MemoryGroup): Boolean {
+        if (placeName != null && address != null && other.placeName != null && other.address != null) {
+            if (placeName == other.placeName && address == other.address) return true
+        }
+
+        val loc1 = Location(null).apply {
+            latitude = this@MemoryGroup.latitude
+            longitude = this@MemoryGroup.longitude
+        }
+        val loc2 = Location(null).apply {
+            latitude = other.latitude
+            longitude = other.longitude
+        }
+        return loc1.distanceTo(loc2) < SAME_LOCATION_METERS_THRESHOLD
+    }
+
+    /**
+     * A key used for grouping memories by location.
+     * Uses [isSameLocationAs] for equality.
+     */
+    class LocationKey(private val group: MemoryGroup) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is LocationKey) return false
+            return group.isSameLocationAs(other.group)
+        }
+
+        override fun hashCode(): Int = 0
+    }
+
+    fun toLocationKey() = LocationKey(this)
+
     companion object {
+        const val SAME_LOCATION_METERS_THRESHOLD = 20.0f
         private val dateFormatter =
             DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
         private val timeFormatter =

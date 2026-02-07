@@ -27,6 +27,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
@@ -45,6 +46,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val binding get() = _binding!!
     private var mMap: GoogleMap? = null
     private var selectedMarker: Marker? = null
+    private var selectedMemoryId: Int? = null
     private val markerMap = mutableMapOf<Int, Marker>()
     private var listener: MapListener? = null
 
@@ -59,6 +61,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var initialSelectedId: Int? = null
 
     private var permissionDenied = false
+    private var isInitialZoomDone = false
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -98,7 +101,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.overlayActionButton.text = "Show Details"
         binding.btnDateRange.setOnClickListener { showDateRangePicker() }
 
         binding.root.doOnLayout {
@@ -206,9 +208,18 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         googleMap.setOnMarkerClickListener { marker ->
             selectedMarker = marker
-            moveToLocationAndSelectMarker(
-                marker.position.latitude, marker.position.longitude, marker.tag as? MemoryGroup
-            )
+            @Suppress("UNCHECKED_CAST")
+            val groups = marker.tag as? List<MemoryGroup>
+            if (groups != null) {
+                selectedMemoryId = groups.firstOrNull()?.id
+                showMemoryOverlay(marker.position.latitude, marker.position.longitude, groups)
+                mMap?.animateCamera(
+                    CameraUpdateFactory.newLatLngZoom(
+                        marker.position,
+                        MAX_CAMERA_ZOOM
+                    )
+                )
+            }
             true
         }
 
@@ -219,11 +230,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         googleMap.setOnMapClickListener {
             binding.overlayCard.visibility = View.GONE
             selectedMarker = null
+            selectedMemoryId = null
+            setGoogleMapPadding()
         }
 
         googleMap.setOnMyLocationButtonClickListener {
             binding.overlayCard.visibility = View.GONE
             selectedMarker = null
+            selectedMemoryId = null
+            setGoogleMapPadding()
             false
         }
 
@@ -233,15 +248,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         binding.overlayCard.viewTreeObserver.addOnGlobalLayoutListener {
             setGoogleMapPadding()
-        }
-
-        binding.overlayActionButton.setOnClickListener {
-            selectedMarker?.let { marker ->
-                val group = marker.tag as? MemoryGroup
-                if (group != null) {
-                    listener?.onMemoryClicked(group.id)
-                }
-            }
         }
     }
 
@@ -263,8 +269,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
+        } else {
+            enableMyLocation()
         }
-        enableMyLocation()
     }
 
     @SuppressWarnings("MissingPermission")
@@ -273,6 +280,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (hasLocationPermission() && map != null) {
             map.isMyLocationEnabled = true
             permissionDenied = false
+            zoomToUserLocationIfPossible()
         }
     }
 
@@ -286,12 +294,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
-        if (hasLocationPermission() && initialSelectedLat == null) {
+        if (!isInitialZoomDone && hasLocationPermission() && initialSelectedLat == null) {
             val fusedLocationClient =
                 LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val map = mMap
-                if (location != null && map != null) {
+                if (location != null && map != null && !isInitialZoomDone && initialSelectedLat == null) {
+                    isInitialZoomDone = true
                     val latLng = LatLng(location.latitude, location.longitude)
                     map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
                 }
@@ -304,15 +313,42 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         refreshData()
         lifecycleScope.launch {
             requestLocationPermissionIfNeeded()
-            zoomToUserLocationIfPossible()
         }
     }
 
     fun refreshData() {
         lifecycleScope.launch {
+            val currentSelectedId = selectedMemoryId
+
             loadMarkers()
-            if (!allGroups.contains(selectedMarker?.tag)) {
-                binding.overlayCard.visibility = View.GONE
+
+            if (currentSelectedId != null) {
+                val updatedSelectedMemory = allGroups.find { it.id == currentSelectedId }
+                if (updatedSelectedMemory != null) {
+                    val marker = markerMap[currentSelectedId]
+                    if (marker != null) {
+                        selectedMarker = marker
+                        @Suppress("UNCHECKED_CAST")
+                        val groups = marker.tag as? List<MemoryGroup>
+                        if (groups != null) {
+                            showMemoryOverlay(
+                                marker.position.latitude,
+                                marker.position.longitude,
+                                groups
+                            )
+                        }
+                    } else {
+                        binding.overlayCard.visibility = View.GONE
+                        selectedMarker = null
+                        selectedMemoryId = null
+                        setGoogleMapPadding()
+                    }
+                } else {
+                    binding.overlayCard.visibility = View.GONE
+                    selectedMarker = null
+                    selectedMemoryId = null
+                    setGoogleMapPadding()
+                }
             }
         }
     }
@@ -338,6 +374,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 updateMapMarkers()
 
                 if (initialSelectedLat != null && initialSelectedLng != null) {
+                    isInitialZoomDone = true
                     moveToLocationAndSelectMarker(
                         initialSelectedLat!!,
                         initialSelectedLng!!,
@@ -358,31 +395,41 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val start = filterStartDate ?: LocalDate.MIN
         val end = filterEndDate ?: LocalDate.MAX
 
+        val filteredGroups = allGroups.filter { group ->
+            val groupStart = group.startDate.toLocalDate()
+            val groupEnd = group.endDate.toLocalDate()
+            !groupEnd.isBefore(start) && !groupStart.isAfter(end)
+        }
+
+        val clusters = filteredGroups.groupBy { it.toLocationKey() }.values
+
         val boundsBuilder = LatLngBounds.Builder()
         var markersCount = 0
 
-        allGroups.forEach { group ->
-            val groupStart = group.startDate.toLocalDate()
-            val groupEnd = group.endDate.toLocalDate()
+        clusters.forEach { groups ->
+            val representative = groups.first()
+            val position = LatLng(representative.latitude, representative.longitude)
 
-            if (!groupEnd.isBefore(start) && !groupStart.isAfter(end)) {
-                val position = LatLng(group.latitude, group.longitude)
-                val markerTitle = group.title
-                val markerHue =
-                    group.markerHue?.let { it % 360.0f } ?: BitmapDescriptorFactory.HUE_RED
-                val marker = map.addMarker(
-                    MarkerOptions()
-                        .position(position)
-                        .title(markerTitle)
-                        .icon(BitmapDescriptorFactory.defaultMarker(markerHue))
-                )
-                if (marker != null) {
-                    marker.tag = group
+            val hues = groups.mapNotNull { it.markerHue }
+            val avgHue = if (hues.isNotEmpty()) hues.map { it % 360.0f }.average().toFloat()
+            else BitmapDescriptorFactory.HUE_RED
+            val markerTitle = if (groups.size == 1) groups[0].title else "${groups.size} Memories"
+
+            val marker = map.addMarker(
+                MarkerOptions()
+                    .position(position)
+                    .title(markerTitle)
+                    .icon(BitmapDescriptorFactory.defaultMarker(avgHue))
+            )
+
+            if (marker != null) {
+                marker.tag = groups
+                groups.forEach { group ->
                     markerMap[group.id] = marker
                 }
-                boundsBuilder.include(LatLng(group.latitude, group.longitude))
-                markersCount++
             }
+            boundsBuilder.include(position)
+            markersCount++
         }
 
         if (adjustCamera && markersCount > 0) {
@@ -410,21 +457,26 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val marker = markerMap[memory?.id]
         if (marker != null) {
             selectedMarker = marker
-            binding.overlayTitle.text = marker.title
-            val group = marker.tag as? MemoryGroup
-            if (group != null) {
-                val description = if (group.placeName != null) {
-                    "${group.placeName}\nDate: ${group.getFormattedDate()}"
-                } else {
-                    "Date: ${group.getFormattedDate()}"
-                }
-                binding.overlayDescription.text = description
-            } else {
-                binding.overlayDescription.text =
-                    "Lat: ${marker.position.latitude}, Lng: ${marker.position.longitude}"
+            selectedMemoryId = memory?.id
+            @Suppress("UNCHECKED_CAST")
+            val groups = marker.tag as? List<MemoryGroup>
+            if (groups != null) {
+                showMemoryOverlay(lat, lng, groups)
             }
-            binding.overlayCard.visibility = View.VISIBLE
         }
+    }
+
+    private fun showMemoryOverlay(lat: Double, lng: Double, groups: List<MemoryGroup>) {
+        val locationName = groups.firstOrNull { it.placeName != null }?.placeName
+            ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
+
+        binding.overlayLocationTitle.text = locationName
+        binding.rvMemories.adapter = MemoryOverlayAdapter(groups) { memoryId ->
+            listener?.onMemoryClicked(memoryId)
+        }
+
+        binding.overlayCard.visibility = View.VISIBLE
+        setGoogleMapPadding()
     }
 
     override fun onDestroyView() {
