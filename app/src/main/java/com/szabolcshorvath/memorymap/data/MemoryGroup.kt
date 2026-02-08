@@ -69,20 +69,6 @@ data class MemoryGroup(
         return loc1.distanceTo(loc2) < SAME_LOCATION_METERS_THRESHOLD
     }
 
-    /**
-     * A key used for grouping memories by location.
-     * Uses [isSameLocationAs] for equality.
-     */
-    private data class LocationKey(private val group: MemoryGroup) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is LocationKey) return false
-            return group.isSameLocationAs(other.group)
-        }
-
-        override fun hashCode(): Int = 0
-    }
-
     companion object {
         const val SAME_LOCATION_METERS_THRESHOLD = 20.0f
         private val dateFormatter =
