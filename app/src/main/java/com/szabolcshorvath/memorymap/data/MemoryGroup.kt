@@ -4,6 +4,7 @@ import android.location.Location
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.szabolcshorvath.memorymap.data.MemoryGroup.Companion.SAME_LOCATION_METERS_THRESHOLD
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -50,7 +51,7 @@ data class MemoryGroup(
     /**
      * Determines if another MemoryGroup is at the same location.
      * Groups are considered same if their metadata (place name and address) match,
-     * or if they are within a 20-meter radius.
+     * or if they are within a [SAME_LOCATION_METERS_THRESHOLD]-meter radius.
      */
     fun isSameLocationAs(other: MemoryGroup): Boolean {
         if (placeName != null && address != null && other.placeName != null && other.address != null) {
@@ -72,7 +73,7 @@ data class MemoryGroup(
      * A key used for grouping memories by location.
      * Uses [isSameLocationAs] for equality.
      */
-    class LocationKey(private val group: MemoryGroup) {
+    private data class LocationKey(private val group: MemoryGroup) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other !is LocationKey) return false
@@ -81,8 +82,6 @@ data class MemoryGroup(
 
         override fun hashCode(): Int = 0
     }
-
-    fun toLocationKey() = LocationKey(this)
 
     companion object {
         const val SAME_LOCATION_METERS_THRESHOLD = 20.0f

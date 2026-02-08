@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +15,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.maps.MapsInitializer
 import com.google.android.libraries.places.api.Places
 import com.google.android.material.snackbar.Snackbar
 import com.szabolcshorvath.memorymap.backup.BackupManager
@@ -60,6 +62,14 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        // Initialize Maps SDK with latest renderer to avoid main thread blocking
+        MapsInitializer.initialize(applicationContext, MapsInitializer.Renderer.LATEST) { renderer ->
+            when (renderer) {
+                MapsInitializer.Renderer.LATEST -> Log.d(TAG, "The latest version of the renderer is used.")
+                MapsInitializer.Renderer.LEGACY -> Log.d(TAG, "The legacy version of the renderer is used.")
+            }
+        }
 
         // Initialize Places
         try {

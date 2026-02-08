@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -43,6 +44,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlin.system.measureTimeMillis
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -405,7 +407,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             !groupEnd.isBefore(start) && !groupStart.isAfter(end)
         }
 
-        val clusters = filteredGroups.groupBy { it.toLocationKey() }.values
+        var clusters: Collection<List<MemoryGroup>>
+        val duration = measureTimeMillis {
+            clusters = clusterMemories(filteredGroups)
+        }
+        Log.d(TAG, "Clustering took $duration ms")
 
         val boundsBuilder = LatLngBounds.Builder()
         var markersCount = 0
@@ -436,6 +442,36 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         map.resetMinMaxZoomPreference()
                     }
                 })
+        }
+    }
+
+    fun clusterMemories(memories: List<MemoryGroup>): Collection<List<MemoryGroup>> {
+        val n = memories.size
+        val parent = IntArray(n) { it }
+
+        fun find(i: Int): Int {
+            if (parent[i] == i) return i
+            parent[i] = find(parent[i]) // Path compression
+            return parent[i]
+        }
+
+        fun union(i: Int, j: Int) {
+            val rootI = find(i)
+            val rootJ = find(j)
+            if (rootI != rootJ) parent[rootI] = rootJ
+        }
+
+        // O(N^2) comparisons
+        for (i in 0 until n) {
+            for (j in i + 1 until n) {
+                if (memories[i].isSameLocationAs(memories[j])) {
+                    union(i, j)
+                }
+            }
+        }
+
+        return memories.indices.groupBy { find(it) }.values.map { indices ->
+            indices.map { memories[it] }
         }
     }
 
