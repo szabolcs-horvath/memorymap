@@ -28,7 +28,7 @@ class BackupAdapter(
 
             val date = backup.modifiedTime?.value?.let { Date(it) }
             val formattedDate = if (date != null) {
-                dateTimeFormatter.format(date)
+                SimpleDateFormat(DATE_TIME_FORMAT, Locale.getDefault()).format(date)
             } else {
                 "Unknown date"
             }
@@ -62,6 +62,5 @@ class BackupAdapter(
 
     companion object {
         private const val DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss"
-        private val dateTimeFormatter = SimpleDateFormat(DATE_TIME_FORMAT, Locale.getDefault())
     }
 }

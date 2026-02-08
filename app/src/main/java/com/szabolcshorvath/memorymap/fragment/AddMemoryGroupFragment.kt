@@ -38,6 +38,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
+import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
@@ -231,7 +232,7 @@ class AddMemoryGroupFragment : Fragment() {
 
             val shape = GradientDrawable()
             shape.shape = GradientDrawable.OVAL
-            shape.setColor(Color.HSVToColor(floatArrayOf(hue, 1f, 1f)))
+            shape.setColor(ColorUtil.hueToColor(hue))
             // Add a stroke to make it look nicer, especially for light colors
             shape.setStroke((1 * resources.displayMetrics.density).toInt(), Color.LTGRAY)
             view.background = shape
@@ -246,8 +247,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun updateHueUI() {
         binding.hueSlider.value = markerHue
-        val color = Color.HSVToColor(floatArrayOf(markerHue, 1f, 1f))
-        val colorStateList = ColorStateList.valueOf(color)
+        val colorStateList = ColorStateList.valueOf(ColorUtil.hueToColor(markerHue))
         binding.hueSlider.thumbTintList = colorStateList
     }
 

@@ -12,7 +12,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:mapId="@string/map_id" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/date_filter_container"
@@ -59,7 +60,8 @@
             android:layout_height="wrap_content"
             android:padding="16dp">
 
-            <TextView android:id="@+id/overlay_location_title"
+            <TextView xmlns:tools="http://schemas.android.com/tools"
+                android:id="@+id/overlay_location_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceTitleLarge"
@@ -67,8 +69,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                tools:text="Location Name"
-                xmlns:tools="http://schemas.android.com/tools" />
+                tools:text="Location Name" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_memories"
@@ -104,8 +105,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
-                app:layout_constraintTop_toBottomOf="@id/overlay_description"
-                app:layout_constraintStart_toStartOf="parent" />
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/overlay_description" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>

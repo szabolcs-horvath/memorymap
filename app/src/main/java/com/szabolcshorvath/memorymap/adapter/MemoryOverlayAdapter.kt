@@ -1,12 +1,13 @@
 package com.szabolcshorvath.memorymap.adapter
 
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryOverlayBinding
+import com.szabolcshorvath.memorymap.util.ColorUtil
 
 class MemoryOverlayAdapter(
     private val memories: List<MemoryGroup>,
@@ -26,15 +27,15 @@ class MemoryOverlayAdapter(
         val memory = memories[position]
         holder.binding.memoryTitle.text = memory.title
         holder.binding.memoryDate.text = memory.getFormattedDate()
-        
-        val hue = memory.markerHue ?: 0f
-        val color = Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
-        holder.binding.colorIndicator.backgroundTintList = ColorStateList.valueOf(color)
+
+        holder.binding.colorIndicator.backgroundTintList = ColorStateList.valueOf(
+            ColorUtil.hueToColor(memory.markerHue ?: BitmapDescriptorFactory.HUE_RED)
+        )
 
         holder.binding.btnDetails.setOnClickListener {
             onDetailsClick(memory.id)
         }
-        
+
         holder.binding.root.setOnClickListener {
             onDetailsClick(memory.id)
         }

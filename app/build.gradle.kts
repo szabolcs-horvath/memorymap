@@ -88,6 +88,12 @@ kotlin {
                 excludes += "META-INF/ASL2.0"
             }
         }
+
+        testOptions {
+            unitTests.all {
+                it.useJUnitPlatform()
+            }
+        }
     }
 }
 
@@ -139,7 +145,8 @@ dependencies {
     implementation(libs.firebase.crashlytics)
 
     // Testing
-    testImplementation(libs.junit)
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

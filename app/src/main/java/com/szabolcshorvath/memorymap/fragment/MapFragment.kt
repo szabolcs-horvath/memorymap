@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.fragment
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -19,18 +20,21 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.AdvancedMarkerOptions
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
+import com.szabolcshorvath.memorymap.util.ColorUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -407,29 +411,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         var markersCount = 0
 
         clusters.forEach { groups ->
-            val representative = groups.first()
-            val position = LatLng(representative.latitude, representative.longitude)
-
-            val hues = groups.mapNotNull { it.markerHue }
-            val avgHue = if (hues.isNotEmpty()) hues.map { it % 360.0f }.average().toFloat()
-            else BitmapDescriptorFactory.HUE_RED
-            val markerTitle = if (groups.size == 1) groups[0].title else "${groups.size} Memories"
-
-            val marker = map.addMarker(
-                MarkerOptions()
-                    .position(position)
-                    .title(markerTitle)
-                    .icon(BitmapDescriptorFactory.defaultMarker(avgHue))
-            )
-
+            val marker = getMarker(groups, map)
             if (marker != null) {
                 marker.tag = groups
                 groups.forEach { group ->
                     markerMap[group.id] = marker
                 }
+                boundsBuilder.include(marker.position)
+                markersCount++
             }
-            boundsBuilder.include(position)
-            markersCount++
         }
 
         if (adjustCamera && markersCount > 0) {
@@ -446,6 +436,56 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         map.resetMinMaxZoomPreference()
                     }
                 })
+        }
+    }
+
+    private fun getMarker(groups: List<MemoryGroup>, map: GoogleMap): Marker? {
+        val representative = groups.first()
+        val position = LatLng(representative.latitude, representative.longitude)
+        val markerTitle = if (groups.size == 1) groups[0].title else "${groups.size} Memories"
+
+        return if (groups.size > 1) {
+            val hues = groups.mapNotNull { it.markerHue }
+            val avgHue =
+                if (hues.isNotEmpty()) hues.map { ColorUtil.normalizeHue(it) }.average().toFloat()
+                else BitmapDescriptorFactory.HUE_RED
+
+            val baseColor = ColorUtil.hueToColor(avgHue)
+
+            val hsvBorder = ColorUtil.colorToHSV(baseColor)
+            hsvBorder[2] *= 0.7f
+            val darkenedColor = Color.HSVToColor(hsvBorder)
+
+            val glyph = PinConfig.Glyph(
+                groups.size.toString(),
+                ColorUtil.textColorForBackground(baseColor)
+            )
+
+            val pinConfig = PinConfig.builder()
+                .setGlyph(glyph)
+                .setBackgroundColor(baseColor)
+                .setBorderColor(darkenedColor)
+                .build()
+
+            map.addMarker(
+                AdvancedMarkerOptions()
+                    .position(position)
+                    .title(markerTitle)
+                    .icon(BitmapDescriptorFactory.fromPinConfig(pinConfig))
+            )
+        } else {
+            map.addMarker(
+                MarkerOptions()
+                    .position(position)
+                    .title(markerTitle)
+                    .icon(
+                        BitmapDescriptorFactory.defaultMarker(
+                            ColorUtil.normalizeHue(
+                                representative.markerHue ?: BitmapDescriptorFactory.HUE_RED
+                            )
+                        )
+                    )
+            )
         }
     }
 
