@@ -10,18 +10,22 @@ import androidx.room.Update
 
 @Dao
 interface MemoryGroupDao {
+    @Transaction
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGroup(group: MemoryGroup): Long
 
+    @Transaction
     @Update
     suspend fun updateGroup(group: MemoryGroup)
 
+    @Transaction
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMediaItems(items: List<MediaItem>)
 
     @Update
     suspend fun updateMediaItems(mediaItems: List<MediaItem>)
 
+    @Transaction
     @Delete
     suspend fun deleteGroup(group: MemoryGroup)
 

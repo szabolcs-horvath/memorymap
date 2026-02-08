@@ -24,6 +24,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import androidx.room.withTransaction
 import coil3.load
 import coil3.request.crossfade
 import coil3.video.VideoFrameDecoder
@@ -256,9 +257,7 @@ class AddMemoryGroupFragment : Fragment() {
             .setMessage(if (editingMemoryId != null) "Are you sure you want to discard your changes?" else "Are you sure you want to clear all fields? This action cannot be undone.")
             .setPositiveButton(if (editingMemoryId != null) "Discard" else "Clear") { _, _ ->
                 clearFields()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            }.setNegativeButton("Cancel", null).show()
     }
 
     fun clearFields() {
@@ -450,7 +449,7 @@ class AddMemoryGroupFragment : Fragment() {
         timePickerDialog.show()
     }
 
-    private fun saveMemoryGroup() {
+    private suspend fun saveMemoryGroup() {
         val title = binding.titleInput.text.toString()
         if (title.isBlank()) {
             Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
@@ -464,92 +463,105 @@ class AddMemoryGroupFragment : Fragment() {
         val finalEnd = if (isAllDay) endDateTime.toLocalDate().atTime(23, 59, 59)
             .atZone(ZoneId.systemDefault()) else endDateTime
 
-        val context = requireContext()
+        val context = requireContext().applicationContext
         val contentResolver = context.contentResolver
+        val db = StoryMapDatabase.getDatabase(context)
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(context.applicationContext)
-            val group = MemoryGroup(
-                id = editingMemoryId ?: 0,
-                title = title,
-                description = description,
-                latitude = lat,
-                longitude = lng,
-                placeName = placeName,
-                address = address,
-                startDate = finalStart,
-                endDate = finalEnd,
-                isAllDay = isAllDay,
-                markerHue = markerHue
-            )
+        // Disable UI to indicate progress and prevent double-saving
+        binding.saveButton.isEnabled = false
 
-            val groupId = if (editingMemoryId != null) {
-                db.memoryGroupDao().updateGroup(group)
-                editingMemoryId!!.toLong()
-            } else {
-                db.memoryGroupDao().insertGroup(group)
-            }
+        try {
+            val groupIdResult = withContext(Dispatchers.IO) {
+                db.withTransaction {
+                    val group = MemoryGroup(
+                        id = editingMemoryId ?: 0,
+                        title = title,
+                        description = description,
+                        latitude = lat,
+                        longitude = lng,
+                        placeName = placeName,
+                        address = address,
+                        startDate = finalStart,
+                        endDate = finalEnd,
+                        isAllDay = isAllDay,
+                        markerHue = markerHue
+                    )
 
-            // If editing, we delete the old media associations and re-insert the current selection
-            if (editingMemoryId != null) {
-                db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
-            }
-
-            val mediaItems = selectedMedia.map { (uri, type, itemDeviceId) ->
-                var size = 0L
-                var date = 0L
-
-                try {
-                    contentResolver.query(
-                        uri,
-                        arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN),
-                        null,
-                        null,
-                        null
-                    )?.use { cursor ->
-                        if (cursor.moveToFirst()) {
-                            val sizeIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                            val dateIdx =
-                                cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
-                            size = cursor.getLong(sizeIdx)
-                            date = cursor.getLong(dateIdx)
-                        }
+                    val groupId = if (editingMemoryId != null) {
+                        db.memoryGroupDao().updateGroup(group)
+                        editingMemoryId!!.toLong()
+                    } else {
+                        db.memoryGroupDao().insertGroup(group)
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error getting file size", e)
+
+                    // If editing, we delete the old media associations and re-insert the current selection
+                    if (editingMemoryId != null) {
+                        db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
+                    }
+
+                    val mediaItems = selectedMedia.map { (uri, type, itemDeviceId) ->
+                        var size = 0L
+                        var date = 0L
+
+                        contentResolver.query(
+                            uri, arrayOf(
+                                MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN
+                            ), null, null, null
+                        )?.use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                val sizeIdx =
+                                    cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                                val dateIdx =
+                                    cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+                                size = cursor.getLong(sizeIdx)
+                                date = cursor.getLong(dateIdx)
+                            }
+                        }
+
+                        MediaItem(
+                            groupId = groupId.toInt(),
+                            uri = uri.toString(),
+                            deviceId = itemDeviceId,
+                            type = type,
+                            mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
+                            fileSize = size,
+                            dateTaken = date
+                        )
+                    }
+
+                    db.memoryGroupDao().insertMediaItems(mediaItems)
+                    groupId.toInt()
                 }
-
-                MediaItem(
-                    groupId = groupId.toInt(),
-                    uri = uri.toString(),
-                    deviceId = itemDeviceId,
-                    type = type,
-                    mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
-                    fileSize = size,
-                    dateTaken = date
-                )
-            }
-            db.memoryGroupDao().insertMediaItems(mediaItems)
-
-            launch {
-                backupManager.triggerAutomaticBackup()
             }
 
-            withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    requireContext(),
-                    if (editingMemoryId != null) "Updated!" else "Saved!",
-                    Toast.LENGTH_SHORT
-                ).show()
-                listener?.onMemorySaved(
-                    group.latitude,
-                    group.longitude,
-                    groupId.toInt(),
-                    group.startDate.toLocalDate(),
-                    group.endDate.toLocalDate()
-                )
-                clearFields()
-            }
+            // Success operations
+            backupManager.triggerAutomaticBackup()
+
+            Toast.makeText(
+                requireContext(),
+                if (editingMemoryId != null) "Updated!" else "Saved!",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            listener?.onMemorySaved(
+                lat,
+                lng,
+                groupIdResult,
+                finalStart.toLocalDate(),
+                finalEnd.toLocalDate()
+            )
+            clearFields()
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving memory group", e)
+            Toast.makeText(
+                requireContext(),
+                "Failed to save: ${e.localizedMessage ?: "Unknown error"}",
+                Toast.LENGTH_LONG
+            ).show()
+        } finally {
+            // Re-enable the button
+            _binding?.saveButton?.isEnabled = true
         }
     }
 
@@ -559,8 +571,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private inner class SelectedMediaAdapter(
-        private val items: List<SelectedMedia>,
-        private val onRemove: (Int) -> Unit
+        private val items: List<SelectedMedia>, private val onRemove: (Int) -> Unit
     ) : RecyclerView.Adapter<SelectedMediaAdapter.ViewHolder>() {
 
         private var currentDeviceId: String? = null
@@ -602,8 +613,7 @@ class AddMemoryGroupFragment : Fragment() {
                     }
                     listener(
                         onError = { _, _ -> holder.binding.errorIcon.visibility = View.VISIBLE },
-                        onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE }
-                    )
+                        onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE })
                 }
                 holder.binding.videoIcon.visibility =
                     if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
