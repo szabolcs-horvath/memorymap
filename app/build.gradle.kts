@@ -54,7 +54,9 @@ kotlin {
 
         buildTypes {
             release {
-                signingConfig = signingConfigs.getByName("release")
+                if (localProperties.getProperty("RELEASE_STORE_FILE") != null) {
+                    signingConfig = signingConfigs.getByName("release")
+                }
                 isMinifyEnabled = true
                 isShrinkResources = true
                 proguardFiles(
