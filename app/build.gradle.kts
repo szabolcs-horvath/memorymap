@@ -34,8 +34,8 @@ kotlin {
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-            if (!localProperties.isEmpty) {
-                val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
+            val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
+            if (oauthClientId != null) {
                 buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
             }
         }
@@ -66,9 +66,7 @@ kotlin {
             }
 
             debug {
-                if (!localProperties.isEmpty) {
-                    signingConfig = signingConfigs.getByName("release")
-                }
+                signingConfig = signingConfigs.getByName("release")
                 isMinifyEnabled = false
                 isShrinkResources = false
             }
