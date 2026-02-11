@@ -64,7 +64,9 @@ kotlin {
             }
 
             debug {
-                signingConfig = signingConfigs.getByName("release")
+                if (localProperties.getProperty("RELEASE_STORE_FILE") != null) {
+                    signingConfig = signingConfigs.getByName("release")
+                }
                 isMinifyEnabled = false
                 isShrinkResources = false
             }
