@@ -61,7 +61,11 @@ jobs:
       # This includes steps like installing compilers or runtimes (`actions/setup-node`
       # or others). This is typically only required for manual builds.
       - name: Create local.properties file
-        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+        run: |
+          cat > local.properties <<'EOF'
+          MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}
+          OAUTH_WEB_CLIENT_ID=${{ secrets.OAUTH_WEB_CLIENT_ID }}
+          EOF
 
       - name: Create google-service.json
         run: |

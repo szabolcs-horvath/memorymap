@@ -35,9 +35,7 @@ kotlin {
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
             val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
-            if (oauthClientId != null) {
-                buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
-            }
+            buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
         }
 
         buildFeatures {
