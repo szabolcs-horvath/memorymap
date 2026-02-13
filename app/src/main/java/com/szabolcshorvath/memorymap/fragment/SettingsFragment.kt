@@ -371,7 +371,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun refreshAppContent() {
+    private suspend fun refreshAppContent() {
         (requireActivity() as? MainActivity)?.refreshData()
     }
 

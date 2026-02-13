@@ -34,11 +34,14 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uk.co.samuelwall.materialtaptargetprompt.MaterialTapTargetPrompt
 import java.time.LocalDate
+import kotlin.system.measureTimeMillis
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
@@ -64,10 +67,20 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         super.onCreate(savedInstanceState)
 
         // Initialize Maps SDK with latest renderer to avoid main thread blocking
-        MapsInitializer.initialize(applicationContext, MapsInitializer.Renderer.LATEST) { renderer ->
+        MapsInitializer.initialize(
+            applicationContext,
+            MapsInitializer.Renderer.LATEST
+        ) { renderer ->
             when (renderer) {
-                MapsInitializer.Renderer.LATEST -> Log.d(TAG, "The latest version of the renderer is used.")
-                MapsInitializer.Renderer.LEGACY -> Log.d(TAG, "The legacy version of the renderer is used.")
+                MapsInitializer.Renderer.LATEST -> Log.d(
+                    TAG,
+                    "The latest version of the renderer is used."
+                )
+
+                MapsInitializer.Renderer.LEGACY -> Log.d(
+                    TAG,
+                    "The legacy version of the renderer is used."
+                )
             }
         }
 
@@ -324,9 +337,13 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
         }
     }
 
-    fun refreshData() {
-        mapFragment.refreshData()
-        timelineFragment.refreshData()
+    suspend fun refreshData() = coroutineScope {
+        val time = measureTimeMillis {
+            val mapJob = launch { mapFragment.refreshData() }
+            val timelineJob = launch { timelineFragment.refreshData() }
+            joinAll(mapJob, timelineJob)
+        }
+        Log.d(TAG, "Total refresh time: $time ms")
     }
 
     override fun startAddMemoryFlow(lat: Double, lng: Double) {
@@ -417,10 +434,11 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     ) {
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
 
-        refreshData()
-
-        mapFragment.updateDateFilterForMemory(startDate, endDate)
-        mapFragment.focusOnMemory(lat, lng, id)
+        lifecycleScope.launch {
+            refreshData()
+            mapFragment.updateDateFilterForMemory(startDate, endDate)
+            mapFragment.focusOnMemory(lat, lng, id)
+        }
     }
 
     override fun onLocationConfirmed(
@@ -434,7 +452,9 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     }
 
     override fun onMemoryDeleted(memoryGroup: MemoryGroup, mediaItems: List<MediaItem>) {
-        refreshData()
+        lifecycleScope.launch {
+            refreshData()
+        }
 
         val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
         snackbar.anchorView = binding.bottomNavigation

@@ -35,6 +35,7 @@ import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -66,6 +67,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private var permissionDenied = false
     private var isInitialZoomDone = false
+    private var refreshJob: Job? = null
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -206,8 +208,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         enableMyLocation()
         setGoogleMapPadding()
 
-        lifecycleScope.launch {
-            loadMarkers()
+        refreshJob?.cancel()
+        refreshJob = lifecycleScope.launch {
+            refreshData()
         }
 
         googleMap.setOnMarkerClickListener { marker ->
@@ -314,38 +317,32 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onResume() {
         super.onResume()
-        refreshData()
-        lifecycleScope.launch {
+        refreshJob?.cancel()
+        refreshJob = lifecycleScope.launch {
+            refreshData()
             requestLocationPermissionIfNeeded()
         }
     }
 
-    fun refreshData() {
-        lifecycleScope.launch {
-            val currentSelectedId = selectedMemoryId
+    suspend fun refreshData() {
+        val currentSelectedId = selectedMemoryId
 
-            loadMarkers()
+        loadMarkers()
 
-            if (currentSelectedId != null) {
-                val updatedSelectedMemory = allGroups.find { it.id == currentSelectedId }
-                if (updatedSelectedMemory != null) {
-                    val marker = markerMap[currentSelectedId]
-                    if (marker != null) {
-                        selectedMarker = marker
-                        @Suppress("UNCHECKED_CAST")
-                        val groups = marker.tag as? List<MemoryGroup>
-                        if (groups != null) {
-                            showMemoryOverlay(
-                                marker.position.latitude,
-                                marker.position.longitude,
-                                groups
-                            )
-                        }
-                    } else {
-                        binding.overlayCard.visibility = View.GONE
-                        selectedMarker = null
-                        selectedMemoryId = null
-                        setGoogleMapPadding()
+        if (currentSelectedId != null) {
+            val updatedSelectedMemory = allGroups.find { it.id == currentSelectedId }
+            if (updatedSelectedMemory != null) {
+                val marker = markerMap[currentSelectedId]
+                if (marker != null) {
+                    selectedMarker = marker
+                    @Suppress("UNCHECKED_CAST")
+                    val groups = marker.tag as? List<MemoryGroup>
+                    if (groups != null) {
+                        showMemoryOverlay(
+                            marker.position.latitude,
+                            marker.position.longitude,
+                            groups
+                        )
                     }
                 } else {
                     binding.overlayCard.visibility = View.GONE
@@ -353,6 +350,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     selectedMemoryId = null
                     setGoogleMapPadding()
                 }
+            } else {
+                binding.overlayCard.visibility = View.GONE
+                selectedMarker = null
+                selectedMemoryId = null
+                setGoogleMapPadding()
             }
         }
     }
@@ -392,6 +394,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateMapMarkers(adjustCamera: Boolean = false) {
+        Log.d(TAG, "Updating map markers")
         val map = mMap ?: return
         map.clear()
         markerMap.clear()

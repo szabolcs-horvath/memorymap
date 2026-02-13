@@ -31,6 +31,7 @@ import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import kotlin.system.measureTimeMillis
 import com.google.api.services.drive.model.File as DriveFile
 
 class BackupManager(private val context: Context) {
@@ -44,23 +45,25 @@ class BackupManager(private val context: Context) {
     suspend fun triggerAutomaticBackup() {
         withContext(Dispatchers.IO) {
             try {
-                val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull()
-                    ?: return@withContext
-                val googleAuthManager = GoogleAuthManager(context)
-                val scopes = listOf(DriveScopes.DRIVE_FILE)
-                val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                val success = performBackup(credential, isAutomatic = true) {
-                    Log.d(TAG, "Automatic backup progress: $it")
-                }
-
-                if (success) {
-                    withContext(Dispatchers.Main) {
-                        (context as? FragmentActivity)?.supportFragmentManager?.setFragmentResult(
-                            SettingsFragment.REQUEST_KEY_BACKUP_REFRESH,
-                            android.os.Bundle()
-                        )
+                val time = measureTimeMillis {
+                    val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull()
+                        ?: return@withContext
+                    val googleAuthManager = GoogleAuthManager(context)
+                    val scopes = listOf(DriveScopes.DRIVE_FILE)
+                    val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
+                    val success = performBackup(credential, isAutomatic = true) {
+                        Log.d(TAG, "Automatic backup progress: $it")
+                    }
+                    if (success) {
+                        withContext(Dispatchers.Main) {
+                            (context as? FragmentActivity)?.supportFragmentManager?.setFragmentResult(
+                                SettingsFragment.REQUEST_KEY_BACKUP_REFRESH,
+                                android.os.Bundle()
+                            )
+                        }
                     }
                 }
+                Log.d(TAG, "Automatic backup took $time ms")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to trigger automatic backup", e)
             }

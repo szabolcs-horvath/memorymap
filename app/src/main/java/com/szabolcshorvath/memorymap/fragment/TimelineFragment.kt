@@ -47,7 +47,9 @@ class TimelineFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
-        loadMemories()
+        lifecycleScope.launch {
+            loadMemories()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -58,25 +60,23 @@ class TimelineFragment : Fragment() {
         binding.timelineRecyclerView.adapter = adapter
     }
 
-    private fun loadMemories() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
-            val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
+    private suspend fun loadMemories() {
+        val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+        val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
 
-            withContext(Dispatchers.Main) {
-                adapter.updateData(groups)
-                if (groups.isEmpty()) {
-                    binding.emptyView.visibility = View.VISIBLE
-                    binding.timelineRecyclerView.visibility = View.GONE
-                } else {
-                    binding.emptyView.visibility = View.GONE
-                    binding.timelineRecyclerView.visibility = View.VISIBLE
-                }
+        withContext(Dispatchers.Main) {
+            adapter.updateData(groups)
+            if (groups.isEmpty()) {
+                binding.emptyView.visibility = View.VISIBLE
+                binding.timelineRecyclerView.visibility = View.GONE
+            } else {
+                binding.emptyView.visibility = View.GONE
+                binding.timelineRecyclerView.visibility = View.VISIBLE
             }
         }
     }
 
-    fun refreshData() {
+    suspend fun refreshData() {
         loadMemories()
     }
 
@@ -120,7 +120,9 @@ class TimelineFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        loadMemories()
+        lifecycleScope.launch {
+            loadMemories()
+        }
     }
 
     override fun onDestroyView() {
