@@ -11,12 +11,4 @@ object ColorUtil {
     fun hueToColor(hue: Float): Int {
         return Color.HSVToColor(floatArrayOf(normalizeHue(hue), 1.0f, 1.0f))
     }
-
-    fun textColorForBackground(backgroundColor: Int): Int {
-        val darkness = 1 - (0.299 * Color.red(backgroundColor) +
-                0.587 * Color.green(backgroundColor) +
-                0.114 * Color.blue(backgroundColor)
-                ) / 255
-        return if (darkness < 0.5) Color.BLACK else Color.WHITE
-    }
 }

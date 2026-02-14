@@ -9,8 +9,6 @@ import android.graphics.Rect
 import android.graphics.RectF
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withClip
-import kotlin.math.cos
-import kotlin.math.sin
 
 object MultiColorMarkerGenerator {
 
@@ -20,61 +18,6 @@ object MultiColorMarkerGenerator {
     private const val TEXT_OUTLINE_WIDTH_DP = 1.5f
 
     /**
-     * Generates a pin with a simple triangle tail.
-     */
-    fun generate(
-        colors: List<Int>,
-        count: Int,
-        density: Float
-    ): Bitmap {
-        val markerSize = (MARKER_SIZE_DP * density).toInt()
-        val borderWidth = (BORDER_WIDTH_DP * density)
-        val textSize = (TEXT_SIZE_SP * density)
-        val outlineWidth = (TEXT_OUTLINE_WIDTH_DP * density)
-
-        val width = markerSize
-        val height = (markerSize * 1.4f).toInt()
-
-        val bitmap = createBitmap(width, height)
-        val canvas = Canvas(bitmap)
-
-        val centerX = width / 2f
-        val centerY = markerSize / 2f
-        val radius = (markerSize / 2f) - borderWidth
-        val r = radius + borderWidth / 2
-
-        val pinPath = Path()
-        pinPath.addCircle(centerX, centerY, r, Path.Direction.CW)
-
-        val tailPath = Path()
-        val tailAngle = 40f
-        val sinAngle = sin(Math.toRadians(tailAngle.toDouble())).toFloat()
-        val cosAngle = cos(Math.toRadians(tailAngle.toDouble())).toFloat()
-
-        tailPath.moveTo(centerX - r * cosAngle, centerY + r * sinAngle)
-        tailPath.lineTo(centerX, height.toFloat() - borderWidth)
-        tailPath.lineTo(centerX + r * cosAngle, centerY + r * sinAngle)
-        tailPath.close()
-
-        pinPath.op(tailPath, Path.Op.UNION)
-
-        drawMarkerContent(
-            canvas,
-            pinPath,
-            colors,
-            count,
-            centerX,
-            centerY,
-            height,
-            borderWidth,
-            textSize,
-            outlineWidth
-        )
-
-        return bitmap
-    }
-
-    /**
      * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
      */
     fun generateTapered(
@@ -82,20 +25,18 @@ object MultiColorMarkerGenerator {
         count: Int,
         density: Float
     ): Bitmap {
-        val markerSize = (MARKER_SIZE_DP * density).toInt()
+        val width = (MARKER_SIZE_DP * density).toInt()
+        val height = (width * 1.5f).toInt()
         val borderWidth = (BORDER_WIDTH_DP * density)
         val textSize = (TEXT_SIZE_SP * density)
         val outlineWidth = (TEXT_OUTLINE_WIDTH_DP * density)
-
-        val width = markerSize
-        val height = (markerSize * 1.5f).toInt()
 
         val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
 
         val centerX = width / 2f
-        val centerY = markerSize / 2f
-        val radius = (markerSize / 2f) - borderWidth
+        val centerY = width / 2f
+        val radius = (width / 2f) - borderWidth
         val r = radius + borderWidth / 2
 
         val pinPath = Path()
