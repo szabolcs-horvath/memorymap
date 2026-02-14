@@ -1,2 +1,0 @@
-paths-ignore:
-  - '**/app/build/generated/data_binding_base_class_source_out/**'
