@@ -9,16 +9,31 @@ class Converters {
     @TypeConverter
     fun toZonedDateTime(value: String?): ZonedDateTime? {
         return value?.let {
-            return formatter.parse(value, ZonedDateTime::from)
+            ZonedDateTime.parse(it, formatter)
         }
     }
 
     @TypeConverter
-    fun fromZonedDateTime(date: ZonedDateTime?): String? {
-        return date?.format(formatter)
+    fun fromZonedDateTime(value: ZonedDateTime?): String? {
+        return value?.format(formatter)
+    }
+
+    @TypeConverter
+    fun fromMediaType(value: MediaType): String {
+        return value.name
+    }
+
+    @TypeConverter
+    fun toMediaType(value: String): MediaType {
+        return try {
+            MediaType.valueOf(value)
+        } catch (_: Exception) {
+            MediaType.IMAGE
+        }
     }
 
     companion object {
+        @JvmStatic
         private val formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME
     }
 }

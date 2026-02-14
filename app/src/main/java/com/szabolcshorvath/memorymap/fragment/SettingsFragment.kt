@@ -252,6 +252,7 @@ class SettingsFragment : Fragment() {
                 isBackupRequested = false
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val success = backupManager.performBackup(credential) { status ->
+                    Log.d(TAG, "Backup progress: $status")
                     lifecycleScope.launch {
                         withContext(Dispatchers.Main) {
                             binding.tvStatus.text = status
@@ -344,6 +345,7 @@ class SettingsFragment : Fragment() {
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val success = backupManager.restoreBackup(credential, file.id) { status ->
+                    Log.d(TAG, "Restore progress: $status")
                     lifecycleScope.launch {
                         withContext(Dispatchers.Main) {
                             binding.tvStatus.text = status

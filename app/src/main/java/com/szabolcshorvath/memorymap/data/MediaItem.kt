@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.data
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
@@ -13,7 +14,8 @@ import androidx.room.PrimaryKey
             childColumns = ["groupId"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index("groupId")]
 )
 data class MediaItem(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
