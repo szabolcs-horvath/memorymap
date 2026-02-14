@@ -572,7 +572,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private inner class SelectedMediaAdapter(
         private val items: List<SelectedMedia>, private val onRemove: (Int) -> Unit
-    ) : RecyclerView.Adapter<SelectedMediaAdapter.ViewHolder>() {
+    ) : RecyclerView.Adapter<SelectedMediaAdapter.SelectedMediaViewHolder>() {
 
         private var currentDeviceId: String? = null
 
@@ -585,16 +585,16 @@ class AddMemoryGroupFragment : Fragment() {
             }
         }
 
-        inner class ViewHolder(val binding: ItemMediaSelectedBinding) :
+        inner class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
             RecyclerView.ViewHolder(binding.root)
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SelectedMediaViewHolder {
             val binding =
                 ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
+            return SelectedMediaViewHolder(binding)
         }
 
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        override fun onBindViewHolder(holder: SelectedMediaViewHolder, position: Int) {
             val item = items[position]
             val isFromOtherDevice = currentDeviceId != null && item.deviceId != currentDeviceId
 

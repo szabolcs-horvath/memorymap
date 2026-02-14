@@ -12,18 +12,19 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 class MemoryOverlayAdapter(
     private val memories: List<MemoryGroup>,
     private val onDetailsClick: (Int) -> Unit
-) : RecyclerView.Adapter<MemoryOverlayAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<MemoryOverlayAdapter.MemoryOverlayViewHolder>() {
 
-    class ViewHolder(val binding: ItemMemoryOverlayBinding) : RecyclerView.ViewHolder(binding.root)
+    class MemoryOverlayViewHolder(val binding: ItemMemoryOverlayBinding) :
+        RecyclerView.ViewHolder(binding.root)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryOverlayViewHolder {
         val binding = ItemMemoryOverlayBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
-        return ViewHolder(binding)
+        return MemoryOverlayViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: MemoryOverlayViewHolder, position: Int) {
         val memory = memories[position]
         holder.binding.memoryTitle.text = memory.title
         holder.binding.memoryDate.text = memory.getFormattedDate()
