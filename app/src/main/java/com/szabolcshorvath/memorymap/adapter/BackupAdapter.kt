@@ -17,6 +17,8 @@ class BackupAdapter(
     private val onDeleteClick: (File) -> Unit
 ) : ListAdapter<File, BackupAdapter.BackupViewHolder>(BackupDiffCallback()) {
 
+    private var buttonsEnabled = true
+
     inner class BackupViewHolder(private val binding: ItemBackupBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(backup: File) {
@@ -40,8 +42,14 @@ class BackupAdapter(
             val size = backup.getSize() ?: 0L
             binding.tvBackupSize.text = Formatter.formatFileSize(binding.root.context, size)
 
+            binding.btnRestore.isEnabled = buttonsEnabled
+            binding.btnDelete.isEnabled = buttonsEnabled
+
             binding.btnRestore.setOnClickListener { onRestoreClick(backup) }
             binding.btnDelete.setOnClickListener { onDeleteClick(backup) }
+
+            binding.btnRestore.alpha = if (buttonsEnabled) 1.0f else 0.5f
+            binding.btnDelete.alpha = if (buttonsEnabled) 1.0f else 0.5f
         }
     }
 
@@ -56,6 +64,13 @@ class BackupAdapter(
 
     fun updateBackups(newBackups: List<File>) {
         submitList(newBackups)
+    }
+
+    fun setButtonsEnabled(enabled: Boolean) {
+        if (buttonsEnabled != enabled) {
+            buttonsEnabled = enabled
+            notifyItemRangeChanged(0, itemCount)
+        }
     }
 
     private class BackupDiffCallback : DiffUtil.ItemCallback<File>() {
