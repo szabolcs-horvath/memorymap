@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.backup
 
 import android.content.Context
 import android.util.Log
-import androidx.fragment.app.FragmentActivity
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -13,9 +12,10 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
-import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -36,6 +36,8 @@ import com.google.api.services.drive.model.File as DriveFile
 
 class BackupManager(private val context: Context) {
 
+    enum class BackupEvent { STARTED, FINISHED }
+
     fun getDriveService(credential: GoogleAccountCredential): Drive = Drive.Builder(
         NetHttpTransport(),
         GsonFactory.getDefaultInstance(),
@@ -48,24 +50,19 @@ class BackupManager(private val context: Context) {
                 val time = measureTimeMillis {
                     val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull()
                         ?: return@withContext
+                    _backupEvents.emit(BackupEvent.STARTED)
                     val googleAuthManager = GoogleAuthManager(context)
                     val scopes = listOf(DriveScopes.DRIVE_FILE)
                     val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                    val success = performBackup(credential, isAutomatic = true) {
+                    performBackup(credential, isAutomatic = true) {
                         Log.d(TAG, "Automatic backup progress: $it")
-                    }
-                    if (success) {
-                        withContext(Dispatchers.Main) {
-                            (context as? FragmentActivity)?.supportFragmentManager?.setFragmentResult(
-                                SettingsFragment.REQUEST_KEY_BACKUP_REFRESH,
-                                android.os.Bundle()
-                            )
-                        }
                     }
                 }
                 Log.d(TAG, "Automatic backup took $time ms")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to trigger automatic backup", e)
+            } finally {
+                _backupEvents.emit(BackupEvent.FINISHED)
             }
         }
     }
@@ -297,5 +294,8 @@ class BackupManager(private val context: Context) {
         const val TAG = "BackupManager"
         private const val BACKUP_METADATA_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss"
         private const val BACKUP_FILE_NAME_DATE_FORMAT = "yyyyMMdd_HHmmss"
+
+        private val _backupEvents = MutableSharedFlow<BackupEvent>(extraBufferCapacity = 1)
+        val backupEvents = _backupEvents.asSharedFlow()
     }
 }

@@ -13,9 +13,13 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.setFragmentResultListener
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
@@ -30,6 +34,7 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -78,6 +83,7 @@ class SettingsFragment : Fragment() {
                 } catch (e: ApiException) {
                     Log.e(TAG, "Authorization failed", e)
                     isBackupRequested = false
+                    setLoadingState(false)
                 }
             }
 
@@ -92,10 +98,22 @@ class SettingsFragment : Fragment() {
 
         setupRecyclerView()
 
-        setFragmentResultListener(REQUEST_KEY_BACKUP_REFRESH) { _, _ ->
-            val email = binding.tvAccountName.tag as? String
-            if (email != null) {
-                loadBackups(email)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                BackupManager.backupEvents.collect { event ->
+                    when (event) {
+                        BackupManager.BackupEvent.STARTED -> {
+                            setLoadingState(true, "Automatic backup in progress...")
+                        }
+
+                        BackupManager.BackupEvent.FINISHED -> {
+                            val email = binding.tvAccountName.tag as? String
+                            if (email != null) {
+                                loadBackups(email)
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -109,17 +127,45 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btnGoogleSignIn.setOnClickListener {
+            setLoadingState(true, "Signing in...")
             lifecycleScope.launch {
-                googleAuthManager.signIn { email ->
-                    lifecycleScope.launch {
-                        requireContext().dataStore.updateData {
-                            it.toMutablePreferences().also { preferences ->
-                                preferences[USER_EMAIL_KEY] = email
+                try {
+                    googleAuthManager.signIn { email ->
+                        lifecycleScope.launch {
+                            requireContext().dataStore.updateData {
+                                it.toMutablePreferences().also { preferences ->
+                                    preferences[USER_EMAIL_KEY] = email
+                                }
                             }
+                            updateUI(email)
+                            requestDriveAuthorization(false)
+                            setLoadingState(false)
                         }
-                        updateUI(email)
-                        requestDriveAuthorization(false)
                     }
+                } catch (e: Exception) {
+                    when (e) {
+                        is NoCredentialException,
+                        is GetCredentialException -> {
+                            Log.w(TAG, "Sign in failed", e)
+                            Toast.makeText(
+                                requireContext(),
+                                "Sign in failed: ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+
+                        is CancellationException -> throw e
+
+                        else -> {
+                            Log.e(TAG, "Unexpected sign in error", e)
+                            Toast.makeText(
+                                requireContext(),
+                                "Unexpected sign in error: ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    setLoadingState(false)
                 }
             }
         }
@@ -135,7 +181,8 @@ class SettingsFragment : Fragment() {
         binding.btnBackupNow.setOnClickListener {
             val email = binding.tvAccountName.tag as? String
             if (email != null) {
-                performBackup()
+                setLoadingState(true, "Starting backup...")
+                requestDriveAuthorization(true)
             } else {
                 Toast.makeText(requireContext(), "Not signed in", Toast.LENGTH_SHORT).show()
             }
@@ -161,26 +208,80 @@ class SettingsFragment : Fragment() {
     }
 
     private fun updateUI(email: String?) {
-        if (email != null) {
-            binding.btnGoogleSignIn.visibility = View.GONE
-            binding.backupControls.visibility = View.VISIBLE
-            binding.tvAccountName.text = "Signed in as: $email"
-            binding.tvAccountName.tag = email
-            loadBackups(email)
+        with(binding) {
+            if (email != null) {
+                btnGoogleSignIn.visibility = View.GONE
+                backupControls.visibility = View.VISIBLE
+                tvAccountName.text = "Signed in as: $email"
+                tvAccountName.tag = email
+                loadBackups(email)
+            } else {
+                btnGoogleSignIn.visibility = View.VISIBLE
+                backupControls.visibility = View.GONE
+                tvAccountName.tag = null
+                backupAdapter.updateBackups(emptyList())
+            }
+        }
+    }
+
+    private fun setLoadingState(isLoading: Boolean, status: String? = null) {
+        val enabled = !isLoading
+        with(binding) {
+            btnGoogleSignIn.isEnabled = enabled
+            btnBackupNow.isEnabled = enabled
+            btnSignOut.isEnabled = enabled
+            backupAdapter.setButtonsEnabled(enabled)
+
+            val showProgress = isLoading && !swipeRefresh.isRefreshing
+            updateViewVisibilityWithAnimation(progressBar, showProgress)
+
+            val showStatus = isLoading && status != null
+            if (showStatus) {
+                tvStatus.text = status
+            }
+            updateViewVisibilityWithAnimation(tvStatus, showStatus) {
+                tvStatus.text = ""
+            }
+        }
+    }
+
+    private fun updateViewVisibilityWithAnimation(
+        view: View,
+        isVisible: Boolean,
+        endAction: (() -> Unit)? = null
+    ) {
+        if (isVisible) {
+            val wasVisible = view.isVisible
+            if (!wasVisible || view.alpha < 1f) {
+                view.animate().cancel()
+                if (!wasVisible) {
+                    view.alpha = 0f
+                    view.visibility = View.VISIBLE
+                }
+                view.animate()
+                    .alpha(1f)
+                    .setDuration(ANIMATION_DURATION)
+                    .start()
+            }
         } else {
-            binding.btnGoogleSignIn.visibility = View.VISIBLE
-            binding.backupControls.visibility = View.GONE
-            binding.tvAccountName.tag = null
-            backupAdapter.updateBackups(emptyList())
+            if (view.isVisible) {
+                view.animate().cancel()
+                view.animate()
+                    .alpha(0f)
+                    .setDuration(ANIMATION_DURATION)
+                    .withEndAction {
+                        view.visibility = View.GONE
+                        endAction?.invoke()
+                    }
+                    .start()
+            }
         }
     }
 
     private fun loadBackups(email: String) {
         lifecycleScope.launch {
             try {
-                if (!binding.swipeRefresh.isRefreshing) {
-                    binding.progressBar.visibility = View.VISIBLE
-                }
+                setLoadingState(true)
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val backups = backupManager.listBackups(credential)
@@ -188,7 +289,7 @@ class SettingsFragment : Fragment() {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to list backups", e)
             } finally {
-                binding.progressBar.visibility = View.GONE
+                setLoadingState(false)
                 binding.swipeRefresh.isRefreshing = false
             }
         }
@@ -218,20 +319,10 @@ class SettingsFragment : Fragment() {
                 if (isBackup) {
                     Toast.makeText(requireContext(), "Authorization failed", Toast.LENGTH_SHORT)
                         .show()
-                    binding.progressBar.visibility = View.GONE
-                    binding.tvStatus.visibility = View.GONE
-                    binding.btnBackupNow.isEnabled = true
                 }
+                setLoadingState(false)
                 isBackupRequested = false
             }
-    }
-
-    private fun performBackup() {
-        binding.btnBackupNow.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
-        binding.tvStatus.visibility = View.VISIBLE
-        binding.tvStatus.text = "Starting backup..."
-        requestDriveAuthorization(true)
     }
 
     private fun successfulAuthorization(scopes: List<String>) {
@@ -241,9 +332,7 @@ class SettingsFragment : Fragment() {
                     .firstOrNull() ?: (binding.tvAccountName.tag as? String)
 
             if (email == null) {
-                binding.btnBackupNow.isEnabled = true
-                binding.progressBar.visibility = View.GONE
-                binding.tvStatus.visibility = View.GONE
+                setLoadingState(false)
                 isBackupRequested = false
                 return@launch
             }
@@ -252,10 +341,9 @@ class SettingsFragment : Fragment() {
                 isBackupRequested = false
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val success = backupManager.performBackup(credential) { status ->
-                    Log.d(TAG, "Backup progress: $status")
-                    lifecycleScope.launch {
+                    viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.Main) {
-                            binding.tvStatus.text = status
+                            setLoadingState(true, status)
                         }
                     }
                 }
@@ -265,11 +353,8 @@ class SettingsFragment : Fragment() {
                     loadBackups(email)
                 } else {
                     Toast.makeText(requireContext(), "Backup failed", Toast.LENGTH_SHORT).show()
+                    setLoadingState(false)
                 }
-
-                binding.btnBackupNow.isEnabled = true
-                binding.progressBar.visibility = View.GONE
-                binding.tvStatus.visibility = View.GONE
             } else {
                 loadBackups(email)
             }
@@ -338,17 +423,14 @@ class SettingsFragment : Fragment() {
     private fun executeRestore(file: DriveFile) {
         val email = binding.tvAccountName.tag as? String ?: return
         lifecycleScope.launch {
-            binding.progressBar.visibility = View.VISIBLE
-            binding.tvStatus.visibility = View.VISIBLE
-            binding.tvStatus.text = "Starting restore..."
+            setLoadingState(true, "Starting restore...")
             try {
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val success = backupManager.restoreBackup(credential, file.id) { status ->
-                    Log.d(TAG, "Restore progress: $status")
-                    lifecycleScope.launch {
+                    viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.Main) {
-                            binding.tvStatus.text = status
+                            setLoadingState(true, status)
                         }
                     }
                 }
@@ -358,7 +440,7 @@ class SettingsFragment : Fragment() {
                         "Restore successful",
                         Toast.LENGTH_LONG
                     ).show()
-                    refreshAppContent()
+                    (requireActivity() as? MainActivity)?.refreshData()
                 } else {
                     Toast.makeText(requireContext(), "Restore failed", Toast.LENGTH_SHORT).show()
                 }
@@ -367,20 +449,15 @@ class SettingsFragment : Fragment() {
                 Toast.makeText(requireContext(), "Restore failed: ${e.message}", Toast.LENGTH_SHORT)
                     .show()
             } finally {
-                binding.progressBar.visibility = View.GONE
-                binding.tvStatus.visibility = View.GONE
+                setLoadingState(false)
             }
         }
-    }
-
-    private suspend fun refreshAppContent() {
-        (requireActivity() as? MainActivity)?.refreshData()
     }
 
     private fun onDeleteBackup(file: DriveFile) {
         val email = binding.tvAccountName.tag as? String ?: return
         lifecycleScope.launch {
-            binding.progressBar.visibility = View.VISIBLE
+            setLoadingState(true, "Deleting backup...")
             try {
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
@@ -412,10 +489,7 @@ class SettingsFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
                 }
-            } finally {
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                }
+                setLoadingState(false)
             }
         }
     }
@@ -427,6 +501,6 @@ class SettingsFragment : Fragment() {
 
     companion object {
         const val TAG = "SettingsFragment"
-        const val REQUEST_KEY_BACKUP_REFRESH = "backup_refresh"
+        private const val ANIMATION_DURATION = 300L
     }
 }
