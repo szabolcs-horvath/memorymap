@@ -275,7 +275,7 @@ class BackupManager(private val context: Context) {
         val query =
             "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
         val result = driveService.files().list().setQ(query).setSpaces("drive").execute()
-        if (result.files.isNotEmpty()) return result.files[0].id
+        if (result.files.isNotEmpty()) return result.files.first().id
         val folderMetadata = DriveFile().apply {
             name = folderName
             mimeType = "application/vnd.google-apps.folder"

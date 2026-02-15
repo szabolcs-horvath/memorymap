@@ -13,15 +13,14 @@ class MediaViewerFragment : Fragment() {
     private var _binding: FragmentMediaViewerBinding? = null
     private val binding get() = _binding!!
 
-    private var mediaUris: ArrayList<String>? = null
-    private var mediaTypes: ArrayList<String>? = null
+    private var mediaItems: ArrayList<Pair<String, String>>? = null
     private var startPosition: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            mediaUris = it.getStringArrayList(ARG_MEDIA_URIS)
-            mediaTypes = it.getStringArrayList(ARG_MEDIA_TYPES)
+            @Suppress("UNCHECKED_CAST")
+            mediaItems = it.getSerializable(ARG_MEDIA_ITEMS) as? ArrayList<Pair<String, String>>
             startPosition = it.getInt(ARG_START_POSITION, 0)
         }
     }
@@ -38,9 +37,10 @@ class MediaViewerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (mediaUris != null && mediaTypes != null) {
-            val adapter = MediaPagerAdapter(mediaUris!!, mediaTypes!!)
+        mediaItems?.let { items ->
+            val adapter = MediaPagerAdapter()
             binding.mediaViewPager.adapter = adapter
+            adapter.submitList(items)
             binding.mediaViewPager.setCurrentItem(startPosition, false)
         }
 
@@ -56,19 +56,16 @@ class MediaViewerFragment : Fragment() {
 
     companion object {
         const val TAG = "MediaViewerFragment"
-        private const val ARG_MEDIA_URIS = "media_uris"
-        private const val ARG_MEDIA_TYPES = "media_types"
+        private const val ARG_MEDIA_ITEMS = "media_items"
         private const val ARG_START_POSITION = "start_position"
 
         @JvmStatic
         fun newInstance(
-            mediaUris: ArrayList<String>,
-            mediaTypes: ArrayList<String>,
+            mediaItems: ArrayList<Pair<String, String>>,
             startPosition: Int
         ) = MediaViewerFragment().apply {
             arguments = Bundle().apply {
-                putStringArrayList(ARG_MEDIA_URIS, mediaUris)
-                putStringArrayList(ARG_MEDIA_TYPES, mediaTypes)
+                putSerializable(ARG_MEDIA_ITEMS, mediaItems)
                 putInt(ARG_START_POSITION, startPosition)
             }
         }

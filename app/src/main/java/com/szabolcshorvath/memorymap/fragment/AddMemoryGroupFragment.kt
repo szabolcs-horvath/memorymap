@@ -21,8 +21,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.withTransaction
 import coil3.load
@@ -79,6 +80,7 @@ class AddMemoryGroupFragment : Fragment() {
     private lateinit var backupManager: BackupManager
     private var editingMemoryId: Int? = null
     private lateinit var mediaAdapter: SelectedMediaAdapter
+    private var currentDeviceId: String? = null
 
     private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(
         Locale.getDefault()
@@ -92,8 +94,10 @@ class AddMemoryGroupFragment : Fragment() {
             uris.let { it ->
                 val contentResolver = requireContext().contentResolver
                 lifecycleScope.launch {
-                    val currentDeviceId =
-                        InstallationIdentifier.getInstallationIdentifier(requireContext())
+                    val deviceId =
+                        currentDeviceId ?: InstallationIdentifier.getInstallationIdentifier(
+                            requireContext()
+                        )
                     val newItems = it.mapNotNull { uri ->
                         if (selectedMedia.any { it.uri == uri }) {
                             null
@@ -101,7 +105,7 @@ class AddMemoryGroupFragment : Fragment() {
                             val type = contentResolver.getType(uri)
                             val mediaType =
                                 if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-                            SelectedMedia(uri, mediaType, currentDeviceId)
+                            SelectedMedia(uri, mediaType, deviceId)
                         }
                     }
                     selectedMedia.addAll(newItems)
@@ -150,11 +154,17 @@ class AddMemoryGroupFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         backupManager = BackupManager(requireContext())
-        setupRecyclerView()
-        updateLocationText()
-        updateDateTimeButtons()
-        setupPresetColors()
-        updateHueUI()
+
+        lifecycleScope.launch {
+            if (currentDeviceId == null) {
+                currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
+            }
+            setupRecyclerView()
+            updateLocationText()
+            updateDateTimeButtons()
+            setupPresetColors()
+            updateHueUI()
+        }
 
         binding.selectLocationButton.setOnClickListener {
             listener?.onPickLocation(lat, lng)
@@ -194,7 +204,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        mediaAdapter = SelectedMediaAdapter(selectedMedia) { position ->
+        mediaAdapter = SelectedMediaAdapter { position ->
             selectedMedia.removeAt(position)
             updateMediaUI()
         }
@@ -202,7 +212,8 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateMediaUI() {
-        mediaAdapter.notifyDataSetChanged()
+        // We pass a new list instance (toList()) to ensure it detects the change.
+        mediaAdapter.submitList(selectedMedia.toList())
         binding.selectedMediaCount.text = "${selectedMedia.size} items selected"
     }
 
@@ -571,19 +582,10 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private inner class SelectedMediaAdapter(
-        private val items: List<SelectedMedia>, private val onRemove: (Int) -> Unit
-    ) : RecyclerView.Adapter<SelectedMediaAdapter.SelectedMediaViewHolder>() {
-
-        private var currentDeviceId: String? = null
-
-        override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-            super.onAttachedToRecyclerView(recyclerView)
-            recyclerView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-                currentDeviceId =
-                    InstallationIdentifier.getInstallationIdentifier(recyclerView.context)
-                notifyDataSetChanged()
-            }
-        }
+        private val onRemove: (Int) -> Unit
+    ) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
+        SelectedMediaDiffCallback()
+    ) {
 
         inner class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
             RecyclerView.ViewHolder(binding.root)
@@ -595,7 +597,7 @@ class AddMemoryGroupFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: SelectedMediaViewHolder, position: Int) {
-            val item = items[position]
+            val item = getItem(position)
             val isFromOtherDevice = currentDeviceId != null && item.deviceId != currentDeviceId
 
             if (isFromOtherDevice) {
@@ -621,8 +623,16 @@ class AddMemoryGroupFragment : Fragment() {
 
             holder.binding.removeButton.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
         }
+    }
 
-        override fun getItemCount() = items.size
+    private class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
+        override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia): Boolean {
+            return oldItem.uri == newItem.uri
+        }
+
+        override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia): Boolean {
+            return oldItem == newItem
+        }
     }
 
     companion object {

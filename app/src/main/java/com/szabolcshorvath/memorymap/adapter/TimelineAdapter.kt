@@ -6,6 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.graphics.toColorInt
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -18,27 +20,30 @@ import java.time.format.FormatStyle
 import java.util.Locale
 
 class TimelineAdapter(
-    private var memoryGroups: List<MemoryGroup>,
     private val onMemoryClick: (MemoryGroup) -> Unit
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+) : ListAdapter<TimelineAdapter.TimelineItem, RecyclerView.ViewHolder>(TimelineDiffCallback()) {
 
-    private sealed class TimelineItem {
+    sealed class TimelineItem {
         data class Memory(val memoryGroup: MemoryGroup) : TimelineItem()
         data class DateSeparator(val date: LocalDate) : TimelineItem()
-    }
 
-    private var adapterItems: List<TimelineItem> = emptyList()
+        fun getItemId(): String {
+            return when (this) {
+                is Memory -> "memory_${memoryGroup.id}"
+                is DateSeparator -> "date_${date}"
+            }
+        }
+    }
 
     init {
         stateRestorationPolicy = StateRestorationPolicy.PREVENT_WHEN_EMPTY
-        updateAdapterItems()
     }
 
-    private fun updateAdapterItems() {
+    private fun generateTimelineItems(groups: List<MemoryGroup>): List<TimelineItem> {
         val items = mutableListOf<TimelineItem>()
         var lastDate: LocalDate? = null
 
-        memoryGroups.forEach { group ->
+        groups.forEach { group ->
             val currentDate = group.startDate.toLocalDate()
             if (lastDate == null || currentDate != lastDate) {
                 items.add(TimelineItem.DateSeparator(currentDate))
@@ -46,7 +51,7 @@ class TimelineAdapter(
             }
             items.add(TimelineItem.Memory(group))
         }
-        adapterItems = items
+        return items
     }
 
     inner class TimelineViewHolder(private val binding: ItemTimelineMemoryBinding) :
@@ -105,7 +110,7 @@ class TimelineAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (adapterItems[position]) {
+        return when (getItem(position)) {
             is TimelineItem.Memory -> VIEW_TYPE_MEMORY
             is TimelineItem.DateSeparator -> VIEW_TYPE_SEPARATOR
         }
@@ -129,23 +134,33 @@ class TimelineAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        when (val item = adapterItems[position]) {
+        when (val item = getItem(position)) {
             is TimelineItem.Memory -> (holder as TimelineViewHolder).bind(item.memoryGroup)
             is TimelineItem.DateSeparator -> (holder as DateSeparatorViewHolder).bind(item.date)
         }
     }
 
-    override fun getItemCount(): Int = adapterItems.size
-
     fun updateData(newGroups: List<MemoryGroup>) {
-        memoryGroups = newGroups
-        updateAdapterItems()
-        notifyDataSetChanged()
+        submitList(generateTimelineItems(newGroups))
     }
 
     fun getPositionForId(id: Int): Int {
-        return adapterItems.indexOfFirst {
-            it is TimelineItem.Memory && it.memoryGroup.id == id
+        for (i in 0 until itemCount) {
+            val item = getItem(i)
+            if (item is TimelineItem.Memory && item.memoryGroup.id == id) {
+                return i
+            }
+        }
+        return -1
+    }
+
+    private class TimelineDiffCallback : DiffUtil.ItemCallback<TimelineItem>() {
+        override fun areItemsTheSame(oldItem: TimelineItem, newItem: TimelineItem): Boolean {
+            return oldItem.getItemId() == newItem.getItemId()
+        }
+
+        override fun areContentsTheSame(oldItem: TimelineItem, newItem: TimelineItem): Boolean {
+            return oldItem == newItem
         }
     }
 

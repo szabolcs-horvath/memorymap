@@ -223,7 +223,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         }
 
                         if (addresses.isNotEmpty()) {
-                            val address = addresses[0]
+                            val address = addresses.first()
                             lifecycleScope.launch(Dispatchers.Main) {
                                 if (selectedPlaceName == null) {
                                     selectedPlaceName = address.featureName ?: address.thoroughfare
@@ -245,7 +245,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     }
 
                     if (!addresses.isNullOrEmpty()) {
-                        val address = addresses[0]
+                        val address = addresses.first()
                         withContext(Dispatchers.Main) {
                             if (selectedPlaceName == null) {
                                 selectedPlaceName = address.featureName ?: address.thoroughfare

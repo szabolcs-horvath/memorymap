@@ -42,9 +42,13 @@ import kotlin.system.measureTimeMillis
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
-class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
-    MapFragment.MapListener, AddMemoryGroupFragment.AddMemoryListener,
-    PickLocationFragment.PickLocationListener, MemoryFragment.MemoryFragmentListener {
+class MainActivity :
+    AppCompatActivity(),
+    MapFragment.MapListener,
+    TimelineFragment.TimelineListener,
+    MemoryFragment.MemoryFragmentListener,
+    AddMemoryGroupFragment.AddMemoryListener,
+    PickLocationFragment.PickLocationListener {
 
     private lateinit var binding: ActivityMainContainerBinding
 
@@ -333,11 +337,10 @@ class MainActivity : AppCompatActivity(), TimelineFragment.TimelineListener,
     }
 
     override fun onMediaClick(
-        mediaItems: ArrayList<String>,
-        types: ArrayList<String>,
+        mediaItems: ArrayList<Pair<String, String>>,
         startPosition: Int
     ) {
-        val fragment = MediaViewerFragment.newInstance(mediaItems, types, startPosition)
+        val fragment = MediaViewerFragment.newInstance(mediaItems, startPosition)
         val memoryPagerFragment = supportFragmentManager.findFragmentByTag(MemoryPagerFragment.TAG)
 
         val transaction = supportFragmentManager.beginTransaction()

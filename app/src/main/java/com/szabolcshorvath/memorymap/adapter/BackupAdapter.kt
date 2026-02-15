@@ -3,6 +3,8 @@ package com.szabolcshorvath.memorymap.adapter
 import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.api.services.drive.model.File
 import com.szabolcshorvath.memorymap.databinding.ItemBackupBinding
@@ -11,10 +13,9 @@ import java.util.Date
 import java.util.Locale
 
 class BackupAdapter(
-    private var backups: List<File>,
     private val onRestoreClick: (File) -> Unit,
     private val onDeleteClick: (File) -> Unit
-) : RecyclerView.Adapter<BackupAdapter.BackupViewHolder>() {
+) : ListAdapter<File, BackupAdapter.BackupViewHolder>(BackupDiffCallback()) {
 
     inner class BackupViewHolder(private val binding: ItemBackupBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -50,14 +51,21 @@ class BackupAdapter(
     }
 
     override fun onBindViewHolder(holder: BackupViewHolder, position: Int) {
-        holder.bind(backups[position])
+        holder.bind(getItem(position))
     }
 
-    override fun getItemCount(): Int = backups.size
-
     fun updateBackups(newBackups: List<File>) {
-        backups = newBackups
-        notifyDataSetChanged()
+        submitList(newBackups)
+    }
+
+    private class BackupDiffCallback : DiffUtil.ItemCallback<File>() {
+        override fun areItemsTheSame(oldItem: File, newItem: File): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: File, newItem: File): Boolean {
+            return oldItem == newItem
+        }
     }
 
     companion object {

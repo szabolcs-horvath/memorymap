@@ -17,6 +17,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,11 +33,11 @@ class MemoryFragment : Fragment() {
     private var mediaItems: List<MediaItem> = emptyList()
     private var listener: MemoryFragmentListener? = null
     private var currentMemoryGroup: MemoryGroupWithMedia? = null
+    private var currentDeviceId: String? = null
 
     interface MemoryFragmentListener {
         fun onMediaClick(
-            mediaItems: ArrayList<String>,
-            types: ArrayList<String>,
+            mediaItems: ArrayList<Pair<String, String>>,
             startPosition: Int
         )
 
@@ -73,8 +74,11 @@ class MemoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupRecyclerView()
-        loadMemoryDetails()
+        lifecycleScope.launch {
+            currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
+            setupRecyclerView()
+            loadMemoryDetails()
+        }
 
         binding.editButton.setOnClickListener {
             listener?.onEditMemory(memoryId)
@@ -86,10 +90,9 @@ class MemoryFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = MediaAdapter(emptyList()) { position ->
-            val uris = ArrayList(mediaItems.map { it.uri })
-            val types = ArrayList(mediaItems.map { it.type.name })
-            listener?.onMediaClick(uris, types, position)
+        adapter = MediaAdapter(currentDeviceId) { position ->
+            val mediaPairs = ArrayList(mediaItems.map { it.uri to it.type.name })
+            listener?.onMediaClick(mediaPairs, position)
         }
         // Use a GridLayout with 3 columns for thumbnails
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, 3)
@@ -161,7 +164,7 @@ class MemoryFragment : Fragment() {
             listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
 
-        mediaItems = data.mediaItems.sortedBy { it.dateTaken }
+        mediaItems = data.mediaItems.sortedByDescending { it.dateTaken }
         val hasMissingMedia = LocalMediaUtil.hasMissingMedia(requireContext(), mediaItems)
         binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
         adapter.updateData(mediaItems)

@@ -3,97 +3,86 @@ package com.szabolcshorvath.memorymap.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.net.toUri
+import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
 import coil3.request.crossfade
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.databinding.ItemMediaFullBinding
-import androidx.core.net.toUri
-import androidx.core.view.isVisible
 
-class MediaPagerAdapter(
-    private val mediaUris: List<String>,
-    private val mediaTypes: List<String>
-) : RecyclerView.Adapter<MediaPagerAdapter.MediaViewHolder>() {
+class MediaPagerAdapter :
+    ListAdapter<Pair<String, String>, MediaPagerAdapter.MediaViewHolder>(MediaPageDiffCallback()) {
 
     class MediaViewHolder(private val binding: ItemMediaFullBinding) :
         RecyclerView.ViewHolder(binding.root) {
-        
-        fun bind(uriString: String, typeString: String) {
-            val uri = uriString.toUri()
-            val isVideo = typeString == "VIDEO"
 
-            // Reset zoom state before binding new data
+        fun bind(item: Pair<String, String>) {
+            val uri = item.first.toUri()
+            val isVideo = item.second == "VIDEO"
+
             binding.fullImageView.setScale(1.0f, false)
 
             if (isVideo) {
-                binding.fullImageView.visibility = View.VISIBLE // Keep image visible as thumbnail
-                binding.fullImageView.isZoomable = false // Typically we don't zoom video thumbnails
+                binding.fullImageView.visibility = View.VISIBLE
+                binding.fullImageView.isZoomable = false
                 binding.fullVideoView.visibility = View.VISIBLE
                 binding.playIcon.visibility = View.VISIBLE
 
-                // Load thumbnail for video
                 binding.fullImageView.load(uri) {
                     crossfade(true)
                     videoFrameMicros(0)
                     decoderFactory { result, options, _ ->
-                        VideoFrameDecoder(
-                            result.source,
-                            options
-                        )
+                        VideoFrameDecoder(result.source, options)
                     }
                 }
 
                 binding.fullVideoView.setVideoURI(uri)
 
-                // Simple play/pause on click
                 binding.root.setOnClickListener {
                     if (binding.fullVideoView.isPlaying) {
                         binding.fullVideoView.pause()
                         binding.playIcon.visibility = View.VISIBLE
-                        binding.fullImageView.visibility =
-                            View.VISIBLE // Show thumbnail when paused
+                        binding.fullImageView.visibility = View.VISIBLE
                     } else {
                         binding.fullVideoView.start()
                         binding.playIcon.visibility = View.GONE
-                        binding.fullImageView.visibility = View.GONE // Hide thumbnail when playing
+                        binding.fullImageView.visibility = View.GONE
                     }
                 }
 
                 binding.fullVideoView.setOnCompletionListener {
                     binding.playIcon.visibility = View.VISIBLE
-                    binding.fullImageView.visibility = View.VISIBLE // Show thumbnail when finished
+                    binding.fullImageView.visibility = View.VISIBLE
                 }
 
-                // Also ensure play icon starts video
                 binding.playIcon.setOnClickListener {
                     binding.fullVideoView.start()
                     binding.playIcon.visibility = View.GONE
-                    binding.fullImageView.visibility = View.GONE // Hide thumbnail when playing
+                    binding.fullImageView.visibility = View.GONE
                 }
 
             } else {
                 binding.fullVideoView.visibility = View.GONE
                 binding.playIcon.visibility = View.GONE
                 binding.fullImageView.visibility = View.VISIBLE
-                binding.fullImageView.isZoomable = true // Enable zoom for images
+                binding.fullImageView.isZoomable = true
 
                 binding.fullImageView.load(uri) {
                     crossfade(true)
                 }
-                binding.root.setOnClickListener(null) // Clear listener to allow PhotoView to handle touches
+                binding.root.setOnClickListener(null)
             }
         }
 
         fun resetState() {
-            // Reset zoom scale when the view is recycled or attached
             binding.fullImageView.setScale(1.0f, false)
-            
             if (binding.fullVideoView.isVisible) {
                 binding.playIcon.visibility = View.VISIBLE
                 binding.fullImageView.visibility = View.VISIBLE
-                // Ensure video is not playing when restored from cache
                 if (binding.fullVideoView.isPlaying) {
                     binding.fullVideoView.pause()
                 }
@@ -113,8 +102,22 @@ class MediaPagerAdapter(
     }
 
     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
-        holder.bind(mediaUris[position], mediaTypes[position])
+        holder.bind(getItem(position))
     }
 
-    override fun getItemCount(): Int = mediaUris.size
+    private class MediaPageDiffCallback : DiffUtil.ItemCallback<Pair<String, String>>() {
+        override fun areItemsTheSame(
+            oldItem: Pair<String, String>,
+            newItem: Pair<String, String>
+        ): Boolean {
+            return oldItem.first == newItem.first
+        }
+
+        override fun areContentsTheSame(
+            oldItem: Pair<String, String>,
+            newItem: Pair<String, String>
+        ): Boolean {
+            return oldItem == newItem
+        }
+    }
 }

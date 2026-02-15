@@ -153,7 +153,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        backupAdapter = BackupAdapter(emptyList(), ::onRestoreBackup, ::onDeleteBackup)
+        backupAdapter = BackupAdapter(::onRestoreBackup, ::onDeleteBackup)
         binding.rvBackups.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = backupAdapter

@@ -15,6 +15,10 @@ import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.transition.ChangeBounds
+import androidx.transition.Fade
+import androidx.transition.TransitionManager
+import androidx.transition.TransitionSet
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -54,6 +58,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var selectedMemoryId: Int? = null
     private val markerMap = mutableMapOf<Int, Marker>()
     private var listener: MapListener? = null
+    private var overlayAdapter: MemoryOverlayAdapter? = null
 
     private var allGroups: List<MemoryGroup> = emptyList()
     private var filterStartDate: LocalDate? = null
@@ -113,8 +118,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             setGoogleMapPadding()
         }
 
+        setupOverlayRecyclerView()
+
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+    }
+
+    private fun setupOverlayRecyclerView() {
+        overlayAdapter = MemoryOverlayAdapter { memoryId ->
+            listener?.onMemoryClicked(memoryId)
+        }
+        binding.rvMemories.apply {
+            adapter = overlayAdapter
+            itemAnimator = null // Disable cross-fade to eliminate "flickering" between markers
+        }
     }
 
     private fun showDateRangePicker() {
@@ -139,7 +156,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             filterEndDate = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
 
             updateDateRangeButtonText()
-            updateMapMarkers(adjustCamera = true)
+            lifecycleScope.launch {
+                updateMapMarkers(adjustCamera = true)
+            }
         }
         picker.show(childFragmentManager, picker.toString())
     }
@@ -186,14 +205,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val newStart = if (memoryStart.isBefore(currentStart)) memoryStart else currentStart
         val newEnd = if (memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
 
-        setDateFilter(newStart, newEnd)
-    }
+        filterStartDate = newStart
+        filterEndDate = newEnd
 
-    fun setDateFilter(startDate: LocalDate, endDate: LocalDate) {
-        filterStartDate = startDate
-        filterEndDate = endDate
         updateDateRangeButtonText()
-        updateMapMarkers()
+
+        lifecycleScope.launch {
+            updateMapMarkers()
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -235,17 +254,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
 
         googleMap.setOnMapClickListener {
-            binding.overlayCard.visibility = View.GONE
-            selectedMarker = null
-            selectedMemoryId = null
-            setGoogleMapPadding()
+            hideMemoryOverlay()
         }
 
         googleMap.setOnMyLocationButtonClickListener {
-            binding.overlayCard.visibility = View.GONE
-            selectedMarker = null
-            selectedMemoryId = null
-            setGoogleMapPadding()
+            hideMemoryOverlay()
             false
         }
 
@@ -254,6 +267,22 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
 
         binding.overlayCard.viewTreeObserver.addOnGlobalLayoutListener {
+            setGoogleMapPadding()
+        }
+    }
+
+    private fun hideMemoryOverlay() {
+        if (binding.overlayCard.isVisible) {
+            TransitionManager.beginDelayedTransition(
+                binding.root,
+                TransitionSet().apply {
+                    addTransition(Fade())
+                    addTransition(ChangeBounds())
+                    duration = ANIMATION_DURATION
+                })
+            binding.overlayCard.visibility = View.GONE
+            selectedMarker = null
+            selectedMemoryId = null
             setGoogleMapPadding()
         }
     }
@@ -345,16 +374,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         )
                     }
                 } else {
-                    binding.overlayCard.visibility = View.GONE
-                    selectedMarker = null
-                    selectedMemoryId = null
-                    setGoogleMapPadding()
+                    hideMemoryOverlay()
                 }
             } else {
-                binding.overlayCard.visibility = View.GONE
-                selectedMarker = null
-                selectedMemoryId = null
-                setGoogleMapPadding()
+                hideMemoryOverlay()
             }
         }
     }
@@ -393,56 +416,64 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun updateMapMarkers(adjustCamera: Boolean = false) {
+    private suspend fun updateMapMarkers(adjustCamera: Boolean = false) {
         Log.d(TAG, "Updating map markers")
         val map = mMap ?: return
-        map.clear()
-        markerMap.clear()
 
         val start = filterStartDate ?: LocalDate.MIN
         val end = filterEndDate ?: LocalDate.MAX
 
-        val filteredGroups = allGroups.filter { group ->
-            val groupStart = group.startDate.toLocalDate()
-            val groupEnd = group.endDate.toLocalDate()
-            !groupEnd.isBefore(start) && !groupStart.isAfter(end)
-        }
-
-        var clusters: Collection<List<MemoryGroup>>
-        val duration = measureTimeMillis {
-            clusters = clusterMemories(filteredGroups)
-        }
-        Log.d(TAG, "Clustering took $duration ms")
-
-        val boundsBuilder = LatLngBounds.Builder()
-        var markersCount = 0
-
-        clusters.forEach { groups ->
-            val marker = getMarker(groups, map)
-            if (marker != null) {
-                marker.tag = groups
-                groups.forEach { group ->
-                    markerMap[group.id] = marker
-                }
-                boundsBuilder.include(marker.position)
-                markersCount++
+        // Perform filtering and clustering in the background
+        val clusters = withContext(Dispatchers.Default) {
+            val filteredGroups = allGroups.filter { group ->
+                val groupStart = group.startDate.toLocalDate()
+                val groupEnd = group.endDate.toLocalDate()
+                !groupEnd.isBefore(start) && !groupStart.isAfter(end)
             }
+
+            var result: Collection<List<MemoryGroup>>
+            val duration = measureTimeMillis {
+                result = clusterMemories(filteredGroups)
+            }
+            Log.d(TAG, "Clustering took $duration ms")
+            result
         }
 
-        if (adjustCamera && markersCount > 0) {
-            val bounds = boundsBuilder.build()
-            map.setMaxZoomPreference(MAX_CAMERA_ZOOM)
-            map.animateCamera(
-                CameraUpdateFactory.newLatLngBounds(bounds, ZOOM_PADDING),
-                object : GoogleMap.CancelableCallback {
-                    override fun onFinish() {
-                        map.resetMinMaxZoomPreference()
-                    }
+        // Apply to UI
+        withContext(Dispatchers.Main) {
+            map.clear()
+            markerMap.clear()
 
-                    override fun onCancel() {
-                        map.resetMinMaxZoomPreference()
+            val boundsBuilder = LatLngBounds.Builder()
+            var markersCount = 0
+
+            clusters.forEach { groups ->
+                val marker = getMarker(groups, map)
+                if (marker != null) {
+                    marker.tag = groups
+                    groups.forEach { group ->
+                        markerMap[group.id] = marker
                     }
-                })
+                    boundsBuilder.include(marker.position)
+                    markersCount++
+                }
+            }
+
+            if (adjustCamera && markersCount > 0) {
+                val bounds = boundsBuilder.build()
+                map.setMaxZoomPreference(MAX_CAMERA_ZOOM)
+                map.animateCamera(
+                    CameraUpdateFactory.newLatLngBounds(bounds, ZOOM_PADDING),
+                    object : GoogleMap.CancelableCallback {
+                        override fun onFinish() {
+                            map.resetMinMaxZoomPreference()
+                        }
+
+                        override fun onCancel() {
+                            map.resetMinMaxZoomPreference()
+                        }
+                    })
+            }
         }
     }
 
@@ -451,9 +482,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val parent = IntArray(n) { it }
 
         fun find(i: Int): Int {
-            if (parent[i] == i) return i
-            parent[i] = find(parent[i]) // Path compression
-            return parent[i]
+            var curr = i
+            while (parent[curr] != curr) {
+                parent[curr] = parent[parent[curr]] // Path halving
+                curr = parent[curr]
+            }
+            return curr
         }
 
         fun union(i: Int, j: Int) {
@@ -462,7 +496,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if (rootI != rootJ) parent[rootI] = rootJ
         }
 
-        // O(N^2) comparisons
+        // O(N^2) comparisons, but with optimized distance check
         for (i in 0 until n) {
             for (j in i + 1 until n) {
                 if (memories[i].isSameLocationAs(memories[j])) {
@@ -532,11 +566,27 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val locationName = groups.firstOrNull { it.placeName != null }?.placeName
             ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
 
-        binding.overlayLocationTitle.text = locationName
-        binding.rvMemories.adapter = MemoryOverlayAdapter(groups) { memoryId ->
-            listener?.onMemoryClicked(memoryId)
+        // Smoothly animate the card appearance, title cross-fade, and list height changes
+        val transition = TransitionSet().apply {
+            ordering = TransitionSet.ORDERING_TOGETHER
+            addTransition(Fade())
+            addTransition(ChangeBounds())
+            duration = ANIMATION_DURATION
+
         }
 
+        TransitionManager.beginDelayedTransition(binding.root, transition)
+
+        if (binding.overlayCard.isVisible && binding.overlayLocationTitle.text != locationName) {
+            // Briefly toggling visibility triggers a smooth Fade cross-fade for the text change
+            binding.overlayLocationTitle.visibility = View.INVISIBLE
+            binding.overlayLocationTitle.text = locationName
+            binding.overlayLocationTitle.visibility = View.VISIBLE
+        } else {
+            binding.overlayLocationTitle.text = locationName
+        }
+
+        overlayAdapter?.submitList(groups)
         binding.overlayCard.visibility = View.VISIBLE
         setGoogleMapPadding()
     }
@@ -550,5 +600,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         const val TAG = "MapFragment"
         private const val MAX_CAMERA_ZOOM = 15f
         private const val ZOOM_PADDING = 100
+        private const val ANIMATION_DURATION = 250L
     }
 }

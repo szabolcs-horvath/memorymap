@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.data
 import android.location.Location
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.szabolcshorvath.memorymap.data.MemoryGroup.Companion.SAME_LOCATION_METERS_THRESHOLD
 import java.time.ZonedDateTime
@@ -10,7 +11,13 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 
-@Entity(tableName = "memory_groups")
+@Entity(
+    tableName = "memory_groups",
+    indices = [
+        Index("startDate"),
+        Index("endDate")
+    ]
+)
 data class MemoryGroup(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String,
@@ -58,15 +65,13 @@ data class MemoryGroup(
             if (placeName == other.placeName && address == other.address) return true
         }
 
-        val loc1 = Location(null).apply {
-            latitude = this@MemoryGroup.latitude
-            longitude = this@MemoryGroup.longitude
-        }
-        val loc2 = Location(null).apply {
-            latitude = other.latitude
-            longitude = other.longitude
-        }
-        return loc1.distanceTo(loc2) < SAME_LOCATION_METERS_THRESHOLD
+        val results = FloatArray(1)
+        Location.distanceBetween(
+            latitude, longitude,
+            other.latitude, other.longitude,
+            results
+        )
+        return results[0] < SAME_LOCATION_METERS_THRESHOLD
     }
 
     companion object {

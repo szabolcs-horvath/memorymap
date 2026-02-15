@@ -53,7 +53,7 @@ class TimelineFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = TimelineAdapter(emptyList()) { memoryGroup ->
+        adapter = TimelineAdapter { memoryGroup ->
             listener?.onMemoryClicked(memoryGroup.id)
         }
         binding.timelineRecyclerView.layoutManager = LinearLayoutManager(requireContext())

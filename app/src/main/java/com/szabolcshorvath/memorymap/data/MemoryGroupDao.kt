@@ -29,10 +29,10 @@ interface MemoryGroupDao {
     suspend fun deleteMediaByGroupId(groupId: Int)
 
     @Transaction
-    @Query("SELECT * FROM memory_groups")
+    @Query("SELECT * FROM memory_groups ORDER BY startDate DESC")
     suspend fun getAllGroupsWithMedia(): List<MemoryGroupWithMedia>
 
-    @Query("SELECT * FROM memory_groups")
+    @Query("SELECT * FROM memory_groups ORDER BY startDate DESC")
     suspend fun getAllGroups(): List<MemoryGroup>
 
     @Transaction

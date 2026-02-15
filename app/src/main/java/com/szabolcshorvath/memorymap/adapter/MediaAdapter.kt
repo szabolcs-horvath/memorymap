@@ -3,8 +3,8 @@ package com.szabolcshorvath.memorymap.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.findViewTreeLifecycleOwner
-import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
 import coil3.request.crossfade
@@ -13,23 +13,11 @@ import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaThumbnailBinding
-import com.szabolcshorvath.memorymap.util.InstallationIdentifier
-import kotlinx.coroutines.launch
 
 class MediaAdapter(
-    private var mediaItems: List<MediaItem>,
+    private val currentDeviceId: String?,
     private val onMediaClick: (Int) -> Unit
-) : RecyclerView.Adapter<MediaAdapter.MediaViewHolder>() {
-
-    private var currentDeviceId: String? = null
-
-    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-        super.onAttachedToRecyclerView(recyclerView)
-        recyclerView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-            currentDeviceId = InstallationIdentifier.getInstallationIdentifier(recyclerView.context)
-            notifyDataSetChanged()
-        }
-    }
+) : ListAdapter<MediaItem, MediaAdapter.MediaViewHolder>(MediaItemDiffCallback()) {
 
     inner class MediaViewHolder(private val binding: ItemMediaThumbnailBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -70,13 +58,20 @@ class MediaAdapter(
     }
 
     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
-        holder.bind(mediaItems[position], position)
+        holder.bind(getItem(position), position)
     }
 
-    override fun getItemCount(): Int = mediaItems.size
-
     fun updateData(newItems: List<MediaItem>) {
-        mediaItems = newItems
-        notifyDataSetChanged()
+        submitList(newItems)
+    }
+
+    private class MediaItemDiffCallback : DiffUtil.ItemCallback<MediaItem>() {
+        override fun areItemsTheSame(oldItem: MediaItem, newItem: MediaItem): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: MediaItem, newItem: MediaItem): Boolean {
+            return oldItem == newItem
+        }
     }
 }

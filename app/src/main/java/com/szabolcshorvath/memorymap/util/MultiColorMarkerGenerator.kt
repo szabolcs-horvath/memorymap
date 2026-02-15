@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
+import android.util.LruCache
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withClip
 
@@ -17,6 +18,8 @@ object MultiColorMarkerGenerator {
     private const val TEXT_SIZE_SP = 14.0f
     private const val TEXT_OUTLINE_WIDTH_DP = 1.5f
 
+    private val cache = LruCache<String, Bitmap>(50)
+
     /**
      * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
      */
@@ -25,6 +28,9 @@ object MultiColorMarkerGenerator {
         count: Int,
         density: Float
     ): Bitmap {
+        val cacheKey = "${colors.hashCode()}_${count}_$density"
+        cache.get(cacheKey)?.let { return it }
+
         val width = (MARKER_SIZE_DP * density).toInt()
         val height = (width * 1.5f).toInt()
         val borderWidth = (BORDER_WIDTH_DP * density)
@@ -80,6 +86,7 @@ object MultiColorMarkerGenerator {
             outlineWidth
         )
 
+        cache.put(cacheKey, bitmap)
         return bitmap
     }
 

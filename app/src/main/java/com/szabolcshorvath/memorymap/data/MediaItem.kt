@@ -15,7 +15,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("groupId")]
+    indices = [
+        Index("groupId"),
+        Index("dateTaken")
+    ]
 )
 data class MediaItem(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,

@@ -44,7 +44,6 @@ class MemoryPagerFragment : Fragment() {
     private fun loadMemoriesAndSetupPager() {
         lifecycleScope.launch(Dispatchers.IO) {
             val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
-            // Same sorting as TimelineFragment
             val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
             memoryIds = groups.map { it.id }
 
