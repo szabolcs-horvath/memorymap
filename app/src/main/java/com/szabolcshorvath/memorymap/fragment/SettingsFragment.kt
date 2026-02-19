@@ -21,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
@@ -204,6 +205,12 @@ class SettingsFragment : Fragment() {
 
     private fun setupRecyclerView() {
         backupAdapter = BackupAdapter(::onRestoreBackup, ::onDeleteBackup)
+        backupAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                binding.rvBackups.scrollToPosition(positionStart)
+            }
+        })
+
         binding.rvBackups.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = backupAdapter
