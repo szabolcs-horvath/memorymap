@@ -291,7 +291,7 @@ class SettingsFragment : Fragment() {
     private fun loadBackups(email: String) {
         lifecycleScope.launch {
             try {
-                setLoadingState(true)
+                setLoadingState(true, "Loading backups...")
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val backups = backupManager.listBackups(credential)
