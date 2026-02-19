@@ -208,6 +208,11 @@ class AddMemoryGroupFragment : Fragment() {
             selectedMedia.removeAt(position)
             updateMediaUI()
         }
+        mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                binding.selectedMediaRecyclerView.scrollToPosition(positionStart)
+            }
+        })
         binding.selectedMediaRecyclerView.adapter = mediaAdapter
     }
 

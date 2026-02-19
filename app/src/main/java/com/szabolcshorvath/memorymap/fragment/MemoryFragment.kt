@@ -9,6 +9,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -94,6 +95,11 @@ class MemoryFragment : Fragment() {
             val mediaPairs = ArrayList(mediaItems.map { it.uri to it.type.name })
             listener?.onMediaClick(mediaPairs, position)
         }
+        adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                binding.mediaRecyclerView.scrollToPosition(positionStart)
+            }
+        })
         // Use a GridLayout with 3 columns for thumbnails
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, 3)
         binding.mediaRecyclerView.adapter = adapter

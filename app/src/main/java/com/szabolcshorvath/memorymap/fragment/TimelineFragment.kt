@@ -56,6 +56,11 @@ class TimelineFragment : Fragment() {
         adapter = TimelineAdapter { memoryGroup ->
             listener?.onMemoryClicked(memoryGroup.id)
         }
+        adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                binding.timelineRecyclerView.scrollToPosition(positionStart)
+            }
+        })
         binding.timelineRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.timelineRecyclerView.adapter = adapter
     }
