@@ -243,13 +243,19 @@ class SettingsFragment : Fragment() {
             backupAdapter.setButtonsEnabled(enabled)
 
             val showOverlay = isLoading && !swipeRefresh.isRefreshing
-            if (showOverlay && status != null) {
-                tvStatus.text = status
+
+            if (showOverlay) {
+                val hasStatus = !status.isNullOrEmpty()
+                tvStatus.isVisible = hasStatus
+                if (hasStatus) {
+                    tvStatus.text = status
+                }
             }
 
             updateViewVisibilityWithAnimation(loadingOverlay, showOverlay) {
                 if (!showOverlay) {
                     tvStatus.text = ""
+                    tvStatus.isVisible = false
                 }
             }
         }
