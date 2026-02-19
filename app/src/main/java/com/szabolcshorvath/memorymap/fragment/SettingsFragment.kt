@@ -129,7 +129,7 @@ class SettingsFragment : Fragment() {
 
         binding.btnGoogleSignIn.setOnClickListener {
             setLoadingState(true, "Signing in...")
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     googleAuthManager.signIn { email ->
                         viewLifecycleOwner.lifecycleScope.launch {
@@ -295,7 +295,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun loadBackups(email: String) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 setLoadingState(true, "Loading backups...")
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
@@ -342,7 +342,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun successfulAuthorization(scopes: List<String>) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val email =
                 requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }
                     .firstOrNull() ?: (binding.tvAccountName.tag as? String)
