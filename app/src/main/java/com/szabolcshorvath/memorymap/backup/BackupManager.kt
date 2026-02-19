@@ -80,10 +80,10 @@ class BackupManager(private val context: Context) {
 
                 onProgress("Preparing database...")
                 try {
-                    StoryMapDatabase.getDatabase(context).openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)")
+                    StoryMapDatabase.getDatabase(context).openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)")
                         .close()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    throw Exception("Failed to checkpoint WAL", e)
                 }
 
                 val dbFile = context.getDatabasePath("memory_map_database")
