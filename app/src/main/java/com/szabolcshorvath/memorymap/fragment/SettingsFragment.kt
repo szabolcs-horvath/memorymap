@@ -131,7 +131,7 @@ class SettingsFragment : Fragment() {
             lifecycleScope.launch {
                 try {
                     googleAuthManager.signIn { email ->
-                        lifecycleScope.launch {
+                        viewLifecycleOwner.lifecycleScope.launch {
                             requireContext().dataStore.updateData {
                                 it.toMutablePreferences().also { preferences ->
                                     preferences[USER_EMAIL_KEY] = email
@@ -154,7 +154,10 @@ class SettingsFragment : Fragment() {
                             ).show()
                         }
 
-                        is CancellationException -> throw e
+                        is CancellationException -> {
+                            setLoadingState(false)
+                            throw e
+                        }
 
                         else -> {
                             Log.e(TAG, "Unexpected sign in error", e)
@@ -232,15 +235,15 @@ class SettingsFragment : Fragment() {
             btnSignOut.isEnabled = enabled
             backupAdapter.setButtonsEnabled(enabled)
 
-            val showProgress = isLoading && !swipeRefresh.isRefreshing
-            updateViewVisibilityWithAnimation(progressBar, showProgress)
-
-            val showStatus = isLoading && status != null
-            if (showStatus) {
+            val showOverlay = isLoading && !swipeRefresh.isRefreshing
+            if (showOverlay && status != null) {
                 tvStatus.text = status
             }
-            updateViewVisibilityWithAnimation(tvStatus, showStatus) {
-                tvStatus.text = ""
+
+            updateViewVisibilityWithAnimation(loadingOverlay, showOverlay) {
+                if (!showOverlay) {
+                    tvStatus.text = ""
+                }
             }
         }
     }
