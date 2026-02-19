@@ -386,7 +386,9 @@ class MainActivity :
         isProgrammaticSelection = false
 
         isNavigatedFromTimeline = true
-        mapFragment.focusOnMemory(lat, lng, id)
+        lifecycleScope.launch {
+            mapFragment.focusOnMemory(lat, lng, id)
+        }
     }
 
     override fun onPickLocation(lat: Double, lng: Double) {

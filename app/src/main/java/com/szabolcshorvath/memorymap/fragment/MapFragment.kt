@@ -182,7 +182,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    fun focusOnMemory(lat: Double, lng: Double, id: Int) {
+    suspend fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         val map = mMap
         if (map != null) {
             val memory = allGroups.find { it.id == id }
@@ -195,7 +195,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    fun updateDateFilterForMemory(memory: MemoryGroup?) {
+    suspend fun updateDateFilterForMemory(memory: MemoryGroup?) {
         if (memory != null) {
             val memoryStart = memory.startDate.toLocalDate()
             val memoryEnd = memory.endDate.toLocalDate()
@@ -204,7 +204,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
+    suspend fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
         val currentStart = filterStartDate ?: memoryStart
         val currentEnd = filterEndDate ?: memoryEnd
 
@@ -215,10 +215,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         filterEndDate = newEnd
 
         updateDateRangeButtonText()
-
-        lifecycleScope.launch {
-            updateMapMarkers()
-        }
+        updateMapMarkers()
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
