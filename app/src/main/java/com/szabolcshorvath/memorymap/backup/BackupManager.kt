@@ -245,7 +245,7 @@ class BackupManager(private val context: Context) {
 
                 return@withContext true
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Restore failed", e)
                 return@withContext false
             } finally {
                 tempZipFile?.delete()

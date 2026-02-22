@@ -178,7 +178,6 @@ class SettingsFragment : Fragment() {
             lifecycleScope.launch {
                 googleAuthManager.signOut()
                 updateUI(null)
-                Toast.makeText(requireContext(), "Signed out", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -187,8 +186,6 @@ class SettingsFragment : Fragment() {
             if (email != null) {
                 setLoadingState(true, "Starting backup...")
                 requestDriveAuthorization(true)
-            } else {
-                Toast.makeText(requireContext(), "Not signed in", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -332,10 +329,6 @@ class SettingsFragment : Fragment() {
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Failed to authorize", e)
-                if (isBackup) {
-                    Toast.makeText(requireContext(), "Authorization failed", Toast.LENGTH_SHORT)
-                        .show()
-                }
                 setLoadingState(false)
                 isBackupRequested = false
             }
@@ -365,10 +358,8 @@ class SettingsFragment : Fragment() {
                 }
 
                 if (success) {
-                    Toast.makeText(requireContext(), "Backup successful", Toast.LENGTH_SHORT).show()
                     loadBackups(email)
                 } else {
-                    Toast.makeText(requireContext(), "Backup failed", Toast.LENGTH_SHORT).show()
                     setLoadingState(false)
                 }
             } else {
@@ -451,11 +442,6 @@ class SettingsFragment : Fragment() {
                     }
                 }
                 if (success) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Restore successful",
-                        Toast.LENGTH_LONG
-                    ).show()
                     (requireActivity() as? MainActivity)?.refreshData()
                 } else {
                     Toast.makeText(requireContext(), "Restore failed", Toast.LENGTH_SHORT).show()
@@ -480,11 +466,6 @@ class SettingsFragment : Fragment() {
                 val success = backupManager.deleteBackup(credential, file.id)
                 if (success) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            requireContext(),
-                            "Backup deleted",
-                            Toast.LENGTH_SHORT
-                        ).show()
                         loadBackups(email)
                     }
                 } else {

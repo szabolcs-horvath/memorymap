@@ -8,7 +8,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
@@ -82,11 +81,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             enableMyLocation()
         } else {
             permissionDenied = true
-            Toast.makeText(
-                requireContext(),
-                "Location permissions are required for My Location to work",
-                Toast.LENGTH_SHORT
-            ).show()
         }
     }
 

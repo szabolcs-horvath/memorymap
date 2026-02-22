@@ -553,12 +553,6 @@ class AddMemoryGroupFragment : Fragment() {
             // Success operations
             backupManager.triggerAutomaticBackup()
 
-            Toast.makeText(
-                requireContext(),
-                if (editingMemoryId != null) "Updated!" else "Saved!",
-                Toast.LENGTH_SHORT
-            ).show()
-
             listener?.onMemorySaved(
                 lat,
                 lng,
@@ -567,7 +561,6 @@ class AddMemoryGroupFragment : Fragment() {
                 finalEnd.toLocalDate()
             )
             clearFields()
-
         } catch (e: Exception) {
             Log.e(TAG, "Error saving memory group", e)
             Toast.makeText(
