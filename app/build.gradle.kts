@@ -114,7 +114,6 @@ dependencies {
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.datastore.preferences)
     implementation(libs.material)
-    implementation(libs.material.tap.target.prompt)
 
     // Google Maps
     implementation(libs.google.places)

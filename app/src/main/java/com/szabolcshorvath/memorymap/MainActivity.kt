@@ -36,7 +36,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import uk.co.samuelwall.materialtaptargetprompt.MaterialTapTargetPrompt
 import java.time.LocalDate
 import kotlin.system.measureTimeMillis
 
@@ -243,68 +242,12 @@ class MainActivity :
 
                 if (isFirstRun) {
                     InstallationIdentifier.getInstallationIdentifier(applicationContext)
-                    // Small delay to ensure UI is ready
-                    kotlinx.coroutines.delay(500)
-                    showAddMemoryPrompt()
-
-                    dataStore.edit {
-                        it[LAST_APP_VERSION] = currentVersion
-                    }
+                    dataStore.edit { it[LAST_APP_VERSION] = currentVersion }
+                    dataStore.edit { it[IS_FIRST_RUN] = false }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-        }
-    }
-
-    private fun showAddMemoryPrompt() {
-        MaterialTapTargetPrompt.Builder(this)
-            .setTarget(binding.bottomNavigation.findViewById(R.id.navigation_add))
-            .setPrimaryText("Create memories")
-            .setSecondaryText("You can add new memories here")
-            .setPromptStateChangeListener { _, state ->
-                if (state == MaterialTapTargetPrompt.STATE_FOCAL_PRESSED ||
-                    state == MaterialTapTargetPrompt.STATE_NON_FOCAL_PRESSED
-                ) {
-                    showTimelinePrompt()
-                }
-            }
-            .show()
-    }
-
-    private fun showTimelinePrompt() {
-        MaterialTapTargetPrompt.Builder(this)
-            .setTarget(binding.bottomNavigation.findViewById(R.id.navigation_timeline))
-            .setPrimaryText("View your timeline")
-            .setSecondaryText("All your memories will appear here in chronological order")
-            .setPromptStateChangeListener { _, state ->
-                if (state == MaterialTapTargetPrompt.STATE_FOCAL_PRESSED ||
-                    state == MaterialTapTargetPrompt.STATE_NON_FOCAL_PRESSED
-                ) {
-                    showMapPrompt()
-                }
-            }
-            .show()
-    }
-
-    private fun showMapPrompt() {
-        MaterialTapTargetPrompt.Builder(this)
-            .setTarget(binding.bottomNavigation.findViewById(R.id.navigation_map))
-            .setPrimaryText("View your memories on the map")
-            .setSecondaryText("Your memories will appear on the map")
-            .setPromptStateChangeListener { _, state ->
-                if (state == MaterialTapTargetPrompt.STATE_FOCAL_PRESSED ||
-                    state == MaterialTapTargetPrompt.STATE_NON_FOCAL_PRESSED
-                ) {
-                    markTourAsFinished()
-                }
-            }
-            .show()
-    }
-
-    private fun markTourAsFinished() {
-        lifecycleScope.launch {
-            dataStore.edit { it[IS_FIRST_RUN] = false }
         }
     }
 
