@@ -14,7 +14,6 @@ import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.RecyclerView
 import androidx.transition.ChangeBounds
 import androidx.transition.Fade
 import androidx.transition.TransitionManager
@@ -123,11 +122,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         overlayAdapter = MemoryOverlayAdapter { memoryId ->
             listener?.onMemoryClicked(memoryId)
         }
-        overlayAdapter?.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                binding.rvMemories.scrollToPosition(positionStart)
-            }
-        })
         binding.rvMemories.apply {
             adapter = overlayAdapter
             itemAnimator = null // Disable cross-fade to eliminate "flickering" between markers
@@ -288,7 +282,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val map = mMap ?: return
         val topPadding = binding.dateFilterContainer.height + binding.dateFilterContainer.top
         if (binding.overlayCard.isVisible) {
-            map.setPadding(0, topPadding, 0, binding.overlayCard.height + 10)
+            map.setPadding(0, topPadding, 0, binding.overlayCard.height + 25)
         } else {
             map.setPadding(0, topPadding, 0, 0)
         }
@@ -583,7 +577,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             binding.overlayLocationTitle.text = locationName
         }
 
-        overlayAdapter?.submitList(groups)
+        overlayAdapter?.submitList(groups) {
+            val index = groups.indexOfFirst { it.id == selectedMemoryId }
+            if (index != -1) {
+                binding.rvMemories.scrollToPosition(index)
+            }
+        }
         binding.overlayCard.visibility = View.VISIBLE
         setGoogleMapPadding()
     }
