@@ -262,9 +262,17 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateHueUI() {
+        val color = ColorUtil.hueToColor(markerHue)
+        val colorStateList = ColorStateList.valueOf(color)
+
         binding.hueSlider.value = markerHue
-        val colorStateList = ColorStateList.valueOf(ColorUtil.hueToColor(markerHue))
         binding.hueSlider.thumbTintList = colorStateList
+        binding.divider1.dividerColor = color
+        binding.divider2.dividerColor = color
+//
+//        binding.hueSlider.value = markerHue
+//        val colorStateList = ColorStateList.valueOf(ColorUtil.hueToColor(markerHue))
+//        binding.hueSlider.thumbTintList = colorStateList
     }
 
     private fun showClearConfirmationDialog() {
@@ -352,12 +360,14 @@ class AddMemoryGroupFragment : Fragment() {
     private fun updateLocationText() {
         val locationString = StringBuilder()
         if (placeName != null) {
-            locationString.append(placeName).append("\n")
+            locationString.append(placeName).append(System.lineSeparator())
         }
         if (address != null) {
-            locationString.append(address).append("\n")
+            locationString.append(address).append(System.lineSeparator())
         }
-        locationString.append("$lat, $lng")
+        if (locationString.isEmpty()) {
+            locationString.append("Coordinates: $lat, $lng")
+        }
         binding.locationText.text = locationString.toString()
     }
 
