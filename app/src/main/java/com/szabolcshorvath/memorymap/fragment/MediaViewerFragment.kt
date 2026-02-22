@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.os.BundleCompat
 import androidx.fragment.app.Fragment
 import com.szabolcshorvath.memorymap.adapter.MediaPagerAdapter
 import com.szabolcshorvath.memorymap.databinding.FragmentMediaViewerBinding
@@ -20,7 +21,11 @@ class MediaViewerFragment : Fragment() {
         super.onCreate(savedInstanceState)
         arguments?.let {
             @Suppress("UNCHECKED_CAST")
-            mediaItems = it.getSerializable(ARG_MEDIA_ITEMS) as? ArrayList<Pair<String, String>>
+            mediaItems = BundleCompat.getSerializable(
+                it,
+                ARG_MEDIA_ITEMS,
+                ArrayList::class.java
+            ) as? ArrayList<Pair<String, String>>
             startPosition = it.getInt(ARG_START_POSITION, 0)
         }
     }
