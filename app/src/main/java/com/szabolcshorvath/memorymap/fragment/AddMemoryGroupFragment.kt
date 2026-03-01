@@ -553,7 +553,7 @@ class AddMemoryGroupFragment : Fragment() {
                             fileSize = size,
                             dateTaken = date
                         )
-                    }
+                    }.distinctBy { it.mediaSignature } // Deduplicate by signature to prevent duplicates
 
                     db.memoryGroupDao().insertMediaItems(mediaItems)
                     groupId.toInt()

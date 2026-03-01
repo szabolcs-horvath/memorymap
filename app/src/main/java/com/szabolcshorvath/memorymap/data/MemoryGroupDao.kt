@@ -25,6 +25,9 @@ interface MemoryGroupDao {
     @Delete
     suspend fun deleteGroup(group: MemoryGroup)
 
+    @Delete
+    suspend fun deleteMediaItems(items: List<MediaItem>)
+
     @Query("DELETE FROM media_items WHERE groupId = :groupId")
     suspend fun deleteMediaByGroupId(groupId: Int)
 
