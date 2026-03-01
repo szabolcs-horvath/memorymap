@@ -47,7 +47,8 @@ object LocalMediaUtil {
         val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
         val uniqueSizes = mediaItems.map { it.fileSize }.distinct()
         if (uniqueSizes.isEmpty()) return emptyList()
-        val selection = "${MediaStore.MediaColumns.SIZE} IN (${uniqueSizes.joinToString(", ")})"
+        val sizeList = uniqueSizes.joinToString(", ")
+        val selection = "${MediaStore.MediaColumns.SIZE} IN ($sizeList)"
 
         val mediaList = mutableListOf<LocalMediaInfo>()
         mediaList.addAll(
@@ -69,7 +70,7 @@ object LocalMediaUtil {
         return mediaList
     }
 
-    fun queryMediaStore(
+    private fun queryMediaStore(
         context: Context,
         contentUri: Uri,
         projection: Array<String>,
@@ -129,6 +130,30 @@ object LocalMediaUtil {
 
         if (itemsToUpdate.isNotEmpty()) {
             dao.updateMediaItems(itemsToUpdate)
+        }
+
+        // After fixing URIs, we can safely deduplicate based on (groupId, mediaSignature)
+        deduplicateMediaItems(context)
+    }
+
+    suspend fun deduplicateMediaItems(context: Context) {
+        val dao = StoryMapDatabase.getDatabase(context).memoryGroupDao()
+        val allMedia = dao.getAllMediaItems()
+        
+        // Group items by groupId and signature. Any group with size > 1 has duplicates.
+        val duplicates = allMedia.groupBy { it.groupId to it.mediaSignature }
+            .filter { it.value.size > 1 }
+
+        val itemsToDelete = mutableListOf<MediaItem>()
+        for ((_, items) in duplicates) {
+            // Keep the one with the smallest ID (the oldest one)
+            val sorted = items.sortedBy { it.id }
+            itemsToDelete.addAll(sorted.drop(1))
+        }
+
+        if (itemsToDelete.isNotEmpty()) {
+            Log.d(TAG, "Deleting ${itemsToDelete.size} duplicate media items")
+            dao.deleteMediaItems(itemsToDelete)
         }
     }
 }
