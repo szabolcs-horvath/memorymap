@@ -9,9 +9,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
+import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
@@ -23,6 +25,7 @@ import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Collections
 import java.util.Locale
 
 class MemoryFragment : Fragment() {
@@ -31,10 +34,11 @@ class MemoryFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var adapter: MediaAdapter
     private var memoryId: Int = -1
-    private var mediaItems: List<MediaItem> = emptyList()
+    private var mediaItems: MutableList<MediaItem> = mutableListOf()
     private var listener: MemoryFragmentListener? = null
     private var currentMemoryGroup: MemoryGroupWithMedia? = null
     private var currentDeviceId: String? = null
+    private lateinit var backupManager: BackupManager
 
     interface MemoryFragmentListener {
         fun onMediaClick(
@@ -74,6 +78,7 @@ class MemoryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        backupManager = BackupManager(requireContext())
 
         lifecycleScope.launch {
             currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
@@ -103,6 +108,68 @@ class MemoryFragment : Fragment() {
         // Use a GridLayout with 3 columns for thumbnails
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, 3)
         binding.mediaRecyclerView.adapter = adapter
+
+        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
+            0
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val fromPos = viewHolder.bindingAdapterPosition
+                val toPos = target.bindingAdapterPosition
+                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
+
+                // Synchronize both lists step-by-step using adjacent moves.
+                // This is much more stable for GridLayoutManager than a single jump move.
+                if (fromPos < toPos) {
+                    for (i in fromPos until toPos) {
+                        Collections.swap(mediaItems, i, i + 1)
+                        adapter.moveItem(i, i + 1)
+                    }
+                } else {
+                    for (i in fromPos downTo toPos + 1) {
+                        Collections.swap(mediaItems, i, i - 1)
+                        adapter.moveItem(i, i - 1)
+                    }
+                }
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun clearView(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ) {
+                super.clearView(recyclerView, viewHolder)
+                saveNewOrder()
+            }
+        })
+        itemTouchHelper.attachToRecyclerView(binding.mediaRecyclerView)
+    }
+
+    private fun saveNewOrder() {
+        val updatedItems = mediaItems.mapIndexed { index, item ->
+            item.copy(order = index + 1)
+        }
+        // Update local list with the new order values
+        mediaItems.clear()
+        mediaItems.addAll(updatedItems)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            db.memoryGroupDao().updateMediaItems(updatedItems)
+
+            withContext(Dispatchers.Main) {
+                // Refresh adapter to ensure internal state is consistent.
+                // The custom DiffUtil will ignore the 'order' field changes to prevent jumpy animations.
+                adapter.updateData(mediaItems.toList())
+                backupManager.triggerAutomaticBackup()
+            }
+        }
     }
 
     private fun loadMemoryDetails() {
@@ -170,10 +237,18 @@ class MemoryFragment : Fragment() {
             listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
 
-        mediaItems = data.mediaItems.sortedByDescending { it.dateTaken }
+        mediaItems = data.mediaItems.sortedWith { a, b ->
+            when {
+                a.order != null && b.order != null -> a.order.compareTo(b.order)
+                a.order != null -> -1
+                b.order != null -> 1
+                else -> b.dateTaken.compareTo(a.dateTaken)
+            }
+        }.toMutableList()
+
         val hasMissingMedia = LocalMediaUtil.hasMissingMedia(requireContext(), mediaItems)
         binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
-        adapter.updateData(mediaItems)
+        adapter.updateData(mediaItems.toList())
     }
 
     private fun showDeleteConfirmationDialog() {
