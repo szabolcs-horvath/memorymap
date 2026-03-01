@@ -108,7 +108,8 @@ class AddMemoryGroupFragment : Fragment() {
                             SelectedMedia(uri, mediaType, deviceId)
                         }
                     }
-                    selectedMedia.addAll(newItems)
+                    // New media items should be first in the list
+                    selectedMedia.addAll(0, newItems)
                     updateMediaUI()
                 }
                 it.forEach { uri ->
@@ -342,8 +343,18 @@ class AddMemoryGroupFragment : Fragment() {
                     binding.descriptionInput.setText(group.description)
                     binding.allDayCheckbox.isChecked = isAllDay
 
+                    // Sort media items based on order or dateTaken
+                    val sortedItems = data.mediaItems.sortedWith { a, b ->
+                        when {
+                            a.order != null && b.order != null -> a.order.compareTo(b.order)
+                            a.order != null -> -1
+                            b.order != null -> 1
+                            else -> b.dateTaken.compareTo(a.dateTaken)
+                        }
+                    }
+
                     selectedMedia.clear()
-                    selectedMedia.addAll(data.mediaItems.map {
+                    selectedMedia.addAll(sortedItems.map {
                         SelectedMedia(it.uri.toUri(), it.type, it.deviceId)
                     })
                     updateMediaUI()
@@ -525,7 +536,7 @@ class AddMemoryGroupFragment : Fragment() {
                         db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
                     }
 
-                    val mediaItems = selectedMedia.map { (uri, type, itemDeviceId) ->
+                    val mediaItems = selectedMedia.mapIndexed { index, (uri, type, itemDeviceId) ->
                         var size = 0L
                         var date = 0L
 
@@ -551,7 +562,8 @@ class AddMemoryGroupFragment : Fragment() {
                             type = type,
                             mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                             fileSize = size,
-                            dateTaken = date
+                            dateTaken = date,
+                            order = index + 1 // Sequential order starting from one
                         )
                     }.distinctBy { it.mediaSignature } // Deduplicate by signature to prevent duplicates
 

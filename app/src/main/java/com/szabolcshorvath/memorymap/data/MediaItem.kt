@@ -28,7 +28,8 @@ data class MediaItem(
     val type: MediaType, // Enum to distinguish between Image and Video
     val mediaSignature: String, // Format: "{SizeBytes}_{PartialHash}"
     val fileSize: Long,
-    val dateTaken: Long
+    val dateTaken: Long,
+    val order: Int? = null
 )
 
 enum class MediaType {
