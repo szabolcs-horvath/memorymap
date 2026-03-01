@@ -23,6 +23,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
@@ -39,6 +40,7 @@ class MemoryFragment : Fragment() {
     private var currentMemoryGroup: MemoryGroupWithMedia? = null
     private var currentDeviceId: String? = null
     private lateinit var backupManager: BackupManager
+    private var saveJob: Job? = null
 
     interface MemoryFragmentListener {
         fun onMediaClick(
@@ -113,6 +115,16 @@ class MemoryFragment : Fragment() {
             ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
             0
         ) {
+            private var initialOrder: List<Int>? = null
+
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                // When a drag starts, capture the current order of items
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                    initialOrder = mediaItems.map { it.id }
+                }
+            }
+
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
@@ -145,13 +157,19 @@ class MemoryFragment : Fragment() {
                 viewHolder: RecyclerView.ViewHolder
             ) {
                 super.clearView(recyclerView, viewHolder)
-                saveNewOrder()
+                // Only save and backup if the order actually changed during the drag operation
+                val currentOrder = mediaItems.map { it.id }
+                if (initialOrder != null && initialOrder != currentOrder) {
+                    saveNewOrder()
+                }
+                initialOrder = null
             }
         })
         itemTouchHelper.attachToRecyclerView(binding.mediaRecyclerView)
     }
 
     private fun saveNewOrder() {
+        saveJob?.cancel()
         val updatedItems = mediaItems.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
@@ -159,7 +177,7 @@ class MemoryFragment : Fragment() {
         mediaItems.clear()
         mediaItems.addAll(updatedItems)
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        saveJob = lifecycleScope.launch(Dispatchers.IO) {
             val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
             db.memoryGroupDao().updateMediaItems(updatedItems)
 

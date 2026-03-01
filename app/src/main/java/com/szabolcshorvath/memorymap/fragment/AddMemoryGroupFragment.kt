@@ -565,7 +565,11 @@ class AddMemoryGroupFragment : Fragment() {
                             dateTaken = date,
                             order = index + 1 // Sequential order starting from one
                         )
-                    }.distinctBy { it.mediaSignature } // Deduplicate by signature to prevent duplicates
+                    }
+                        .distinctBy { it.mediaSignature } // Deduplicate by signature to prevent duplicates
+                        .mapIndexed { index, item ->
+                            item.copy(order = index + 1) // Reindex to ensure contiguous order after deduplication
+                        }
 
                     db.memoryGroupDao().insertMediaItems(mediaItems)
                     groupId.toInt()
