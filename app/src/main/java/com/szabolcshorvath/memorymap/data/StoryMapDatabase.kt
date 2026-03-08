@@ -20,7 +20,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11),
-        AutoMigration(from = 11, to = 12)
+        AutoMigration(from = 11, to = 12),
+        AutoMigration(from = 12, to = 13)
     ],
     exportSchema = true
 )
@@ -29,7 +30,7 @@ abstract class StoryMapDatabase : RoomDatabase() {
     abstract fun memoryGroupDao(): MemoryGroupDao
 
     companion object {
-        const val DB_VERSION = 12
+        const val DB_VERSION = 13
 
         @Volatile
         private var INSTANCE: StoryMapDatabase? = null

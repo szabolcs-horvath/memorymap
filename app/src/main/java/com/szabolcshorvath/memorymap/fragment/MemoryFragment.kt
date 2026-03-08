@@ -29,20 +29,23 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
+import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
 class MemoryFragment : Fragment() {
 
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
-    private lateinit var adapter: MediaAdapter
+    private lateinit var mediaAdapter: MediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentAdapter
     private var memoryId: Int = -1
     private var mediaItems: MutableList<MediaItem> = mutableListOf()
+    private var fragmentItems: MutableList<MemoryFragmentEntity> = mutableListOf()
     private var listener: MemoryFragmentListener? = null
     private var currentMemoryGroup: MemoryGroupWithMedia? = null
     private var currentDeviceId: String? = null
     private lateinit var backupManager: BackupManager
     private var saveJob: Job? = null
+    private var saveFragmentsJob: Job? = null
     private var isFragmentsExpanded = true
 
     interface MemoryFragmentListener {
@@ -105,23 +108,28 @@ class MemoryFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        adapter = MediaAdapter(currentDeviceId) { position ->
+        mediaAdapter = MediaAdapter(currentDeviceId) { position ->
             val mediaPairs = ArrayList(mediaItems.map { it.uri to it.type.name })
             listener?.onMediaClick(mediaPairs, position)
         }
-        adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+        mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 binding.mediaRecyclerView.scrollToPosition(positionStart)
             }
         })
         // Use a GridLayout with 3 columns for thumbnails
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, 3)
-        binding.mediaRecyclerView.adapter = adapter
+        binding.mediaRecyclerView.adapter = mediaAdapter
 
         fragmentsAdapter = MemoryFragmentAdapter()
         binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(context)
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
 
+        setupMediaTouchHelper()
+        setupFragmentsTouchHelper()
+    }
+
+    private fun setupMediaTouchHelper() {
         val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
             0
@@ -130,7 +138,6 @@ class MemoryFragment : Fragment() {
 
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(viewHolder, actionState)
-                // When a drag starts, capture the current order of items
                 if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
                     initialOrder = mediaItems.map { it.id }
                 }
@@ -150,12 +157,12 @@ class MemoryFragment : Fragment() {
                 if (fromPos < toPos) {
                     for (i in fromPos until toPos) {
                         Collections.swap(mediaItems, i, i + 1)
-                        adapter.moveItem(i, i + 1)
+                        mediaAdapter.moveItem(i, i + 1)
                     }
                 } else {
                     for (i in fromPos downTo toPos + 1) {
                         Collections.swap(mediaItems, i, i - 1)
-                        adapter.moveItem(i, i - 1)
+                        mediaAdapter.moveItem(i, i - 1)
                     }
                 }
                 return true
@@ -171,12 +178,67 @@ class MemoryFragment : Fragment() {
                 // Only save and backup if the order actually changed during the drag operation
                 val currentOrder = mediaItems.map { it.id }
                 if (initialOrder != null && initialOrder != currentOrder) {
-                    saveNewOrder()
+                    saveNewMediaOrder()
                 }
                 initialOrder = null
             }
         })
         itemTouchHelper.attachToRecyclerView(binding.mediaRecyclerView)
+    }
+
+    private fun setupFragmentsTouchHelper() {
+        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            private var initialOrder: List<Int>? = null
+
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                    initialOrder = fragmentItems.map { it.id }
+                }
+            }
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val fromPos = viewHolder.bindingAdapterPosition
+                val toPos = target.bindingAdapterPosition
+                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
+
+                // Synchronize both lists step-by-step using adjacent moves.
+                if (fromPos < toPos) {
+                    for (i in fromPos until toPos) {
+                        Collections.swap(fragmentItems, i, i + 1)
+                        fragmentsAdapter.moveItem(i, i + 1)
+                    }
+                } else {
+                    for (i in fromPos downTo toPos + 1) {
+                        Collections.swap(fragmentItems, i, i - 1)
+                        fragmentsAdapter.moveItem(i, i - 1)
+                    }
+                }
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun clearView(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ) {
+                super.clearView(recyclerView, viewHolder)
+                // Only save and backup if the order actually changed during the drag operation
+                val currentOrder = fragmentItems.map { it.id }
+                if (initialOrder != null && initialOrder != currentOrder) {
+                    saveNewFragmentsOrder()
+                }
+                initialOrder = null
+            }
+        })
+        itemTouchHelper.attachToRecyclerView(binding.fragmentsRecyclerView)
     }
 
     private fun toggleFragments() {
@@ -186,12 +248,11 @@ class MemoryFragment : Fragment() {
         binding.fragmentsChevron.animate().rotation(if (isFragmentsExpanded) 90f else 0f).start()
     }
 
-    private fun saveNewOrder() {
+    private fun saveNewMediaOrder() {
         saveJob?.cancel()
         val updatedItems = mediaItems.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
-        // Update local list with the new order values
         mediaItems.clear()
         mediaItems.addAll(updatedItems)
 
@@ -202,7 +263,26 @@ class MemoryFragment : Fragment() {
             withContext(Dispatchers.Main) {
                 // Refresh adapter to ensure internal state is consistent.
                 // The custom DiffUtil will ignore the 'order' field changes to prevent jumpy animations.
-                adapter.updateData(mediaItems.toList())
+                mediaAdapter.updateData(mediaItems.toList())
+                backupManager.triggerAutomaticBackup()
+            }
+        }
+    }
+
+    private fun saveNewFragmentsOrder() {
+        saveFragmentsJob?.cancel()
+        val updatedFragments = fragmentItems.mapIndexed { index, item ->
+            item.copy(order = index + 1)
+        }
+        fragmentItems.clear()
+        fragmentItems.addAll(updatedFragments)
+
+        saveFragmentsJob = lifecycleScope.launch(Dispatchers.IO) {
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            db.memoryGroupDao().updateFragments(updatedFragments)
+
+            withContext(Dispatchers.Main) {
+                fragmentsAdapter.updateData(fragmentItems.toList())
                 backupManager.triggerAutomaticBackup()
             }
         }
@@ -261,11 +341,29 @@ class MemoryFragment : Fragment() {
             listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
 
-        if (data.fragments.isEmpty()) {
+        fragmentItems = data.fragments.sortedWith { a, b ->
+            when {
+                a.order != null && b.order != null -> a.order.compareTo(b.order)
+                a.order != null -> -1
+                b.order != null -> 1
+                else -> {
+                    val dateA = a.startDate
+                    val dateB = b.startDate
+                    when {
+                        dateA != null && dateB != null -> dateA.compareTo(dateB)
+                        dateA != null -> -1
+                        dateB != null -> 1
+                        else -> 0
+                    }
+                }
+            }
+        }.toMutableList()
+
+        if (fragmentItems.isEmpty()) {
             binding.fragmentsSection.visibility = View.GONE
         } else {
             binding.fragmentsSection.visibility = View.VISIBLE
-            fragmentsAdapter.submitList(data.fragments)
+            fragmentsAdapter.updateData(fragmentItems.toList())
             binding.fragmentsExpandedContent.visibility =
                 if (isFragmentsExpanded) View.VISIBLE else View.GONE
             binding.fragmentsChevron.rotation = if (isFragmentsExpanded) 90f else 0f
@@ -282,7 +380,7 @@ class MemoryFragment : Fragment() {
 
         val hasMissingMedia = LocalMediaUtil.hasMissingMedia(requireContext(), mediaItems)
         binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
-        adapter.updateData(mediaItems.toList())
+        mediaAdapter.updateData(mediaItems.toList())
     }
 
     private fun showDeleteConfirmationDialog() {

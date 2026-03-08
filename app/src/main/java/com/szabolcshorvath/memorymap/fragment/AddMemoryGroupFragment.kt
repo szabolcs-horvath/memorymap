@@ -80,7 +80,8 @@ class AddMemoryGroupFragment : Fragment() {
         val endDate: ZonedDateTime? = null,
         val isAllDay: Boolean = false,
         val markerHue: Float = 0.0f,
-        val isTimeVisible: Boolean = false
+        val isTimeVisible: Boolean = false,
+        val order: Int? = null
     )
 
     private val selectedMedia = mutableListOf<SelectedMedia>()
@@ -423,8 +424,27 @@ class AddMemoryGroupFragment : Fragment() {
                     })
                     updateMediaUI()
 
+                    // Sort fragments based on order or startDate
+                    val sortedFragments = data.fragments.sortedWith { a, b ->
+                        when {
+                            a.order != null && b.order != null -> a.order.compareTo(b.order)
+                            a.order != null -> -1
+                            b.order != null -> 1
+                            else -> {
+                                val dateA = a.startDate
+                                val dateB = b.startDate
+                                when {
+                                    dateA != null && dateB != null -> dateA.compareTo(dateB)
+                                    dateA != null -> -1
+                                    dateB != null -> 1
+                                    else -> 0
+                                }
+                            }
+                        }
+                    }
+
                     fragments.clear()
-                    fragments.addAll(data.fragments.map {
+                    fragments.addAll(sortedFragments.map {
                         FragmentEditState(
                             id = it.id,
                             latitude = it.latitude,
@@ -435,7 +455,8 @@ class AddMemoryGroupFragment : Fragment() {
                             endDate = it.endDate,
                             isAllDay = it.isAllDay,
                             markerHue = it.markerHue ?: 0f,
-                            isTimeVisible = it.startDate != null
+                            isTimeVisible = it.startDate != null,
+                            order = it.order
                         )
                     })
                     isFragmentsExpanded = true
@@ -619,7 +640,7 @@ class AddMemoryGroupFragment : Fragment() {
                     db.memoryGroupDao().insertMediaItems(mediaItems)
 
                     db.memoryGroupDao().deleteFragmentsByGroupId(groupId.toInt())
-                    val fragmentEntities = fragments.map { f ->
+                    val fragmentEntities = fragments.mapIndexed { index, f ->
                         val saveTime = f.isTimeVisible
                         val fragmentStart = if (saveTime) {
                             if (f.isAllDay) f.startDate?.toLocalDate()
@@ -639,7 +660,8 @@ class AddMemoryGroupFragment : Fragment() {
                             startDate = fragmentStart,
                             endDate = fragmentEnd,
                             isAllDay = f.isAllDay && saveTime,
-                            markerHue = f.markerHue
+                            markerHue = f.markerHue,
+                            order = index + 1
                         )
                     }
                     db.memoryGroupDao().insertFragments(fragmentEntities)

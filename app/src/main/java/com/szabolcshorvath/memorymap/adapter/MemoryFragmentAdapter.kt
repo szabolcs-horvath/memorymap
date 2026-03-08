@@ -4,14 +4,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 
-class MemoryFragmentAdapter :
-    ListAdapter<MemoryFragment, MemoryFragmentAdapter.ViewHolder>(DiffCallback) {
+class MemoryFragmentAdapter : RecyclerView.Adapter<MemoryFragmentAdapter.ViewHolder>() {
+
+    private val items = mutableListOf<MemoryFragment>()
+
+    init {
+        setHasStableIds(true)
+    }
 
     class ViewHolder(private val binding: ItemMemoryFragmentBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -47,16 +51,43 @@ class MemoryFragmentAdapter :
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(items[position])
     }
 
-    companion object DiffCallback : DiffUtil.ItemCallback<MemoryFragment>() {
-        override fun areItemsTheSame(oldItem: MemoryFragment, newItem: MemoryFragment): Boolean {
-            return oldItem.id == newItem.id
-        }
+    override fun getItemCount(): Int = items.size
 
-        override fun areContentsTheSame(oldItem: MemoryFragment, newItem: MemoryFragment): Boolean {
-            return oldItem == newItem
+    override fun getItemId(position: Int): Long {
+        return if (position in items.indices) items[position].id.toLong() else RecyclerView.NO_ID
+    }
+
+    fun updateData(newItems: List<MemoryFragment>) {
+        val diffCallback = object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = items.size
+            override fun getNewListSize(): Int = newItems.size
+
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                return items[oldItemPosition].id == newItems[newItemPosition].id
+            }
+
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                val oldItem = items[oldItemPosition]
+                val newItem = newItems[newItemPosition]
+                // Ignore the order field in comparison to avoid unnecessary animations
+                // when syncing after a drag-and-drop operation.
+                return oldItem.copy(order = newItem.order) == newItem
+            }
+        }
+        val diffResult = DiffUtil.calculateDiff(diffCallback, true)
+        items.clear()
+        items.addAll(newItems)
+        diffResult.dispatchUpdatesTo(this)
+    }
+
+    fun moveItem(fromPosition: Int, toPosition: Int) {
+        if (fromPosition in items.indices && toPosition in items.indices && fromPosition != toPosition) {
+            val item = items.removeAt(fromPosition)
+            items.add(toPosition, item)
+            notifyItemMoved(fromPosition, toPosition)
         }
     }
 }

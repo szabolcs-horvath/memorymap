@@ -37,7 +37,8 @@ data class MemoryFragment(
     val endDate: ZonedDateTime?,
     val isAllDay: Boolean = false,
     @ColumnInfo(defaultValue = "0.0")
-    val markerHue: Float? = 0.0f
+    val markerHue: Float? = 0.0f,
+    val order: Int? = null
 ) {
     fun getFormattedDate(): String? {
         if (startDate == null || endDate == null) return null
