@@ -5,14 +5,14 @@
     android:layout_height="100dp"
     android:layout_margin="4dp">
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/thumbnailImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         android:background="#EEEEEE" />
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/videoIcon"
         android:layout_width="24dp"
         android:layout_height="24dp"
@@ -21,7 +21,7 @@
         android:visibility="gone"
         app:tint="@android:color/white" />
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/errorIcon"
         android:layout_width="32dp"
         android:layout_height="32dp"
@@ -30,13 +30,13 @@
         android:visibility="gone"
         app:tint="@android:color/holo_red_dark" />
 
-    <ImageButton
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/removeButton"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:layout_gravity="top|end"
-        android:background="@android:color/transparent"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
-        app:tint="@android:color/holo_red_light" />
+        app:icon="@android:drawable/ic_menu_close_clear_cancel"
+        app:iconTint="@android:color/holo_red_light" />
 
 </FrameLayout>

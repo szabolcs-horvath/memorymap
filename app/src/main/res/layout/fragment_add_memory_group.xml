@@ -54,7 +54,7 @@
             android:orientation="horizontal"
             tools:ignore="UseCompoundDrawables">
 
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/locationText"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -63,7 +63,7 @@
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurface" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/selectLocationButton"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
@@ -83,7 +83,7 @@
             android:text="All Day?"
             android:textAppearance="?attr/textAppearanceLabelLarge" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/dateRangeButton"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
@@ -101,7 +101,7 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/startDateLabel"
                 android:layout_width="50dp"
                 android:layout_height="wrap_content"
@@ -111,7 +111,7 @@
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorOnSurface" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/startDateButton"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
@@ -123,7 +123,7 @@
                 android:layout_width="4dp"
                 android:layout_height="0dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/startTimeButton"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
@@ -140,7 +140,7 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/endDateLabel"
                 android:layout_width="50dp"
                 android:layout_height="wrap_content"
@@ -150,7 +150,7 @@
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorOnSurface" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/endDateButton"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
@@ -162,7 +162,7 @@
                 android:layout_width="4dp"
                 android:layout_height="0dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/endTimeButton"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
@@ -176,7 +176,7 @@
             android:layout_height="4dp" />
 
         <!-- Appearance Section -->
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -240,14 +240,14 @@
                         android:paddingHorizontal="12dp"
                         android:paddingVertical="8dp">
 
-                        <TextView
+                        <com.google.android.material.textview.MaterialTextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Memory Fragments"
                             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
-                        <ImageView
+                        <com.google.android.material.imageview.ShapeableImageView
                             android:id="@+id/fragmentsChevron"
                             android:layout_width="24dp"
                             android:layout_height="24dp"
@@ -287,7 +287,7 @@
         </LinearLayout>
 
         <!-- Media Section -->
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/pickMediaButton"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
@@ -295,7 +295,7 @@
             android:layout_marginTop="8dp"
             android:text="Add Photos/Videos" />
 
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/selectedMediaCount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -320,7 +320,7 @@
             android:layout_marginTop="20dp"
             android:orientation="horizontal">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/clearButton"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
@@ -329,7 +329,7 @@
                 android:layout_weight="1"
                 android:text="Clear" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/saveButton"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="0dp"

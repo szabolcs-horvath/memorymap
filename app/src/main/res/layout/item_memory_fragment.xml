@@ -35,7 +35,7 @@
             app:layout_constraintStart_toEndOf="@id/colorIndicator"
             app:layout_constraintTop_toTopOf="parent">
 
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/locationText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -43,7 +43,7 @@
                 android:textColor="?attr/colorOnSurface"
                 tools:text="Eiffel Tower, Paris" />
 
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/timeText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

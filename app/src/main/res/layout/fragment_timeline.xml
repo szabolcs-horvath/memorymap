@@ -15,7 +15,7 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:listitem="@layout/item_timeline_memory" />
 
-    <TextView
+    <com.google.android.material.textview.MaterialTextView
         android:id="@+id/emptyView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

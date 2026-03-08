@@ -8,13 +8,12 @@
     android:paddingHorizontal="16dp"
     android:paddingVertical="8dp">
 
-    <View
+    <com.google.android.material.divider.MaterialDivider
         android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:layout_weight="1"
-        android:background="?attr/colorOutlineVariant" />
+        android:layout_height="wrap_content"
+        android:layout_weight="1" />
 
-    <TextView
+    <com.google.android.material.textview.MaterialTextView
         android:id="@+id/dateText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -23,10 +22,9 @@
         android:textColor="?attr/colorOnSurfaceVariant"
         tools:text="Oct 27, 2023" />
 
-    <View
+    <com.google.android.material.divider.MaterialDivider
         android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:layout_weight="1"
-        android:background="?attr/colorOutlineVariant" />
+        android:layout_height="wrap_content"
+        android:layout_weight="1" />
 
 </LinearLayout>

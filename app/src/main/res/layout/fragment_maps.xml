@@ -28,7 +28,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_date_range"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
@@ -60,7 +60,7 @@
             android:layout_height="wrap_content"
             android:padding="16dp">
 
-            <TextView xmlns:tools="http://schemas.android.com/tools"
+            <com.google.android.material.textview.MaterialTextView xmlns:tools="http://schemas.android.com/tools"
                 android:id="@+id/overlay_location_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -85,21 +85,21 @@
                 app:layout_constraintTop_toBottomOf="@id/overlay_location_title" />
 
             <!-- Single memory views kept for reference if needed but hidden -->
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/overlay_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
                 app:layout_constraintTop_toBottomOf="@id/rv_memories" />
 
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/overlay_description"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
                 app:layout_constraintTop_toBottomOf="@id/overlay_title" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/overlay_action_button"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="wrap_content"
