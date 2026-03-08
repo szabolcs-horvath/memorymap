@@ -2,18 +2,19 @@ package com.szabolcshorvath.memorymap.adapter
 
 import android.content.res.ColorStateList
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryOverlayBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 
 class MemoryOverlayAdapter(
     private val onDetailsClick: (Int) -> Unit
-) : ListAdapter<MemoryGroup, MemoryOverlayAdapter.MemoryOverlayViewHolder>(MemoryGroupDiffCallback()) {
+) : ListAdapter<Markerable, MemoryOverlayAdapter.MemoryOverlayViewHolder>(MarkerableDiffCallback()) {
 
     class MemoryOverlayViewHolder(val binding: ItemMemoryOverlayBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -26,17 +27,17 @@ class MemoryOverlayAdapter(
     }
 
     override fun onBindViewHolder(holder: MemoryOverlayViewHolder, position: Int) {
-        val memory = getItem(position)
-        bindTitle(holder, memory)
-        bindDate(holder, memory)
-        bindColor(holder, memory)
+        val item = getItem(position)
+        bindTitle(holder, item)
+        bindDate(holder, item)
+        bindColor(holder, item)
 
         holder.binding.btnDetails.setOnClickListener {
-            onDetailsClick(memory.id)
+            onDetailsClick(item.groupId)
         }
 
         holder.binding.root.setOnClickListener {
-            onDetailsClick(memory.id)
+            onDetailsClick(item.groupId)
         }
     }
 
@@ -48,40 +49,50 @@ class MemoryOverlayAdapter(
         if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
         } else {
-            val memory = getItem(position)
+            val item = getItem(position)
 
             @Suppress("UNCHECKED_CAST")
             val changes = payloads.first() as Set<String>
-            if (changes.contains(TITLE_DIFF_PAYLOAD)) bindTitle(holder, memory)
-            if (changes.contains(DATE_DIFF_PAYLOAD)) bindDate(holder, memory)
-            if (changes.contains(COLOR_DIFF_PAYLOAD)) bindColor(holder, memory)
+            if (changes.contains(TITLE_DIFF_PAYLOAD)) bindTitle(holder, item)
+            if (changes.contains(DATE_DIFF_PAYLOAD)) bindDate(holder, item)
+            if (changes.contains(COLOR_DIFF_PAYLOAD)) bindColor(holder, item)
         }
     }
 
-    private fun bindTitle(holder: MemoryOverlayViewHolder, memory: MemoryGroup) {
-        holder.binding.memoryTitle.text = memory.title
+    private fun bindTitle(holder: MemoryOverlayViewHolder, item: Markerable) {
+        holder.binding.memoryTitle.text = item.title
     }
 
-    private fun bindDate(holder: MemoryOverlayViewHolder, memory: MemoryGroup) {
-        holder.binding.memoryDate.text = memory.getFormattedDate()
+    private fun bindDate(holder: MemoryOverlayViewHolder, item: Markerable) {
+        val dateText = item.getFormattedDate()
+        holder.binding.memoryDate.text = dateText
+        holder.binding.memoryDate.visibility =
+            if (dateText.isNullOrEmpty()) View.GONE else View.VISIBLE
     }
 
-    private fun bindColor(holder: MemoryOverlayViewHolder, memory: MemoryGroup) {
+    private fun bindColor(holder: MemoryOverlayViewHolder, item: Markerable) {
         holder.binding.colorIndicator.backgroundTintList = ColorStateList.valueOf(
-            ColorUtil.hueToColor(memory.markerHue ?: BitmapDescriptorFactory.HUE_RED)
+            ColorUtil.hueToColor(item.markerHue ?: BitmapDescriptorFactory.HUE_RED)
         )
     }
 
-    private class MemoryGroupDiffCallback : DiffUtil.ItemCallback<MemoryGroup>() {
-        override fun areItemsTheSame(oldItem: MemoryGroup, newItem: MemoryGroup): Boolean {
-            return oldItem.id == newItem.id
+    private class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
+        override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
+            return oldItem.groupId == newItem.groupId &&
+                    oldItem.latitude == newItem.latitude &&
+                    oldItem.longitude == newItem.longitude
         }
 
-        override fun areContentsTheSame(oldItem: MemoryGroup, newItem: MemoryGroup): Boolean {
-            return oldItem == newItem
+        override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
+            return oldItem.title == newItem.title &&
+                    oldItem.startDate == newItem.startDate &&
+                    oldItem.endDate == newItem.endDate &&
+                    oldItem.markerHue == newItem.markerHue &&
+                    oldItem.latitude == newItem.latitude &&
+                    oldItem.longitude == newItem.longitude
         }
 
-        override fun getChangePayload(oldItem: MemoryGroup, newItem: MemoryGroup): Any? {
+        override fun getChangePayload(oldItem: Markerable, newItem: Markerable): Any? {
             val diff = mutableSetOf<String>()
             if (oldItem.title != newItem.title) diff.add(TITLE_DIFF_PAYLOAD)
             if (oldItem.startDate != newItem.startDate || oldItem.endDate != newItem.endDate) diff.add(
@@ -93,7 +104,6 @@ class MemoryOverlayAdapter(
     }
 
     companion object {
-        const val TAG = "MemoryOverlayAdapter"
         const val TITLE_DIFF_PAYLOAD = "TITLE"
         const val DATE_DIFF_PAYLOAD = "DATE"
         const val COLOR_DIFF_PAYLOAD = "COLOR"

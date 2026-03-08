@@ -121,7 +121,9 @@ class MemoryFragment : Fragment() {
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, 3)
         binding.mediaRecyclerView.adapter = mediaAdapter
 
-        fragmentsAdapter = MemoryFragmentAdapter()
+        fragmentsAdapter = MemoryFragmentAdapter { fragment ->
+            listener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
+        }
         binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(context)
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
 

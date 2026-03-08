@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
+import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -186,6 +187,21 @@ class SettingsFragment : Fragment() {
             if (email != null) {
                 setLoadingState(true, "Starting backup...")
                 requestDriveAuthorization(true)
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val showFragments = requireContext().dataStore.data
+                .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
+                .firstOrNull() ?: false
+            binding.switchShowFragments.isChecked = showFragments
+        }
+
+        binding.switchShowFragments.setOnCheckedChangeListener { _, isChecked ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                requireContext().dataStore.edit { preferences ->
+                    preferences[MainActivity.SHOW_FRAGMENT_MARKERS] = isChecked
+                }
             }
         }
     }

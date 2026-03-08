@@ -411,5 +411,6 @@ class MainActivity :
         const val TAG = "MainActivity"
         private val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         private val LAST_APP_VERSION = longPreferencesKey("last_app_version")
+        val SHOW_FRAGMENT_MARKERS = booleanPreferencesKey("show_fragment_markers")
     }
 }

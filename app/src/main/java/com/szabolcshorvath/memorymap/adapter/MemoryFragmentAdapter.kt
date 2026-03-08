@@ -5,11 +5,21 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.data.MemoryFragment
+import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class MemoryFragmentAdapter : RecyclerView.Adapter<MemoryFragmentAdapter.ViewHolder>() {
+class MemoryFragmentAdapter(
+    private val onShowOnMapClick: (MemoryFragment) -> Unit
+) : RecyclerView.Adapter<MemoryFragmentAdapter.ViewHolder>() {
 
     private val items = mutableListOf<MemoryFragment>()
 
@@ -17,7 +27,7 @@ class MemoryFragmentAdapter : RecyclerView.Adapter<MemoryFragmentAdapter.ViewHol
         setHasStableIds(true)
     }
 
-    class ViewHolder(private val binding: ItemMemoryFragmentBinding) :
+    inner class ViewHolder(private val binding: ItemMemoryFragmentBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(fragment: MemoryFragment) {
             binding.locationText.text = if (!fragment.placeName.isNullOrEmpty()) {
@@ -37,6 +47,20 @@ class MemoryFragmentAdapter : RecyclerView.Adapter<MemoryFragmentAdapter.ViewHol
             binding.colorIndicator.setBackgroundColor(
                 ColorUtil.hueToColor(fragment.markerHue ?: 0f)
             )
+
+            binding.btnShowOnMap.setOnClickListener {
+                onShowOnMapClick(fragment)
+            }
+
+            // Check if fragment markers are enabled to show/hide the button
+            CoroutineScope(Dispatchers.IO).launch {
+                val showMarkers = binding.root.context.dataStore.data
+                    .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
+                    .first()
+                withContext(Dispatchers.Main) {
+                    binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
+                }
+            }
         }
     }
 

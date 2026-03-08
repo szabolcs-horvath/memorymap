@@ -1,11 +1,9 @@
 package com.szabolcshorvath.memorymap.data
 
-import android.location.Location
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.szabolcshorvath.memorymap.data.MemoryGroup.Companion.SAME_LOCATION_METERS_THRESHOLD
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -20,20 +18,21 @@ import java.util.Locale
 )
 data class MemoryGroup(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val title: String,
+    override val title: String,
     val description: String?,
-    val latitude: Double,
-    val longitude: Double,
-    val placeName: String?,
-    val address: String?,
-    val startDate: ZonedDateTime,
-    val endDate: ZonedDateTime,
-    val isAllDay: Boolean,
+    override val latitude: Double,
+    override val longitude: Double,
+    override val placeName: String?,
+    override val address: String?,
+    override val startDate: ZonedDateTime,
+    override val endDate: ZonedDateTime,
+    override val isAllDay: Boolean,
     @ColumnInfo(defaultValue = "0.0")
-    val markerHue: Float? = 0.0f
-) {
-    fun getFormattedDate(): String {
-        // Use FormatStyle to respect locale settings
+    override val markerHue: Float? = 0.0f
+) : Markerable {
+    override val groupId: Int get() = id
+
+    override fun getFormattedDate(): String {
         val startDay = startDate.format(dateFormatter.withLocale(Locale.getDefault()))
         val endDay = endDate.format(dateFormatter.withLocale(Locale.getDefault()))
 
@@ -55,27 +54,7 @@ data class MemoryGroup(
         }
     }
 
-    /**
-     * Determines if another MemoryGroup is at the same location.
-     * Groups are considered same if their metadata (place name and address) match,
-     * or if they are within a [SAME_LOCATION_METERS_THRESHOLD]-meter radius.
-     */
-    fun isSameLocationAs(other: MemoryGroup): Boolean {
-        if (placeName != null && address != null && other.placeName != null && other.address != null) {
-            if (placeName == other.placeName && address == other.address) return true
-        }
-
-        val results = FloatArray(1)
-        Location.distanceBetween(
-            latitude, longitude,
-            other.latitude, other.longitude,
-            results
-        )
-        return results[0] < SAME_LOCATION_METERS_THRESHOLD
-    }
-
     companion object {
-        const val SAME_LOCATION_METERS_THRESHOLD = 20.0f
         private val dateFormatter =
             DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
         private val timeFormatter =
