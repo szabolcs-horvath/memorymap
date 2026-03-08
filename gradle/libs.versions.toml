@@ -3,7 +3,7 @@
 agp = "9.1.0"
 googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
 googleServices = "4.4.4"
-ksp = "2.3.5"
+ksp = "2.3.6"
 
 # Core & UI
 appcompat = "1.7.1"
@@ -23,23 +23,23 @@ playServicesMaps = "20.0.0"
 room = "2.8.4"
 
 # Media
-coil = "3.3.0"
+coil = "3.4.0"
 photoview = "2.3.0"
 
 # Auth
 credentials = "1.5.0"
-googleApiClientAndroid = "2.8.1"
+googleApiClientAndroid = "2.9.0"
 googleid = "1.2.0"
 playServicesAuth = "21.5.1"
 
 # Drive
-googleApiServicesDrive = "v3-rev20251210-2.0.0"
+googleApiServicesDrive = "v3-rev20260220-2.0.0"
 
 # JSON
 googleHttpClient = "2.1.0"
 
 # Firebase
-firebaseBom = "34.9.0"
+firebaseBom = "34.10.0"
 firebaseCrashlytics = "3.0.6"
 
 # Testing
