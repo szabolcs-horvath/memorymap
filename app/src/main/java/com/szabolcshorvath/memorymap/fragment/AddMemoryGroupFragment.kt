@@ -285,15 +285,22 @@ class AddMemoryGroupFragment : Fragment() {
             )
         )
         if (!isFragmentsExpanded) toggleFragments()
-        updateFragmentsUI()
+        updateFragmentsUI(scrollToEnd = true)
     }
 
-    private fun updateFragmentsUI() {
+    private fun updateFragmentsUI(scrollToEnd: Boolean = false) {
         binding.fragmentsExpandedContent.visibility =
             if (isFragmentsExpanded) View.VISIBLE else View.GONE
         binding.fragmentsChevron.rotation = if (isFragmentsExpanded) 90f else 0f
         // We pass a new list instance (toList()) to ensure it detects the change.
-        fragmentsAdapter.submitList(fragments.toList())
+        fragmentsAdapter.submitList(fragments.toList()) {
+            if (scrollToEnd) {
+                binding.root.post {
+                    // Scroll the NestedScrollView to the bottom of the fragments section
+                    binding.root.smoothScrollTo(0, binding.fragmentsSection.bottom)
+                }
+            }
+        }
     }
 
     private fun setupPresetColors() {
