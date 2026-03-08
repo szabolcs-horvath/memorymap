@@ -22,14 +22,26 @@ interface MemoryGroupDao {
     @Update
     suspend fun updateMediaItems(mediaItems: List<MediaItem>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFragments(fragments: List<MemoryFragment>)
+
+    @Update
+    suspend fun updateFragments(fragments: List<MemoryFragment>)
+
     @Delete
     suspend fun deleteGroup(group: MemoryGroup)
 
     @Delete
     suspend fun deleteMediaItems(items: List<MediaItem>)
 
+    @Delete
+    suspend fun deleteFragments(fragments: List<MemoryFragment>)
+
     @Query("DELETE FROM media_items WHERE groupId = :groupId")
     suspend fun deleteMediaByGroupId(groupId: Int)
+
+    @Query("DELETE FROM memory_fragments WHERE groupId = :groupId")
+    suspend fun deleteFragmentsByGroupId(groupId: Int)
 
     @Transaction
     @Query("SELECT * FROM memory_groups ORDER BY startDate DESC")
@@ -44,4 +56,7 @@ interface MemoryGroupDao {
 
     @Query("SELECT * FROM media_items")
     suspend fun getAllMediaItems(): List<MediaItem>
+
+    @Query("SELECT * FROM memory_fragments")
+    suspend fun getAllFragments(): List<MemoryFragment>
 }

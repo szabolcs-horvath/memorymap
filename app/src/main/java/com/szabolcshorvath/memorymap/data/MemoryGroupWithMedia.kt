@@ -9,5 +9,10 @@ data class MemoryGroupWithMedia(
         parentColumn = "id",
         entityColumn = "groupId"
     )
-    val mediaItems: List<MediaItem>
+    val mediaItems: List<MediaItem>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "groupId"
+    )
+    val fragments: List<MemoryFragment>
 )

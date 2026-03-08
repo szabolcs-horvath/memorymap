@@ -1,18 +1,20 @@
 package com.szabolcshorvath.memorymap.fragment
 
+import android.app.AlertDialog
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
+import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -27,13 +29,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
-import java.util.Locale
 
 class MemoryFragment : Fragment() {
 
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
     private lateinit var adapter: MediaAdapter
+    private lateinit var fragmentsAdapter: MemoryFragmentAdapter
     private var memoryId: Int = -1
     private var mediaItems: MutableList<MediaItem> = mutableListOf()
     private var listener: MemoryFragmentListener? = null
@@ -41,6 +43,7 @@ class MemoryFragment : Fragment() {
     private var currentDeviceId: String? = null
     private lateinit var backupManager: BackupManager
     private var saveJob: Job? = null
+    private var isFragmentsExpanded = true
 
     interface MemoryFragmentListener {
         fun onMediaClick(
@@ -84,7 +87,7 @@ class MemoryFragment : Fragment() {
 
         lifecycleScope.launch {
             currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
-            setupRecyclerView()
+            setupRecyclerViews()
             loadMemoryDetails()
         }
 
@@ -95,9 +98,13 @@ class MemoryFragment : Fragment() {
         binding.deleteButton.setOnClickListener {
             showDeleteConfirmationDialog()
         }
+
+        binding.fragmentsHeader.setOnClickListener {
+            toggleFragments()
+        }
     }
 
-    private fun setupRecyclerView() {
+    private fun setupRecyclerViews() {
         adapter = MediaAdapter(currentDeviceId) { position ->
             val mediaPairs = ArrayList(mediaItems.map { it.uri to it.type.name })
             listener?.onMediaClick(mediaPairs, position)
@@ -110,6 +117,10 @@ class MemoryFragment : Fragment() {
         // Use a GridLayout with 3 columns for thumbnails
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, 3)
         binding.mediaRecyclerView.adapter = adapter
+
+        fragmentsAdapter = MemoryFragmentAdapter()
+        binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(context)
+        binding.fragmentsRecyclerView.adapter = fragmentsAdapter
 
         val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
@@ -166,6 +177,13 @@ class MemoryFragment : Fragment() {
             }
         })
         itemTouchHelper.attachToRecyclerView(binding.mediaRecyclerView)
+    }
+
+    private fun toggleFragments() {
+        isFragmentsExpanded = !isFragmentsExpanded
+        binding.fragmentsExpandedContent.visibility =
+            if (isFragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsChevron.animate().rotation(if (isFragmentsExpanded) 90f else 0f).start()
     }
 
     private fun saveNewOrder() {
@@ -227,19 +245,7 @@ class MemoryFragment : Fragment() {
         } else if (!group.address.isNullOrEmpty()) {
             group.address
         } else {
-            "${
-                String.format(
-                    Locale.getDefault(),
-                    "%.4f",
-                    group.latitude
-                )
-            }, ${
-                String.format(
-                    Locale.getDefault(),
-                    "%.4f",
-                    group.longitude
-                )
-            }"
+            "${group.latitude}, ${group.longitude}"
         }
         binding.locationText.text = locationString
 
@@ -253,6 +259,16 @@ class MemoryFragment : Fragment() {
 
         binding.showOnMapButton.setOnClickListener {
             listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
+        }
+
+        if (data.fragments.isEmpty()) {
+            binding.fragmentsSection.visibility = View.GONE
+        } else {
+            binding.fragmentsSection.visibility = View.VISIBLE
+            fragmentsAdapter.submitList(data.fragments)
+            binding.fragmentsExpandedContent.visibility =
+                if (isFragmentsExpanded) View.VISIBLE else View.GONE
+            binding.fragmentsChevron.rotation = if (isFragmentsExpanded) 90f else 0f
         }
 
         mediaItems = data.mediaItems.sortedWith { a, b ->

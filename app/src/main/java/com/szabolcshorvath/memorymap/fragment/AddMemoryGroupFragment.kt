@@ -23,6 +23,7 @@ import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.withTransaction
@@ -35,10 +36,12 @@ import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
+import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
+import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
@@ -53,6 +56,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import java.util.UUID
 
 class AddMemoryGroupFragment : Fragment() {
 
@@ -65,7 +69,23 @@ class AddMemoryGroupFragment : Fragment() {
         val deviceId: String
     )
 
+    private data class FragmentEditState(
+        val id: Int = 0,
+        val localId: String = UUID.randomUUID().toString(),
+        val latitude: Double = 0.0,
+        val longitude: Double = 0.0,
+        val placeName: String? = null,
+        val address: String? = null,
+        val startDate: ZonedDateTime? = null,
+        val endDate: ZonedDateTime? = null,
+        val isAllDay: Boolean = false,
+        val markerHue: Float = 0.0f,
+        val isTimeVisible: Boolean = false
+    )
+
     private val selectedMedia = mutableListOf<SelectedMedia>()
+    private val fragments = mutableListOf<FragmentEditState>()
+
     private var lat = 0.0
     private var lng = 0.0
     private var placeName: String? = null
@@ -80,13 +100,27 @@ class AddMemoryGroupFragment : Fragment() {
     private lateinit var backupManager: BackupManager
     private var editingMemoryId: Int? = null
     private lateinit var mediaAdapter: SelectedMediaAdapter
+    private lateinit var fragmentsAdapter: MemoryFragmentEditAdapter
     private var currentDeviceId: String? = null
+    private var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
+    private var isFragmentsExpanded = true
 
-    private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(
-        Locale.getDefault()
-    )
-    private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(
-        Locale.getDefault()
+    private val dateFormatter =
+        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+    private val timeFormatter =
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
+
+    private val colorPresets = listOf(
+        BitmapDescriptorFactory.HUE_RED,
+        BitmapDescriptorFactory.HUE_ORANGE,
+        BitmapDescriptorFactory.HUE_YELLOW,
+        BitmapDescriptorFactory.HUE_GREEN,
+        BitmapDescriptorFactory.HUE_CYAN,
+        BitmapDescriptorFactory.HUE_AZURE,
+        BitmapDescriptorFactory.HUE_BLUE,
+        BitmapDescriptorFactory.HUE_VIOLET,
+        BitmapDescriptorFactory.HUE_MAGENTA,
+        BitmapDescriptorFactory.HUE_ROSE
     )
 
     private val pickMediaLauncher =
@@ -160,14 +194,16 @@ class AddMemoryGroupFragment : Fragment() {
             if (currentDeviceId == null) {
                 currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
             }
-            setupRecyclerView()
+            setupRecyclerViews()
             updateLocationText()
             updateDateTimeButtons()
             setupPresetColors()
             updateHueUI()
+            updateFragmentsUI()
         }
 
         binding.selectLocationButton.setOnClickListener {
+            activePickingIndex = -1
             listener?.onPickLocation(lat, lng)
         }
 
@@ -189,6 +225,9 @@ class AddMemoryGroupFragment : Fragment() {
             }
         }
 
+        binding.fragmentsHeader.setOnClickListener { toggleFragments() }
+        binding.addFragmentButtonInline.setOnClickListener { addFragment() }
+
         binding.pickMediaButton.setOnClickListener {
             pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
         }
@@ -204,7 +243,7 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
-    private fun setupRecyclerView() {
+    private fun setupRecyclerViews() {
         mediaAdapter = SelectedMediaAdapter { position ->
             selectedMedia.removeAt(position)
             updateMediaUI()
@@ -215,6 +254,10 @@ class AddMemoryGroupFragment : Fragment() {
             }
         })
         binding.selectedMediaRecyclerView.adapter = mediaAdapter
+
+        fragmentsAdapter = MemoryFragmentEditAdapter()
+        binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(context)
+        binding.fragmentsRecyclerView.adapter = fragmentsAdapter
     }
 
     private fun updateMediaUI() {
@@ -223,25 +266,41 @@ class AddMemoryGroupFragment : Fragment() {
         binding.selectedMediaCount.text = "${selectedMedia.size} items selected"
     }
 
-    private fun setupPresetColors() {
-        val presets = listOf(
-            BitmapDescriptorFactory.HUE_RED,
-            BitmapDescriptorFactory.HUE_ORANGE,
-            BitmapDescriptorFactory.HUE_YELLOW,
-            BitmapDescriptorFactory.HUE_GREEN,
-            BitmapDescriptorFactory.HUE_CYAN,
-            BitmapDescriptorFactory.HUE_AZURE,
-            BitmapDescriptorFactory.HUE_BLUE,
-            BitmapDescriptorFactory.HUE_VIOLET,
-            BitmapDescriptorFactory.HUE_MAGENTA,
-            BitmapDescriptorFactory.HUE_ROSE
-        )
+    private fun toggleFragments() {
+        isFragmentsExpanded = !isFragmentsExpanded
+        binding.fragmentsExpandedContent.visibility =
+            if (isFragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsChevron.animate().rotation(if (isFragmentsExpanded) 90f else 0f).start()
+    }
 
+    private fun addFragment() {
+        fragments.add(
+            FragmentEditState(
+                latitude = lat,
+                longitude = lng,
+                placeName = placeName,
+                address = address,
+                markerHue = markerHue
+            )
+        )
+        if (!isFragmentsExpanded) toggleFragments()
+        updateFragmentsUI()
+    }
+
+    private fun updateFragmentsUI() {
+        binding.fragmentsExpandedContent.visibility =
+            if (isFragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsChevron.rotation = if (isFragmentsExpanded) 90f else 0f
+        // We pass a new list instance (toList()) to ensure it detects the change.
+        fragmentsAdapter.submitList(fragments.toList())
+    }
+
+    private fun setupPresetColors() {
         binding.presetColorsLayout.removeAllViews()
         val size = (32 * resources.displayMetrics.density).toInt()
         val margin = (12 * resources.displayMetrics.density).toInt()
 
-        presets.forEach { hue ->
+        colorPresets.forEach { hue ->
             val view = View(requireContext())
             val params = LinearLayout.LayoutParams(size, size)
             params.setMargins(0, 0, margin, 0)
@@ -268,21 +327,14 @@ class AddMemoryGroupFragment : Fragment() {
 
         binding.hueSlider.value = markerHue
         binding.hueSlider.thumbTintList = colorStateList
-        binding.divider1.dividerColor = color
-        binding.divider2.dividerColor = color
-//
-//        binding.hueSlider.value = markerHue
-//        val colorStateList = ColorStateList.valueOf(ColorUtil.hueToColor(markerHue))
-//        binding.hueSlider.thumbTintList = colorStateList
     }
 
     private fun showClearConfirmationDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle(if (editingMemoryId != null) "Discard Changes" else "Clear Fields")
             .setMessage(if (editingMemoryId != null) "Are you sure you want to discard your changes?" else "Are you sure you want to clear all fields? This action cannot be undone.")
-            .setPositiveButton(if (editingMemoryId != null) "Discard" else "Clear") { _, _ ->
-                clearFields()
-            }.setNegativeButton("Cancel", null).show()
+            .setPositiveButton(if (editingMemoryId != null) "Discard" else "Clear") { _, _ -> clearFields() }
+            .setNegativeButton("Cancel", null).show()
     }
 
     fun clearFields() {
@@ -299,6 +351,9 @@ class AddMemoryGroupFragment : Fragment() {
         updateHueUI()
         selectedMedia.clear()
         updateMediaUI()
+        fragments.clear()
+        isFragmentsExpanded = true
+        updateFragmentsUI()
 
         binding.titleInput.text?.clear()
         binding.descriptionInput.text?.clear()
@@ -313,12 +368,21 @@ class AddMemoryGroupFragment : Fragment() {
         newPlaceName: String? = null,
         newAddress: String? = null
     ) {
-        lat = newLat
-        lng = newLng
-        placeName = newPlaceName
-        address = newAddress
-        if (_binding != null) {
-            updateLocationText()
+        if (activePickingIndex == -1) {
+            lat = newLat
+            lng = newLng
+            placeName = newPlaceName
+            address = newAddress
+            if (_binding != null) updateLocationText()
+        } else if (activePickingIndex in fragments.indices) {
+            val fragment = fragments[activePickingIndex]
+            fragments[activePickingIndex] = fragment.copy(
+                latitude = newLat,
+                longitude = newLng,
+                placeName = newPlaceName,
+                address = newAddress
+            )
+            updateFragmentsUI()
         }
     }
 
@@ -359,6 +423,24 @@ class AddMemoryGroupFragment : Fragment() {
                     })
                     updateMediaUI()
 
+                    fragments.clear()
+                    fragments.addAll(data.fragments.map {
+                        FragmentEditState(
+                            id = it.id,
+                            latitude = it.latitude,
+                            longitude = it.longitude,
+                            placeName = it.placeName,
+                            address = it.address,
+                            startDate = it.startDate,
+                            endDate = it.endDate,
+                            isAllDay = it.isAllDay,
+                            markerHue = it.markerHue ?: 0f,
+                            isTimeVisible = it.startDate != null
+                        )
+                    })
+                    isFragmentsExpanded = true
+                    updateFragmentsUI()
+
                     updateLocationText()
                     updateDateTimeButtons()
                     updateHueUI()
@@ -370,15 +452,9 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun updateLocationText() {
         val locationString = StringBuilder()
-        if (placeName != null) {
-            locationString.append(placeName).append(System.lineSeparator())
-        }
-        if (address != null) {
-            locationString.append(address).append(System.lineSeparator())
-        }
-        if (locationString.isEmpty()) {
-            locationString.append("Coordinates: $lat, $lng")
-        }
+        if (placeName != null) locationString.append(placeName).append(System.lineSeparator())
+        if (address != null) locationString.append(address).append(System.lineSeparator())
+        if (locationString.isEmpty()) locationString.append("Coordinates: $lat, $lng")
         binding.locationText.text = locationString.toString()
     }
 
@@ -410,8 +486,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun pickDateRange() {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
-        builder.setTitleText("Select Date Range")
-
+            .setTitleText("Select Date Range")
         val selection = androidx.core.util.Pair(
             startDateTime.toInstant().toEpochMilli(),
             endDateTime.toInstant().toEpochMilli()
@@ -420,12 +495,9 @@ class AddMemoryGroupFragment : Fragment() {
 
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { range ->
-            val startMillis = range.first
-            val endMillis = range.second
-
-            if (startMillis != null && endMillis != null) {
-                startDateTime = Instant.ofEpochMilli(startMillis).atZone(ZoneId.systemDefault())
-                endDateTime = Instant.ofEpochMilli(endMillis).atZone(ZoneId.systemDefault())
+            if (range.first != null && range.second != null) {
+                startDateTime = Instant.ofEpochMilli(range.first!!).atZone(ZoneId.systemDefault())
+                endDateTime = Instant.ofEpochMilli(range.second!!).atZone(ZoneId.systemDefault())
                 updateDateTimeButtons()
             }
         }
@@ -434,56 +506,34 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun pickDate(isStart: Boolean) {
         val current = if (isStart) startDateTime else endDateTime
-        val datePickerDialog = DatePickerDialog(
-            requireContext(),
-            { _, year, month, dayOfMonth ->
-                val newDate = LocalDate.of(year, month + 1, dayOfMonth)
-                if (isStart) {
-                    startDateTime =
-                        newDate.atTime(startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
-                    if (endDateTime.isBefore(startDateTime)) {
-                        endDateTime = startDateTime.plusHours(1)
-                    }
-                } else {
-                    endDateTime =
-                        newDate.atTime(endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
-                    if (endDateTime.isBefore(startDateTime)) {
-                        startDateTime = endDateTime.minusHours(1)
-                    }
-                }
-                updateDateTimeButtons()
-            },
-            current.year,
-            current.monthValue - 1,
-            current.dayOfMonth
-        )
-        datePickerDialog.show()
+        DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
+            val newDate = LocalDate.of(year, month + 1, dayOfMonth)
+            if (isStart) {
+                startDateTime =
+                    newDate.atTime(startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+                if (endDateTime.isBefore(startDateTime)) endDateTime = startDateTime.plusHours(1)
+            } else {
+                endDateTime =
+                    newDate.atTime(endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+                if (endDateTime.isBefore(startDateTime)) startDateTime = endDateTime.minusHours(1)
+            }
+            updateDateTimeButtons()
+        }, current.year, current.monthValue - 1, current.dayOfMonth).show()
     }
 
     private fun pickTime(isStart: Boolean) {
         val current = if (isStart) startDateTime else endDateTime
-        val timePickerDialog = TimePickerDialog(
-            requireContext(),
-            { _, hourOfDay, minute ->
-                val newTime = LocalTime.of(hourOfDay, minute)
-                if (isStart) {
-                    startDateTime = startDateTime.with(newTime)
-                    if (endDateTime.isBefore(startDateTime)) {
-                        endDateTime = startDateTime.plusHours(1)
-                    }
-                } else {
-                    endDateTime = endDateTime.with(newTime)
-                    if (endDateTime.isBefore(startDateTime)) {
-                        startDateTime = endDateTime.minusHours(1)
-                    }
-                }
-                updateDateTimeButtons()
-            },
-            current.hour,
-            current.minute,
-            true
-        )
-        timePickerDialog.show()
+        TimePickerDialog(requireContext(), { _, hourOfDay, minute ->
+            val newTime = LocalTime.of(hourOfDay, minute)
+            if (isStart) {
+                startDateTime = startDateTime.with(newTime)
+                if (endDateTime.isBefore(startDateTime)) endDateTime = startDateTime.plusHours(1)
+            } else {
+                endDateTime = endDateTime.with(newTime)
+                if (endDateTime.isBefore(startDateTime)) startDateTime = endDateTime.minusHours(1)
+            }
+            updateDateTimeButtons()
+        }, current.hour, current.minute, true).show()
     }
 
     private suspend fun saveMemoryGroup() {
@@ -546,12 +596,10 @@ class AddMemoryGroupFragment : Fragment() {
                             ), null, null, null
                         )?.use { cursor ->
                             if (cursor.moveToFirst()) {
-                                val sizeIdx =
-                                    cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                                val dateIdx =
-                                    cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
-                                size = cursor.getLong(sizeIdx)
-                                date = cursor.getLong(dateIdx)
+                                size =
+                                    cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE))
+                                date =
+                                    cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN))
                             }
                         }
 
@@ -563,15 +611,39 @@ class AddMemoryGroupFragment : Fragment() {
                             mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                             fileSize = size,
                             dateTaken = date,
-                            order = index + 1 // Sequential order starting from one
+                            order = index + 1
                         )
                     }
-                        .distinctBy { it.mediaSignature } // Deduplicate by signature to prevent duplicates
-                        .mapIndexed { index, item ->
-                            item.copy(order = index + 1) // Reindex to ensure contiguous order after deduplication
-                        }
-
+                        .distinctBy { it.mediaSignature }
+                        .mapIndexed { index, item -> item.copy(order = index + 1) }
                     db.memoryGroupDao().insertMediaItems(mediaItems)
+
+                    db.memoryGroupDao().deleteFragmentsByGroupId(groupId.toInt())
+                    val fragmentEntities = fragments.map { f ->
+                        val saveTime = f.isTimeVisible
+                        val fragmentStart = if (saveTime) {
+                            if (f.isAllDay) f.startDate?.toLocalDate()
+                                ?.atStartOfDay(ZoneId.systemDefault()) else f.startDate
+                        } else null
+                        val fragmentEnd = if (saveTime) {
+                            if (f.isAllDay) f.endDate?.toLocalDate()?.atTime(23, 59, 59)
+                                ?.atZone(ZoneId.systemDefault()) else f.endDate
+                        } else null
+
+                        MemoryFragment(
+                            groupId = groupId.toInt(),
+                            latitude = f.latitude,
+                            longitude = f.longitude,
+                            placeName = f.placeName,
+                            address = f.address,
+                            startDate = fragmentStart,
+                            endDate = fragmentEnd,
+                            isAllDay = f.isAllDay && saveTime,
+                            markerHue = f.markerHue
+                        )
+                    }
+                    db.memoryGroupDao().insertFragments(fragmentEntities)
+
                     groupId.toInt()
                 }
             }
@@ -614,11 +686,9 @@ class AddMemoryGroupFragment : Fragment() {
         inner class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
             RecyclerView.ViewHolder(binding.root)
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SelectedMediaViewHolder {
-            val binding =
-                ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return SelectedMediaViewHolder(binding)
-        }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = SelectedMediaViewHolder(
+            ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        )
 
         override fun onBindViewHolder(holder: SelectedMediaViewHolder, position: Int) {
             val item = getItem(position)
@@ -650,13 +720,260 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
-        override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia): Boolean {
-            return oldItem.uri == newItem.uri
+        override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
+            oldItem.uri == newItem.uri
+
+        override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
+            oldItem == newItem
+    }
+
+    private inner class MemoryFragmentEditAdapter :
+        ListAdapter<FragmentEditState, MemoryFragmentEditAdapter.MemoryFragmentEditViewHolder>(
+            FragmentDiffCallback()
+        ) {
+        inner class MemoryFragmentEditViewHolder(val binding: ItemMemoryFragmentEditBinding) :
+            RecyclerView.ViewHolder(binding.root)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+            MemoryFragmentEditViewHolder(
+                ItemMemoryFragmentEditBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false
+                )
+            )
+
+        override fun onBindViewHolder(holder: MemoryFragmentEditViewHolder, position: Int) {
+            val item = getItem(position)
+            val binding = holder.binding
+
+            binding.locationText.text = if (!item.placeName.isNullOrEmpty()) {
+                if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
+            } else "Coordinates: ${item.latitude} ${item.longitude}"
+
+            binding.selectLocationButton.setOnClickListener {
+                activePickingIndex = holder.bindingAdapterPosition
+                listener?.onPickLocation(item.latitude, item.longitude)
+            }
+
+            binding.removeButton.setOnClickListener {
+                fragments.removeAt(holder.bindingAdapterPosition)
+                updateFragmentsUI()
+            }
+
+            binding.toggleTimeButton.setOnClickListener {
+                val pos = holder.bindingAdapterPosition
+                val current = getItem(pos)
+                val newStart =
+                    if (!current.isTimeVisible && current.startDate == null) ZonedDateTime.now() else current.startDate
+                val newEnd =
+                    if (!current.isTimeVisible && current.endDate == null) ZonedDateTime.now()
+                        .plusHours(1) else current.endDate
+
+                fragments[pos] = current.copy(
+                    isTimeVisible = !current.isTimeVisible,
+                    startDate = newStart,
+                    endDate = newEnd
+                )
+                updateFragmentsUI()
+            }
+            binding.timeSection.visibility = if (item.isTimeVisible) View.VISIBLE else View.GONE
+
+            binding.allDayCheckbox.setOnCheckedChangeListener(null)
+            binding.allDayCheckbox.isChecked = item.isAllDay
+            binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
+                val pos = holder.bindingAdapterPosition
+                val current = getItem(pos)
+                fragments[pos] = current.copy(isAllDay = isChecked)
+                updateFragmentsUI()
+            }
+
+            updateFragmentDateTimeUI(binding, item)
+
+            binding.startDateButton.setOnClickListener {
+                pickFragmentDate(
+                    holder.bindingAdapterPosition,
+                    true
+                )
+            }
+            binding.startTimeButton.setOnClickListener {
+                pickFragmentTime(
+                    holder.bindingAdapterPosition,
+                    true
+                )
+            }
+            binding.endDateButton.setOnClickListener {
+                pickFragmentDate(
+                    holder.bindingAdapterPosition,
+                    false
+                )
+            }
+            binding.endTimeButton.setOnClickListener {
+                pickFragmentTime(
+                    holder.bindingAdapterPosition,
+                    false
+                )
+            }
+            binding.dateRangeButton.setOnClickListener {
+                pickFragmentDateRange(holder.bindingAdapterPosition)
+            }
+
+            binding.hueSlider.value = item.markerHue
+            binding.hueSlider.thumbTintList =
+                ColorStateList.valueOf(ColorUtil.hueToColor(item.markerHue))
+
+            binding.hueSlider.clearOnSliderTouchListeners()
+            binding.hueSlider.addOnChangeListener { _, value, fromUser ->
+                if (fromUser) {
+                    val pos = holder.bindingAdapterPosition
+                    val current = getItem(pos)
+                    fragments[pos] = current.copy(markerHue = value)
+                    binding.hueSlider.thumbTintList =
+                        ColorStateList.valueOf(ColorUtil.hueToColor(value))
+                }
+            }
+
+            setupFragmentPresetColors(binding, holder.bindingAdapterPosition)
         }
 
-        override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia): Boolean {
-            return oldItem == newItem
+        private fun updateFragmentDateTimeUI(
+            binding: ItemMemoryFragmentEditBinding,
+            item: FragmentEditState
+        ) {
+            if (item.isAllDay) {
+                binding.startDateTimeLayout.visibility = View.GONE
+                binding.endDateTimeLayout.visibility = View.GONE
+                binding.dateRangeButton.visibility = View.VISIBLE
+
+                val start = item.startDate ?: ZonedDateTime.now()
+                val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
+                val startStr = start.format(dateFormatter)
+                val endStr = end.format(dateFormatter)
+                binding.dateRangeButton.text =
+                    if (startStr == endStr) startStr else "$startStr - $endStr"
+            } else {
+                binding.startDateTimeLayout.visibility = View.VISIBLE
+                binding.endDateTimeLayout.visibility = View.VISIBLE
+                binding.dateRangeButton.visibility = View.GONE
+
+                val start = item.startDate ?: ZonedDateTime.now()
+                val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
+                binding.startDateButton.text = start.format(dateFormatter)
+                binding.startTimeButton.text = start.format(timeFormatter)
+                binding.endDateButton.text = end.format(dateFormatter)
+                binding.endTimeButton.text = end.format(timeFormatter)
+            }
         }
+
+        private fun setupFragmentPresetColors(
+            binding: ItemMemoryFragmentEditBinding,
+            position: Int
+        ) {
+            binding.presetColorsLayout.removeAllViews()
+            val size = (32 * resources.displayMetrics.density).toInt()
+            val margin = (12 * resources.displayMetrics.density).toInt()
+
+            colorPresets.forEach { hue ->
+                val view = View(requireContext())
+                val params = LinearLayout.LayoutParams(size, size)
+                params.setMargins(0, 0, margin, 0)
+                view.layoutParams = params
+
+                val shape = GradientDrawable()
+                shape.shape = GradientDrawable.OVAL
+                shape.setColor(ColorUtil.hueToColor(hue))
+                shape.setStroke((1 * resources.displayMetrics.density).toInt(), Color.LTGRAY)
+                view.background = shape
+
+                view.setOnClickListener {
+                    val current = getItem(position)
+                    fragments[position] = current.copy(markerHue = hue)
+                    updateFragmentsUI()
+                }
+                binding.presetColorsLayout.addView(view)
+            }
+        }
+
+        private fun pickFragmentDateRange(index: Int) {
+            val item = fragments[index]
+            val builder =
+                MaterialDatePicker.Builder.dateRangePicker().setTitleText("Select Date Range")
+            val start = item.startDate ?: ZonedDateTime.now()
+            val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
+            val selection = androidx.core.util.Pair(
+                start.toInstant().toEpochMilli(),
+                end.toInstant().toEpochMilli()
+            )
+            builder.setSelection(selection)
+            val picker = builder.build()
+            picker.addOnPositiveButtonClickListener { range ->
+                if (range.first != null && range.second != null) {
+                    val current = fragments[index]
+                    fragments[index] = current.copy(
+                        startDate = Instant.ofEpochMilli(range.first!!)
+                            .atZone(ZoneId.systemDefault()),
+                        endDate = Instant.ofEpochMilli(range.second!!)
+                            .atZone(ZoneId.systemDefault())
+                    )
+                    updateFragmentsUI()
+                }
+            }
+            picker.show(childFragmentManager, "DATE_RANGE_PICKER")
+        }
+
+        private fun pickFragmentDate(index: Int, isStart: Boolean) {
+            val item = fragments[index]
+            val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
+            DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
+                val newDate = LocalDate.of(year, month + 1, dayOfMonth)
+                val currentItem = fragments[index]
+                if (isStart) {
+                    val newStart =
+                        newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
+                    var newEnd = currentItem.endDate
+                    if (newEnd != null && newEnd.isBefore(newStart)) newEnd = newStart.plusHours(1)
+                    fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
+                } else {
+                    val newEnd =
+                        newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
+                    var newStart = currentItem.startDate
+                    if (newStart != null && newEnd.isBefore(newStart)) newStart =
+                        newEnd.minusHours(1)
+                    fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
+                }
+                updateFragmentsUI()
+            }, current.year, current.monthValue - 1, current.dayOfMonth).show()
+        }
+
+        private fun pickFragmentTime(index: Int, isStart: Boolean) {
+            val item = fragments[index]
+            val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
+            TimePickerDialog(requireContext(), { _, hourOfDay, minute ->
+                val newTime = LocalTime.of(hourOfDay, minute)
+                val currentItem = fragments[index]
+                if (isStart) {
+                    val newStart = current.with(newTime)
+                    var newEnd = currentItem.endDate
+                    if (newEnd != null && newEnd.isBefore(newStart)) newEnd = newStart.plusHours(1)
+                    fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
+                } else {
+                    val newEnd = current.with(newTime)
+                    var newStart = currentItem.startDate
+                    if (newStart != null && newEnd.isBefore(newStart)) newStart =
+                        newEnd.minusHours(1)
+                    fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
+                }
+                updateFragmentsUI()
+            }, current.hour, current.minute, true).show()
+        }
+    }
+
+    private class FragmentDiffCallback : DiffUtil.ItemCallback<FragmentEditState>() {
+        override fun areItemsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) =
+            oldItem.localId == newItem.localId
+
+        override fun areContentsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) =
+            oldItem == newItem
     }
 
     companion object {
