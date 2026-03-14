@@ -88,7 +88,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
             enableMyLocation()
         } else {
             permissionDenied = true
@@ -546,7 +548,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         }
                         // Favor the main location for the default groupId marker
                         val mainGroup = allGroups.find { it.id == item.groupId }
-                        if (mainGroup != null && mainGroup.latitude == item.latitude && mainGroup.longitude == item.longitude) {
+                        if (mainGroup != null &&
+                            mainGroup.latitude == item.latitude &&
+                            mainGroup.longitude == item.longitude
+                        ) {
                             markerMap[idKey] = marker
                         }
                     }

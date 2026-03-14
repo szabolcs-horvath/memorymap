@@ -126,7 +126,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-            uris.let { it ->
+            uris.let {
                 val contentResolver = requireContext().contentResolver
                 lifecycleScope.launch {
                     val deviceId =
@@ -341,7 +341,11 @@ class AddMemoryGroupFragment : Fragment() {
         AlertDialog.Builder(requireContext())
             .setTitle(if (editingMemoryId != null) "Discard Changes" else "Clear Fields")
             .setMessage(
-                if (editingMemoryId != null) "Are you sure you want to discard your changes?" else "Are you sure you want to clear all fields? This action cannot be undone."
+                if (editingMemoryId != null) {
+                    "Are you sure you want to discard your changes?"
+                } else {
+                    "Are you sure you want to clear all fields? This action cannot be undone."
+                }
             )
             .setPositiveButton(if (editingMemoryId != null) "Discard" else "Clear") { _, _ -> clearFields() }
             .setNegativeButton("Cancel", null).show()

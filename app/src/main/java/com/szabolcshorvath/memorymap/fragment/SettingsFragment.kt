@@ -63,7 +63,8 @@ class SettingsFragment : Fragment() {
         } else {
             Toast.makeText(
                 requireContext(),
-                "Permissions are needed to link media files after restore. Please retry the restore, and grant permissions to all images and videos needed!",
+                "Permissions are needed to link media files after restore. " +
+                    "Please retry the restore, and grant permissions to all images and videos needed!",
                 Toast.LENGTH_LONG
             ).show()
             pendingRestoreFile?.let { executeRestore(it) }
@@ -388,7 +389,8 @@ class SettingsFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Restore Backup")
             .setMessage(
-                "Are you sure you want to restore from the backup '${file.name}'?\n\nThis action will overwrite all your current data and it cannot be undone!"
+                "Are you sure you want to restore from the backup '${file.name}'?\n\n" +
+                    "This action will overwrite all your current data and it cannot be undone!"
             )
             .setPositiveButton("Restore") { _, _ ->
                 if (hasMediaPermissions()) {
@@ -425,7 +427,10 @@ class SettingsFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Media Access Required")
             .setMessage(
-                "To link your photos and videos correctly after the restore, the app needs access to your entire media library.\n\nIn the next step, please choose 'Allow all' (or 'All photos and videos') to ensure all your memories are restored correctly."
+                "To link your photos and videos correctly after the restore, " +
+                    "the app needs access to your entire media library.\n\n" +
+                    "In the next step, please choose 'Allow all' " +
+                    "(or 'All photos and videos') to ensure all your memories are restored correctly."
             )
             .setPositiveButton("Continue") { _, _ ->
                 launchPermissionRequest(file)
