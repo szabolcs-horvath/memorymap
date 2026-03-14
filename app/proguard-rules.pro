@@ -27,3 +27,8 @@
 
 -dontwarn org.apache.http.**
 -dontwarn android.net.http.AndroidHttpClient
+
+# JaCoCo references JMX classes which are not available on Android
+-dontwarn org.jacoco.**
+-dontwarn java.lang.management.**
+-dontwarn javax.management.**
