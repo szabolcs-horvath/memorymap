@@ -39,7 +39,7 @@ class MemoryMapApplication : Application() {
                 Places.initializeWithNewPlacesApiEnabled(applicationContext, apiKey)
                 Log.d(TAG, "Places SDK initialized.")
             }
-        } catch (e: Exception) {
+        } catch (e: PackageManager.NameNotFoundException) {
             Log.e(TAG, "Failed to initialize Places SDK", e)
         }
     }

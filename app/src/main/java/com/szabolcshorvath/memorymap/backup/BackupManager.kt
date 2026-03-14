@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.backup
 
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import android.util.Log
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
@@ -25,6 +26,7 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -85,7 +87,11 @@ class BackupManager(private val context: Context) {
                     ).openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)")
                         .close()
                 } catch (e: Exception) {
-                    throw Exception("Failed to checkpoint WAL", e)
+                    when (e) {
+                        is IllegalStateException,
+                        is SQLiteException -> Log.e(TAG, "Failed to checkpoint WAL", e)
+                    }
+                    throw e
                 }
 
                 val dbFile = context.getDatabasePath("memory_map_database")
@@ -165,8 +171,8 @@ class BackupManager(private val context: Context) {
                     .setOrderBy("modifiedTime desc")
                     .execute()
                 return@withContext result.files ?: emptyList()
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (e: IOException) {
+                Log.e(TAG, "Failed to list backups", e)
                 return@withContext emptyList()
             }
         }
@@ -262,8 +268,8 @@ class BackupManager(private val context: Context) {
                 val driveService = getDriveService(credential)
                 driveService.files().delete(fileId).execute()
                 true
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (e: IOException) {
+                Log.e(TAG, "Backup deletion failed", e)
                 return@withContext false
             }
         }

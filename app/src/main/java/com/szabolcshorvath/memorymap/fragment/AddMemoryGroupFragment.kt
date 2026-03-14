@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.RemoteException
 import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
@@ -153,7 +154,7 @@ class AddMemoryGroupFragment : Fragment() {
                             uri,
                             Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
-                    } catch (e: Exception) {
+                    } catch (e: RemoteException) {
                         Log.e(TAG, "Error taking persistable permission for $uri", e)
                     }
                 }

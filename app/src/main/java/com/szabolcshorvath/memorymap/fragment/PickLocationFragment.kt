@@ -35,6 +35,7 @@ import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.util.Locale
 
 class PickLocationFragment : Fragment(), OnMapReadyCallback {
@@ -252,7 +253,14 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
+                when (e) {
+                    is IllegalArgumentException,
+                    is IOException -> Log.e(
+                        TAG,
+                        "Reverse geocoding failed for $latLng: ${e.message}",
+                        e
+                    )
+                }
             }
         }
     }
@@ -293,10 +301,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             requireContext(),
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressLint("MissingPermission")
