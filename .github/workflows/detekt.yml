@@ -41,11 +41,27 @@ jobs:
         run: ./gradlew detekt
         continue-on-error: true
 
+      - name: Collect Detekt SARIF reports
+        id: collect_sarif
+        if: always()
+        run: |
+          mkdir -p build/reports/detekt-merged
+          find . -type f -name "detekt.sarif" -path "*/build/reports/detekt/*" | while read -r file; do
+            # Create a unique filename based on the path to avoid overwriting reports from different modules
+            new_name=$(echo "${file#./}" | tr '/' '_')
+            cp "$file" "build/reports/detekt-merged/$new_name"
+          done
+          if [ -d "build/reports/detekt-merged" ] && [ "$(ls -A build/reports/detekt-merged)" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Detekt SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && steps.collect_sarif.outputs.exists == 'true'
         with:
-          sarif_file: '*/build/reports/detekt/detekt.sarif'
+          sarif_file: build/reports/detekt-merged
 
       - name: Upload Detekt report to Job Summary
         if: always()
