@@ -249,7 +249,7 @@ class MainActivity :
                     dataStore.edit { it[IS_FIRST_RUN] = false }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Failed to check app status", e)
             }
         }
     }
