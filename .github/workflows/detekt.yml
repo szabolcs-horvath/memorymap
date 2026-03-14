@@ -33,22 +33,24 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Detekt
+        id: detekt
         run: ./gradlew detekt
         continue-on-error: true
 
       - name: Upload Detekt report to Job Summary
         if: always()
         run: |
+          echo "## Detekt Analysis Results" >> $GITHUB_STEP_SUMMARY
           if [ -f build/reports/detekt/detekt.md ]; then
             cat build/reports/detekt/detekt.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No Detekt report found." >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Check Detekt status
         if: always()
         run: |
-          # If the Run Detekt step failed, we want this job to fail too, 
-          # but only after we've uploaded the summary.
           if [ "${{ steps.detekt.outcome }}" == "failure" ]; then
+            echo "Detekt found issues. Please check the summary above."
             exit 1
           fi
-        id: check_status
