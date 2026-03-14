@@ -18,12 +18,12 @@ class MemoryMapApplication : Application() {
         MapsInitializer.initialize(this, MapsInitializer.Renderer.LATEST) { renderer ->
             when (renderer) {
                 MapsInitializer.Renderer.LATEST -> Log.d(
-                    "MemoryMapApp",
+                    TAG,
                     "The latest version of the renderer is used."
                 )
 
                 MapsInitializer.Renderer.LEGACY -> Log.d(
-                    "MemoryMapApp",
+                    TAG,
                     "The legacy version of the renderer is used."
                 )
             }
@@ -37,10 +37,14 @@ class MemoryMapApplication : Application() {
             val apiKey = appInfo.metaData.getString("com.google.android.geo.API_KEY")
             if (apiKey != null && !Places.isInitialized()) {
                 Places.initializeWithNewPlacesApiEnabled(applicationContext, apiKey)
-                Log.d("MemoryMapApp", "Places SDK initialized.")
+                Log.d(TAG, "Places SDK initialized.")
             }
         } catch (e: Exception) {
-            Log.e("MemoryMapApp", "Failed to initialize Places SDK", e)
+            Log.e(TAG, "Failed to initialize Places SDK", e)
         }
+    }
+
+    companion object {
+        private const val TAG = "MemoryMapApplication"
     }
 }
