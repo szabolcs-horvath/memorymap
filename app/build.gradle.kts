@@ -114,6 +114,7 @@ dependencies {
     implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.datastore.preferences)
     implementation(libs.material)
+    implementation(libs.pie.chart)
 
     // Google Maps
     implementation(libs.google.places)

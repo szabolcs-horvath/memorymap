@@ -43,6 +43,7 @@ import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
+import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -120,6 +121,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnDateRange.setOnClickListener { showDateRangePicker() }
+        binding.btnStats.setOnClickListener { toggleStatsOverlay() }
 
         binding.root.doOnLayout {
             setGoogleMapPadding()
@@ -181,6 +183,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
         }
         picker.show(childFragmentManager, picker.toString())
+    }
+
+    private fun toggleStatsOverlay() {
+        val transition = TransitionSet().apply {
+            addTransition(Fade())
+            addTransition(ChangeBounds())
+            duration = ANIMATION_DURATION
+        }
+        TransitionManager.beginDelayedTransition(binding.root, transition)
+        binding.statsOverlayCard.visibility =
+            if (binding.statsOverlayCard.isVisible) View.GONE else View.VISIBLE
     }
 
     private fun updateDateRangeButtonText() {
@@ -273,6 +286,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         googleMap.setOnMapClickListener {
             hideMemoryOverlay()
+            if (binding.statsOverlayCard.isVisible) toggleStatsOverlay()
         }
 
         googleMap.setOnMyLocationButtonClickListener {
@@ -460,7 +474,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             .first()[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false
 
         // Perform filtering and clustering in the background
-        val clusters = withContext(Dispatchers.Default) {
+        val filteredItems = withContext(Dispatchers.Default) {
             val groupsMap = allGroups.associateBy { it.id }
             val candidateItems = mutableListOf<Markerable>()
             candidateItems.addAll(allGroups)
@@ -474,7 +488,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             }
 
-            val filteredItems = candidateItems.filter { item ->
+            candidateItems.filter { item ->
                 val itemStart =
                     (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
                         ?: LocalDate.MIN
@@ -482,7 +496,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     ?: LocalDate.MAX
                 !itemEnd.isBefore(start) && !itemStart.isAfter(end)
             }
+        }
 
+        val clusters = withContext(Dispatchers.Default) {
             var result: Collection<List<Markerable>>
             val duration = measureTimeMillis {
                 result = clusterMarkerables(filteredItems)
@@ -495,6 +511,21 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         withContext(Dispatchers.Main) {
             googleMap.clear()
             markerMap.clear()
+
+            // Update stats
+            val totalCount = filteredItems.size.toFloat()
+            if (totalCount > 0) {
+                val colorStats = filteredItems.groupBy {
+                    ColorUtil.hueToColor(it.markerHue ?: BitmapDescriptorFactory.HUE_RED)
+                }.mapValues { it.value.size }
+
+                val sliceList = colorStats.map { (color, count) ->
+                    Slice(count / totalCount, color, label = count.toString())
+                }
+                binding.pieChart.slices = sliceList
+            } else {
+                binding.pieChart.slices = emptyList()
+            }
 
             val boundsBuilder = LatLngBounds.Builder()
             var markersCount = 0
