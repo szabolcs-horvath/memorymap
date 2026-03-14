@@ -45,17 +45,14 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: build/reports/detekt/detekt.sarif
+          sarif_file: 'build/reports/detekt/detekt.sarif'
 
       - name: Upload Detekt report to Job Summary
         if: always()
         run: |
           echo "## Detekt Analysis Results" >> $GITHUB_STEP_SUMMARY
-          if [ -f build/reports/detekt/detekt.md ]; then
-            cat build/reports/detekt/detekt.md >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No Detekt report found." >> $GITHUB_STEP_SUMMARY
-          fi
+          # Find and concatenate all markdown reports from subprojects
+          find . -name "detekt.md" -path "*/build/reports/detekt/*" -exec cat {} + >> $GITHUB_STEP_SUMMARY || echo "No Detekt reports found." >> $GITHUB_STEP_SUMMARY
 
       - name: Check Detekt status
         if: always()
@@ -64,3 +61,4 @@ jobs:
             echo "Detekt found issues. Please check the summary above."
             exit 1
           fi
+        id: check_status
