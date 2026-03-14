@@ -34,3 +34,21 @@ jobs:
 
       - name: Run Detekt
         run: ./gradlew detekt
+        continue-on-error: true
+
+      - name: Upload Detekt report to Job Summary
+        if: always()
+        run: |
+          if [ -f build/reports/detekt/detekt.md ]; then
+            cat build/reports/detekt/detekt.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check Detekt status
+        if: always()
+        run: |
+          # If the Run Detekt step failed, we want this job to fail too, 
+          # but only after we've uploaded the summary.
+          if [ "${{ steps.detekt.outcome }}" == "failure" ]; then
+            exit 1
+          fi
+        id: check_status
