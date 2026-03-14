@@ -39,6 +39,7 @@
                     android:layout_height="48dp"
                     android:contentDescription="Edit Memory"
                     app:icon="@android:drawable/ic_menu_edit"
+                    app:iconSize="28dp"
                     app:iconTint="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.button.MaterialButton
@@ -48,6 +49,7 @@
                     android:layout_height="48dp"
                     android:contentDescription="Delete Memory"
                     app:icon="@android:drawable/ic_menu_delete"
+                    app:iconSize="28dp"
                     app:iconTint="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
 
