@@ -15,6 +15,10 @@ detekt {
     baseline = file("$rootDir/config/detekt/baseline.xml")
 }
 
+dependencies {
+    detektPlugins(libs.detekt.formatting)
+}
+
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     reports {
         html.required.set(true)
