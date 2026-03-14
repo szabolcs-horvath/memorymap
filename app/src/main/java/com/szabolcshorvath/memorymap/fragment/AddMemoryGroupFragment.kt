@@ -340,7 +340,9 @@ class AddMemoryGroupFragment : Fragment() {
     private fun showClearConfirmationDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle(if (editingMemoryId != null) "Discard Changes" else "Clear Fields")
-            .setMessage(if (editingMemoryId != null) "Are you sure you want to discard your changes?" else "Are you sure you want to clear all fields? This action cannot be undone.")
+            .setMessage(
+                if (editingMemoryId != null) "Are you sure you want to discard your changes?" else "Are you sure you want to clear all fields? This action cannot be undone."
+            )
             .setPositiveButton(if (editingMemoryId != null) "Discard" else "Clear") { _, _ -> clearFields() }
             .setNegativeButton("Cancel", null).show()
     }
@@ -426,9 +428,11 @@ class AddMemoryGroupFragment : Fragment() {
                     }
 
                     selectedMedia.clear()
-                    selectedMedia.addAll(sortedItems.map {
-                        SelectedMedia(it.uri.toUri(), it.type, it.deviceId)
-                    })
+                    selectedMedia.addAll(
+                        sortedItems.map {
+                            SelectedMedia(it.uri.toUri(), it.type, it.deviceId)
+                        }
+                    )
                     updateMediaUI()
 
                     // Sort fragments based on order or startDate
@@ -451,21 +455,23 @@ class AddMemoryGroupFragment : Fragment() {
                     }
 
                     fragments.clear()
-                    fragments.addAll(sortedFragments.map {
-                        FragmentEditState(
-                            id = it.id,
-                            latitude = it.latitude,
-                            longitude = it.longitude,
-                            placeName = it.placeName,
-                            address = it.address,
-                            startDate = it.startDate,
-                            endDate = it.endDate,
-                            isAllDay = it.isAllDay,
-                            markerHue = it.markerHue ?: 0f,
-                            isTimeVisible = it.startDate != null,
-                            order = it.order
-                        )
-                    })
+                    fragments.addAll(
+                        sortedFragments.map {
+                            FragmentEditState(
+                                id = it.id,
+                                latitude = it.latitude,
+                                longitude = it.longitude,
+                                placeName = it.placeName,
+                                address = it.address,
+                                startDate = it.startDate,
+                                endDate = it.endDate,
+                                isAllDay = it.isAllDay,
+                                markerHue = it.markerHue ?: 0f,
+                                isTimeVisible = it.startDate != null,
+                                order = it.order
+                            )
+                        }
+                    )
                     isFragmentsExpanded = true
                     updateFragmentsUI()
 
@@ -573,10 +579,18 @@ class AddMemoryGroupFragment : Fragment() {
 
         val description = binding.descriptionInput.text.toString().ifBlank { null }
 
-        val finalStart = if (isAllDay) startDateTime.toLocalDate()
-            .atStartOfDay(ZoneId.systemDefault()) else startDateTime
-        val finalEnd = if (isAllDay) endDateTime.toLocalDate().atTime(23, 59, 59)
-            .atZone(ZoneId.systemDefault()) else endDateTime
+        val finalStart = if (isAllDay) {
+            startDateTime.toLocalDate()
+                .atStartOfDay(ZoneId.systemDefault())
+        } else {
+            startDateTime
+        }
+        val finalEnd = if (isAllDay) {
+            endDateTime.toLocalDate().atTime(23, 59, 59)
+                .atZone(ZoneId.systemDefault())
+        } else {
+            endDateTime
+        }
 
         val context = requireContext().applicationContext
         val contentResolver = context.contentResolver
@@ -619,9 +633,14 @@ class AddMemoryGroupFragment : Fragment() {
                         var date = 0L
 
                         contentResolver.query(
-                            uri, arrayOf(
-                                MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN
-                            ), null, null, null
+                            uri,
+                            arrayOf(
+                                MediaStore.MediaColumns.SIZE,
+                                MediaStore.MediaColumns.DATE_TAKEN
+                            ),
+                            null,
+                            null,
+                            null
                         )?.use { cursor ->
                             if (cursor.moveToFirst()) {
                                 size =
@@ -650,13 +669,25 @@ class AddMemoryGroupFragment : Fragment() {
                     val fragmentEntities = fragments.mapIndexed { index, f ->
                         val saveTime = f.isTimeVisible
                         val fragmentStart = if (saveTime) {
-                            if (f.isAllDay) f.startDate?.toLocalDate()
-                                ?.atStartOfDay(ZoneId.systemDefault()) else f.startDate
-                        } else null
+                            if (f.isAllDay) {
+                                f.startDate?.toLocalDate()
+                                    ?.atStartOfDay(ZoneId.systemDefault())
+                            } else {
+                                f.startDate
+                            }
+                        } else {
+                            null
+                        }
                         val fragmentEnd = if (saveTime) {
-                            if (f.isAllDay) f.endDate?.toLocalDate()?.atTime(23, 59, 59)
-                                ?.atZone(ZoneId.systemDefault()) else f.endDate
-                        } else null
+                            if (f.isAllDay) {
+                                f.endDate?.toLocalDate()?.atTime(23, 59, 59)
+                                    ?.atZone(ZoneId.systemDefault())
+                            } else {
+                                f.endDate
+                            }
+                        } else {
+                            null
+                        }
 
                         MemoryFragment(
                             groupId = groupId.toInt(),
@@ -738,7 +769,8 @@ class AddMemoryGroupFragment : Fragment() {
                     }
                     listener(
                         onError = { _, _ -> holder.binding.errorIcon.visibility = View.VISIBLE },
-                        onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE })
+                        onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE }
+                    )
                 }
                 holder.binding.videoIcon.visibility =
                     if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
@@ -778,7 +810,9 @@ class AddMemoryGroupFragment : Fragment() {
 
             binding.locationText.text = if (!item.placeName.isNullOrEmpty()) {
                 if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
-            } else "Coordinates: ${item.latitude} ${item.longitude}"
+            } else {
+                "Coordinates: ${item.latitude} ${item.longitude}"
+            }
 
             binding.selectLocationButton.setOnClickListener {
                 activePickingIndex = holder.bindingAdapterPosition
@@ -796,8 +830,12 @@ class AddMemoryGroupFragment : Fragment() {
                 val newStart =
                     if (!current.isTimeVisible && current.startDate == null) ZonedDateTime.now() else current.startDate
                 val newEnd =
-                    if (!current.isTimeVisible && current.endDate == null) ZonedDateTime.now()
-                        .plusHours(1) else current.endDate
+                    if (!current.isTimeVisible && current.endDate == null) {
+                        ZonedDateTime.now()
+                            .plusHours(1)
+                    } else {
+                        current.endDate
+                    }
 
                 fragments[pos] = current.copy(
                     isTimeVisible = !current.isTimeVisible,
@@ -966,8 +1004,10 @@ class AddMemoryGroupFragment : Fragment() {
                     val newEnd =
                         newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
                     var newStart = currentItem.startDate
-                    if (newStart != null && newEnd.isBefore(newStart)) newStart =
-                        newEnd.minusHours(1)
+                    if (newStart != null && newEnd.isBefore(newStart)) {
+                        newStart =
+                            newEnd.minusHours(1)
+                    }
                     fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
                 }
                 updateFragmentsUI()
@@ -988,8 +1028,10 @@ class AddMemoryGroupFragment : Fragment() {
                 } else {
                     val newEnd = current.with(newTime)
                     var newStart = currentItem.startDate
-                    if (newStart != null && newEnd.isBefore(newStart)) newStart =
-                        newEnd.minusHours(1)
+                    if (newStart != null && newEnd.isBefore(newStart)) {
+                        newStart =
+                            newEnd.minusHours(1)
+                    }
                     fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
                 }
                 updateFragmentsUI()

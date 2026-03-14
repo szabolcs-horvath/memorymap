@@ -18,11 +18,13 @@ class MemoryMapApplication : Application() {
         MapsInitializer.initialize(this, MapsInitializer.Renderer.LATEST) { renderer ->
             when (renderer) {
                 MapsInitializer.Renderer.LATEST -> Log.d(
-                    "MemoryMapApp", "The latest version of the renderer is used."
+                    "MemoryMapApp",
+                    "The latest version of the renderer is used."
                 )
 
                 MapsInitializer.Renderer.LEGACY -> Log.d(
-                    "MemoryMapApp", "The legacy version of the renderer is used."
+                    "MemoryMapApp",
+                    "The legacy version of the renderer is used."
                 )
             }
         }

@@ -21,7 +21,9 @@ class MemoryOverlayAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryOverlayViewHolder {
         val binding = ItemMemoryOverlayBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false
+            LayoutInflater.from(parent.context),
+            parent,
+            false
         )
         return MemoryOverlayViewHolder(binding)
     }
@@ -79,25 +81,27 @@ class MemoryOverlayAdapter(
     private class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
         override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
             return oldItem.groupId == newItem.groupId &&
-                    oldItem.latitude == newItem.latitude &&
-                    oldItem.longitude == newItem.longitude
+                oldItem.latitude == newItem.latitude &&
+                oldItem.longitude == newItem.longitude
         }
 
         override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
             return oldItem.title == newItem.title &&
-                    oldItem.startDate == newItem.startDate &&
-                    oldItem.endDate == newItem.endDate &&
-                    oldItem.markerHue == newItem.markerHue &&
-                    oldItem.latitude == newItem.latitude &&
-                    oldItem.longitude == newItem.longitude
+                oldItem.startDate == newItem.startDate &&
+                oldItem.endDate == newItem.endDate &&
+                oldItem.markerHue == newItem.markerHue &&
+                oldItem.latitude == newItem.latitude &&
+                oldItem.longitude == newItem.longitude
         }
 
         override fun getChangePayload(oldItem: Markerable, newItem: Markerable): Any? {
             val diff = mutableSetOf<String>()
             if (oldItem.title != newItem.title) diff.add(TITLE_DIFF_PAYLOAD)
-            if (oldItem.startDate != newItem.startDate || oldItem.endDate != newItem.endDate) diff.add(
-                DATE_DIFF_PAYLOAD
-            )
+            if (oldItem.startDate != newItem.startDate || oldItem.endDate != newItem.endDate) {
+                diff.add(
+                    DATE_DIFF_PAYLOAD
+                )
+            }
             if (oldItem.markerHue != newItem.markerHue) diff.add(COLOR_DIFF_PAYLOAD)
             return if (diff.isEmpty()) null else diff
         }

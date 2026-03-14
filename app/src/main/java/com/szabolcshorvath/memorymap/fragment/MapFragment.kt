@@ -108,7 +108,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMapsBinding.inflate(inflater, container, false)
         return binding.root
@@ -295,7 +297,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     addTransition(Fade())
                     addTransition(ChangeBounds())
                     duration = ANIMATION_DURATION
-                })
+                }
+            )
             binding.overlayCard.visibility = View.GONE
             selectedMarker = null
             selectedMemoryId = null
@@ -436,7 +439,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     moveToLocationAndSelectMarker(
                         initialSelectedLat!!,
                         initialSelectedLng!!,
-                        allGroups.find { it.id == initialSelectedId })
+                        allGroups.find { it.id == initialSelectedId }
+                    )
                     initialSelectedLat = null
                     initialSelectedLng = null
                     initialSelectedId = null
@@ -533,7 +537,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         override fun onCancel() {
                             googleMap.resetMinMaxZoomPreference()
                         }
-                    })
+                    }
+                )
             }
         }
     }
@@ -637,7 +642,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             addTransition(Fade())
             addTransition(ChangeBounds())
             duration = ANIMATION_DURATION
-
         }
 
         TransitionManager.beginDelayedTransition(binding.root, transition)

@@ -80,7 +80,9 @@ class BackupManager(private val context: Context) {
 
                 onProgress("Preparing database...")
                 try {
-                    StoryMapDatabase.getDatabase(context).openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)")
+                    StoryMapDatabase.getDatabase(
+                        context
+                    ).openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)")
                         .close()
                 } catch (e: Exception) {
                     throw Exception("Failed to checkpoint WAL", e)

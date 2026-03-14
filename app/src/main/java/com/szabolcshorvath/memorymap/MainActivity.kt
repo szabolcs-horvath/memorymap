@@ -155,56 +155,59 @@ class MainActivity :
             }
         }
 
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (supportFragmentManager.backStackEntryCount > 0) {
-                    supportFragmentManager.popBackStack()
-                    return
-                }
-
-                when (activeFragment) {
-                    mapFragment -> {
-                        if (isNavigatedFromTimeline) {
-                            binding.bottomNavigation.selectedItemId = R.id.navigation_timeline
-                            isNavigatedFromTimeline = false
-                        } else {
-                            isEnabled = false
-                            onBackPressedDispatcher.onBackPressed()
-                            isEnabled = true
-                        }
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (supportFragmentManager.backStackEntryCount > 0) {
+                        supportFragmentManager.popBackStack()
+                        return
                     }
 
-                    timelineFragment -> {
-                        if (isNavigatedFromMap) {
+                    when (activeFragment) {
+                        mapFragment -> {
+                            if (isNavigatedFromTimeline) {
+                                binding.bottomNavigation.selectedItemId = R.id.navigation_timeline
+                                isNavigatedFromTimeline = false
+                            } else {
+                                isEnabled = false
+                                onBackPressedDispatcher.onBackPressed()
+                                isEnabled = true
+                            }
+                        }
+
+                        timelineFragment -> {
+                            if (isNavigatedFromMap) {
+                                binding.bottomNavigation.selectedItemId = R.id.navigation_map
+                                isNavigatedFromMap = false
+                            } else {
+                                isEnabled = false
+                                onBackPressedDispatcher.onBackPressed()
+                                isEnabled = true
+                            }
+                        }
+
+                        addMemoryFragment -> {
                             binding.bottomNavigation.selectedItemId = R.id.navigation_map
-                            isNavigatedFromMap = false
-                        } else {
+                        }
+
+                        pickLocationFragment -> {
+                            binding.bottomNavigation.selectedItemId = R.id.navigation_add
+                        }
+
+                        settingsFragment -> {
+                            binding.bottomNavigation.selectedItemId = R.id.navigation_map
+                        }
+
+                        else -> {
                             isEnabled = false
                             onBackPressedDispatcher.onBackPressed()
                             isEnabled = true
                         }
-                    }
-
-                    addMemoryFragment -> {
-                        binding.bottomNavigation.selectedItemId = R.id.navigation_map
-                    }
-
-                    pickLocationFragment -> {
-                        binding.bottomNavigation.selectedItemId = R.id.navigation_add
-                    }
-
-                    settingsFragment -> {
-                        binding.bottomNavigation.selectedItemId = R.id.navigation_map
-                    }
-
-                    else -> {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
-                        isEnabled = true
                     }
                 }
             }
-        })
+        )
 
         checkAppStatus()
     }

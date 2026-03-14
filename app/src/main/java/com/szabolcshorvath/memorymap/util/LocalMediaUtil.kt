@@ -110,9 +110,9 @@ object LocalMediaUtil {
         val itemsToUpdate = mutableListOf<MediaItem>()
 
         for (item in mediaItems) {
-            if (item.deviceId != installationIdentifier
-                || item.uri.contains("photopicker")
-                || !isSignatureValid(context, item)
+            if (item.deviceId != installationIdentifier ||
+                item.uri.contains("photopicker") ||
+                !isSignatureValid(context, item)
             ) {
                 val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
                 if (candidate != null) {
@@ -139,7 +139,7 @@ object LocalMediaUtil {
     suspend fun deduplicateMediaItems(context: Context) {
         val dao = StoryMapDatabase.getDatabase(context).memoryGroupDao()
         val allMedia = dao.getAllMediaItems()
-        
+
         // Group items by groupId and signature. Any group with size > 1 has duplicates.
         val duplicates = allMedia.groupBy { it.groupId to it.mediaSignature }
             .filter { it.value.size > 1 }

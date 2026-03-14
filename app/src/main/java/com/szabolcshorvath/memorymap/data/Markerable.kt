@@ -24,8 +24,10 @@ interface Markerable {
 
         val results = FloatArray(1)
         Location.distanceBetween(
-            latitude, longitude,
-            other.latitude, other.longitude,
+            latitude,
+            longitude,
+            other.latitude,
+            other.longitude,
             results
         )
         return results[0] < SAME_LOCATION_METERS_THRESHOLD

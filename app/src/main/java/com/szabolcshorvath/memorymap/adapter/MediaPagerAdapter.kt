@@ -64,7 +64,6 @@ class MediaPagerAdapter :
                     binding.playIcon.visibility = View.GONE
                     binding.fullImageView.visibility = View.GONE
                 }
-
             } else {
                 binding.fullVideoView.visibility = View.GONE
                 binding.playIcon.visibility = View.GONE

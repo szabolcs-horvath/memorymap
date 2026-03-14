@@ -53,23 +53,33 @@ object MultiColorMarkerGenerator {
 
         // Left side curve up to the circle (smooth inward curve)
         pinPath.cubicTo(
-            centerX, bottomY - r * 0.7f,      // CP1: Pulls up from the tip
-            centerX - r, centerY + r * 0.6f,  // CP2: Pulls in towards the circle
-            centerX - r, centerY              // End point at circle edge
+            centerX,
+            bottomY - r * 0.7f, // CP1: Pulls up from the tip
+            centerX - r,
+            centerY + r * 0.6f, // CP2: Pulls in towards the circle
+            centerX - r,
+            centerY // End point at circle edge
         )
 
         // Top circular part
         pinPath.arcTo(
-            centerX - r, centerY - r,
-            centerX + r, centerY + r,
-            180f, 180f, false
+            centerX - r,
+            centerY - r,
+            centerX + r,
+            centerY + r,
+            180f,
+            180f,
+            false
         )
 
         // Right side curve down to the tip (smooth inward curve)
         pinPath.cubicTo(
-            centerX + r, centerY + r * 0.6f,  // CP1: Pulls in towards the circle
-            centerX, bottomY - r * 0.7f,      // CP2: Pulls up from the tip
-            centerX, bottomY                  // End point at tip
+            centerX + r,
+            centerY + r * 0.6f, // CP1: Pulls in towards the circle
+            centerX,
+            bottomY - r * 0.7f, // CP2: Pulls up from the tip
+            centerX,
+            bottomY // End point at tip
         )
         pinPath.close()
 

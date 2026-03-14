@@ -30,7 +30,7 @@ class TimelineAdapter(
         fun getItemId(): String {
             return when (this) {
                 is Memory -> "memory_${memoryGroup.id}"
-                is DateSeparator -> "date_${date}"
+                is DateSeparator -> "date_$date"
             }
         }
     }
@@ -91,7 +91,9 @@ class TimelineAdapter(
 
             val colorAnim = ValueAnimator.ofObject(
                 ArgbEvaluator(),
-                originalColor, flashColor, originalColor
+                originalColor,
+                flashColor,
+                originalColor
             )
             colorAnim.duration = 1000
             colorAnim.addUpdateListener { animator ->

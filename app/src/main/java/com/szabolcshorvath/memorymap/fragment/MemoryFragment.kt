@@ -190,7 +190,8 @@ class MemoryFragment : Fragment() {
 
     private fun setupFragmentsTouchHelper() {
         val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN,
+            0
         ) {
             private var initialOrder: List<Int>? = null
 

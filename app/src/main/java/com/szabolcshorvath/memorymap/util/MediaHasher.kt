@@ -65,7 +65,6 @@ object MediaHasher {
             // Combine Size + Hash for the final ID
             val hashString = digest.digest().joinToString("") { "%02x".format(it) }
             "${size}_$hashString"
-
         } catch (e: Exception) {
             // Handle FileNotFoundException or SecurityException
             Log.e(TAG, "Error calculating media signature", e)
