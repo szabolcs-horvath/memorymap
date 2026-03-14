@@ -56,7 +56,7 @@ object MediaHasher {
                             }
                         } else {
                             Log.e(TAG, "Error skipping bytes: $skipped != $skipAmount")
-                            throw IllegalStateException("Error skipping bytes")
+                            error("Error skipping bytes")
                         }
                     }
                 }
