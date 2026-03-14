@@ -9,6 +9,10 @@ on:
 jobs:
   detekt:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,7 +42,8 @@ jobs:
         continue-on-error: true
 
       - name: Upload Detekt SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
         with:
           sarif_file: build/reports/detekt/detekt.sarif
 
