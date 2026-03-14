@@ -25,6 +25,7 @@ import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -96,7 +97,7 @@ class BackupManager(private val context: Context) {
 
                 val dbFile = context.getDatabasePath("memory_map_database")
                 if (!dbFile.exists()) {
-                    throw Exception("Database not found")
+                    throw FileNotFoundException("Database not found")
                 }
 
                 tempDir = File(context.cacheDir, "backup_temp")
@@ -220,7 +221,7 @@ class BackupManager(private val context: Context) {
 
                 val metadataFile = File(tempRestoreDir, "metadata.json")
                 if (!metadataFile.exists()) {
-                    throw Exception("Invalid backup: missing metadata")
+                    throw FileNotFoundException("Invalid backup: missing metadata")
                 }
 
                 StoryMapDatabase.closeDatabase()
