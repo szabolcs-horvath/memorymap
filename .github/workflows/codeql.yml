@@ -60,6 +60,9 @@ jobs:
           queries: security-extended,security-and-quality
           dependency-caching: true
 
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
       - name: Run manual build steps
         shell: bash
         run: ./gradlew --no-daemon clean assembleDebug --no-build-cache --no-parallel -Pkotlin.incremental=false
