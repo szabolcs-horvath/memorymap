@@ -23,11 +23,7 @@ object MultiColorMarkerGenerator {
     /**
      * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
      */
-    fun generateTapered(
-        colors: List<Int>,
-        count: Int,
-        density: Float
-    ): Bitmap {
+    fun generateTapered(colors: List<Int>, count: Int, density: Float): Bitmap {
         val cacheKey = "${colors.hashCode()}_${count}_$density"
         cache.get(cacheKey)?.let { return it }
 
@@ -87,7 +83,7 @@ object MultiColorMarkerGenerator {
             canvas,
             pinPath,
             colors,
-            count,
+            count.toString(),
             centerX,
             centerY,
             height,
@@ -104,7 +100,7 @@ object MultiColorMarkerGenerator {
         canvas: Canvas,
         pinPath: Path,
         colors: List<Int>,
-        count: Int,
+        text: String,
         centerX: Float,
         centerY: Float,
         height: Int,
@@ -113,8 +109,22 @@ object MultiColorMarkerGenerator {
         outlineWidth: Float
     ) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        drawSegments(canvas, pinPath, colors, centerX, height, centerY, paint)
+        drawBorder(paint, borderWidth, canvas, pinPath)
+        val textY = drawText(text, paint, textSize, centerY)
+        drawOutline(paint, outlineWidth, canvas, text, centerX, textY)
+        drawFill(paint, canvas, text, centerX, textY)
+    }
 
-        // Draw background segments with clipping
+    private fun drawSegments(
+        canvas: Canvas,
+        pinPath: Path,
+        colors: List<Int>,
+        centerX: Float,
+        height: Int,
+        centerY: Float,
+        paint: Paint
+    ) {
         canvas.withClip(pinPath) {
             if (colors.isNotEmpty()) {
                 val angleStep = 360f / colors.size
@@ -130,30 +140,41 @@ object MultiColorMarkerGenerator {
                 drawPath(pinPath, paint)
             }
         }
+    }
 
-        // Draw border
+    private fun drawBorder(paint: Paint, borderWidth: Float, canvas: Canvas, pinPath: Path) {
         paint.color = Color.WHITE
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = borderWidth
         canvas.drawPath(pinPath, paint)
+    }
 
-        // Draw text with outline
-        val text = count.toString()
+    private fun drawText(text: String, paint: Paint, textSize: Float, centerY: Float): Float {
         paint.textSize = textSize
         paint.textAlign = Paint.Align.CENTER
 
         val textBounds = Rect()
         paint.getTextBounds(text, 0, text.length, textBounds)
         val textY = centerY - textBounds.exactCenterY()
+        return textY
+    }
 
-        // 1. Draw outline
+    private fun drawOutline(
+        paint: Paint,
+        outlineWidth: Float,
+        canvas: Canvas,
+        text: String,
+        centerX: Float,
+        textY: Float
+    ) {
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = outlineWidth * 2
         paint.color = Color.BLACK
         paint.strokeJoin = Paint.Join.ROUND
         canvas.drawText(text, centerX, textY, paint)
+    }
 
-        // 2. Draw fill
+    private fun drawFill(paint: Paint, canvas: Canvas, text: String, centerX: Float, textY: Float) {
         paint.style = Paint.Style.FILL
         paint.color = Color.WHITE
         canvas.drawText(text, centerX, textY, paint)
