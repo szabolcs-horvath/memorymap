@@ -79,70 +79,25 @@ class BackupManager(private val context: Context) {
             var tempDir: File? = null
             var zipFile: File? = null
             try {
-                val driveService = getDriveService(credential)
-
                 onProgress("Preparing database...")
-                try {
-                    StoryMapDatabase.getDatabase(
-                        context
-                    ).openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)")
-                        .close()
-                } catch (e: Exception) {
-                    when (e) {
-                        is IllegalStateException,
-                        is SQLiteException -> Log.e(TAG, "Failed to checkpoint WAL", e)
-                    }
-                    throw e
-                }
+                prepareDatabaseForBackup()
+
+                tempDir = File(context.cacheDir, "backup_temp")
+                if (tempDir.exists()) tempDir.deleteRecursively()
+                tempDir.mkdirs()
 
                 val dbFile = context.getDatabasePath("memory_map_database")
                 if (!dbFile.exists()) {
                     throw FileNotFoundException("Database not found")
                 }
 
-                tempDir = File(context.cacheDir, "backup_temp")
-                if (tempDir.exists()) tempDir.deleteRecursively()
-                tempDir.mkdirs()
+                val metadataFile = createMetadataFile(dbFile, isAutomatic, tempDir)
 
-                // Create metadata
-                val metadata = JSONObject()
-                metadata.put("timestamp", System.currentTimeMillis())
-                metadata.put("date", BACKUP_METADATA_DATE_FORMATTER.format(Date()))
-                metadata.put("dbSize", dbFile.length())
-                metadata.put("version", 2) // Metadata version
-                metadata.put("dbVersion", StoryMapDatabase.DB_VERSION)
-                metadata.put("isAutomatic", isAutomatic)
-
-                val metadataFile = File(tempDir, "metadata.json")
-                metadataFile.writeText(metadata.toString())
-
-                // Zip files
                 onProgress("Compressing data...")
-                zipFile = File(context.cacheDir, "backup.zip")
-                ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { out ->
-                    addToZip(out, dbFile, "database.sqlite")
-                    addToZip(out, metadataFile, "metadata.json")
-                    val walFile = context.getDatabasePath("memory_map_database-wal")
-                    if (walFile.exists()) addToZip(out, walFile, "database.sqlite-wal")
-                    val shmFile = context.getDatabasePath("memory_map_database-shm")
-                    if (shmFile.exists()) addToZip(out, shmFile, "database.sqlite-shm")
-                }
+                zipFile = zipBackup(dbFile, metadataFile)
 
-                onProgress("Uploading to Google Drive...")
-                val folderId = getOrCreateBackupFolder(driveService)
-
-                // Upload
-                val fileMetadata = DriveFile()
-                val prefix =
-                    if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
-                fileMetadata.name = "$prefix${BACKUP_FILE_NAME_DATE_FORMATTER.format(Date())}.zip"
-                fileMetadata.parents = listOf(folderId)
-
-                val mediaContent = FileContent("application/zip", zipFile)
-
-                driveService.files().create(fileMetadata, mediaContent)
-                    .setFields("id")
-                    .execute()
+                onProgress("Uploading backup...")
+                uploadBackup(credential, isAutomatic, zipFile)
 
                 return@withContext true
             } catch (e: Exception) {
@@ -153,6 +108,66 @@ class BackupManager(private val context: Context) {
                 zipFile?.delete()
             }
         }
+    }
+
+    private fun prepareDatabaseForBackup() {
+        try {
+            StoryMapDatabase.getDatabase(context).openHelper.writableDatabase
+                .query("PRAGMA wal_checkpoint(TRUNCATE)")
+                .close()
+        } catch (e: Exception) {
+            when (e) {
+                is IllegalStateException,
+                is SQLiteException -> Log.e(TAG, "Failed to checkpoint WAL", e)
+            }
+            throw e
+        }
+    }
+
+    private fun createMetadataFile(dbFile: File, isAutomatic: Boolean, tempDir: File): File {
+        val metadata = JSONObject()
+        metadata.put("timestamp", System.currentTimeMillis())
+        metadata.put("date", BACKUP_METADATA_DATE_FORMATTER.format(Date()))
+        metadata.put("dbSize", dbFile.length())
+        metadata.put("version", 2) // Metadata version
+        metadata.put("dbVersion", StoryMapDatabase.DB_VERSION)
+        metadata.put("isAutomatic", isAutomatic)
+
+        val metadataFile = File(tempDir, "metadata.json")
+        metadataFile.writeText(metadata.toString())
+        return metadataFile
+    }
+
+    private fun zipBackup(dbFile: File, metadataFile: File): File {
+        val zipFile = File(context.cacheDir, "backup.zip")
+        ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { out ->
+            addToZip(out, dbFile, "database.sqlite")
+            addToZip(out, metadataFile, "metadata.json")
+            val walFile = context.getDatabasePath("memory_map_database-wal")
+            if (walFile.exists()) addToZip(out, walFile, "database.sqlite-wal")
+            val shmFile = context.getDatabasePath("memory_map_database-shm")
+            if (shmFile.exists()) addToZip(out, shmFile, "database.sqlite-shm")
+        }
+        return zipFile
+    }
+
+    private fun uploadBackup(
+        credential: GoogleAccountCredential,
+        isAutomatic: Boolean,
+        zipFile: File
+    ) {
+        val driveService = getDriveService(credential)
+        val folderId = getOrCreateBackupFolder(driveService)
+        val fileMetadata = DriveFile()
+        val prefix =
+            if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
+        fileMetadata.name = "$prefix${BACKUP_FILE_NAME_DATE_FORMATTER.format(Date())}.zip"
+        fileMetadata.parents = listOf(folderId)
+
+        val mediaContent = FileContent("application/zip", zipFile)
+        driveService.files().create(fileMetadata, mediaContent)
+            .setFields("id")
+            .execute()
     }
 
     suspend fun listBackups(credential: GoogleAccountCredential): List<DriveFile> {
@@ -186,63 +201,17 @@ class BackupManager(private val context: Context) {
                 val driveService = getDriveService(credential)
 
                 onProgress("Downloading backup...")
-                tempZipFile = File(context.cacheDir, "restore_temp.zip")
-                FileOutputStream(tempZipFile).use { outputStream ->
-                    driveService.files().get(fileId)
-                        .executeMediaAndDownloadTo(outputStream)
-                }
+                tempZipFile = downloadBackup(driveService, fileId)
+                tempRestoreDir = setupTempRestoreDir()
+
+                onProgress("Uncompressing backup...")
+                unzipBackup(tempZipFile, tempRestoreDir)
+
+                onProgress("Verifying backup metadata...")
+                verifyBackupMetadata(tempRestoreDir)
 
                 onProgress("Restoring database...")
-                tempRestoreDir = File(context.cacheDir, "restore_temp_dir")
-                if (tempRestoreDir.exists()) tempRestoreDir.deleteRecursively()
-                tempRestoreDir.mkdirs()
-
-                ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zis ->
-                    var entry = zis.nextEntry
-                    while (entry != null) {
-                        val file = File(tempRestoreDir, entry.name)
-                        if (file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)) {
-                            FileOutputStream(file).use { fos ->
-                                val buffer = ByteArray(1024)
-                                var count: Int
-                                while (zis.read(buffer).also { count = it } != -1) {
-                                    fos.write(buffer, 0, count)
-                                }
-                            }
-                        }
-                        entry = zis.nextEntry
-                    }
-                }
-
-                val metadataFile = File(tempRestoreDir, "metadata.json")
-                if (!metadataFile.exists()) {
-                    throw FileNotFoundException("Invalid backup: missing metadata")
-                }
-
-                StoryMapDatabase.closeDatabase()
-
-                val dbFile = context.getDatabasePath("memory_map_database")
-                val walFile = context.getDatabasePath("memory_map_database-wal")
-                val shmFile = context.getDatabasePath("memory_map_database-shm")
-
-                val restoredDb = File(tempRestoreDir, "database.sqlite")
-                if (restoredDb.exists()) {
-                    restoredDb.copyTo(dbFile, overwrite = true)
-                }
-
-                val restoredWal = File(tempRestoreDir, "database.sqlite-wal")
-                if (restoredWal.exists()) {
-                    restoredWal.copyTo(walFile, overwrite = true)
-                } else if (walFile.exists()) {
-                    walFile.delete()
-                }
-
-                val restoredShm = File(tempRestoreDir, "database.sqlite-shm")
-                if (restoredShm.exists()) {
-                    restoredShm.copyTo(shmFile, overwrite = true)
-                } else if (shmFile.exists()) {
-                    shmFile.delete()
-                }
+                restoreDatabaseFromBackup(tempRestoreDir)
 
                 onProgress("Verifying media...")
                 LocalMediaUtil.verifyAndFixMediaItems(context)
@@ -255,6 +224,75 @@ class BackupManager(private val context: Context) {
                 tempZipFile?.delete()
                 tempRestoreDir?.deleteRecursively()
             }
+        }
+    }
+
+    private fun downloadBackup(driveService: Drive, fileId: String): File {
+        val tempZipFile = File(context.cacheDir, "restore_temp.zip")
+        FileOutputStream(tempZipFile).use { outputStream ->
+            driveService.files().get(fileId)
+                .executeMediaAndDownloadTo(outputStream)
+        }
+        return tempZipFile
+    }
+
+    private fun setupTempRestoreDir(): File {
+        val tempRestoreDir = File(context.cacheDir, "restore_temp_dir")
+        if (tempRestoreDir.exists()) tempRestoreDir.deleteRecursively()
+        tempRestoreDir.mkdirs()
+        return tempRestoreDir
+    }
+
+    private fun unzipBackup(tempZipFile: File, tempRestoreDir: File) {
+        ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                val file = File(tempRestoreDir, entry.name)
+                if (file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)) {
+                    FileOutputStream(file).use { fos ->
+                        val buffer = ByteArray(1024)
+                        var count: Int
+                        while (zis.read(buffer).also { count = it } != -1) {
+                            fos.write(buffer, 0, count)
+                        }
+                    }
+                }
+                entry = zis.nextEntry
+            }
+        }
+    }
+
+    private fun verifyBackupMetadata(tempRestoreDir: File) {
+        val metadataFile = File(tempRestoreDir, "metadata.json")
+        if (!metadataFile.exists()) {
+            throw FileNotFoundException("Invalid backup: missing metadata")
+        }
+    }
+
+    private fun restoreDatabaseFromBackup(tempRestoreDir: File) {
+        StoryMapDatabase.closeDatabase()
+
+        val dbFile = context.getDatabasePath("memory_map_database")
+        val walFile = context.getDatabasePath("memory_map_database-wal")
+        val shmFile = context.getDatabasePath("memory_map_database-shm")
+
+        val restoredDb = File(tempRestoreDir, "database.sqlite")
+        if (restoredDb.exists()) {
+            restoredDb.copyTo(dbFile, overwrite = true)
+        }
+
+        val restoredWal = File(tempRestoreDir, "database.sqlite-wal")
+        if (restoredWal.exists()) {
+            restoredWal.copyTo(walFile, overwrite = true)
+        } else if (walFile.exists()) {
+            walFile.delete()
+        }
+
+        val restoredShm = File(tempRestoreDir, "database.sqlite-shm")
+        if (restoredShm.exists()) {
+            restoredShm.copyTo(shmFile, overwrite = true)
+        } else if (shmFile.exists()) {
+            shmFile.delete()
         }
     }
 
