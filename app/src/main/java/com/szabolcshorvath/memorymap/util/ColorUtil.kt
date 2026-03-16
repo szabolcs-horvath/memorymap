@@ -5,6 +5,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 
 object ColorUtil {
 
+    const val DEFAULT_MARKER_HUE = BitmapDescriptorFactory.HUE_RED
     val COLOR_PRESETS = listOf(
         BitmapDescriptorFactory.HUE_RED,
         BitmapDescriptorFactory.HUE_ORANGE,

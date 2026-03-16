@@ -7,10 +7,10 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryOverlayBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 
 class MemoryOverlayAdapter(
     private val onDetailsClick: (Int) -> Unit
@@ -74,7 +74,7 @@ class MemoryOverlayAdapter(
 
     private fun bindColor(holder: MemoryOverlayViewHolder, item: Markerable) {
         holder.binding.colorIndicator.backgroundTintList = ColorStateList.valueOf(
-            ColorUtil.hueToColor(item.markerHue ?: BitmapDescriptorFactory.HUE_RED)
+            ColorUtil.hueToColor(item.markerHue ?: DEFAULT_MARKER_HUE)
         )
     }
 

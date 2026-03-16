@@ -42,6 +42,7 @@ import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
 import ir.mahozad.android.PieChart.Slice
@@ -517,7 +518,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val totalCount = filteredItems.size.toFloat()
             if (totalCount > 0) {
                 val colorStats = filteredItems.groupBy {
-                    ColorUtil.hueToColor(it.markerHue ?: BitmapDescriptorFactory.HUE_RED)
+                    ColorUtil.hueToColor(it.markerHue ?: DEFAULT_MARKER_HUE)
                 }.mapValues { it.value.size }
 
                 val sliceList = colorStats.map { (color, count) ->
@@ -618,7 +619,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         return if (items.size > 1) {
             val colors =
-                items.map { ColorUtil.hueToColor(it.markerHue ?: BitmapDescriptorFactory.HUE_RED) }
+                items.map { ColorUtil.hueToColor(it.markerHue ?: DEFAULT_MARKER_HUE) }
                     .sorted()
             val density = resources.displayMetrics.density
             val bitmap = MultiColorMarkerGenerator.generateTapered(colors, items.size, density)
@@ -637,9 +638,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     .title(markerTitle)
                     .icon(
                         BitmapDescriptorFactory.defaultMarker(
-                            ColorUtil.normalizeHue(
-                                representative.markerHue ?: BitmapDescriptorFactory.HUE_RED
-                            )
+                            ColorUtil.normalizeHue(representative.markerHue ?: DEFAULT_MARKER_HUE)
                         )
                     )
             )

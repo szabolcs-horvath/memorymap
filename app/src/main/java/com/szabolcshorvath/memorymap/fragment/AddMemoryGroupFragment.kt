@@ -26,7 +26,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.withTransaction
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
@@ -38,6 +37,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
@@ -89,7 +89,7 @@ class AddMemoryGroupFragment : Fragment() {
     private var startDateTime: ZonedDateTime = ZonedDateTime.now()
     private var endDateTime: ZonedDateTime = ZonedDateTime.now().plusHours(1)
     private var isAllDay = false
-    private var markerHue: Float = BitmapDescriptorFactory.HUE_RED
+    private var markerHue: Float = DEFAULT_MARKER_HUE
 
     private var listener: AddMemoryListener? = null
     private lateinit var backupManager: BackupManager
@@ -99,19 +99,6 @@ class AddMemoryGroupFragment : Fragment() {
     private var currentDeviceId: String? = null
     private var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     private var isFragmentsExpanded = true
-
-    private val colorPresets = listOf(
-        BitmapDescriptorFactory.HUE_RED,
-        BitmapDescriptorFactory.HUE_ORANGE,
-        BitmapDescriptorFactory.HUE_YELLOW,
-        BitmapDescriptorFactory.HUE_GREEN,
-        BitmapDescriptorFactory.HUE_CYAN,
-        BitmapDescriptorFactory.HUE_AZURE,
-        BitmapDescriptorFactory.HUE_BLUE,
-        BitmapDescriptorFactory.HUE_VIOLET,
-        BitmapDescriptorFactory.HUE_MAGENTA,
-        BitmapDescriptorFactory.HUE_ROSE
-    )
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
@@ -356,7 +343,7 @@ class AddMemoryGroupFragment : Fragment() {
         isAllDay = false
         startDateTime = ZonedDateTime.now()
         endDateTime = ZonedDateTime.now().plusHours(1)
-        markerHue = BitmapDescriptorFactory.HUE_RED
+        markerHue = DEFAULT_MARKER_HUE
         updateDateTimeButtons()
         updateHueUI()
         selectedMedia.clear()
@@ -411,7 +398,7 @@ class AddMemoryGroupFragment : Fragment() {
                     isAllDay = group.isAllDay
                     startDateTime = group.startDate
                     endDateTime = group.endDate
-                    markerHue = group.markerHue ?: BitmapDescriptorFactory.HUE_RED
+                    markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
 
                     binding.titleInput.setText(group.title)
                     binding.descriptionInput.setText(group.description)
@@ -466,7 +453,7 @@ class AddMemoryGroupFragment : Fragment() {
                                 startDate = it.startDate,
                                 endDate = it.endDate,
                                 isAllDay = it.isAllDay,
-                                markerHue = it.markerHue ?: 0f,
+                                markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
                                 isTimeVisible = it.startDate != null,
                                 order = it.order
                             )

@@ -9,11 +9,11 @@ import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBinding
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import java.time.LocalDate
 
@@ -77,7 +77,7 @@ class TimelineAdapter(
             binding.memoryDate.text = memoryGroup.getFormattedDate()
 
             binding.colorIndicator.setBackgroundColor(
-                ColorUtil.hueToColor(memoryGroup.markerHue ?: BitmapDescriptorFactory.HUE_RED)
+                ColorUtil.hueToColor(memoryGroup.markerHue ?: DEFAULT_MARKER_HUE)
             )
 
             binding.root.setOnClickListener { onMemoryClick(memoryGroup) }

@@ -12,7 +12,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
@@ -22,6 +21,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
@@ -339,7 +339,7 @@ class MemoryFragment : Fragment() {
         binding.locationText.text = locationString
 
         binding.divider.setBackgroundColor(
-            ColorUtil.hueToColor(group.markerHue ?: BitmapDescriptorFactory.HUE_RED)
+            ColorUtil.hueToColor(group.markerHue ?: DEFAULT_MARKER_HUE)
         )
 
         binding.showOnTimelineButton.setOnClickListener {
