@@ -307,6 +307,12 @@ class MemoryFragment : Fragment() {
     }
 
     private suspend fun displayDetails(data: MemoryGroupWithMedia) {
+        displayMemoryGroupDetails(data)
+        displayMemoryFragments(data)
+        displayMediaItems(data)
+    }
+
+    private fun displayMemoryGroupDetails(data: MemoryGroupWithMedia) {
         val group = data.group
         binding.titleText.text = group.title
 
@@ -343,7 +349,9 @@ class MemoryFragment : Fragment() {
         binding.showOnMapButton.setOnClickListener {
             listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
+    }
 
+    private fun displayMemoryFragments(data: MemoryGroupWithMedia) {
         fragmentItems = data.fragments.sortedWith { a, b ->
             when {
                 a.order != null && b.order != null -> a.order.compareTo(b.order)
@@ -371,7 +379,9 @@ class MemoryFragment : Fragment() {
                 if (isFragmentsExpanded) View.VISIBLE else View.GONE
             binding.fragmentsChevron.rotation = if (isFragmentsExpanded) 90f else 0f
         }
+    }
 
+    private suspend fun displayMediaItems(data: MemoryGroupWithMedia) {
         mediaItems = data.mediaItems.sortedWith { a, b ->
             when {
                 a.order != null && b.order != null -> a.order.compareTo(b.order)
