@@ -64,13 +64,13 @@ class AddMemoryGroupFragment : Fragment() {
     private var _binding: FragmentAddMemoryGroupBinding? = null
     private val binding get() = _binding!!
 
-    private data class SelectedMedia(
+    data class SelectedMedia(
         val uri: Uri,
         val type: MediaType,
         val deviceId: String
     )
 
-    private data class FragmentEditState(
+    data class FragmentEditState(
         val id: Int = 0,
         val localId: String = UUID.randomUUID().toString(),
         val latitude: Double = 0.0,
@@ -576,152 +576,40 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private suspend fun saveMemoryGroup() {
-        val title = binding.titleInput.text.toString()
-        if (title.isBlank()) {
-            Toast.makeText(requireContext(), "Please enter a title", Toast.LENGTH_SHORT).show()
+        try {
+            validateRequiredFields()
+        } catch (e: IllegalStateException) {
+            Toast.makeText(requireContext(), e.message, Toast.LENGTH_SHORT).show()
             return
         }
 
-        val description = binding.descriptionInput.text.toString().ifBlank { null }
-
-        val finalStart = if (isAllDay) {
-            startDateTime.toLocalDate()
-                .atStartOfDay(ZoneId.systemDefault())
-        } else {
-            startDateTime
-        }
-        val finalEnd = if (isAllDay) {
-            endDateTime.toLocalDate().atTime(23, 59, 59)
-                .atZone(ZoneId.systemDefault())
-        } else {
-            endDateTime
-        }
-
-        val context = requireContext().applicationContext
-        val contentResolver = context.contentResolver
-        val db = StoryMapDatabase.getDatabase(context)
-
-        // Disable UI to indicate progress and prevent double-saving
-        binding.saveButton.isEnabled = false
+        val effectiveStart = calculateEffectiveStartTime()
+        val effectiveEnd = calculateEffectiveEndTime()
+        val group = assembleMemoryGroup(effectiveStart, effectiveEnd)
 
         try {
+            binding.saveButton.isEnabled = false
+
+            val context = requireContext().applicationContext
+            val db = StoryMapDatabase.getDatabase(context)
+
             val groupIdResult = withContext(Dispatchers.IO) {
                 db.withTransaction {
-                    val group = MemoryGroup(
-                        id = editingMemoryId ?: 0,
-                        title = title,
-                        description = description,
-                        latitude = lat,
-                        longitude = lng,
-                        placeName = placeName,
-                        address = address,
-                        startDate = finalStart,
-                        endDate = finalEnd,
-                        isAllDay = isAllDay,
-                        markerHue = markerHue
-                    )
-
-                    val groupId = if (editingMemoryId != null) {
-                        db.memoryGroupDao().updateGroup(group)
-                        editingMemoryId!!.toLong()
-                    } else {
-                        db.memoryGroupDao().insertGroup(group)
-                    }
-
-                    // If editing, we delete the old media associations and re-insert the current selection
-                    if (editingMemoryId != null) {
-                        db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
-                    }
-
-                    val mediaItems = selectedMedia.mapIndexed { index, (uri, type, itemDeviceId) ->
-                        var size = 0L
-                        var date = 0L
-
-                        contentResolver.query(
-                            uri,
-                            arrayOf(
-                                MediaStore.MediaColumns.SIZE,
-                                MediaStore.MediaColumns.DATE_TAKEN
-                            ),
-                            null,
-                            null,
-                            null
-                        )?.use { cursor ->
-                            if (cursor.moveToFirst()) {
-                                size =
-                                    cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE))
-                                date =
-                                    cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN))
-                            }
-                        }
-
-                        MediaItem(
-                            groupId = groupId.toInt(),
-                            uri = uri.toString(),
-                            deviceId = itemDeviceId,
-                            type = type,
-                            mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
-                            fileSize = size,
-                            dateTaken = date,
-                            order = index + 1
-                        )
-                    }
-                        .distinctBy { it.mediaSignature }
-                        .mapIndexed { index, item -> item.copy(order = index + 1) }
-                    db.memoryGroupDao().insertMediaItems(mediaItems)
-
-                    db.memoryGroupDao().deleteFragmentsByGroupId(groupId.toInt())
-                    val fragmentEntities = fragments.mapIndexed { index, f ->
-                        val saveTime = f.isTimeVisible
-                        val fragmentStart = if (saveTime) {
-                            if (f.isAllDay) {
-                                f.startDate?.toLocalDate()
-                                    ?.atStartOfDay(ZoneId.systemDefault())
-                            } else {
-                                f.startDate
-                            }
-                        } else {
-                            null
-                        }
-                        val fragmentEnd = if (saveTime) {
-                            if (f.isAllDay) {
-                                f.endDate?.toLocalDate()?.atTime(23, 59, 59)
-                                    ?.atZone(ZoneId.systemDefault())
-                            } else {
-                                f.endDate
-                            }
-                        } else {
-                            null
-                        }
-
-                        MemoryFragment(
-                            groupId = groupId.toInt(),
-                            latitude = f.latitude,
-                            longitude = f.longitude,
-                            placeName = f.placeName,
-                            address = f.address,
-                            startDate = fragmentStart,
-                            endDate = fragmentEnd,
-                            isAllDay = f.isAllDay && saveTime,
-                            markerHue = f.markerHue,
-                            order = index + 1
-                        )
-                    }
-                    db.memoryGroupDao().insertFragments(fragmentEntities)
+                    val groupId = saveMemoryGroup(db, group)
+                    saveMediaItems(db, groupId, context)
+                    saveMemoryFragments(db, groupId)
 
                     groupId.toInt()
                 }
             }
 
-            // Success operations
             backupManager.triggerAutomaticBackup()
-
             listener?.onMemorySaved(
                 lat,
                 lng,
                 groupIdResult,
-                finalStart.toLocalDate(),
-                finalEnd.toLocalDate()
+                effectiveStart.toLocalDate(),
+                effectiveEnd.toLocalDate()
             )
             clearFields()
         } catch (e: Exception) {
@@ -732,9 +620,140 @@ class AddMemoryGroupFragment : Fragment() {
                 Toast.LENGTH_LONG
             ).show()
         } finally {
-            // Re-enable the button
             _binding?.saveButton?.isEnabled = true
         }
+    }
+
+    private fun validateRequiredFields() {
+        check(binding.titleInput.text.toString().isNotBlank()) { "Title cannot be empty" }
+    }
+
+    private fun calculateEffectiveStartTime(): ZonedDateTime = if (isAllDay) {
+        startDateTime.toLocalDate()
+            .atStartOfDay(ZoneId.systemDefault())
+    } else {
+        startDateTime
+    }
+
+    private fun calculateEffectiveEndTime(): ZonedDateTime = if (isAllDay) {
+        endDateTime.toLocalDate()
+            .atTime(LocalTime.MAX)
+            .atZone(ZoneId.systemDefault())
+    } else {
+        endDateTime
+    }
+
+    private fun assembleMemoryGroup(
+        effectiveStart: ZonedDateTime,
+        effectiveEnd: ZonedDateTime
+    ): MemoryGroup = MemoryGroup(
+        id = editingMemoryId ?: 0,
+        title = binding.titleInput.text.toString(),
+        description = binding.descriptionInput.text.toString().ifBlank { null },
+        latitude = lat,
+        longitude = lng,
+        placeName = placeName,
+        address = address,
+        startDate = effectiveStart,
+        endDate = effectiveEnd,
+        isAllDay = isAllDay,
+        markerHue = markerHue
+    )
+
+    private suspend fun saveMemoryGroup(db: StoryMapDatabase, group: MemoryGroup): Long {
+        val groupId = if (editingMemoryId != null) {
+            db.memoryGroupDao().updateGroup(group)
+            editingMemoryId!!.toLong()
+        } else {
+            db.memoryGroupDao().insertGroup(group)
+        }
+        return groupId
+    }
+
+    private suspend fun saveMediaItems(db: StoryMapDatabase, groupId: Long, context: Context) {
+        // If editing, we delete the old media associations and re-insert the current selection
+        if (editingMemoryId != null) {
+            db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
+        }
+
+        val mediaItems = selectedMedia.mapIndexed { index, (uri, type, itemDeviceId) ->
+            var size = 0L
+            var date = 0L
+
+            context.contentResolver.query(
+                uri,
+                arrayOf(
+                    MediaStore.MediaColumns.SIZE,
+                    MediaStore.MediaColumns.DATE_TAKEN
+                ),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    size =
+                        cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE))
+                    date =
+                        cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN))
+                }
+            }
+
+            MediaItem(
+                groupId = groupId.toInt(),
+                uri = uri.toString(),
+                deviceId = itemDeviceId,
+                type = type,
+                mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
+                fileSize = size,
+                dateTaken = date,
+                order = index + 1
+            )
+        }
+            .distinctBy { it.mediaSignature }
+            .mapIndexed { index, item -> item.copy(order = index + 1) }
+
+        db.memoryGroupDao().insertMediaItems(mediaItems)
+    }
+
+    private suspend fun saveMemoryFragments(db: StoryMapDatabase, groupId: Long) {
+        db.memoryGroupDao().deleteFragmentsByGroupId(groupId.toInt())
+        val fragmentEntities = fragments.mapIndexed { index, f ->
+            val saveTime = f.isTimeVisible
+            val fragmentStart = if (saveTime) {
+                if (f.isAllDay) {
+                    f.startDate?.toLocalDate()
+                        ?.atStartOfDay(ZoneId.systemDefault())
+                } else {
+                    f.startDate
+                }
+            } else {
+                null
+            }
+            val fragmentEnd = if (saveTime) {
+                if (f.isAllDay) {
+                    f.endDate?.toLocalDate()?.atTime(23, 59, 59)
+                        ?.atZone(ZoneId.systemDefault())
+                } else {
+                    f.endDate
+                }
+            } else {
+                null
+            }
+
+            MemoryFragment(
+                groupId = groupId.toInt(),
+                latitude = f.latitude,
+                longitude = f.longitude,
+                placeName = f.placeName,
+                address = f.address,
+                startDate = fragmentStart,
+                endDate = fragmentEnd,
+                isAllDay = f.isAllDay && saveTime,
+                markerHue = f.markerHue,
+                order = index + 1
+            )
+        }
+        db.memoryGroupDao().insertFragments(fragmentEntities)
     }
 
     override fun onDestroyView() {
