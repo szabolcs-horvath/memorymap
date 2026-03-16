@@ -6,10 +6,9 @@ import androidx.room.ForeignKey
 import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 
 @Entity(
     tableName = "memory_fragments",
@@ -46,9 +45,11 @@ data class MemoryFragment(
 
     override fun getFormattedDate(): String? {
         if (startDate == null || endDate == null) return null
+        val dateFormatter = dateFormatter()
+        val timeFormatter = timeFormatter()
 
-        val startDay = startDate.format(dateFormatter.withLocale(Locale.getDefault()))
-        val endDay = endDate.format(dateFormatter.withLocale(Locale.getDefault()))
+        val startDay = startDate.format(dateFormatter)
+        val endDay = endDate.format(dateFormatter)
 
         return if (isAllDay) {
             if (startDay == endDay) {
@@ -57,8 +58,8 @@ data class MemoryFragment(
                 "$startDay - $endDay"
             }
         } else {
-            val startTime = startDate.format(timeFormatter.withLocale(Locale.getDefault()))
-            val endTime = endDate.format(timeFormatter.withLocale(Locale.getDefault()))
+            val startTime = startDate.format(timeFormatter)
+            val endTime = endDate.format(timeFormatter)
 
             if (startDay == endDay) {
                 "$startDay $startTime - $endTime"
@@ -66,10 +67,5 @@ data class MemoryFragment(
                 "$startDay $startTime - $endDay $endTime"
             }
         }
-    }
-
-    companion object {
-        private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-        private val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
     }
 }

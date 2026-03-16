@@ -28,12 +28,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.withTransaction
-import coil3.load
-import coil3.request.crossfade
-import coil3.video.VideoFrameDecoder
-import coil3.video.videoFrameMicros
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
@@ -41,9 +38,10 @@ import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
-import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
@@ -54,9 +52,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 import java.util.UUID
 
 class AddMemoryGroupFragment : Fragment() {
@@ -106,11 +101,6 @@ class AddMemoryGroupFragment : Fragment() {
     private var currentDeviceId: String? = null
     private var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     private var isFragmentsExpanded = true
-
-    private val dateFormatter =
-        DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
-    private val timeFormatter =
-        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
 
     private val colorPresets = listOf(
         BitmapDescriptorFactory.HUE_RED,
@@ -246,7 +236,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        mediaAdapter = SelectedMediaAdapter { position ->
+        mediaAdapter = SelectedMediaAdapter(currentDeviceId) { position ->
             selectedMedia.removeAt(position)
             updateMediaUI()
         }
@@ -309,7 +299,7 @@ class AddMemoryGroupFragment : Fragment() {
         val size = (32 * resources.displayMetrics.density).toInt()
         val margin = (12 * resources.displayMetrics.density).toInt()
 
-        colorPresets.forEach { hue ->
+        ColorUtil.COLOR_PRESETS.forEach { hue ->
             val view = View(requireContext())
             val params = LinearLayout.LayoutParams(size, size)
             params.setMargins(0, 0, margin, 0)
@@ -505,8 +495,8 @@ class AddMemoryGroupFragment : Fragment() {
             binding.endDateLabel.visibility = View.GONE
             binding.dateRangeButton.visibility = View.VISIBLE
 
-            val startStr = startDateTime.format(dateFormatter)
-            val endStr = endDateTime.format(dateFormatter)
+            val startStr = startDateTime.format(dateFormatter())
+            val endStr = endDateTime.format(dateFormatter())
             binding.dateRangeButton.text =
                 if (startStr == endStr) startStr else "$startStr - $endStr"
         } else {
@@ -516,10 +506,10 @@ class AddMemoryGroupFragment : Fragment() {
             binding.endDateLabel.visibility = View.VISIBLE
             binding.dateRangeButton.visibility = View.GONE
 
-            binding.startDateButton.text = startDateTime.format(dateFormatter)
-            binding.endDateButton.text = endDateTime.format(dateFormatter)
-            binding.startTimeButton.text = startDateTime.format(timeFormatter)
-            binding.endTimeButton.text = endDateTime.format(timeFormatter)
+            binding.startDateButton.text = startDateTime.format(dateFormatter())
+            binding.endDateButton.text = endDateTime.format(dateFormatter())
+            binding.startTimeButton.text = startDateTime.format(timeFormatter())
+            binding.endTimeButton.text = endDateTime.format(timeFormatter())
         }
     }
 
@@ -761,57 +751,6 @@ class AddMemoryGroupFragment : Fragment() {
         _binding = null
     }
 
-    private inner class SelectedMediaAdapter(
-        private val onRemove: (Int) -> Unit
-    ) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
-        SelectedMediaDiffCallback()
-    ) {
-
-        inner class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
-            RecyclerView.ViewHolder(binding.root)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = SelectedMediaViewHolder(
-            ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        )
-
-        override fun onBindViewHolder(holder: SelectedMediaViewHolder, position: Int) {
-            val item = getItem(position)
-            val isFromOtherDevice = currentDeviceId != null && item.deviceId != currentDeviceId
-
-            if (isFromOtherDevice) {
-                holder.binding.thumbnailImage.setImageDrawable(null)
-                holder.binding.errorIcon.visibility = View.VISIBLE
-                holder.binding.videoIcon.visibility = View.GONE
-            } else {
-                holder.binding.thumbnailImage.load(item.uri) {
-                    crossfade(true)
-                    if (item.type == MediaType.VIDEO) {
-                        videoFrameMicros(0)
-                        decoderFactory { result, options, _ ->
-                            VideoFrameDecoder(result.source, options)
-                        }
-                    }
-                    listener(
-                        onError = { _, _ -> holder.binding.errorIcon.visibility = View.VISIBLE },
-                        onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE }
-                    )
-                }
-                holder.binding.videoIcon.visibility =
-                    if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
-            }
-
-            holder.binding.removeButton.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
-        }
-    }
-
-    private class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
-        override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
-            oldItem.uri == newItem.uri
-
-        override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
-            oldItem == newItem
-    }
-
     private inner class MemoryFragmentEditAdapter :
         ListAdapter<FragmentEditState, MemoryFragmentEditAdapter.MemoryFragmentEditViewHolder>(
             FragmentDiffCallback()
@@ -938,8 +877,8 @@ class AddMemoryGroupFragment : Fragment() {
 
                 val start = item.startDate ?: ZonedDateTime.now()
                 val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
-                val startStr = start.format(dateFormatter)
-                val endStr = end.format(dateFormatter)
+                val startStr = start.format(dateFormatter())
+                val endStr = end.format(dateFormatter())
                 binding.dateRangeButton.text =
                     if (startStr == endStr) startStr else "$startStr - $endStr"
             } else {
@@ -949,10 +888,10 @@ class AddMemoryGroupFragment : Fragment() {
 
                 val start = item.startDate ?: ZonedDateTime.now()
                 val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
-                binding.startDateButton.text = start.format(dateFormatter)
-                binding.startTimeButton.text = start.format(timeFormatter)
-                binding.endDateButton.text = end.format(dateFormatter)
-                binding.endTimeButton.text = end.format(timeFormatter)
+                binding.startDateButton.text = start.format(dateFormatter())
+                binding.startTimeButton.text = start.format(timeFormatter())
+                binding.endDateButton.text = end.format(dateFormatter())
+                binding.endTimeButton.text = end.format(timeFormatter())
             }
         }
 

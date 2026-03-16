@@ -42,6 +42,7 @@ import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.Dispatchers
@@ -54,8 +55,6 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import kotlin.system.measureTimeMillis
 
 class MapFragment : Fragment(), OnMapReadyCallback {
@@ -74,7 +73,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var allFragments: List<MemoryFragment> = emptyList()
     private var filterStartDate: LocalDate? = null
     private var filterEndDate: LocalDate? = null
-    private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
     // Parameters to handle initial selection
     private var initialSelectedLat: Double? = null
@@ -199,6 +197,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateDateRangeButtonText() {
+        val dateFormatter = dateFormatter()
         if (filterStartDate != null && filterEndDate != null) {
             if (filterStartDate != filterEndDate) {
                 binding.btnDateRange.text =

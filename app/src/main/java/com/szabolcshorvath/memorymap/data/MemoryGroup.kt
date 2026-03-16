@@ -4,10 +4,9 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 
 @Entity(
     tableName = "memory_groups",
@@ -33,8 +32,11 @@ data class MemoryGroup(
     override val groupId: Int get() = id
 
     override fun getFormattedDate(): String {
-        val startDay = startDate.format(dateFormatter.withLocale(Locale.getDefault()))
-        val endDay = endDate.format(dateFormatter.withLocale(Locale.getDefault()))
+        val dateFormatter = dateFormatter()
+        val timeFormatter = timeFormatter()
+
+        val startDay = startDate.format(dateFormatter)
+        val endDay = endDate.format(dateFormatter)
 
         if (isAllDay) {
             return if (startDay == endDay) {
@@ -43,8 +45,8 @@ data class MemoryGroup(
                 "$startDay - $endDay"
             }
         } else {
-            val startTime = startDate.format(timeFormatter.withLocale(Locale.getDefault()))
-            val endTime = endDate.format(timeFormatter.withLocale(Locale.getDefault()))
+            val startTime = startDate.format(timeFormatter)
+            val endTime = endDate.format(timeFormatter)
 
             return if (startDay == endDay) {
                 "$startDay $startTime - $endTime"
@@ -52,12 +54,5 @@ data class MemoryGroup(
                 "$startDay $startTime - $endDay $endTime"
             }
         }
-    }
-
-    companion object {
-        private val dateFormatter =
-            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-        private val timeFormatter =
-            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
     }
 }

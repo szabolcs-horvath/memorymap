@@ -14,10 +14,8 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBinding
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.util.Locale
 
 class TimelineAdapter(
     private val onMemoryClick: (MemoryGroup) -> Unit
@@ -107,7 +105,7 @@ class TimelineAdapter(
     class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(date: LocalDate) {
-            binding.dateText.text = date.format(dateFormatter.withLocale(Locale.getDefault()))
+            binding.dateText.text = date.format(dateFormatter())
         }
     }
 
@@ -169,8 +167,5 @@ class TimelineAdapter(
     companion object {
         private const val VIEW_TYPE_MEMORY = 0
         private const val VIEW_TYPE_SEPARATOR = 1
-
-        private val dateFormatter =
-            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
     }
 }
