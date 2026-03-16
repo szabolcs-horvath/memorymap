@@ -117,8 +117,7 @@ class MemoryFragment : Fragment() {
                 binding.mediaRecyclerView.scrollToPosition(positionStart)
             }
         })
-        // Use a GridLayout with 3 columns for thumbnails
-        binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, 3)
+        binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, MEDIA_GRID_SPAN_COUNT)
         binding.mediaRecyclerView.adapter = mediaAdapter
 
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
@@ -248,7 +247,9 @@ class MemoryFragment : Fragment() {
         isFragmentsExpanded = !isFragmentsExpanded
         binding.fragmentsExpandedContent.visibility =
             if (isFragmentsExpanded) View.VISIBLE else View.GONE
-        binding.fragmentsChevron.animate().rotation(if (isFragmentsExpanded) 90f else 0f).start()
+        binding.fragmentsChevron.animate()
+            .rotation(if (isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
+            .start()
     }
 
     private fun saveNewMediaOrder() {
@@ -377,7 +378,8 @@ class MemoryFragment : Fragment() {
             fragmentsAdapter.updateData(fragmentItems.toList())
             binding.fragmentsExpandedContent.visibility =
                 if (isFragmentsExpanded) View.VISIBLE else View.GONE
-            binding.fragmentsChevron.rotation = if (isFragmentsExpanded) 90f else 0f
+            binding.fragmentsChevron.rotation =
+                if (isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
         }
     }
 
@@ -431,6 +433,9 @@ class MemoryFragment : Fragment() {
 
     companion object {
         private const val ARG_MEMORY_ID = "memory_id"
+        private const val MEDIA_GRID_SPAN_COUNT = 3
+        private const val FACING_RIGHT_ROTATION = 0f
+        private const val FACING_DOWN_ROTATION = 90f
 
         @JvmStatic
         fun newInstance(memoryId: Int) =
