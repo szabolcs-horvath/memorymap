@@ -366,12 +366,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
-        if (!isInitialZoomDone && hasLocationPermission() && initialSelectedLat == null) {
+        if (!isInitialZoomDone && hasLocationPermission() && initialCoordinatesAreNotFullyPresent()) {
             val fusedLocationClient =
                 LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val googleMap = mMap
-                if (location != null && googleMap != null && !isInitialZoomDone && initialSelectedLat == null) {
+                if (location != null && googleMap != null && !isInitialZoomDone && initialCoordinatesAreNotFullyPresent()) {
                     isInitialZoomDone = true
                     val latLng = LatLng(location.latitude, location.longitude)
                     googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
@@ -379,6 +379,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
         }
     }
+
+    private fun initialCoordinatesAreNotFullyPresent(): Boolean =
+        (initialSelectedLat == null || initialSelectedLng == null)
 
     override fun onResume() {
         super.onResume()

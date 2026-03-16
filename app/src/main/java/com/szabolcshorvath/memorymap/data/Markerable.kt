@@ -18,7 +18,7 @@ interface Markerable {
     fun getFormattedDate(): String?
 
     fun isSameLocationAs(other: Markerable): Boolean {
-        if (placeName != null && address != null && other.placeName != null && other.address != null) {
+        if (placeAndAddressPresentForBoth(other)) {
             if (placeName == other.placeName && address == other.address) return true
         }
 
@@ -32,6 +32,9 @@ interface Markerable {
         )
         return results[0] < SAME_LOCATION_METERS_THRESHOLD
     }
+
+    private fun placeAndAddressPresentForBoth(other: Markerable): Boolean =
+        placeName != null && address != null && other.placeName != null && other.address != null
 
     companion object {
         const val SAME_LOCATION_METERS_THRESHOLD = 20.0f
