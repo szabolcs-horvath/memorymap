@@ -70,6 +70,17 @@ class MemoryFragmentEditAdapter(
             updateFragmentsUI()
         }
 
+        setupDateTimeSelectors(binding, holder, item)
+        updateDateTimeSelectors(binding, item)
+        setupHueSlider(binding, item, holder)
+        setupFragmentPresetColors(binding, holder.bindingAdapterPosition)
+    }
+
+    private fun setupDateTimeSelectors(
+        binding: ItemMemoryFragmentEditBinding,
+        holder: MemoryFragmentEditViewHolder,
+        item: FragmentEditState
+    ) {
         binding.toggleTimeButton.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             val current = getItem(pos)
@@ -100,9 +111,6 @@ class MemoryFragmentEditAdapter(
             fragments[pos] = current.copy(isAllDay = isChecked)
             updateFragmentsUI()
         }
-
-        updateFragmentDateTimeUI(binding, item)
-
         binding.startDateButton.setOnClickListener {
             pickFragmentDate(
                 holder.itemView.context,
@@ -134,7 +142,13 @@ class MemoryFragmentEditAdapter(
         binding.dateRangeButton.setOnClickListener {
             pickFragmentDateRange(holder.bindingAdapterPosition)
         }
+    }
 
+    private fun setupHueSlider(
+        binding: ItemMemoryFragmentEditBinding,
+        item: FragmentEditState,
+        holder: MemoryFragmentEditViewHolder
+    ) {
         binding.hueSlider.value = item.markerHue
         binding.hueSlider.thumbTintList =
             ColorStateList.valueOf(ColorUtil.hueToColor(item.markerHue))
@@ -149,11 +163,9 @@ class MemoryFragmentEditAdapter(
                     ColorStateList.valueOf(ColorUtil.hueToColor(value))
             }
         }
-
-        setupFragmentPresetColors(binding, holder.bindingAdapterPosition)
     }
 
-    private fun updateFragmentDateTimeUI(
+    private fun updateDateTimeSelectors(
         binding: ItemMemoryFragmentEditBinding,
         item: FragmentEditState
     ) {
