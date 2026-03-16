@@ -98,7 +98,7 @@ class AddMemoryGroupFragment : Fragment() {
     private lateinit var fragmentsAdapter: MemoryFragmentEditAdapter
     private var currentDeviceId: String? = null
     private var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
-    private var isFragmentsExpanded = true
+    private var fragmentsExpanded = true
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
@@ -251,10 +251,12 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun toggleFragments() {
-        isFragmentsExpanded = !isFragmentsExpanded
+        fragmentsExpanded = !fragmentsExpanded
         binding.fragmentsExpandedContent.visibility =
-            if (isFragmentsExpanded) View.VISIBLE else View.GONE
-        binding.fragmentsChevron.animate().rotation(if (isFragmentsExpanded) 90f else 0f).start()
+            if (fragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsChevron.animate()
+            .rotation(if (fragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
+            .start()
     }
 
     private fun addFragment() {
@@ -267,14 +269,15 @@ class AddMemoryGroupFragment : Fragment() {
                 markerHue = markerHue
             )
         )
-        if (!isFragmentsExpanded) toggleFragments()
+        if (!fragmentsExpanded) toggleFragments()
         updateFragmentsUI(scrollToEnd = true)
     }
 
     private fun updateFragmentsUI(scrollToEnd: Boolean = false) {
         binding.fragmentsExpandedContent.visibility =
-            if (isFragmentsExpanded) View.VISIBLE else View.GONE
-        binding.fragmentsChevron.rotation = if (isFragmentsExpanded) 90f else 0f
+            if (fragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsChevron.rotation =
+            if (fragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
         // We pass a new list instance (toList()) to ensure it detects the change.
         fragmentsAdapter.submitList(fragments.toList()) {
             if (scrollToEnd) {
@@ -288,8 +291,8 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun setupPresetColors() {
         binding.presetColorsLayout.removeAllViews()
-        val size = (32 * resources.displayMetrics.density).toInt()
-        val margin = (12 * resources.displayMetrics.density).toInt()
+        val size = (PRESET_COLOR_SIZE * resources.displayMetrics.density).toInt()
+        val margin = (PRESET_COLOR_MARGIN * resources.displayMetrics.density).toInt()
 
         ColorUtil.COLOR_PRESETS.forEach { hue ->
             val view = View(requireContext())
@@ -349,7 +352,7 @@ class AddMemoryGroupFragment : Fragment() {
         selectedMedia.clear()
         updateMediaUI()
         fragments.clear()
-        isFragmentsExpanded = true
+        fragmentsExpanded = true
         updateFragmentsUI()
 
         binding.titleInput.text?.clear()
@@ -432,7 +435,7 @@ class AddMemoryGroupFragment : Fragment() {
                             )
                         }
                     )
-                    isFragmentsExpanded = true
+                    fragmentsExpanded = true
                     updateFragmentsUI()
 
                     updateLocationText()
@@ -751,5 +754,9 @@ class AddMemoryGroupFragment : Fragment() {
 
     companion object {
         const val TAG = "AddMemoryGroupFragment"
+        private const val FACING_RIGHT_ROTATION = 0f
+        private const val FACING_DOWN_ROTATION = 90f
+        private const val PRESET_COLOR_SIZE = 32
+        private const val PRESET_COLOR_MARGIN = 12
     }
 }

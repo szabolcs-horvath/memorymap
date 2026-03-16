@@ -93,7 +93,7 @@ class TimelineAdapter(
                 flashColor,
                 originalColor
             )
-            colorAnim.duration = 1000
+            colorAnim.duration = FLASH_ANIMATION_DURATION_MILLIS
             colorAnim.addUpdateListener { animator ->
                 binding.root.setCardBackgroundColor(animator.animatedValue as Int)
             }
@@ -165,6 +165,7 @@ class TimelineAdapter(
     }
 
     companion object {
+        private const val FLASH_ANIMATION_DURATION_MILLIS = 1000L
         private const val VIEW_TYPE_MEMORY = 0
         private const val VIEW_TYPE_SEPARATOR = 1
     }

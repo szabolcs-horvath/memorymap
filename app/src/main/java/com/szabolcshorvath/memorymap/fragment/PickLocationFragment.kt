@@ -90,7 +90,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                                     mMap?.animateCamera(
                                         CameraUpdateFactory.newLatLngZoom(
                                             latLng,
-                                            15f
+                                            CAMERA_ZOOM
                                         )
                                     )
                                 }
@@ -301,10 +301,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             requireContext(),
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressLint("MissingPermission")
@@ -327,7 +327,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     val latLng = LatLng(location.latitude, location.longitude)
                     updateSelectedLocation(latLng)
                     reverseGeocode(latLng)
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
                 }
             }
         }
@@ -352,6 +352,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         const val TAG = "PickLocationFragment"
+        const val CAMERA_ZOOM = 15f
         private val placeFields = listOf(
             Place.Field.ID,
             Place.Field.DISPLAY_NAME,

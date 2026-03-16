@@ -47,8 +47,8 @@ class BackupAdapter(
             binding.btnRestore.setOnClickListener { onRestoreClick(backup) }
             binding.btnDelete.setOnClickListener { onDeleteClick(backup) }
 
-            binding.btnRestore.alpha = if (buttonsEnabled) 1.0f else 0.5f
-            binding.btnDelete.alpha = if (buttonsEnabled) 1.0f else 0.5f
+            binding.btnRestore.alpha = if (buttonsEnabled) FULL_OPAQUE else HALF_TRANSPARENT
+            binding.btnDelete.alpha = if (buttonsEnabled) FULL_OPAQUE else HALF_TRANSPARENT
         }
     }
 
@@ -83,6 +83,7 @@ class BackupAdapter(
     }
 
     companion object {
-        private const val DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss"
+        private const val FULL_OPAQUE = 1.0f
+        private const val HALF_TRANSPARENT = 0.5f
     }
 }

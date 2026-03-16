@@ -327,7 +327,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val googleMap = mMap ?: return
         val topPadding = binding.dateFilterContainer.height + binding.dateFilterContainer.top
         if (binding.overlayCard.isVisible) {
-            googleMap.setPadding(0, topPadding, 0, binding.overlayCard.height + 25)
+            googleMap.setPadding(0, topPadding, 0, binding.overlayCard.height + GOOGLE_LOGO_HEIGHT)
         } else {
             googleMap.setPadding(0, topPadding, 0, 0)
         }
@@ -630,7 +630,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     .position(position)
                     .title(markerTitle)
                     .icon(BitmapDescriptorFactory.fromBitmap(bitmap))
-                    .anchor(0.5f, 1.0f)
+                    .anchor(MARKER_ANCHOR_U, MARKER_ANCHOR_V)
             )
         } else {
             googleMap.addMarker(
@@ -724,5 +724,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val MAX_CAMERA_ZOOM = 15f
         private const val ZOOM_PADDING = 100
         private const val ANIMATION_DURATION = 250L
+        private const val GOOGLE_LOGO_HEIGHT = 25
+        private const val MARKER_ANCHOR_U = 0.5f
+        private const val MARKER_ANCHOR_V = 1.0f
     }
 }

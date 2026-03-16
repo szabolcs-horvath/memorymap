@@ -13,7 +13,6 @@ import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -92,7 +91,6 @@ class TimelineFragment : Fragment() {
 
             // We need to wait a bit for the scroll to happen and view holder to be bound/visible
             lifecycleScope.launch {
-                delay(100)
                 val viewHolder =
                     binding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
                 if (viewHolder is TimelineAdapter.TimelineViewHolder) {

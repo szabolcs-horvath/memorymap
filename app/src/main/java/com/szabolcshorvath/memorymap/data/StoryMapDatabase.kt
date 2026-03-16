@@ -35,6 +35,7 @@ abstract class StoryMapDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: StoryMapDatabase? = null
 
+        @Suppress("MagicNumber")
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN startDate TEXT NOT NULL DEFAULT '';")
@@ -45,6 +46,7 @@ abstract class StoryMapDatabase : RoomDatabase() {
             }
         }
 
+        @Suppress("MagicNumber")
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN originalFileName TEXT NOT NULL DEFAULT '';")
@@ -54,6 +56,7 @@ abstract class StoryMapDatabase : RoomDatabase() {
             }
         }
 
+        @Suppress("MagicNumber")
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE MemoryGroup DROP COLUMN originalFileName;")
