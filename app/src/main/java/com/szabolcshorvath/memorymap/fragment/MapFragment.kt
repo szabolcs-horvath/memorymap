@@ -409,17 +409,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
 
                 if (marker != null) {
-                    selectedMarker = marker
-                    selectedMarkerPosition = marker.position
-                    @Suppress("UNCHECKED_CAST")
-                    val items = marker.tag as? List<Markerable>
-                    if (items != null) {
-                        showMemoryOverlay(
-                            marker.position.latitude,
-                            marker.position.longitude,
-                            items
-                        )
-                    }
+                    showMemoryOverlay(marker)
                 } else {
                     hideMemoryOverlay()
                 }
@@ -670,6 +660,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if (items != null) {
                 showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
             }
+        }
+    }
+
+    private fun showMemoryOverlay(marker: Marker) {
+        selectedMarker = marker
+        selectedMarkerPosition = marker.position
+        @Suppress("UNCHECKED_CAST")
+        val items = marker.tag as? List<Markerable>
+        if (items != null) {
+            showMemoryOverlay(
+                marker.position.latitude,
+                marker.position.longitude,
+                items
+            )
         }
     }
 
