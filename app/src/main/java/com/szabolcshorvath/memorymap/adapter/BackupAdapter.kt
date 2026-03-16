@@ -8,9 +8,9 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.api.services.drive.model.File
 import com.szabolcshorvath.memorymap.databinding.ItemBackupBinding
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateTimeFormatter
+import java.time.Instant
+import java.time.ZoneId
 
 class BackupAdapter(
     private val onRestoreClick: (File) -> Unit,
@@ -29,12 +29,11 @@ class BackupAdapter(
                 else -> name
             }
 
-            val date = backup.modifiedTime?.value?.let { Date(it) }
-            val formattedDate = if (date != null) {
-                SimpleDateFormat(DATE_TIME_FORMAT, Locale.getDefault()).format(date)
-            } else {
-                "Unknown date"
-            }
+            val formattedDate = backup.modifiedTime?.value?.let { millis ->
+                val instant = Instant.ofEpochMilli(millis)
+                val zonedDateTime = instant.atZone(ZoneId.systemDefault())
+                dateTimeFormatter().format(zonedDateTime)
+            } ?: "Unknown date"
             binding.tvBackupDate.text = formattedDate
 
             // Need to use `getSize()` as the size property resolves to `AbstractMap.size` not the size of the file

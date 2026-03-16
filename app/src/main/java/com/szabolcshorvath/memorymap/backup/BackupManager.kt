@@ -13,6 +13,8 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_FILE_NAME_DATE_FORMATTER
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_METADATA_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -28,9 +30,7 @@ import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -107,10 +107,7 @@ class BackupManager(private val context: Context) {
                 // Create metadata
                 val metadata = JSONObject()
                 metadata.put("timestamp", System.currentTimeMillis())
-                metadata.put(
-                    "date",
-                    SimpleDateFormat(BACKUP_METADATA_DATE_FORMAT, Locale.US).format(Date())
-                )
+                metadata.put("date", BACKUP_METADATA_DATE_FORMATTER.format(Date()))
                 metadata.put("dbSize", dbFile.length())
                 metadata.put("version", 2) // Metadata version
                 metadata.put("dbVersion", StoryMapDatabase.DB_VERSION)
@@ -138,9 +135,7 @@ class BackupManager(private val context: Context) {
                 val fileMetadata = DriveFile()
                 val prefix =
                     if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
-                fileMetadata.name = "$prefix${
-                    SimpleDateFormat(BACKUP_FILE_NAME_DATE_FORMAT, Locale.US).format(Date())
-                }.zip"
+                fileMetadata.name = "$prefix${BACKUP_FILE_NAME_DATE_FORMATTER.format(Date())}.zip"
                 fileMetadata.parents = listOf(folderId)
 
                 val mediaContent = FileContent("application/zip", zipFile)
@@ -301,8 +296,6 @@ class BackupManager(private val context: Context) {
 
     companion object {
         const val TAG = "BackupManager"
-        private const val BACKUP_METADATA_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss"
-        private const val BACKUP_FILE_NAME_DATE_FORMAT = "yyyyMMdd_HHmmss"
 
         private val _backupEvents = MutableSharedFlow<BackupEvent>(extraBufferCapacity = 1)
         val backupEvents = _backupEvents.asSharedFlow()
