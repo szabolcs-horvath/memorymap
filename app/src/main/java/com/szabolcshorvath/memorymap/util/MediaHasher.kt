@@ -14,61 +14,55 @@ object MediaHasher {
     fun calculateMediaSignature(context: Context, uri: Uri): String {
         val resolver = context.contentResolver
 
-        return try {
-            // 1. Get the file size specifically from the FileDescriptor
-            val size = resolver.openFileDescriptor(uri, "r")?.use {
-                it.statSize
-            } ?: throw FileNotFoundException("File not found: $uri")
+        // 1. Get the file size specifically from the FileDescriptor
+        val size = resolver.openFileDescriptor(uri, "r")?.use {
+            it.statSize
+        } ?: throw FileNotFoundException("File not found: $uri")
 
-            val digest = MessageDigest.getInstance(ALGORITHM)
+        val digest = MessageDigest.getInstance(ALGORITHM)
 
-            // 2. Open input stream using ContentResolver
-            resolver.openInputStream(uri)?.use { fis ->
-                val buffer = ByteArray(BUFFER_SIZE)
+        // 2. Open input stream using ContentResolver
+        resolver.openInputStream(uri)?.use { fis ->
+            val buffer = ByteArray(BUFFER_SIZE)
 
-                // Read first 4KB
-                val bytesReadFirst = fis.read(buffer)
-                if (bytesReadFirst > 0) {
-                    digest.update(buffer, 0, bytesReadFirst)
+            // Read first 4KB
+            val bytesReadFirst = fis.read(buffer)
+            if (bytesReadFirst > 0) {
+                digest.update(buffer, 0, bytesReadFirst)
+            }
+
+            // If file is smaller than or equal to 8KB (2x BUFFER),
+            // we just read the rest sequentially to avoid skip logic errors on small files.
+            // Otherwise, we skip to the end.
+            if (size <= (BUFFER_SIZE * 2)) {
+                // Read whatever is left normally
+                var bytesRead: Int
+                while (fis.read(buffer).also { bytesRead = it } != -1) {
+                    digest.update(buffer, 0, bytesRead)
                 }
+            } else {
+                // Large file logic: Skip to the last 4KB
+                val remaining = size - bytesReadFirst
+                val skipAmount = remaining - BUFFER_SIZE
 
-                // If file is smaller than or equal to 8KB (2x BUFFER),
-                // we just read the rest sequentially to avoid skip logic errors on small files.
-                // Otherwise, we skip to the end.
-                if (size <= (BUFFER_SIZE * 2)) {
-                    // Read whatever is left normally
-                    var bytesRead: Int
-                    while (fis.read(buffer).also { bytesRead = it } != -1) {
-                        digest.update(buffer, 0, bytesRead)
-                    }
-                } else {
-                    // Large file logic: Skip to the last 4KB
-                    val remaining = size - bytesReadFirst
-                    val skipAmount = remaining - BUFFER_SIZE
-
-                    if (skipAmount > 0) {
-                        val skipped = fis.skip(skipAmount)
-                        // Verify skip success before reading final block
-                        if (skipped == skipAmount) {
-                            val bytesReadLast = fis.read(buffer)
-                            if (bytesReadLast > 0) {
-                                digest.update(buffer, 0, bytesReadLast)
-                            }
-                        } else {
-                            Log.e(TAG, "Error skipping bytes: $skipped != $skipAmount")
-                            error("Error skipping bytes")
+                if (skipAmount > 0) {
+                    val skipped = fis.skip(skipAmount)
+                    // Verify skip success before reading final block
+                    if (skipped == skipAmount) {
+                        val bytesReadLast = fis.read(buffer)
+                        if (bytesReadLast > 0) {
+                            digest.update(buffer, 0, bytesReadLast)
                         }
+                    } else {
+                        Log.e(TAG, "Error skipping bytes: $skipped != $skipAmount")
+                        error("Error skipping bytes")
                     }
                 }
-            } ?: throw FileNotFoundException("File not found: $uri")
+            }
+        } ?: throw FileNotFoundException("File not found: $uri")
 
-            // Combine Size + Hash for the final ID
-            val hashString = digest.digest().joinToString("") { "%02x".format(it) }
-            "${size}_$hashString"
-        } catch (e: Exception) {
-            // Handle FileNotFoundException or SecurityException
-            Log.e(TAG, "Error calculating media signature", e)
-            throw e
-        }
+        // Combine Size + Hash for the final ID
+        val hashString = digest.digest().joinToString("") { "%02x".format(it) }
+        return "${size}_$hashString"
     }
 }
