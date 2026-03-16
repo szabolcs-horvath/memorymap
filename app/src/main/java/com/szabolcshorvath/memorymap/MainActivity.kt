@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.szabolcshorvath.memorymap.backup.BackupManager
@@ -116,6 +117,12 @@ class MainActivity :
             }
         }
 
+        setupBottomNavigationBar()
+        setupBackPress()
+        checkAppStatus()
+    }
+
+    private fun setupBottomNavigationBar() {
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             // Clear navigation history flags when manually switching tabs, but not when we switch programmatically
             if (!isProgrammaticSelection) {
@@ -126,7 +133,7 @@ class MainActivity :
             if (supportFragmentManager.backStackEntryCount > 0) {
                 supportFragmentManager.popBackStack(
                     null,
-                    androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+                    FragmentManager.POP_BACK_STACK_INCLUSIVE
                 )
             }
 
@@ -154,7 +161,9 @@ class MainActivity :
                 else -> false
             }
         }
+    }
 
+    private fun setupBackPress() {
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -208,8 +217,6 @@ class MainActivity :
                 }
             }
         )
-
-        checkAppStatus()
     }
 
     private fun showFragment(fragment: Fragment) {

@@ -98,7 +98,8 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         googleAuthManager = GoogleAuthManager(requireContext())
         backupManager = BackupManager(requireContext())
-
+        setupSignInAndOutButtons()
+        setupShowFragmentsSwitch()
         setupRecyclerView()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -129,6 +130,33 @@ class SettingsFragment : Fragment() {
             }
         }
 
+        binding.btnBackupNow.setOnClickListener {
+            val email = binding.tvAccountName.tag as? String
+            if (email != null) {
+                setLoadingState(true, "Starting backup...")
+                requestDriveAuthorization(true)
+            }
+        }
+    }
+
+    private fun setupShowFragmentsSwitch() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val showFragments = requireContext().dataStore.data
+                .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
+                .firstOrNull() ?: false
+            binding.switchShowFragments.isChecked = showFragments
+        }
+
+        binding.switchShowFragments.setOnCheckedChangeListener { _, isChecked ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                requireContext().dataStore.edit { preferences ->
+                    preferences[MainActivity.SHOW_FRAGMENT_MARKERS] = isChecked
+                }
+            }
+        }
+    }
+
+    private fun setupSignInAndOutButtons() {
         binding.btnGoogleSignIn.setOnClickListener {
             setLoadingState(true, "Signing in...")
             viewLifecycleOwner.lifecycleScope.launch {
@@ -180,29 +208,6 @@ class SettingsFragment : Fragment() {
             lifecycleScope.launch {
                 googleAuthManager.signOut()
                 updateUI(null)
-            }
-        }
-
-        binding.btnBackupNow.setOnClickListener {
-            val email = binding.tvAccountName.tag as? String
-            if (email != null) {
-                setLoadingState(true, "Starting backup...")
-                requestDriveAuthorization(true)
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            val showFragments = requireContext().dataStore.data
-                .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
-                .firstOrNull() ?: false
-            binding.switchShowFragments.isChecked = showFragments
-        }
-
-        binding.switchShowFragments.setOnCheckedChangeListener { _, isChecked ->
-            viewLifecycleOwner.lifecycleScope.launch {
-                requireContext().dataStore.edit { preferences ->
-                    preferences[MainActivity.SHOW_FRAGMENT_MARKERS] = isChecked
-                }
             }
         }
     }

@@ -404,16 +404,7 @@ class AddMemoryGroupFragment : Fragment() {
                     binding.descriptionInput.setText(group.description)
                     binding.allDayCheckbox.isChecked = isAllDay
 
-                    // Sort media items based on order or dateTaken
-                    val sortedItems = data.mediaItems.sortedWith { a, b ->
-                        when {
-                            a.order != null && b.order != null -> a.order.compareTo(b.order)
-                            a.order != null -> -1
-                            b.order != null -> 1
-                            else -> b.dateTaken.compareTo(a.dateTaken)
-                        }
-                    }
-
+                    val sortedItems = data.mediaItems.sortedWith(MediaItemComparator())
                     selectedMedia.clear()
                     selectedMedia.addAll(
                         sortedItems.map {
@@ -422,25 +413,7 @@ class AddMemoryGroupFragment : Fragment() {
                     )
                     updateMediaUI()
 
-                    // Sort fragments based on order or startDate
-                    val sortedFragments = data.fragments.sortedWith { a, b ->
-                        when {
-                            a.order != null && b.order != null -> a.order.compareTo(b.order)
-                            a.order != null -> -1
-                            b.order != null -> 1
-                            else -> {
-                                val dateA = a.startDate
-                                val dateB = b.startDate
-                                when {
-                                    dateA != null && dateB != null -> dateA.compareTo(dateB)
-                                    dateA != null -> -1
-                                    dateB != null -> 1
-                                    else -> 0
-                                }
-                            }
-                        }
-                    }
-
+                    val sortedFragments = data.fragments.sortedWith(MemoryFragmentComparator())
                     fragments.clear()
                     fragments.addAll(
                         sortedFragments.map {
@@ -466,6 +439,39 @@ class AddMemoryGroupFragment : Fragment() {
                     updateDateTimeButtons()
                     updateHueUI()
                     binding.saveButton.text = "Update Memory"
+                }
+            }
+        }
+    }
+
+    private class MediaItemComparator : Comparator<MediaItem> {
+        override fun compare(a: MediaItem, b: MediaItem): Int {
+            // Sort media items based on order or dateTaken
+            return when {
+                a.order != null && b.order != null -> a.order.compareTo(b.order)
+                a.order != null -> -1
+                b.order != null -> 1
+                else -> b.dateTaken.compareTo(a.dateTaken)
+            }
+        }
+    }
+
+    private class MemoryFragmentComparator : Comparator<MemoryFragment> {
+        override fun compare(a: MemoryFragment, b: MemoryFragment): Int {
+            // Sort fragments based on order or startDate
+            return when {
+                a.order != null && b.order != null -> a.order.compareTo(b.order)
+                a.order != null -> -1
+                b.order != null -> 1
+                else -> {
+                    val dateA = a.startDate
+                    val dateB = b.startDate
+                    when {
+                        dateA != null && dateB != null -> dateA.compareTo(dateB)
+                        dateA != null -> -1
+                        dateB != null -> 1
+                        else -> 0
+                    }
                 }
             }
         }

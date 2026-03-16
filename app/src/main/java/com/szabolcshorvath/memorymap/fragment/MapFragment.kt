@@ -509,7 +509,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             result
         }
 
-        // Apply to UI
+        updateUIWithFreshMarkers(googleMap, filteredItems, clusters, adjustCamera)
+    }
+
+    private suspend fun updateUIWithFreshMarkers(
+        googleMap: GoogleMap,
+        filteredItems: List<Markerable>,
+        clusters: Collection<List<Markerable>>,
+        adjustCamera: Boolean
+    ) {
         withContext(Dispatchers.Main) {
             googleMap.clear()
             markerMap.clear()
