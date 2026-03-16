@@ -5,12 +5,9 @@ import android.app.TimePickerDialog
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Resources
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -197,27 +194,10 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun setupFragmentPresetColors(
-        binding: ItemMemoryFragmentEditBinding,
-        position: Int
-    ) {
+    private fun setupFragmentPresetColors(binding: ItemMemoryFragmentEditBinding, position: Int) {
         binding.presetColorsLayout.removeAllViews()
-        val size = (32 * resources.displayMetrics.density).toInt()
-        val margin = (12 * resources.displayMetrics.density).toInt()
-
         ColorUtil.COLOR_PRESETS.forEach { hue ->
-            val view = View(binding.root.context)
-            val params = LinearLayout.LayoutParams(size, size)
-            params.setMargins(0, 0, margin, 0)
-            view.layoutParams = params
-
-            val shape = GradientDrawable()
-            shape.shape = GradientDrawable.OVAL
-            shape.setColor(ColorUtil.hueToColor(hue))
-            shape.setStroke((1 * resources.displayMetrics.density).toInt(), Color.LTGRAY)
-            view.background = shape
-
-            view.setOnClickListener {
+            val view = ColorUtil.getPresetColorView(binding.root.context, hue) {
                 val current = getItem(position)
                 fragments[position] = current.copy(markerHue = hue)
                 updateFragmentsUI()

@@ -5,8 +5,6 @@ import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.RemoteException
@@ -15,7 +13,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -291,23 +288,8 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun setupPresetColors() {
         binding.presetColorsLayout.removeAllViews()
-        val size = (PRESET_COLOR_SIZE * resources.displayMetrics.density).toInt()
-        val margin = (PRESET_COLOR_MARGIN * resources.displayMetrics.density).toInt()
-
         ColorUtil.COLOR_PRESETS.forEach { hue ->
-            val view = View(requireContext())
-            val params = LinearLayout.LayoutParams(size, size)
-            params.setMargins(0, 0, margin, 0)
-            view.layoutParams = params
-
-            val shape = GradientDrawable()
-            shape.shape = GradientDrawable.OVAL
-            shape.setColor(ColorUtil.hueToColor(hue))
-            // Add a stroke to make it look nicer, especially for light colors
-            shape.setStroke((1 * resources.displayMetrics.density).toInt(), Color.LTGRAY)
-            view.background = shape
-
-            view.setOnClickListener {
+            val view = ColorUtil.getPresetColorView(requireContext(), hue) {
                 markerHue = hue
                 updateHueUI()
             }
@@ -756,7 +738,5 @@ class AddMemoryGroupFragment : Fragment() {
         const val TAG = "AddMemoryGroupFragment"
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
-        private const val PRESET_COLOR_SIZE = 32
-        private const val PRESET_COLOR_MARGIN = 12
     }
 }
