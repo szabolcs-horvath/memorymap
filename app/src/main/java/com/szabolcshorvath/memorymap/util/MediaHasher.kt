@@ -1,9 +1,11 @@
 package com.szabolcshorvath.memorymap.util
 
+import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import java.io.FileNotFoundException
+import java.io.InputStream
 import java.security.MessageDigest
 
 object MediaHasher {
@@ -22,6 +24,19 @@ object MediaHasher {
         val digest = MessageDigest.getInstance(ALGORITHM)
 
         // 2. Open input stream using ContentResolver
+        readFileAndUpdateDigest(resolver, uri, digest, size)
+
+        // Combine Size + Hash for the final ID
+        val hashString = digest.digest().joinToString("") { "%02x".format(it) }
+        return "${size}_$hashString"
+    }
+
+    private fun readFileAndUpdateDigest(
+        resolver: ContentResolver,
+        uri: Uri,
+        digest: MessageDigest,
+        size: Long
+    ) {
         resolver.openInputStream(uri)?.use { fis ->
             val buffer = ByteArray(BUFFER_SIZE)
 
@@ -42,27 +57,33 @@ object MediaHasher {
                 }
             } else {
                 // Large file logic: Skip to the last 4KB
-                val remaining = size - bytesReadFirst
-                val skipAmount = remaining - BUFFER_SIZE
-
-                if (skipAmount > 0) {
-                    val skipped = fis.skip(skipAmount)
-                    // Verify skip success before reading final block
-                    if (skipped == skipAmount) {
-                        val bytesReadLast = fis.read(buffer)
-                        if (bytesReadLast > 0) {
-                            digest.update(buffer, 0, bytesReadLast)
-                        }
-                    } else {
-                        Log.e(TAG, "Error skipping bytes: $skipped != $skipAmount")
-                        error("Error skipping bytes")
-                    }
-                }
+                handleLargeFile(size, bytesReadFirst, fis, buffer, digest)
             }
         } ?: throw FileNotFoundException("File not found: $uri")
+    }
 
-        // Combine Size + Hash for the final ID
-        val hashString = digest.digest().joinToString("") { "%02x".format(it) }
-        return "${size}_$hashString"
+    private fun handleLargeFile(
+        size: Long,
+        bytesReadFirst: Int,
+        fis: InputStream,
+        buffer: ByteArray,
+        digest: MessageDigest
+    ) {
+        val remaining = size - bytesReadFirst
+        val skipAmount = remaining - BUFFER_SIZE
+
+        if (skipAmount > 0) {
+            val skipped = fis.skip(skipAmount)
+            // Verify skip success before reading final block
+            if (skipped == skipAmount) {
+                val bytesReadLast = fis.read(buffer)
+                if (bytesReadLast > 0) {
+                    digest.update(buffer, 0, bytesReadLast)
+                }
+            } else {
+                Log.e(TAG, "Error skipping bytes: $skipped != $skipAmount")
+                error("Error skipping bytes")
+            }
+        }
     }
 }

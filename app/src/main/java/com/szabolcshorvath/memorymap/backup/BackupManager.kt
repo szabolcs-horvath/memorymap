@@ -247,17 +247,21 @@ class BackupManager(private val context: Context) {
         ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zis ->
             var entry = zis.nextEntry
             while (entry != null) {
-                val file = File(tempRestoreDir, entry.name)
-                if (file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)) {
-                    FileOutputStream(file).use { fos ->
-                        val buffer = ByteArray(ZIP_READ_BUFFER_SIZE)
-                        var count: Int
-                        while (zis.read(buffer).also { count = it } != -1) {
-                            fos.write(buffer, 0, count)
-                        }
-                    }
-                }
+                unzipFile(tempRestoreDir, entry, zis)
                 entry = zis.nextEntry
+            }
+        }
+    }
+
+    private fun unzipFile(tempRestoreDir: File, entry: ZipEntry, zis: ZipInputStream) {
+        val file = File(tempRestoreDir, entry.name)
+        if (file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)) {
+            FileOutputStream(file).use { fos ->
+                val buffer = ByteArray(ZIP_READ_BUFFER_SIZE)
+                var count: Int
+                while (zis.read(buffer).also { count = it } != -1) {
+                    fos.write(buffer, 0, count)
+                }
             }
         }
     }

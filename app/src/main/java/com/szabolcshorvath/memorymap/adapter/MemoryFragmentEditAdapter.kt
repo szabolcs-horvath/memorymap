@@ -107,32 +107,16 @@ class MemoryFragmentEditAdapter(
             updateFragmentsUI()
         }
         binding.startDateButton.setOnClickListener {
-            pickFragmentDate(
-                holder.itemView.context,
-                holder.bindingAdapterPosition,
-                true
-            )
+            pickFragmentDate(holder.itemView.context, holder.bindingAdapterPosition, true)
         }
         binding.startTimeButton.setOnClickListener {
-            pickFragmentTime(
-                holder.itemView.context,
-                holder.bindingAdapterPosition,
-                true
-            )
+            pickFragmentTime(holder.itemView.context, holder.bindingAdapterPosition, true)
         }
         binding.endDateButton.setOnClickListener {
-            pickFragmentDate(
-                holder.itemView.context,
-                holder.bindingAdapterPosition,
-                false
-            )
+            pickFragmentDate(holder.itemView.context, holder.bindingAdapterPosition, false)
         }
         binding.endTimeButton.setOnClickListener {
-            pickFragmentTime(
-                holder.itemView.context,
-                holder.bindingAdapterPosition,
-                false
-            )
+            pickFragmentTime(holder.itemView.context, holder.bindingAdapterPosition, false)
         }
         binding.dateRangeButton.setOnClickListener {
             pickFragmentDateRange(holder.bindingAdapterPosition)
