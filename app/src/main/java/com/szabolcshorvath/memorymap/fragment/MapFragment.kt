@@ -361,10 +361,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             requireContext(),
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressWarnings("MissingPermission")
@@ -380,7 +380,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     googleMap.animateCamera(
                         CameraUpdateFactory.newLatLngZoom(
                             latLng,
-                            MAX_CAMERA_ZOOM
+                            DEFAULT_ZOOM
                         )
                     )
                 }
@@ -730,6 +730,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     companion object {
         const val TAG = "MapFragment"
         private const val MAX_CAMERA_ZOOM = 15f
+        private const val DEFAULT_ZOOM = 12f
         private const val ZOOM_PADDING = 100
         private const val ANIMATION_DURATION = 250L
         private const val GOOGLE_LOGO_HEIGHT = 25
