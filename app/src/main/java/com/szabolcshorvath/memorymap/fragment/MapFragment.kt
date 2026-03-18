@@ -361,27 +361,21 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             requireContext(),
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
-        if (!isInitialZoomDone &&
-            hasLocationPermission() &&
-            initialCoordinatesAreNotFullyPresent()
+        if (hasLocationPermission() && initialZoomAndCoordinatesNotReady()
         ) {
             val fusedLocationClient =
                 LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val googleMap = mMap
-                if (location != null &&
-                    googleMap != null &&
-                    !isInitialZoomDone &&
-                    initialCoordinatesAreNotFullyPresent()
-                ) {
+                if (location != null && googleMap != null && initialZoomAndCoordinatesNotReady()) {
                     isInitialZoomDone = true
                     val latLng = LatLng(location.latitude, location.longitude)
                     googleMap.animateCamera(
@@ -395,8 +389,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun initialCoordinatesAreNotFullyPresent(): Boolean =
-        (initialSelectedLat == null || initialSelectedLng == null)
+    private fun initialZoomAndCoordinatesNotReady(): Boolean =
+        !isInitialZoomDone && (initialSelectedLat == null || initialSelectedLng == null)
 
     override fun onResume() {
         super.onResume()
