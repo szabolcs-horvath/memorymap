@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 
 class MemoryFragmentAdapter(
     private val onShowOnMapClick: (MemoryFragment) -> Unit
-) : RecyclerView.Adapter<MemoryFragmentAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
 
     private val items = mutableListOf<MemoryFragment>()
 
@@ -28,7 +28,7 @@ class MemoryFragmentAdapter(
         setHasStableIds(true)
     }
 
-    inner class ViewHolder(private val binding: ItemMemoryFragmentBinding) :
+    inner class MemoryFragmentViewHolder(private val binding: ItemMemoryFragmentBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(fragment: MemoryFragment) {
             binding.locationText.text = if (!fragment.placeName.isNullOrEmpty()) {
@@ -65,8 +65,8 @@ class MemoryFragmentAdapter(
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentViewHolder {
+        return MemoryFragmentViewHolder(
             ItemMemoryFragmentBinding.inflate(
                 LayoutInflater.from(parent.context),
                 parent,
@@ -75,7 +75,7 @@ class MemoryFragmentAdapter(
         )
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: MemoryFragmentViewHolder, position: Int) {
         holder.bind(items[position])
     }
 
