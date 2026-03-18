@@ -250,7 +250,7 @@ class BackupManager(private val context: Context) {
                 val file = File(tempRestoreDir, entry.name)
                 if (file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)) {
                     FileOutputStream(file).use { fos ->
-                        val buffer = ByteArray(1024)
+                        val buffer = ByteArray(ZIP_READ_BUFFER_SIZE)
                         var count: Int
                         while (zis.read(buffer).also { count = it } != -1) {
                             fos.write(buffer, 0, count)
@@ -335,6 +335,7 @@ class BackupManager(private val context: Context) {
     companion object {
         const val TAG = "BackupManager"
 
+        private const val ZIP_READ_BUFFER_SIZE = 1024
         private val _backupEvents = MutableSharedFlow<BackupEvent>(extraBufferCapacity = 1)
         val backupEvents = _backupEvents.asSharedFlow()
     }

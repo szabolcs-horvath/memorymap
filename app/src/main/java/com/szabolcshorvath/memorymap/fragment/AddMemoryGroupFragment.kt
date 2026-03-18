@@ -694,8 +694,7 @@ class AddMemoryGroupFragment : Fragment() {
             val saveTime = f.isTimeVisible
             val fragmentStart = if (saveTime) {
                 if (f.isAllDay) {
-                    f.startDate?.toLocalDate()
-                        ?.atStartOfDay(ZoneId.systemDefault())
+                    f.startDate?.toLocalDate()?.atStartOfDay(ZoneId.systemDefault())
                 } else {
                     f.startDate
                 }
@@ -704,8 +703,7 @@ class AddMemoryGroupFragment : Fragment() {
             }
             val fragmentEnd = if (saveTime) {
                 if (f.isAllDay) {
-                    f.endDate?.toLocalDate()?.atTime(23, 59, 59)
-                        ?.atZone(ZoneId.systemDefault())
+                    f.endDate?.toLocalDate()?.atTime(LocalTime.MAX)?.atZone(ZoneId.systemDefault())
                 } else {
                     f.endDate
                 }

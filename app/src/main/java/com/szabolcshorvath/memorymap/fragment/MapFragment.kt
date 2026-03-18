@@ -374,7 +374,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 if (location != null && googleMap != null && !isInitialZoomDone && initialCoordinatesAreNotFullyPresent()) {
                     isInitialZoomDone = true
                     val latLng = LatLng(location.latitude, location.longitude)
-                    googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 12f))
+                    googleMap.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(
+                            latLng,
+                            MAX_CAMERA_ZOOM
+                        )
+                    )
                 }
             }
         }
