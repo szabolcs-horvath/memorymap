@@ -45,6 +45,6 @@ class MemoryMapApplication : Application() {
     }
 
     companion object {
-        private const val TAG = "MemoryMapApplication"
+        const val TAG = "MemoryMapApplication"
     }
 }

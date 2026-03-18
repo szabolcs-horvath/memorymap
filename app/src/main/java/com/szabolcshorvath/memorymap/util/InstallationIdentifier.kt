@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.map
 import java.util.UUID
 
 object InstallationIdentifier {
-    private const val TAG = "InstallationIdentifier"
+    const val TAG = "InstallationIdentifier"
     private val INSTALLATION_IDENTIFIER_KEY = stringPreferencesKey("installation_identifier")
 
     private var cachedInstallationIdentifier: String? = null

@@ -10,7 +10,7 @@ import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 
 object LocalMediaUtil {
-    private const val TAG = "LocalMediaUtil"
+    const val TAG = "LocalMediaUtil"
 
     data class LocalMediaInfo(
         val uri: String,

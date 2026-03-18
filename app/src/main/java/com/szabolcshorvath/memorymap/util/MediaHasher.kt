@@ -7,7 +7,7 @@ import java.io.FileNotFoundException
 import java.security.MessageDigest
 
 object MediaHasher {
-    private const val TAG = "MediaHasher"
+    const val TAG = "MediaHasher"
     private const val ALGORITHM = "MD5"
     private const val BUFFER_SIZE = 4096 // 4KB
 
