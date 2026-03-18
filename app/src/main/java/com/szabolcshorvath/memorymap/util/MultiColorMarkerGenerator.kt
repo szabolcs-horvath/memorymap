@@ -12,13 +12,20 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withClip
 
 object MultiColorMarkerGenerator {
-
+    private const val CACHE_MAX_SIZE = 50
     private const val MARKER_SIZE_DP = 30.0f
     private const val BORDER_WIDTH_DP = 1.0f
     private const val TEXT_SIZE_SP = 14.0f
     private const val TEXT_OUTLINE_WIDTH_DP = 1.5f
+    private const val WIDTH_TO_HEIGHT_SCALING_FACTOR = 1.5f
+    private const val DEGREES_360 = 360.0f
+    private const val DEGREES_180 = 180.0f
+    private const val DEGREES_90 = 90.0f
 
-    private val cache = LruCache<String, Bitmap>(50)
+    private const val TAPERED_CURVE_BOTTOM_Y_FACTOR = 0.7f
+    private const val TAPERED_CURVE_CENTER_Y_FACTOR = 0.6f
+
+    private val cache = LruCache<String, Bitmap>(CACHE_MAX_SIZE)
 
     /**
      * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
@@ -28,7 +35,7 @@ object MultiColorMarkerGenerator {
         cache.get(cacheKey)?.let { return it }
 
         val width = (MARKER_SIZE_DP * density).toInt()
-        val height = (width * 1.5f).toInt()
+        val height = (width * WIDTH_TO_HEIGHT_SCALING_FACTOR).toInt()
         val borderWidth = (BORDER_WIDTH_DP * density)
         val textSize = (TEXT_SIZE_SP * density)
         val outlineWidth = (TEXT_OUTLINE_WIDTH_DP * density)
@@ -36,10 +43,10 @@ object MultiColorMarkerGenerator {
         val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
 
-        val centerX = width / 2f
-        val centerY = width / 2f
-        val radius = (width / 2f) - borderWidth
-        val r = radius + borderWidth / 2
+        val centerX = width / 2.0f
+        val centerY = width / 2.0f
+        val radius = (width / 2.0f) - borderWidth
+        val r = radius + borderWidth / 2.0f
 
         val pinPath = Path()
         val bottomY = height.toFloat() - borderWidth
@@ -50,9 +57,9 @@ object MultiColorMarkerGenerator {
         // Left side curve up to the circle (smooth inward curve)
         pinPath.cubicTo(
             centerX,
-            bottomY - r * 0.7f, // CP1: Pulls up from the tip
+            bottomY - r * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP1: Pulls up from the tip
             centerX - r,
-            centerY + r * 0.6f, // CP2: Pulls in towards the circle
+            centerY + r * TAPERED_CURVE_CENTER_Y_FACTOR, // CP2: Pulls in towards the circle
             centerX - r,
             centerY // End point at circle edge
         )
@@ -63,17 +70,17 @@ object MultiColorMarkerGenerator {
             centerY - r,
             centerX + r,
             centerY + r,
-            180f,
-            180f,
+            DEGREES_180,
+            DEGREES_180,
             false
         )
 
         // Right side curve down to the tip (smooth inward curve)
         pinPath.cubicTo(
             centerX + r,
-            centerY + r * 0.6f, // CP1: Pulls in towards the circle
+            centerY + r * TAPERED_CURVE_CENTER_Y_FACTOR, // CP1: Pulls in towards the circle
             centerX,
-            bottomY - r * 0.7f, // CP2: Pulls up from the tip
+            bottomY - r * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP2: Pulls up from the tip
             centerX,
             bottomY // End point at tip
         )
@@ -127,13 +134,13 @@ object MultiColorMarkerGenerator {
     ) {
         canvas.withClip(pinPath) {
             if (colors.isNotEmpty()) {
-                val angleStep = 360f / colors.size
+                val angleStep = DEGREES_360 / colors.size
                 val rect =
                     RectF(centerX - height, centerY - height, centerX + height, centerY + height)
 
                 for (i in colors.indices) {
                     paint.color = colors[i]
-                    drawArc(rect, i * angleStep - 90, angleStep, true, paint)
+                    drawArc(rect, i * angleStep - DEGREES_90, angleStep, true, paint)
                 }
             } else {
                 paint.color = Color.GRAY
@@ -168,7 +175,7 @@ object MultiColorMarkerGenerator {
         textY: Float
     ) {
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = outlineWidth * 2
+        paint.strokeWidth = outlineWidth * 2.0f
         paint.color = Color.BLACK
         paint.strokeJoin = Paint.Join.ROUND
         canvas.drawText(text, centerX, textY, paint)

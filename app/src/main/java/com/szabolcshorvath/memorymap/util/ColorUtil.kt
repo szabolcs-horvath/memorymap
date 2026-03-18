@@ -24,9 +24,10 @@ object ColorUtil {
     )
     private const val PRESET_COLOR_SIZE = 32
     private const val PRESET_COLOR_MARGIN = 12
+    private const val DEGREES_360 = 360.0f
 
     fun normalizeHue(hue: Float): Float {
-        return (hue % 360.0f + 360.0f) % 360.0f
+        return (hue % DEGREES_360 + DEGREES_360) % DEGREES_360
     }
 
     fun hueToColor(hue: Float): Int {
