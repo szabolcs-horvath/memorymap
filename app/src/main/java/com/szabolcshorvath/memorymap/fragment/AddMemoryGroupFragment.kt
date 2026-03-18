@@ -107,7 +107,7 @@ class AddMemoryGroupFragment : Fragment() {
                             requireContext()
                         )
                     val newItems = it.mapNotNull { uri ->
-                        if (selectedMedia.any { it.uri == uri }) {
+                        if (selectedMedia.any { m -> m.uri == uri }) {
                             null
                         } else {
                             val type = contentResolver.getType(uri)
@@ -231,7 +231,6 @@ class AddMemoryGroupFragment : Fragment() {
 
         fragmentsAdapter = MemoryFragmentEditAdapter(
             fragments,
-            resources,
             { listener },
             { childFragmentManager },
             { activePickingIndex = it },

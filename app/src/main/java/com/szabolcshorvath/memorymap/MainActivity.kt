@@ -315,7 +315,7 @@ class MainActivity :
         // First pop the back stack to remove the details fragment
         supportFragmentManager.popBackStack(
             null,
-            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+            FragmentManager.POP_BACK_STACK_INCLUSIVE
         )
 
         isProgrammaticSelection = true
@@ -331,7 +331,7 @@ class MainActivity :
         // First pop the back stack to remove the details fragment
         supportFragmentManager.popBackStack(
             null,
-            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+            FragmentManager.POP_BACK_STACK_INCLUSIVE
         )
 
         isProgrammaticSelection = true
@@ -406,7 +406,7 @@ class MainActivity :
         // Pop the back stack to remove the details fragment
         supportFragmentManager.popBackStack(
             null,
-            androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
+            FragmentManager.POP_BACK_STACK_INCLUSIVE
         )
 
         showFragment(addMemoryFragment)

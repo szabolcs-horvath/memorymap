@@ -4,7 +4,6 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.res.ColorStateList
-import android.content.res.Resources
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,7 +26,6 @@ import java.time.ZonedDateTime
 
 class MemoryFragmentEditAdapter(
     private val fragments: MutableList<FragmentEditState>,
-    private val resources: Resources,
     private val getListener: () -> AddMemoryListener?,
     private val getChildFragmentManager: () -> FragmentManager,
     private val setActivePickingIndex: (Int) -> Unit,
