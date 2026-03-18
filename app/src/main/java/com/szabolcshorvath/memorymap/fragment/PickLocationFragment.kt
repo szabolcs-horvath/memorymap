@@ -297,7 +297,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun hasLocationPermission(): Boolean =
         checkPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) ||
-                checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+            checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressLint("MissingPermission")
     private fun enableMyLocation() {

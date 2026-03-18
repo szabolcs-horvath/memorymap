@@ -357,7 +357,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun hasLocationPermission(): Boolean =
         checkPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) ||
-                checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+            checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {

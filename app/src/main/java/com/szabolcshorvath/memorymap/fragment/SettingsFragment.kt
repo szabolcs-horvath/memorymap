@@ -63,7 +63,7 @@ class SettingsFragment : Fragment() {
             Toast.makeText(
                 requireContext(),
                 "Permissions are needed to link media files after restore. " +
-                        "Please retry the restore, and grant permissions to all images and videos needed!",
+                    "Please retry the restore, and grant permissions to all images and videos needed!",
                 Toast.LENGTH_LONG
             ).show()
             pendingRestoreFile?.let { executeRestore(it) }
@@ -394,7 +394,7 @@ class SettingsFragment : Fragment() {
             .setTitle("Restore Backup")
             .setMessage(
                 "Are you sure you want to restore from the backup '${file.name}'?\n\n" +
-                        "This action will overwrite all your current data and it cannot be undone!"
+                    "This action will overwrite all your current data and it cannot be undone!"
             )
             .setPositiveButton("Restore") { _, _ ->
                 if (hasMediaPermissions()) {
@@ -412,7 +412,7 @@ class SettingsFragment : Fragment() {
     private fun hasMediaPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             checkPermission(requireContext(), Manifest.permission.READ_MEDIA_IMAGES) &&
-                    checkPermission(requireContext(), Manifest.permission.READ_MEDIA_VIDEO)
+                checkPermission(requireContext(), Manifest.permission.READ_MEDIA_VIDEO)
         } else {
             checkPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
         }
@@ -423,9 +423,9 @@ class SettingsFragment : Fragment() {
             .setTitle("Media Access Required")
             .setMessage(
                 "To link your photos and videos correctly after the restore, " +
-                        "the app needs access to your entire media library.\n\n" +
-                        "In the next step, please choose 'Allow all' " +
-                        "(or 'All photos and videos') to ensure all your memories are restored correctly."
+                    "the app needs access to your entire media library.\n\n" +
+                    "In the next step, please choose 'Allow all' " +
+                    "(or 'All photos and videos') to ensure all your memories are restored correctly."
             )
             .setPositiveButton("Continue") { _, _ ->
                 launchPermissionRequest(file)
