@@ -27,6 +27,16 @@ object MultiColorMarkerGenerator {
 
     private val cache = LruCache<String, Bitmap>(CACHE_MAX_SIZE)
 
+    private data class Essentials(
+        val width: Int,
+        val height: Int,
+        val canvas: Canvas,
+        val pinPath: Path,
+        val colors: List<Int>,
+        val text: String,
+        val paint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    )
+
     /**
      * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
      */
@@ -87,13 +97,9 @@ object MultiColorMarkerGenerator {
         pinPath.close()
 
         drawMarkerContent(
-            canvas,
-            pinPath,
-            colors,
-            count.toString(),
+            Essentials(width, height, canvas, pinPath, colors, count.toString()),
             centerX,
             centerY,
-            height,
             borderWidth,
             textSize,
             outlineWidth
@@ -104,86 +110,80 @@ object MultiColorMarkerGenerator {
     }
 
     private fun drawMarkerContent(
-        canvas: Canvas,
-        pinPath: Path,
-        colors: List<Int>,
-        text: String,
+        essentials: Essentials,
         centerX: Float,
         centerY: Float,
-        height: Int,
         borderWidth: Float,
         textSize: Float,
         outlineWidth: Float
     ) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        drawSegments(canvas, pinPath, colors, centerX, height, centerY, paint)
-        drawBorder(paint, borderWidth, canvas, pinPath)
-        val textY = drawText(text, paint, textSize, centerY)
-        drawOutline(paint, outlineWidth, canvas, text, centerX, textY)
-        drawFill(paint, canvas, text, centerX, textY)
+        drawSegments(essentials, centerX, centerY)
+        drawBorder(essentials, borderWidth)
+        val textY = drawText(essentials, textSize, centerY)
+        drawOutline(essentials, outlineWidth, centerX, textY)
+        drawFill(essentials, centerX, textY)
     }
 
     private fun drawSegments(
-        canvas: Canvas,
-        pinPath: Path,
-        colors: List<Int>,
+        essentials: Essentials,
         centerX: Float,
-        height: Int,
-        centerY: Float,
-        paint: Paint
+        centerY: Float
     ) {
-        canvas.withClip(pinPath) {
-            if (colors.isNotEmpty()) {
-                val angleStep = DEGREES_360 / colors.size
+        essentials.canvas.withClip(essentials.pinPath) {
+            if (essentials.colors.isNotEmpty()) {
+                val angleStep = DEGREES_360 / essentials.colors.size
                 val rect =
-                    RectF(centerX - height, centerY - height, centerX + height, centerY + height)
+                    RectF(
+                        centerX - essentials.height,
+                        centerY - essentials.height,
+                        centerX + essentials.height,
+                        centerY + essentials.height
+                    )
 
-                for (i in colors.indices) {
-                    paint.color = colors[i]
-                    drawArc(rect, i * angleStep - DEGREES_90, angleStep, true, paint)
+                for (i in essentials.colors.indices) {
+                    essentials.paint.color = essentials.colors[i]
+                    drawArc(rect, i * angleStep - DEGREES_90, angleStep, true, essentials.paint)
                 }
             } else {
-                paint.color = Color.GRAY
-                drawPath(pinPath, paint)
+                essentials.paint.color = Color.GRAY
+                drawPath(essentials.pinPath, essentials.paint)
             }
         }
     }
 
-    private fun drawBorder(paint: Paint, borderWidth: Float, canvas: Canvas, pinPath: Path) {
-        paint.color = Color.WHITE
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = borderWidth
-        canvas.drawPath(pinPath, paint)
+    private fun drawBorder(essentials: Essentials, borderWidth: Float) {
+        essentials.paint.color = Color.WHITE
+        essentials.paint.style = Paint.Style.STROKE
+        essentials.paint.strokeWidth = borderWidth
+        essentials.canvas.drawPath(essentials.pinPath, essentials.paint)
     }
 
-    private fun drawText(text: String, paint: Paint, textSize: Float, centerY: Float): Float {
-        paint.textSize = textSize
-        paint.textAlign = Paint.Align.CENTER
+    private fun drawText(essentials: Essentials, textSize: Float, centerY: Float): Float {
+        essentials.paint.textSize = textSize
+        essentials.paint.textAlign = Paint.Align.CENTER
 
         val textBounds = Rect()
-        paint.getTextBounds(text, 0, text.length, textBounds)
+        essentials.paint.getTextBounds(essentials.text, 0, essentials.text.length, textBounds)
         val textY = centerY - textBounds.exactCenterY()
         return textY
     }
 
     private fun drawOutline(
-        paint: Paint,
+        essentials: Essentials,
         outlineWidth: Float,
-        canvas: Canvas,
-        text: String,
         centerX: Float,
         textY: Float
     ) {
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = outlineWidth * 2.0f
-        paint.color = Color.BLACK
-        paint.strokeJoin = Paint.Join.ROUND
-        canvas.drawText(text, centerX, textY, paint)
+        essentials.paint.style = Paint.Style.STROKE
+        essentials.paint.strokeWidth = outlineWidth * 2.0f
+        essentials.paint.color = Color.BLACK
+        essentials.paint.strokeJoin = Paint.Join.ROUND
+        essentials.canvas.drawText(essentials.text, centerX, textY, essentials.paint)
     }
 
-    private fun drawFill(paint: Paint, canvas: Canvas, text: String, centerX: Float, textY: Float) {
-        paint.style = Paint.Style.FILL
-        paint.color = Color.WHITE
-        canvas.drawText(text, centerX, textY, paint)
+    private fun drawFill(essentials: Essentials, centerX: Float, textY: Float) {
+        essentials.paint.style = Paint.Style.FILL
+        essentials.paint.color = Color.WHITE
+        essentials.canvas.drawText(essentials.text, centerX, textY, essentials.paint)
     }
 }
