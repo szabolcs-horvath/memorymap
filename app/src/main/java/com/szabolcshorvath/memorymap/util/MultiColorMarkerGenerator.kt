@@ -34,6 +34,7 @@ object MultiColorMarkerGenerator {
         val pinPath: Path,
         val colors: List<Int>,
         val text: String,
+        val textSize: Float,
         val paint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     )
 
@@ -97,11 +98,10 @@ object MultiColorMarkerGenerator {
         pinPath.close()
 
         drawMarkerContent(
-            Essentials(width, height, canvas, pinPath, colors, count.toString()),
+            Essentials(width, height, canvas, pinPath, colors, count.toString(), textSize),
             centerX,
             centerY,
             borderWidth,
-            textSize,
             outlineWidth
         )
 
@@ -114,12 +114,11 @@ object MultiColorMarkerGenerator {
         centerX: Float,
         centerY: Float,
         borderWidth: Float,
-        textSize: Float,
         outlineWidth: Float
     ) {
         drawSegments(essentials, centerX, centerY)
         drawBorder(essentials, borderWidth)
-        val textY = drawText(essentials, textSize, centerY)
+        val textY = drawText(essentials, centerY)
         drawOutline(essentials, outlineWidth, centerX, textY)
         drawFill(essentials, centerX, textY)
     }
@@ -158,8 +157,8 @@ object MultiColorMarkerGenerator {
         essentials.canvas.drawPath(essentials.pinPath, essentials.paint)
     }
 
-    private fun drawText(essentials: Essentials, textSize: Float, centerY: Float): Float {
-        essentials.paint.textSize = textSize
+    private fun drawText(essentials: Essentials, centerY: Float): Float {
+        essentials.paint.textSize = essentials.textSize
         essentials.paint.textAlign = Paint.Align.CENTER
 
         val textBounds = Rect()
