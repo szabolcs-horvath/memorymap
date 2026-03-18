@@ -2,14 +2,12 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -45,6 +43,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
+import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -356,16 +355,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            requireContext(),
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun hasLocationPermission(): Boolean =
+        checkPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) ||
+                checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {

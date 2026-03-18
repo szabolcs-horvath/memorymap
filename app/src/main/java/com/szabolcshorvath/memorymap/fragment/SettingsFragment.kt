@@ -1,7 +1,6 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -12,7 +11,6 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
@@ -36,6 +34,7 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
+import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -64,7 +63,7 @@ class SettingsFragment : Fragment() {
             Toast.makeText(
                 requireContext(),
                 "Permissions are needed to link media files after restore. " +
-                    "Please retry the restore, and grant permissions to all images and videos needed!",
+                        "Please retry the restore, and grant permissions to all images and videos needed!",
                 Toast.LENGTH_LONG
             ).show()
             pendingRestoreFile?.let { executeRestore(it) }
@@ -395,7 +394,7 @@ class SettingsFragment : Fragment() {
             .setTitle("Restore Backup")
             .setMessage(
                 "Are you sure you want to restore from the backup '${file.name}'?\n\n" +
-                    "This action will overwrite all your current data and it cannot be undone!"
+                        "This action will overwrite all your current data and it cannot be undone!"
             )
             .setPositiveButton("Restore") { _, _ ->
                 if (hasMediaPermissions()) {
@@ -412,19 +411,10 @@ class SettingsFragment : Fragment() {
 
     private fun hasMediaPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.READ_MEDIA_IMAGES
-            ) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.READ_MEDIA_VIDEO
-                ) == PackageManager.PERMISSION_GRANTED
+            checkPermission(requireContext(), Manifest.permission.READ_MEDIA_IMAGES) &&
+                    checkPermission(requireContext(), Manifest.permission.READ_MEDIA_VIDEO)
         } else {
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
+            checkPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
 
@@ -433,9 +423,9 @@ class SettingsFragment : Fragment() {
             .setTitle("Media Access Required")
             .setMessage(
                 "To link your photos and videos correctly after the restore, " +
-                    "the app needs access to your entire media library.\n\n" +
-                    "In the next step, please choose 'Allow all' " +
-                    "(or 'All photos and videos') to ensure all your memories are restored correctly."
+                        "the app needs access to your entire media library.\n\n" +
+                        "In the next step, please choose 'Allow all' " +
+                        "(or 'All photos and videos') to ensure all your memories are restored correctly."
             )
             .setPositiveButton("Continue") { _, _ ->
                 launchPermissionRequest(file)
