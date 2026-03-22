@@ -27,16 +27,56 @@ object MultiColorMarkerGenerator {
 
     private val cache = LruCache<String, Bitmap>(CACHE_MAX_SIZE)
 
-    private data class Essentials(
+    private data class PinEssentials(
         val width: Int,
         val height: Int,
+        val centerX: Float,
+        val centerY: Float,
+        val radius: Float,
+        val bitmap: Bitmap,
         val canvas: Canvas,
         val pinPath: Path,
         val colors: List<Int>,
-        val text: String,
-        val textSize: Float,
-        val paint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    )
+        val text: String?,
+        val textSize: Float?,
+        val paint: Paint
+    ) {
+        companion object {
+            fun initPinEssentials(
+                colors: List<Int>,
+                count: Int,
+                density: Float,
+                borderWidth: Float
+            ): PinEssentials {
+                val width = (MARKER_SIZE_DP * density).toInt()
+                val height = (width * WIDTH_TO_HEIGHT_SCALING_FACTOR).toInt()
+                val centerX = width / 2.0f
+                val centerY = width / 2.0f
+                val radius = (width / 2.0f) - (borderWidth / 2.0f)
+                val bitmap = createBitmap(width, height)
+                val canvas = Canvas(bitmap)
+                val pinPath = Path()
+                val text = if (count > 1) count.toString() else null
+                val textSize = if (count > 1) (TEXT_SIZE_SP * density) else null
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+                return PinEssentials(
+                    width,
+                    height,
+                    centerX,
+                    centerY,
+                    radius,
+                    bitmap,
+                    canvas,
+                    pinPath,
+                    colors,
+                    text,
+                    textSize,
+                    paint
+                )
+            }
+        }
+    }
 
     /**
      * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
@@ -45,144 +85,131 @@ object MultiColorMarkerGenerator {
         val cacheKey = "${colors.hashCode()}_${count}_$density"
         cache.get(cacheKey)?.let { return it }
 
-        val width = (MARKER_SIZE_DP * density).toInt()
-        val height = (width * WIDTH_TO_HEIGHT_SCALING_FACTOR).toInt()
         val borderWidth = (BORDER_WIDTH_DP * density)
-        val textSize = (TEXT_SIZE_SP * density)
+        val pinEssentials = PinEssentials.initPinEssentials(colors, count, density, borderWidth)
+        val bottomY = pinEssentials.height.toFloat() - borderWidth
         val outlineWidth = (TEXT_OUTLINE_WIDTH_DP * density)
 
-        val bitmap = createBitmap(width, height)
-        val canvas = Canvas(bitmap)
+        definePinPath(pinEssentials, bottomY)
+        drawMarkerContent(pinEssentials, borderWidth, outlineWidth)
 
-        val centerX = width / 2.0f
-        val centerY = width / 2.0f
-        val radius = (width / 2.0f) - borderWidth
-        val r = radius + borderWidth / 2.0f
+        cache.put(cacheKey, pinEssentials.bitmap)
+        return pinEssentials.bitmap
+    }
 
-        val pinPath = Path()
-        val bottomY = height.toFloat() - borderWidth
-
+    private fun definePinPath(pinEssentials: PinEssentials, bottomY: Float) {
         // Start from the bottom tip
-        pinPath.moveTo(centerX, bottomY)
+        pinEssentials.pinPath.moveTo(pinEssentials.centerX, bottomY)
 
         // Left side curve up to the circle (smooth inward curve)
-        pinPath.cubicTo(
-            centerX,
-            bottomY - r * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP1: Pulls up from the tip
-            centerX - r,
-            centerY + r * TAPERED_CURVE_CENTER_Y_FACTOR, // CP2: Pulls in towards the circle
-            centerX - r,
-            centerY // End point at circle edge
+        pinEssentials.pinPath.cubicTo(
+            pinEssentials.centerX,
+            bottomY - pinEssentials.radius * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP1: Pulls up from the tip
+            pinEssentials.centerX - pinEssentials.radius,
+            pinEssentials.centerY + pinEssentials.radius * TAPERED_CURVE_CENTER_Y_FACTOR, // CP2: Pulls in towards the circle
+            pinEssentials.centerX - pinEssentials.radius,
+            pinEssentials.centerY // End point at circle edge
         )
 
         // Top circular part
-        pinPath.arcTo(
-            centerX - r,
-            centerY - r,
-            centerX + r,
-            centerY + r,
+        pinEssentials.pinPath.arcTo(
+            pinEssentials.centerX - pinEssentials.radius,
+            pinEssentials.centerY - pinEssentials.radius,
+            pinEssentials.centerX + pinEssentials.radius,
+            pinEssentials.centerY + pinEssentials.radius,
             DEGREES_180,
             DEGREES_180,
             false
         )
 
         // Right side curve down to the tip (smooth inward curve)
-        pinPath.cubicTo(
-            centerX + r,
-            centerY + r * TAPERED_CURVE_CENTER_Y_FACTOR, // CP1: Pulls in towards the circle
-            centerX,
-            bottomY - r * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP2: Pulls up from the tip
-            centerX,
+        pinEssentials.pinPath.cubicTo(
+            pinEssentials.centerX + pinEssentials.radius,
+            pinEssentials.centerY + pinEssentials.radius * TAPERED_CURVE_CENTER_Y_FACTOR, // CP1: Pulls in towards the circle
+            pinEssentials.centerX,
+            bottomY - pinEssentials.radius * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP2: Pulls up from the tip
+            pinEssentials.centerX,
             bottomY // End point at tip
         )
-        pinPath.close()
-
-        drawMarkerContent(
-            Essentials(width, height, canvas, pinPath, colors, count.toString(), textSize),
-            centerX,
-            centerY,
-            borderWidth,
-            outlineWidth
-        )
-
-        cache.put(cacheKey, bitmap)
-        return bitmap
+        pinEssentials.pinPath.close()
     }
 
     private fun drawMarkerContent(
-        essentials: Essentials,
-        centerX: Float,
-        centerY: Float,
+        pinEssentials: PinEssentials,
         borderWidth: Float,
         outlineWidth: Float
     ) {
-        drawSegments(essentials, centerX, centerY)
-        drawBorder(essentials, borderWidth)
-        val textY = drawText(essentials, centerY)
-        drawOutline(essentials, outlineWidth, centerX, textY)
-        drawFill(essentials, centerX, textY)
+        drawSegments(pinEssentials)
+        drawBorder(pinEssentials, borderWidth)
+        if (pinEssentials.text != null && pinEssentials.textSize != null) {
+            val textY = drawText(pinEssentials)
+            drawTextOutline(pinEssentials, outlineWidth, textY)
+            drawTextFill(pinEssentials, textY)
+        } else {
+
+        }
     }
 
-    private fun drawSegments(
-        essentials: Essentials,
-        centerX: Float,
-        centerY: Float
-    ) {
-        essentials.canvas.withClip(essentials.pinPath) {
-            if (essentials.colors.isNotEmpty()) {
-                val angleStep = DEGREES_360 / essentials.colors.size
+    private fun drawSegments(pinEssentials: PinEssentials) {
+        pinEssentials.canvas.withClip(pinEssentials.pinPath) {
+            if (pinEssentials.colors.isNotEmpty()) {
+                val angleStep = DEGREES_360 / pinEssentials.colors.size
                 val rect =
                     RectF(
-                        centerX - essentials.height,
-                        centerY - essentials.height,
-                        centerX + essentials.height,
-                        centerY + essentials.height
+                        pinEssentials.centerX - pinEssentials.height,
+                        pinEssentials.centerY - pinEssentials.height,
+                        pinEssentials.centerX + pinEssentials.height,
+                        pinEssentials.centerY + pinEssentials.height
                     )
 
-                for (i in essentials.colors.indices) {
-                    essentials.paint.color = essentials.colors[i]
-                    drawArc(rect, i * angleStep - DEGREES_90, angleStep, true, essentials.paint)
+                for (i in pinEssentials.colors.indices) {
+                    pinEssentials.paint.color = pinEssentials.colors[i]
+                    drawArc(rect, i * angleStep - DEGREES_90, angleStep, true, pinEssentials.paint)
                 }
             } else {
-                essentials.paint.color = Color.GRAY
-                drawPath(essentials.pinPath, essentials.paint)
+                pinEssentials.paint.color = Color.GRAY
+                drawPath(pinEssentials.pinPath, pinEssentials.paint)
             }
         }
     }
 
-    private fun drawBorder(essentials: Essentials, borderWidth: Float) {
-        essentials.paint.color = Color.WHITE
-        essentials.paint.style = Paint.Style.STROKE
-        essentials.paint.strokeWidth = borderWidth
-        essentials.canvas.drawPath(essentials.pinPath, essentials.paint)
+    private fun drawBorder(pinEssentials: PinEssentials, borderWidth: Float) {
+        pinEssentials.paint.color = Color.BLACK
+        pinEssentials.paint.style = Paint.Style.STROKE
+        pinEssentials.paint.strokeWidth = borderWidth
+        pinEssentials.canvas.drawPath(pinEssentials.pinPath, pinEssentials.paint)
     }
 
-    private fun drawText(essentials: Essentials, centerY: Float): Float {
-        essentials.paint.textSize = essentials.textSize
-        essentials.paint.textAlign = Paint.Align.CENTER
+    private fun drawText(pinEssentials: PinEssentials): Float {
+        pinEssentials.paint.textSize = pinEssentials.textSize!!
+        pinEssentials.paint.textAlign = Paint.Align.CENTER
 
         val textBounds = Rect()
-        essentials.paint.getTextBounds(essentials.text, 0, essentials.text.length, textBounds)
-        val textY = centerY - textBounds.exactCenterY()
+        pinEssentials.paint.getTextBounds(
+            pinEssentials.text,
+            0,
+            pinEssentials.text!!.length,
+            textBounds
+        )
+        val textY = pinEssentials.centerY - textBounds.exactCenterY()
         return textY
     }
 
-    private fun drawOutline(
-        essentials: Essentials,
-        outlineWidth: Float,
-        centerX: Float,
-        textY: Float
-    ) {
-        essentials.paint.style = Paint.Style.STROKE
-        essentials.paint.strokeWidth = outlineWidth * 2.0f
-        essentials.paint.color = Color.BLACK
-        essentials.paint.strokeJoin = Paint.Join.ROUND
-        essentials.canvas.drawText(essentials.text, centerX, textY, essentials.paint)
+    private fun drawTextOutline(pinEssentials: PinEssentials, outlineWidth: Float, textY: Float) {
+        pinEssentials.paint.style = Paint.Style.STROKE
+        pinEssentials.paint.strokeWidth = outlineWidth * 2.0f
+        pinEssentials.paint.color = Color.BLACK
+        pinEssentials.paint.strokeJoin = Paint.Join.ROUND
+        pinEssentials.text?.let {
+            pinEssentials.canvas.drawText(it, pinEssentials.centerX, textY, pinEssentials.paint)
+        }
     }
 
-    private fun drawFill(essentials: Essentials, centerX: Float, textY: Float) {
-        essentials.paint.style = Paint.Style.FILL
-        essentials.paint.color = Color.WHITE
-        essentials.canvas.drawText(essentials.text, centerX, textY, essentials.paint)
+    private fun drawTextFill(pinEssentials: PinEssentials, textY: Float) {
+        pinEssentials.paint.style = Paint.Style.FILL
+        pinEssentials.paint.color = Color.WHITE
+        pinEssentials.text?.let {
+            pinEssentials.canvas.drawText(it, pinEssentials.centerX, textY, pinEssentials.paint)
+        }
     }
 }
