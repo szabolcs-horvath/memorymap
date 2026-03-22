@@ -41,7 +41,7 @@ googleApiServicesDrive = "v3-rev20260305-2.0.0"
 googleHttpClient = "2.1.0"
 
 # Firebase
-firebaseBom = "34.10.0"
+firebaseBom = "34.11.0"
 firebaseCrashlytics = "3.0.6"
 
 # Testing
