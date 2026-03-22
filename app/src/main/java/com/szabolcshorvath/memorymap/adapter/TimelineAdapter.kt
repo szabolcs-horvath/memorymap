@@ -14,6 +14,8 @@ import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBindin
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import java.time.LocalDate
 
@@ -77,7 +79,11 @@ class TimelineAdapter(
             binding.memoryDate.text = memoryGroup.getFormattedDate()
 
             binding.colorIndicator.setBackgroundColor(
-                ColorUtil.hueToColor(memoryGroup.markerHue ?: DEFAULT_MARKER_HUE)
+                ColorUtil.hsvToColor(
+                    memoryGroup.markerHue ?: DEFAULT_MARKER_HUE,
+                    memoryGroup.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    memoryGroup.markerValue ?: DEFAULT_MARKER_VALUE
+                )
             )
 
             binding.root.setOnClickListener { onMemoryClick(memoryGroup) }

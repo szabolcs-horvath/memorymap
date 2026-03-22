@@ -11,6 +11,8 @@ import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryOverlayBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
 
 class MemoryOverlayAdapter(
     private val onDetailsClick: (Int) -> Unit
@@ -74,24 +76,28 @@ class MemoryOverlayAdapter(
 
     private fun bindColor(holder: MemoryOverlayViewHolder, item: Markerable) {
         holder.binding.colorIndicator.backgroundTintList = ColorStateList.valueOf(
-            ColorUtil.hueToColor(item.markerHue ?: DEFAULT_MARKER_HUE)
+            ColorUtil.hsvToColor(
+                item.markerHue ?: DEFAULT_MARKER_HUE,
+                item.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                item.markerValue ?: DEFAULT_MARKER_VALUE
+            )
         )
     }
 
     private class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
         override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
             return oldItem.groupId == newItem.groupId &&
-                oldItem.latitude == newItem.latitude &&
-                oldItem.longitude == newItem.longitude
+                    oldItem.latitude == newItem.latitude &&
+                    oldItem.longitude == newItem.longitude
         }
 
         override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
             return oldItem.title == newItem.title &&
-                oldItem.startDate == newItem.startDate &&
-                oldItem.endDate == newItem.endDate &&
-                oldItem.markerHue == newItem.markerHue &&
-                oldItem.latitude == newItem.latitude &&
-                oldItem.longitude == newItem.longitude
+                    oldItem.startDate == newItem.startDate &&
+                    oldItem.endDate == newItem.endDate &&
+                    oldItem.markerHue == newItem.markerHue &&
+                    oldItem.latitude == newItem.latitude &&
+                    oldItem.longitude == newItem.longitude
         }
 
         override fun getChangePayload(oldItem: Markerable, newItem: Markerable): Any? {

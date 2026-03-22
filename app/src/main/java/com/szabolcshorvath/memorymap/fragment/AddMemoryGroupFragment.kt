@@ -35,6 +35,8 @@ import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
@@ -71,6 +73,8 @@ class AddMemoryGroupFragment : Fragment() {
         val endDate: ZonedDateTime? = null,
         val isAllDay: Boolean = false,
         val markerHue: Float = 0.0f,
+        val markerSaturation: Float = 1.0f,
+        val markerValue: Float = 1.0f,
         val isTimeVisible: Boolean = false,
         val order: Int? = null
     )
@@ -86,7 +90,9 @@ class AddMemoryGroupFragment : Fragment() {
     private var startDateTime: ZonedDateTime = ZonedDateTime.now()
     private var endDateTime: ZonedDateTime = ZonedDateTime.now().plusHours(1)
     private var isAllDay = false
-    private var markerHue: Float = DEFAULT_MARKER_HUE
+    private var markerHue = DEFAULT_MARKER_HUE
+    private var markerSaturation = DEFAULT_MARKER_SATURATION
+    private var markerValue = DEFAULT_MARKER_VALUE
 
     private var listener: AddMemoryListener? = null
     private lateinit var backupManager: BackupManager
@@ -262,7 +268,9 @@ class AddMemoryGroupFragment : Fragment() {
                 longitude = lng,
                 placeName = placeName,
                 address = address,
-                markerHue = markerHue
+                markerHue = markerHue,
+                markerSaturation = markerSaturation,
+                markerValue = markerValue
             )
         )
         if (!fragmentsExpanded) toggleFragments()
@@ -287,7 +295,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun setupPresetColors() {
         binding.presetColorsLayout.removeAllViews()
-        ColorUtil.COLOR_PRESETS.forEach { hue ->
+        ColorUtil.HUE_PRESETS.forEach { hue ->
             val view = ColorUtil.getPresetColorView(requireContext(), hue) {
                 markerHue = hue
                 updateHueUI()
@@ -297,7 +305,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateHueUI() {
-        val color = ColorUtil.hueToColor(markerHue)
+        val color = ColorUtil.hsvToColor(markerHue, markerSaturation, markerValue)
         val colorStateList = ColorStateList.valueOf(color)
 
         binding.hueSlider.value = markerHue
@@ -411,6 +419,8 @@ class AddMemoryGroupFragment : Fragment() {
                                 endDate = it.endDate,
                                 isAllDay = it.isAllDay,
                                 markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
+                                markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                                markerValue = it.markerValue ?: DEFAULT_MARKER_VALUE,
                                 isTimeVisible = it.startDate != null,
                                 order = it.order
                             )

@@ -27,7 +27,11 @@ data class MemoryGroup(
     override val endDate: ZonedDateTime,
     override val isAllDay: Boolean,
     @ColumnInfo(defaultValue = "0.0")
-    override val markerHue: Float? = 0.0f
+    override val markerHue: Float? = 0.0f,
+    @ColumnInfo(defaultValue = "1.0")
+    override val markerSaturation: Float? = 1.0f,
+    @ColumnInfo(defaultValue = "1.0")
+    override val markerValue: Float? = 1.0f
 ) : Markerable {
     override val groupId: Int get() = id
 

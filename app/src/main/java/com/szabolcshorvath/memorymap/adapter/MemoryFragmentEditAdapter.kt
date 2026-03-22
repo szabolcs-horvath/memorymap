@@ -130,7 +130,13 @@ class MemoryFragmentEditAdapter(
     ) {
         binding.hueSlider.value = item.markerHue
         binding.hueSlider.thumbTintList =
-            ColorStateList.valueOf(ColorUtil.hueToColor(item.markerHue))
+            ColorStateList.valueOf(
+                ColorUtil.hsvToColor(
+                    item.markerHue,
+                    item.markerSaturation,
+                    item.markerValue
+                )
+            )
 
         binding.hueSlider.clearOnSliderTouchListeners()
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
@@ -178,7 +184,7 @@ class MemoryFragmentEditAdapter(
 
     private fun setupFragmentPresetColors(binding: ItemMemoryFragmentEditBinding, position: Int) {
         binding.presetColorsLayout.removeAllViews()
-        ColorUtil.COLOR_PRESETS.forEach { hue ->
+        ColorUtil.HUE_PRESETS.forEach { hue ->
             val view = ColorUtil.getPresetColorView(binding.root.context, hue) {
                 val current = getItem(position)
                 fragments[position] = current.copy(markerHue = hue)

@@ -10,7 +10,9 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 object ColorUtil {
 
     const val DEFAULT_MARKER_HUE = BitmapDescriptorFactory.HUE_RED
-    val COLOR_PRESETS = listOf(
+    const val DEFAULT_MARKER_SATURATION = 1.0f
+    const val DEFAULT_MARKER_VALUE = 1.0f
+    val HUE_PRESETS = listOf(
         BitmapDescriptorFactory.HUE_RED,
         BitmapDescriptorFactory.HUE_ORANGE,
         BitmapDescriptorFactory.HUE_YELLOW,
@@ -31,7 +33,13 @@ object ColorUtil {
     }
 
     fun hueToColor(hue: Float): Int {
-        return Color.HSVToColor(floatArrayOf(normalizeHue(hue), 1.0f, 1.0f))
+        return hsvToColor(hue, 1.0f, 1.0f)
+    }
+
+    fun hsvToColor(hue: Float, saturation: Float, value: Float): Int {
+        check(saturation in 0.0f..1.0f) { "Saturation must be between 0 and 1" }
+        check(value in 0.0f..1.0f) { "Value must be between 0 and 1" }
+        return Color.HSVToColor(floatArrayOf(normalizeHue(hue), saturation, value))
     }
 
     fun getPresetColorView(
@@ -49,7 +57,7 @@ object ColorUtil {
 
         val shape = GradientDrawable()
         shape.shape = GradientDrawable.OVAL
-        shape.setColor(hueToColor(hue))
+        shape.setColor(hsvToColor(hue, DEFAULT_MARKER_SATURATION, DEFAULT_MARKER_VALUE))
         shape.setStroke((1 * context.resources.displayMetrics.density).toInt(), Color.LTGRAY)
         view.background = shape
 

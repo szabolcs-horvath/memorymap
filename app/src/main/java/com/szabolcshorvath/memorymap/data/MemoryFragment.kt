@@ -38,6 +38,10 @@ data class MemoryFragment(
     override val isAllDay: Boolean = false,
     @ColumnInfo(defaultValue = "0.0")
     override val markerHue: Float? = 0.0f,
+    @ColumnInfo(defaultValue = "1.0")
+    override val markerSaturation: Float? = 1.0f,
+    @ColumnInfo(defaultValue = "1.0")
+    override val markerValue: Float? = 1.0f,
     val order: Int? = null
 ) : Markerable {
     @Ignore

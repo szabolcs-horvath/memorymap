@@ -14,6 +14,8 @@ interface Markerable {
     val endDate: ZonedDateTime?
     val isAllDay: Boolean
     val markerHue: Float?
+    val markerSaturation: Float?
+    val markerValue: Float?
 
     fun getFormattedDate(): String?
 

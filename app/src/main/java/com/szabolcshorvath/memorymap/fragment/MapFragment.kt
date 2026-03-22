@@ -41,6 +41,8 @@ import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
@@ -357,7 +359,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun hasLocationPermission(): Boolean =
         checkPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) ||
-            checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+                checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
@@ -519,9 +521,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             // Update stats
             val totalCount = filteredItems.size.toFloat()
             if (totalCount > 0) {
-                val colorStats = filteredItems.groupBy {
-                    ColorUtil.hueToColor(it.markerHue ?: DEFAULT_MARKER_HUE)
-                }.mapValues { it.value.size }
+                val colorStats = filteredItems
+                    .groupBy {
+                        ColorUtil.hsvToColor(
+                            it.markerHue ?: DEFAULT_MARKER_HUE,
+                            it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                            it.markerValue ?: DEFAULT_MARKER_VALUE
+                        )
+                    }
+                    .mapValues { it.value.size }
 
                 val sliceList = colorStats.map { (color, count) ->
                     Slice(count / totalCount, color, label = count.toString())
@@ -621,7 +629,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         return if (items.size > 1) {
             val colors =
-                items.map { ColorUtil.hueToColor(it.markerHue ?: DEFAULT_MARKER_HUE) }
+                items.map {
+                    ColorUtil.hsvToColor(
+                        it.markerHue ?: DEFAULT_MARKER_HUE,
+                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                        it.markerValue ?: DEFAULT_MARKER_VALUE
+                    )
+                }
                     .sorted()
             val density = resources.displayMetrics.density
             val bitmap = MultiColorMarkerGenerator.generateTapered(colors, items.size, density)
