@@ -33,12 +33,14 @@ object ColorUtil {
         floatArrayOf(it, DEFAULT_MARKER_SATURATION, DEFAULT_MARKER_BRIGHTNESS)
     }
 
-    private const val PRESET_COLOR_SIZE = 32
-    private const val PRESET_COLOR_MARGIN = 12
     private const val DEGREES_360 = 360.0f
+    private const val MIN_TARGET_CONTRAST = 1.0
+    private const val MAX_TARGET_CONTRAST = 21.0
     private const val TARGET_CONTRAST_THRESHOLD = 0.1
     private const val LUMINANCE_BINARY_SEARCH_ITERATIONS = 20
     private const val CONTRAST_RATION_CALIBRATION_CONSTANT = 0.05
+    private const val PRESET_COLOR_SIZE = 32
+    private const val PRESET_COLOR_MARGIN = 12
 
     fun normalizeHue(hue: Float): Float {
         return (hue % DEGREES_360 + DEGREES_360) % DEGREES_360
@@ -60,10 +62,13 @@ object ColorUtil {
 
     @ColorInt
     fun generateColorWithTargetContrast(@ColorInt inputColor: Int, targetContrast: Double): Int {
+        require(targetContrast in MIN_TARGET_CONTRAST..MAX_TARGET_CONTRAST) {
+            "Target contrast must be between 1.0 and 21.0, was $targetContrast"
+        }
+
         @Suppress("MagicNumber")
         val hsl = FloatArray(3)
         ColorUtils.colorToHSL(inputColor, hsl)
-
         val inputLuminance = ColorUtils.calculateLuminance(inputColor)
 
         // Try darker first: we need resultLuminance such that contrast(input, result) = targetContrast
@@ -71,18 +76,16 @@ object ColorUtil {
         // If input is lighter: result = (input + 0.05) / targetContrast - 0.05
         // If input is darker:  result = (input + 0.05) * targetContrast - 0.05
 
-        val hslCopy = hsl.copyOf()
-
         // --- Attempt darker result ---
         // We want result to be darker than input, so input is the lighter one:
         // targetContrast = (inputLuminance + 0.05) / (resultLuminance + 0.05)
         // resultLuminance = (inputLuminance + 0.05) / targetContrast - 0.05
         val darkerLuminance =
             (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast -
-                CONTRAST_RATION_CALIBRATION_CONSTANT
+                    CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (darkerLuminance in 0.0..inputLuminance) {
-            val candidate = luminanceToColor(hslCopy.copyOf(), darkerLuminance)
+            val candidate = luminanceToColor(hsl.copyOf(), darkerLuminance)
             val actualContrast =
                 contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
             if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
@@ -96,10 +99,10 @@ object ColorUtil {
         // resultLuminance = targetContrast * (inputLuminance + 0.05) - 0.05
         val lighterLuminance =
             targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) -
-                CONTRAST_RATION_CALIBRATION_CONSTANT
+                    CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (lighterLuminance in inputLuminance..1.0) {
-            val candidate = luminanceToColor(hslCopy.copyOf(), lighterLuminance)
+            val candidate = luminanceToColor(hsl.copyOf(), lighterLuminance)
             val actualContrast =
                 contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
             if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
@@ -107,14 +110,7 @@ object ColorUtil {
             }
         }
 
-        // --- Last resort: clamp to black or white, whichever is closer to target ---
-        val blackContrast = contrastRatio(inputLuminance, 0.0)
-        val whiteContrast = contrastRatio(inputLuminance, 1.0)
-        return if (abs(blackContrast - targetContrast) <= abs(whiteContrast - targetContrast)) {
-            Color.BLACK
-        } else {
-            Color.WHITE
-        }
+        error("Could not find a color with target contrast $targetContrast for $inputColor")
     }
 
     private fun luminanceToColor(hsl: FloatArray, luminance: Double): Int {
