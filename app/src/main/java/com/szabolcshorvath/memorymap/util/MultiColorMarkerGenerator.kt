@@ -37,8 +37,8 @@ object MultiColorMarkerGenerator {
         val canvas: Canvas,
         val pinPath: Path,
         val colors: List<Int>,
-        val text: String?,
-        val textSize: Float?,
+        val text: String,
+        val textSize: Float,
         val paint: Paint
     ) {
         companion object {
@@ -56,8 +56,8 @@ object MultiColorMarkerGenerator {
                 val bitmap = createBitmap(width, height)
                 val canvas = Canvas(bitmap)
                 val pinPath = Path()
-                val text = if (count > 1) count.toString() else null
-                val textSize = if (count > 1) (TEXT_SIZE_SP * density) else null
+                val text = count.toString()
+                val textSize = (TEXT_SIZE_SP * density)
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
                 return PinEssentials(
@@ -141,13 +141,9 @@ object MultiColorMarkerGenerator {
     ) {
         drawSegments(pinEssentials)
         drawBorder(pinEssentials, borderWidth)
-        if (pinEssentials.text != null && pinEssentials.textSize != null) {
-            val textY = drawText(pinEssentials)
-            drawTextOutline(pinEssentials, outlineWidth, textY)
-            drawTextFill(pinEssentials, textY)
-        } else {
-
-        }
+        val textY = drawText(pinEssentials)
+        drawTextOutline(pinEssentials, outlineWidth, textY)
+        drawTextFill(pinEssentials, textY)
     }
 
     private fun drawSegments(pinEssentials: PinEssentials) {
@@ -181,14 +177,14 @@ object MultiColorMarkerGenerator {
     }
 
     private fun drawText(pinEssentials: PinEssentials): Float {
-        pinEssentials.paint.textSize = pinEssentials.textSize!!
+        pinEssentials.paint.textSize = pinEssentials.textSize
         pinEssentials.paint.textAlign = Paint.Align.CENTER
 
         val textBounds = Rect()
         pinEssentials.paint.getTextBounds(
             pinEssentials.text,
             0,
-            pinEssentials.text!!.length,
+            pinEssentials.text.length,
             textBounds
         )
         val textY = pinEssentials.centerY - textBounds.exactCenterY()
@@ -200,7 +196,7 @@ object MultiColorMarkerGenerator {
         pinEssentials.paint.strokeWidth = outlineWidth * 2.0f
         pinEssentials.paint.color = Color.BLACK
         pinEssentials.paint.strokeJoin = Paint.Join.ROUND
-        pinEssentials.text?.let {
+        pinEssentials.text.let {
             pinEssentials.canvas.drawText(it, pinEssentials.centerX, textY, pinEssentials.paint)
         }
     }
@@ -208,7 +204,7 @@ object MultiColorMarkerGenerator {
     private fun drawTextFill(pinEssentials: PinEssentials, textY: Float) {
         pinEssentials.paint.style = Paint.Style.FILL
         pinEssentials.paint.color = Color.WHITE
-        pinEssentials.text?.let {
+        pinEssentials.text.let {
             pinEssentials.canvas.drawText(it, pinEssentials.centerX, textY, pinEssentials.paint)
         }
     }

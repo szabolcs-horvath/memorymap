@@ -36,14 +36,12 @@ object ColorUtil {
     private const val PRESET_COLOR_SIZE = 32
     private const val PRESET_COLOR_MARGIN = 12
     private const val DEGREES_360 = 360.0f
+    private const val TARGET_CONTRAST_THRESHOLD = 0.1
+    private const val LUMINANCE_BINARY_SEARCH_ITERATIONS = 20
+    private const val CONTRAST_RATION_CALIBRATION_CONSTANT = 0.05
 
     fun normalizeHue(hue: Float): Float {
         return (hue % DEGREES_360 + DEGREES_360) % DEGREES_360
-    }
-
-    @ColorInt
-    fun hueToColor(hue: Float): Int {
-        return hsvToColor(hue, 1.0f, 1.0f)
     }
 
     @ColorInt
@@ -71,39 +69,20 @@ object ColorUtil {
         // If input is lighter: result = (input + 0.05) / targetContrast - 0.05
         // If input is darker:  result = (input + 0.05) * targetContrast - 0.05
 
-        fun luminanceToColor(hsl: FloatArray, luminance: Double): Int {
-            // Binary search for lightness in HSL that achieves the target luminance
-            var low = 0f
-            var high = 1f
-            repeat(20) {
-                val mid = (low + high) / 2f
-                hsl[2] = mid
-                val midLum = ColorUtils.calculateLuminance(ColorUtils.HSLToColor(hsl))
-                if (midLum < luminance) low = mid else high = mid
-            }
-            hsl[2] = (low + high) / 2f
-            return ColorUtils.HSLToColor(hsl)
-        }
-
-        fun contrastRatio(lum1: Double, lum2: Double): Double {
-            val lighter = maxOf(lum1, lum2)
-            val darker = minOf(lum1, lum2)
-            return (lighter + 0.05) / (darker + 0.05)
-        }
-
         val hslCopy = hsl.copyOf()
 
         // --- Attempt darker result ---
         // We want result to be darker than input, so input is the lighter one:
         // targetContrast = (inputLuminance + 0.05) / (resultLuminance + 0.05)
         // resultLuminance = (inputLuminance + 0.05) / targetContrast - 0.05
-        val darkerLuminance = (inputLuminance + 0.05) / targetContrast - 0.05
+        val darkerLuminance =
+            (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast - CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (darkerLuminance in 0.0..inputLuminance) {
             val candidate = luminanceToColor(hslCopy.copyOf(), darkerLuminance)
             val actualContrast =
                 contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
-            if (abs(actualContrast - targetContrast) <= 0.1) {
+            if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
                 return candidate
             }
         }
@@ -112,13 +91,14 @@ object ColorUtil {
         // Fall back to a lighter result
         // targetContrast = (resultLuminance + 0.05) / (inputLuminance + 0.05)
         // resultLuminance = targetContrast * (inputLuminance + 0.05) - 0.05
-        val lighterLuminance = targetContrast * (inputLuminance + 0.05) - 0.05
+        val lighterLuminance =
+            targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) - CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (lighterLuminance in inputLuminance..1.0) {
             val candidate = luminanceToColor(hslCopy.copyOf(), lighterLuminance)
             val actualContrast =
                 contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
-            if (abs(actualContrast - targetContrast) <= 0.1) {
+            if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
                 return candidate
             }
         }
@@ -133,134 +113,25 @@ object ColorUtil {
         }
     }
 
-    // BAD
-//    @ColorInt
-//    fun generateColorWithTargetContrast(@ColorInt argb: Int, targetContrast: Double = 2.5): Int {
-//        val srcLum = ColorUtils.calculateLuminance(argb)
-//        val goLighter = ColorUtils.calculateContrast(argb, Color.BLACK) < targetContrast
-//
-//        if (srcLum < 1e-9) {
-//            val targetLum = targetContrast * (srcLum + 0.05) - 0.05
-//            var grey = (targetLum * 255).roundToInt().coerceIn(0, 255)
-//            var result = Color.argb(Color.alpha(argb), grey, grey, grey)
-//            while (ColorUtils.calculateContrast(argb, result) < targetContrast) {
-//                grey = (grey + 1).coerceAtMost(255)
-//                result = Color.argb(Color.alpha(argb), grey, grey, grey)
-//            }
-//            return result
-//        }
-//
-//        val alpha = Color.alpha(argb)
-//        val hsl = FloatArray(3)
-//        ColorUtils.colorToHSL(argb, hsl)
-//
-//        fun buildColor(l: Float): Int {
-//            val out = hsl.copyOf()
-//            out[2] = l
-//            return ColorUtils.HSLToColor(out).let {
-//                Color.argb(alpha, Color.red(it), Color.green(it), Color.blue(it))
-//            }
-//        }
-//
-//        // Binary search over lightness in the direction we want to go.
-//        // We want the value closest to the source that still meets targetContrast.
-//        var lo = if (goLighter) hsl[2] else 0f
-//        var hi = if (goLighter) 1f else hsl[2]
-//
-//        repeat(23) {
-//            val mid = (lo + hi) / 2f
-//            if (ColorUtils.calculateContrast(argb, buildColor(mid)) < targetContrast) {
-//                if (goLighter) lo = mid else hi = mid
-//            } else {
-//                if (goLighter) hi = mid else lo = mid
-//            }
-//        }
-//
-//        return buildColor(if (goLighter) hi else lo)
-//    }
+    private fun luminanceToColor(hsl: FloatArray, luminance: Double): Int {
+        // Binary search for lightness in HSL that achieves the target luminance
+        var low = 0f
+        var high = 1f
+        repeat(LUMINANCE_BINARY_SEARCH_ITERATIONS) {
+            val mid = (low + high) / 2f
+            hsl[2] = mid
+            val midLum = ColorUtils.calculateLuminance(ColorUtils.HSLToColor(hsl))
+            if (midLum < luminance) low = mid else high = mid
+        }
+        hsl[2] = (low + high) / 2f
+        return ColorUtils.HSLToColor(hsl)
+    }
 
-    // DECENT
-//    @ColorInt
-//    fun generateColorWithTargetContrast(@ColorInt argb: Int, targetContrast: Double = 2.5): Int {
-//        val srcLum = ColorUtils.calculateLuminance(argb)
-//        val goLighter = ColorUtils.calculateContrast(argb, Color.BLACK) < targetContrast
-//
-//        val targetLum = if (goLighter) {
-//            targetContrast * (srcLum + 0.05) - 0.05
-//        } else {
-//            (srcLum + 0.05) / targetContrast - 0.05
-//        }.coerceIn(0.0, 1.0)
-//
-//        if (srcLum < 1e-9) {
-//            var grey = (targetLum * 255).roundToInt().coerceIn(0, 255)
-//            var result = Color.argb(Color.alpha(argb), grey, grey, grey)
-//            while (ColorUtils.calculateContrast(argb, result) < targetContrast) {
-//                grey = (grey + 1).coerceAtMost(255)
-//                result = Color.argb(Color.alpha(argb), grey, grey, grey)
-//            }
-//            return result
-//        }
-//
-//        val alpha = Color.alpha(argb)
-//        val xyz = DoubleArray(3)
-//        ColorUtils.colorToXYZ(argb, xyz)
-//
-//        fun buildColor(k: Double): Int {
-//            val c = ColorUtils.XYZToColor(
-//                (xyz[0] * k).coerceIn(0.0, XYZ_WHITE_REFERENCE_X),
-//                (xyz[1] * k).coerceIn(0.0, XYZ_WHITE_REFERENCE_Y),
-//                (xyz[2] * k).coerceIn(0.0, XYZ_WHITE_REFERENCE_Z),
-//            )
-//            return Color.argb(alpha, Color.red(c), Color.green(c), Color.blue(c))
-//        }
-//
-//        // The closed-form k lands very close but may be just under due to rounding.
-//        // Step k one 8-bit quantization unit at a time until contrast is met.
-//        val step = if (goLighter) 1.0 / (srcLum * 255) else -1.0 / (srcLum * 255)
-//        var k = targetLum / srcLum
-//
-//        var result = buildColor(k)
-//        while (ColorUtils.calculateContrast(argb, result) < targetContrast) {
-//            k += step
-//            result = buildColor(k)
-//        }
-//
-//        return result
-//    }
-
-    // MEDIOCRE
-//    fun secondaryColorForMarker(primaryColor: Int): Int {
-//        val hsl = FloatArray(3)
-//        ColorUtils.colorToHSL(primaryColor, hsl)
-//
-//        val hue = hsl[0]
-//        val saturation = hsl[1]
-//        val lightness = hsl[2]
-//
-//        val newLightness = when {
-//            // Handle Black (or very dark colors)
-//            lightness < 0.1f -> 0.25f
-//
-//            // Handle White (or very light colors)
-//            lightness > 0.9f -> 0.75f
-//
-//            // For mid-range colors, darken them to create contrast
-//            lightness > 0.6f -> (lightness - 0.25f).coerceIn(0f, 1f)
-//
-//            // For already dark colors, darken them further or shift slightly
-//            else -> (lightness * 0.7f).coerceIn(0f, 1f)
-//        }
-//
-//        // Adjust saturation: If it's grayscale (Black/White), keep saturation at 0.
-//        // Otherwise, boost saturation slightly to keep the secondary color "vibrant"
-//        val newSaturation = if (saturation > 0.1f) {
-//            (saturation + 0.1f).coerceIn(0f, 1f)
-//        } else {
-//            saturation
-//        }
-//
-//        return ColorUtils.HSLToColor(floatArrayOf(hue, newSaturation, newLightness))
-//    }
+    private fun contrastRatio(lum1: Double, lum2: Double): Double {
+        val lighter = maxOf(lum1, lum2)
+        val darker = minOf(lum1, lum2)
+        return (lighter + CONTRAST_RATION_CALIBRATION_CONSTANT) / (darker + CONTRAST_RATION_CALIBRATION_CONSTANT)
+    }
 
     fun getPresetColorView(
         context: Context,

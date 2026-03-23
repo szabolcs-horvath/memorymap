@@ -42,19 +42,19 @@ interface Markerable {
     class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
         override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
             return oldItem.groupId == newItem.groupId &&
-                    oldItem.latitude == newItem.latitude &&
-                    oldItem.longitude == newItem.longitude
+                oldItem.latitude == newItem.latitude &&
+                oldItem.longitude == newItem.longitude
         }
 
         override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
             return oldItem.title == newItem.title &&
-                    oldItem.startDate == newItem.startDate &&
-                    oldItem.endDate == newItem.endDate &&
-                    oldItem.markerHue == newItem.markerHue &&
-                    oldItem.markerSaturation == newItem.markerSaturation &&
-                    oldItem.markerBrightness == newItem.markerBrightness &&
-                    oldItem.latitude == newItem.latitude &&
-                    oldItem.longitude == newItem.longitude
+                oldItem.startDate == newItem.startDate &&
+                oldItem.endDate == newItem.endDate &&
+                oldItem.markerHue == newItem.markerHue &&
+                oldItem.markerSaturation == newItem.markerSaturation &&
+                oldItem.markerBrightness == newItem.markerBrightness &&
+                oldItem.latitude == newItem.latitude &&
+                oldItem.longitude == newItem.longitude
         }
 
         override fun getChangePayload(oldItem: Markerable, newItem: Markerable): Any? {

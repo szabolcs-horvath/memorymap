@@ -60,6 +60,7 @@ class ColorUtilTest {
         }
 
         private const val TARGET_CONTRAST = 2.0
+        private const val TARGET_CONTRAST_THRESHOLD = 0.1
     }
 
     @MethodSource("normalizeHueParameters")
@@ -78,7 +79,7 @@ class ColorUtilTest {
 
         val contrast = ColorUtils.calculateContrast(secondaryColor, primaryColor)
         assertTrue(
-            abs(contrast - TARGET_CONTRAST) < 0.1,
+            abs(contrast - TARGET_CONTRAST) < TARGET_CONTRAST_THRESHOLD,
             "Contrast $contrast is not sufficient for primary color $primaryColor (H:$hue, S:$saturation, V:$value) and secondary color $secondaryColor"
         )
     }

@@ -129,8 +129,10 @@ class MemoryFragmentEditAdapter(
         item: FragmentEditState,
         holder: MemoryFragmentEditViewHolder
     ) {
-        binding.colorExpandedContent.visibility = if (item.isColorExpanded) View.VISIBLE else View.GONE
-        binding.colorChevron.rotation = if (item.isColorExpanded) 90f else 0f
+        binding.colorExpandedContent.visibility =
+            if (item.isColorExpanded) View.VISIBLE else View.GONE
+        binding.colorChevron.rotation =
+            if (item.isColorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
 
         binding.colorHeader.setOnClickListener {
             val pos = holder.bindingAdapterPosition
@@ -141,7 +143,8 @@ class MemoryFragmentEditAdapter(
             }
         }
 
-        val color = ColorUtil.hsvToColor(item.markerHue, item.markerSaturation, item.markerBrightness)
+        val color =
+            ColorUtil.hsvToColor(item.markerHue, item.markerSaturation, item.markerBrightness)
         val colorStateList = ColorStateList.valueOf(color)
 
         binding.colorIndicator.setBackgroundColor(color)
@@ -242,7 +245,8 @@ class MemoryFragmentEditAdapter(
         ColorUtil.HSV_PRESETS.forEach { hsv ->
             val view =
                 ColorUtil.getPresetColorView(binding.root.context, ColorUtil.hsvToColor(*hsv)) {
-                    val pos = if (position != RecyclerView.NO_POSITION) position else return@getPresetColorView
+                    val pos =
+                        if (position != RecyclerView.NO_POSITION) position else return@getPresetColorView
                     val current = fragments[pos]
                     fragments[pos] = current.copy(
                         markerHue = hsv[0],
@@ -333,5 +337,10 @@ class MemoryFragmentEditAdapter(
             }
             updateFragmentsUI()
         }, current.hour, current.minute, true).show()
+    }
+
+    companion object {
+        private const val FACING_RIGHT_ROTATION = 0f
+        private const val FACING_DOWN_ROTATION = 90f
     }
 }

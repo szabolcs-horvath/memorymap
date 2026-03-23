@@ -42,9 +42,9 @@ import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
@@ -361,7 +361,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun hasLocationPermission(): Boolean =
         checkPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) ||
-                checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+            checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {

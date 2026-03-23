@@ -16,7 +16,9 @@ import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMed
 class SelectedMediaAdapter(
     private val currentDeviceId: String?,
     private val onRemove: (Int) -> Unit
-) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(SelectedMedia.SelectedMediaDiffCallback()) {
+) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
+    SelectedMedia.SelectedMediaDiffCallback()
+) {
 
     class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
         RecyclerView.ViewHolder(binding.root)
