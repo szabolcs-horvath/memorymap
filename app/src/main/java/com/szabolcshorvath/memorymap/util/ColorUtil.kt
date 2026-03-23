@@ -46,6 +46,7 @@ object ColorUtil {
 
     @ColorInt
     fun hsvToColor(vararg hsv: Float): Int {
+        @Suppress("MagicNumber")
         check(hsv.size == 3) { "You must provide exactly 3 values for HSV" }
         return hsvToColor(hsv[0], hsv[1], hsv[2])
     }
@@ -59,6 +60,7 @@ object ColorUtil {
 
     @ColorInt
     fun generateColorWithTargetContrast(@ColorInt inputColor: Int, targetContrast: Double): Int {
+        @Suppress("MagicNumber")
         val hsl = FloatArray(3)
         ColorUtils.colorToHSL(inputColor, hsl)
 
@@ -76,7 +78,8 @@ object ColorUtil {
         // targetContrast = (inputLuminance + 0.05) / (resultLuminance + 0.05)
         // resultLuminance = (inputLuminance + 0.05) / targetContrast - 0.05
         val darkerLuminance =
-            (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast - CONTRAST_RATION_CALIBRATION_CONSTANT
+            (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast -
+                CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (darkerLuminance in 0.0..inputLuminance) {
             val candidate = luminanceToColor(hslCopy.copyOf(), darkerLuminance)
@@ -92,7 +95,8 @@ object ColorUtil {
         // targetContrast = (resultLuminance + 0.05) / (inputLuminance + 0.05)
         // resultLuminance = targetContrast * (inputLuminance + 0.05) - 0.05
         val lighterLuminance =
-            targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) - CONTRAST_RATION_CALIBRATION_CONSTANT
+            targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) -
+                CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (lighterLuminance in inputLuminance..1.0) {
             val candidate = luminanceToColor(hslCopy.copyOf(), lighterLuminance)

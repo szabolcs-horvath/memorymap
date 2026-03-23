@@ -104,11 +104,11 @@ object MultiColorMarkerGenerator {
         // Left side curve up to the circle (smooth inward curve)
         pinEssentials.pinPath.cubicTo(
             pinEssentials.centerX,
-            bottomY - pinEssentials.radius * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP1: Pulls up from the tip
+            bottomY - pinEssentials.radius * TAPERED_CURVE_BOTTOM_Y_FACTOR,
             pinEssentials.centerX - pinEssentials.radius,
-            pinEssentials.centerY + pinEssentials.radius * TAPERED_CURVE_CENTER_Y_FACTOR, // CP2: Pulls in towards the circle
+            pinEssentials.centerY + pinEssentials.radius * TAPERED_CURVE_CENTER_Y_FACTOR,
             pinEssentials.centerX - pinEssentials.radius,
-            pinEssentials.centerY // End point at circle edge
+            pinEssentials.centerY
         )
 
         // Top circular part
@@ -125,9 +125,9 @@ object MultiColorMarkerGenerator {
         // Right side curve down to the tip (smooth inward curve)
         pinEssentials.pinPath.cubicTo(
             pinEssentials.centerX + pinEssentials.radius,
-            pinEssentials.centerY + pinEssentials.radius * TAPERED_CURVE_CENTER_Y_FACTOR, // CP1: Pulls in towards the circle
+            pinEssentials.centerY + pinEssentials.radius * TAPERED_CURVE_CENTER_Y_FACTOR,
             pinEssentials.centerX,
-            bottomY - pinEssentials.radius * TAPERED_CURVE_BOTTOM_Y_FACTOR, // CP2: Pulls up from the tip
+            bottomY - pinEssentials.radius * TAPERED_CURVE_BOTTOM_Y_FACTOR,
             pinEssentials.centerX,
             bottomY // End point at tip
         )
