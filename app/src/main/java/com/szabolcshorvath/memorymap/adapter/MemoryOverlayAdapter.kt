@@ -4,19 +4,18 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryOverlayBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
 
 class MemoryOverlayAdapter(
     private val onDetailsClick: (Int) -> Unit
-) : ListAdapter<Markerable, MemoryOverlayAdapter.MemoryOverlayViewHolder>(MarkerableDiffCallback()) {
+) : ListAdapter<Markerable, MemoryOverlayAdapter.MemoryOverlayViewHolder>(Markerable.MarkerableDiffCallback()) {
 
     class MemoryOverlayViewHolder(val binding: ItemMemoryOverlayBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -57,9 +56,9 @@ class MemoryOverlayAdapter(
 
             @Suppress("UNCHECKED_CAST")
             val changes = payloads.first() as Set<String>
-            if (changes.contains(TITLE_DIFF_PAYLOAD)) bindTitle(holder, item)
-            if (changes.contains(DATE_DIFF_PAYLOAD)) bindDate(holder, item)
-            if (changes.contains(COLOR_DIFF_PAYLOAD)) bindColor(holder, item)
+            if (changes.contains(Markerable.TITLE_DIFF_PAYLOAD)) bindTitle(holder, item)
+            if (changes.contains(Markerable.DATE_DIFF_PAYLOAD)) bindDate(holder, item)
+            if (changes.contains(Markerable.COLOR_DIFF_PAYLOAD)) bindColor(holder, item)
         }
     }
 
@@ -79,43 +78,8 @@ class MemoryOverlayAdapter(
             ColorUtil.hsvToColor(
                 item.markerHue ?: DEFAULT_MARKER_HUE,
                 item.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                item.markerValue ?: DEFAULT_MARKER_VALUE
+                item.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
             )
         )
-    }
-
-    private class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
-        override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
-            return oldItem.groupId == newItem.groupId &&
-                    oldItem.latitude == newItem.latitude &&
-                    oldItem.longitude == newItem.longitude
-        }
-
-        override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
-            return oldItem.title == newItem.title &&
-                    oldItem.startDate == newItem.startDate &&
-                    oldItem.endDate == newItem.endDate &&
-                    oldItem.markerHue == newItem.markerHue &&
-                    oldItem.latitude == newItem.latitude &&
-                    oldItem.longitude == newItem.longitude
-        }
-
-        override fun getChangePayload(oldItem: Markerable, newItem: Markerable): Any? {
-            val diff = mutableSetOf<String>()
-            if (oldItem.title != newItem.title) diff.add(TITLE_DIFF_PAYLOAD)
-            if (oldItem.startDate != newItem.startDate || oldItem.endDate != newItem.endDate) {
-                diff.add(
-                    DATE_DIFF_PAYLOAD
-                )
-            }
-            if (oldItem.markerHue != newItem.markerHue) diff.add(COLOR_DIFF_PAYLOAD)
-            return if (diff.isEmpty()) null else diff
-        }
-    }
-
-    companion object {
-        const val TITLE_DIFF_PAYLOAD = "TITLE"
-        const val DATE_DIFF_PAYLOAD = "DATE"
-        const val COLOR_DIFF_PAYLOAD = "COLOR"
     }
 }

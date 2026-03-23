@@ -23,7 +23,7 @@ import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
@@ -345,7 +345,7 @@ class MemoryFragment : Fragment() {
             ColorUtil.hsvToColor(
                 group.markerHue ?: DEFAULT_MARKER_HUE,
                 group.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                group.markerValue ?: DEFAULT_MARKER_VALUE
+                group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
             )
         )
 

@@ -8,7 +8,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
-import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
@@ -31,7 +30,7 @@ class MemoryFragmentEditAdapter(
     private val setActivePickingIndex: (Int) -> Unit,
     private val updateFragmentsUI: () -> Unit
 ) : ListAdapter<FragmentEditState, MemoryFragmentEditAdapter.MemoryFragmentEditViewHolder>(
-    FragmentDiffCallback()
+    FragmentEditState.FragmentDiffCallback()
 ) {
     class MemoryFragmentEditViewHolder(val binding: ItemMemoryFragmentEditBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -67,8 +66,7 @@ class MemoryFragmentEditAdapter(
 
         setupDateTimeSelectors(binding, holder, item)
         updateDateTimeSelectors(binding, item)
-        setupHueSlider(binding, item, holder)
-        setupFragmentPresetColors(binding, holder.bindingAdapterPosition)
+        setupColorSection(binding, item, holder)
     }
 
     private fun setupDateTimeSelectors(
@@ -78,6 +76,7 @@ class MemoryFragmentEditAdapter(
     ) {
         binding.toggleTimeButton.setOnClickListener {
             val pos = holder.bindingAdapterPosition
+            if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
             val current = getItem(pos)
             val newStart =
                 if (!current.isTimeVisible && current.startDate == null) ZonedDateTime.now() else current.startDate
@@ -102,9 +101,11 @@ class MemoryFragmentEditAdapter(
         binding.allDayCheckbox.isChecked = item.isAllDay
         binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
-            val current = getItem(pos)
-            fragments[pos] = current.copy(isAllDay = isChecked)
-            updateFragmentsUI()
+            if (pos != RecyclerView.NO_POSITION) {
+                val current = getItem(pos)
+                fragments[pos] = current.copy(isAllDay = isChecked)
+                updateFragmentsUI()
+            }
         }
         binding.startDateButton.setOnClickListener {
             pickFragmentDate(holder.itemView.context, holder.bindingAdapterPosition, true)
@@ -123,31 +124,85 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun setupHueSlider(
+    private fun setupColorSection(
         binding: ItemMemoryFragmentEditBinding,
         item: FragmentEditState,
         holder: MemoryFragmentEditViewHolder
     ) {
+        binding.colorExpandedContent.visibility = if (item.isColorExpanded) View.VISIBLE else View.GONE
+        binding.colorChevron.rotation = if (item.isColorExpanded) 90f else 0f
+
+        binding.colorHeader.setOnClickListener {
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                val current = getItem(pos)
+                fragments[pos] = current.copy(isColorExpanded = !current.isColorExpanded)
+                updateFragmentsUI()
+            }
+        }
+
+        val color = ColorUtil.hsvToColor(item.markerHue, item.markerSaturation, item.markerBrightness)
+        val colorStateList = ColorStateList.valueOf(color)
+
+        binding.colorIndicator.setBackgroundColor(color)
+
         binding.hueSlider.value = item.markerHue
-        binding.hueSlider.thumbTintList =
-            ColorStateList.valueOf(
-                ColorUtil.hsvToColor(
-                    item.markerHue,
-                    item.markerSaturation,
-                    item.markerValue
-                )
-            )
+        binding.saturationSlider.value = item.markerSaturation
+        binding.brightnessSlider.value = item.markerBrightness
+
+        binding.hueSlider.thumbTintList = colorStateList
+        binding.saturationSlider.thumbTintList = colorStateList
+        binding.brightnessSlider.thumbTintList = colorStateList
 
         binding.hueSlider.clearOnSliderTouchListeners()
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
-                val pos = holder.bindingAdapterPosition
-                val current = getItem(pos)
-                fragments[pos] = current.copy(markerHue = value)
-                binding.hueSlider.thumbTintList =
-                    ColorStateList.valueOf(ColorUtil.hueToColor(value))
+                updateFragmentColor(binding, holder.bindingAdapterPosition, h = value)
             }
         }
+
+        binding.saturationSlider.clearOnSliderTouchListeners()
+        binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                updateFragmentColor(binding, holder.bindingAdapterPosition, s = value)
+            }
+        }
+
+        binding.brightnessSlider.clearOnSliderTouchListeners()
+        binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                updateFragmentColor(binding, holder.bindingAdapterPosition, v = value)
+            }
+        }
+
+        setupFragmentPresetColors(binding, holder.bindingAdapterPosition)
+    }
+
+    private fun updateFragmentColor(
+        binding: ItemMemoryFragmentEditBinding,
+        position: Int,
+        h: Float? = null,
+        s: Float? = null,
+        v: Float? = null
+    ) {
+        if (position == RecyclerView.NO_POSITION) return
+        val current = fragments[position]
+        val newH = h ?: current.markerHue
+        val newS = s ?: current.markerSaturation
+        val newV = v ?: current.markerBrightness
+
+        fragments[position] = current.copy(
+            markerHue = newH,
+            markerSaturation = newS,
+            markerBrightness = newV
+        )
+
+        val color = ColorUtil.hsvToColor(newH, newS, newV)
+        binding.colorIndicator.setBackgroundColor(color)
+        val colorStateList = ColorStateList.valueOf(color)
+        binding.hueSlider.thumbTintList = colorStateList
+        binding.saturationSlider.thumbTintList = colorStateList
+        binding.brightnessSlider.thumbTintList = colorStateList
     }
 
     private fun updateDateTimeSelectors(
@@ -184,17 +239,24 @@ class MemoryFragmentEditAdapter(
 
     private fun setupFragmentPresetColors(binding: ItemMemoryFragmentEditBinding, position: Int) {
         binding.presetColorsLayout.removeAllViews()
-        ColorUtil.HUE_PRESETS.forEach { hue ->
-            val view = ColorUtil.getPresetColorView(binding.root.context, hue) {
-                val current = getItem(position)
-                fragments[position] = current.copy(markerHue = hue)
-                updateFragmentsUI()
-            }
+        ColorUtil.HSV_PRESETS.forEach { hsv ->
+            val view =
+                ColorUtil.getPresetColorView(binding.root.context, ColorUtil.hsvToColor(*hsv)) {
+                    val pos = if (position != RecyclerView.NO_POSITION) position else return@getPresetColorView
+                    val current = fragments[pos]
+                    fragments[pos] = current.copy(
+                        markerHue = hsv[0],
+                        markerSaturation = hsv[1],
+                        markerBrightness = hsv[2]
+                    )
+                    updateFragmentsUI()
+                }
             binding.presetColorsLayout.addView(view)
         }
     }
 
     private fun pickFragmentDateRange(index: Int) {
+        if (index == RecyclerView.NO_POSITION) return
         val item = fragments[index]
         val builder =
             MaterialDatePicker.Builder.dateRangePicker().setTitleText("Select Date Range")
@@ -222,6 +284,7 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun pickFragmentDate(context: Context, index: Int, isStart: Boolean) {
+        if (index == RecyclerView.NO_POSITION) return
         val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
         DatePickerDialog(context, { _, year, month, dayOfMonth ->
@@ -248,6 +311,7 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun pickFragmentTime(context: Context, index: Int, isStart: Boolean) {
+        if (index == RecyclerView.NO_POSITION) return
         val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
         TimePickerDialog(context, { _, hourOfDay, minute ->
@@ -269,13 +333,5 @@ class MemoryFragmentEditAdapter(
             }
             updateFragmentsUI()
         }, current.hour, current.minute, true).show()
-    }
-
-    class FragmentDiffCallback : DiffUtil.ItemCallback<FragmentEditState>() {
-        override fun areItemsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) =
-            oldItem.localId == newItem.localId
-
-        override fun areContentsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) =
-            oldItem == newItem
     }
 }

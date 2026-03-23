@@ -41,7 +41,7 @@ data class MemoryFragment(
     @ColumnInfo(defaultValue = "1.0")
     override val markerSaturation: Float? = 1.0f,
     @ColumnInfo(defaultValue = "1.0")
-    override val markerValue: Float? = 1.0f,
+    override val markerBrightness: Float? = 1.0f,
     val order: Int? = null
 ) : Markerable {
     @Ignore

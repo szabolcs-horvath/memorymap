@@ -3,9 +3,11 @@ package com.szabolcshorvath.memorymap.data
 import android.content.Context
 import androidx.room.AutoMigration
 import androidx.room.Database
+import androidx.room.RenameColumn
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
@@ -22,7 +24,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 10, to = 11),
         AutoMigration(from = 11, to = 12),
         AutoMigration(from = 12, to = 13),
-        AutoMigration(from = 13, to = 14)
+        AutoMigration(from = 13, to = 14),
+        AutoMigration(from = 14, to = 15, spec = AutoMigrationSpecFrom14To15::class)
     ],
     exportSchema = true
 )
@@ -31,7 +34,7 @@ abstract class StoryMapDatabase : RoomDatabase() {
     abstract fun memoryGroupDao(): MemoryGroupDao
 
     companion object {
-        const val DB_VERSION = 14
+        const val DB_VERSION = 15
 
         @Volatile
         private var INSTANCE: StoryMapDatabase? = null
@@ -90,3 +93,17 @@ abstract class StoryMapDatabase : RoomDatabase() {
         }
     }
 }
+
+@RenameColumn.Entries(
+    RenameColumn(
+        tableName = "memory_groups",
+        fromColumnName = "markerValue",
+        toColumnName = "markerBrightness",
+    ),
+    RenameColumn(
+        tableName = "memory_fragments",
+        fromColumnName = "markerValue",
+        toColumnName = "markerBrightness",
+    )
+)
+class AutoMigrationSpecFrom14To15 : AutoMigrationSpec

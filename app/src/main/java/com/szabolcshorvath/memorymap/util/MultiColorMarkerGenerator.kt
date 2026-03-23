@@ -13,9 +13,9 @@ import androidx.core.graphics.withClip
 
 object MultiColorMarkerGenerator {
     private const val CACHE_MAX_SIZE = 50
-    private const val MARKER_SIZE_DP = 30.0f
+    private const val MARKER_SIZE_DP = 25.0f
     private const val BORDER_WIDTH_DP = 1.0f
-    private const val TEXT_SIZE_SP = 14.0f
+    private const val TEXT_SIZE_SP = 12.0f
     private const val TEXT_OUTLINE_WIDTH_DP = 1.5f
     private const val WIDTH_TO_HEIGHT_SCALING_FACTOR = 1.5f
     private const val DEGREES_360 = 360.0f

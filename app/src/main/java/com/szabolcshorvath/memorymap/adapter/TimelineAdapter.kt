@@ -13,15 +13,15 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBinding
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import java.time.LocalDate
 
 class TimelineAdapter(
     private val onMemoryClick: (MemoryGroup) -> Unit
-) : ListAdapter<TimelineAdapter.TimelineItem, RecyclerView.ViewHolder>(TimelineDiffCallback()) {
+) : ListAdapter<TimelineAdapter.TimelineItem, RecyclerView.ViewHolder>(TimelineItem.TimelineDiffCallback()) {
 
     sealed class TimelineItem {
         data class Memory(val memoryGroup: MemoryGroup) : TimelineItem()
@@ -31,6 +31,16 @@ class TimelineAdapter(
             return when (this) {
                 is Memory -> "memory_${memoryGroup.id}"
                 is DateSeparator -> "date_$date"
+            }
+        }
+
+        class TimelineDiffCallback : DiffUtil.ItemCallback<TimelineItem>() {
+            override fun areItemsTheSame(oldItem: TimelineItem, newItem: TimelineItem): Boolean {
+                return oldItem.getItemId() == newItem.getItemId()
+            }
+
+            override fun areContentsTheSame(oldItem: TimelineItem, newItem: TimelineItem): Boolean {
+                return oldItem == newItem
             }
         }
     }
@@ -82,7 +92,7 @@ class TimelineAdapter(
                 ColorUtil.hsvToColor(
                     memoryGroup.markerHue ?: DEFAULT_MARKER_HUE,
                     memoryGroup.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    memoryGroup.markerValue ?: DEFAULT_MARKER_VALUE
+                    memoryGroup.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                 )
             )
 
@@ -158,16 +168,6 @@ class TimelineAdapter(
             }
         }
         return -1
-    }
-
-    private class TimelineDiffCallback : DiffUtil.ItemCallback<TimelineItem>() {
-        override fun areItemsTheSame(oldItem: TimelineItem, newItem: TimelineItem): Boolean {
-            return oldItem.getItemId() == newItem.getItemId()
-        }
-
-        override fun areContentsTheSame(oldItem: TimelineItem, newItem: TimelineItem): Boolean {
-            return oldItem == newItem
-        }
     }
 
     companion object {

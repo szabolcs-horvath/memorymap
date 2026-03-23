@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.data
 
 import android.location.Location
+import androidx.recyclerview.widget.DiffUtil
 import java.time.ZonedDateTime
 
 interface Markerable {
@@ -15,7 +16,7 @@ interface Markerable {
     val isAllDay: Boolean
     val markerHue: Float?
     val markerSaturation: Float?
-    val markerValue: Float?
+    val markerBrightness: Float?
 
     fun getFormattedDate(): String?
 
@@ -38,7 +39,52 @@ interface Markerable {
     private fun placeAndAddressPresentForBoth(other: Markerable): Boolean =
         placeName != null && address != null && other.placeName != null && other.address != null
 
+    class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
+        override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
+            return oldItem.groupId == newItem.groupId &&
+                    oldItem.latitude == newItem.latitude &&
+                    oldItem.longitude == newItem.longitude
+        }
+
+        override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
+            return oldItem.title == newItem.title &&
+                    oldItem.startDate == newItem.startDate &&
+                    oldItem.endDate == newItem.endDate &&
+                    oldItem.markerHue == newItem.markerHue &&
+                    oldItem.markerSaturation == newItem.markerSaturation &&
+                    oldItem.markerBrightness == newItem.markerBrightness &&
+                    oldItem.latitude == newItem.latitude &&
+                    oldItem.longitude == newItem.longitude
+        }
+
+        override fun getChangePayload(oldItem: Markerable, newItem: Markerable): Any? {
+            val diff = mutableSetOf<String>()
+
+            if (oldItem.title != newItem.title) {
+                diff.add(TITLE_DIFF_PAYLOAD)
+            }
+
+            if (oldItem.startDate != newItem.startDate ||
+                oldItem.endDate != newItem.endDate
+            ) {
+                diff.add(DATE_DIFF_PAYLOAD)
+            }
+
+            if (oldItem.markerHue != newItem.markerHue ||
+                oldItem.markerSaturation != newItem.markerSaturation ||
+                oldItem.markerBrightness != newItem.markerBrightness
+            ) {
+                diff.add(COLOR_DIFF_PAYLOAD)
+            }
+
+            return if (diff.isEmpty()) null else diff
+        }
+    }
+
     companion object {
         const val SAME_LOCATION_METERS_THRESHOLD = 20.0f
+        const val TITLE_DIFF_PAYLOAD = "TITLE"
+        const val DATE_DIFF_PAYLOAD = "DATE"
+        const val COLOR_DIFF_PAYLOAD = "COLOR"
     }
 }

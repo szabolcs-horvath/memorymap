@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.fragment
 
+import android.animation.ValueAnimator
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
@@ -13,6 +14,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +22,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.withTransaction
@@ -34,9 +37,9 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
@@ -50,6 +53,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
+import kotlin.math.roundToInt
 
 class AddMemoryGroupFragment : Fragment() {
 
@@ -60,7 +64,15 @@ class AddMemoryGroupFragment : Fragment() {
         val uri: Uri,
         val type: MediaType,
         val deviceId: String
-    )
+    ) {
+        class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
+            override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
+                oldItem.uri == newItem.uri
+
+            override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
+                oldItem == newItem
+        }
+    }
 
     data class FragmentEditState(
         val id: Int = 0,
@@ -74,10 +86,21 @@ class AddMemoryGroupFragment : Fragment() {
         val isAllDay: Boolean = false,
         val markerHue: Float = 0.0f,
         val markerSaturation: Float = 1.0f,
-        val markerValue: Float = 1.0f,
+        val markerBrightness: Float = 1.0f,
         val isTimeVisible: Boolean = false,
+        val isColorExpanded: Boolean = false,
         val order: Int? = null
-    )
+    ) {
+        class FragmentDiffCallback : DiffUtil.ItemCallback<FragmentEditState>() {
+            override fun areItemsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) =
+                oldItem.localId == newItem.localId
+
+            override fun areContentsTheSame(
+                oldItem: FragmentEditState,
+                newItem: FragmentEditState
+            ) = oldItem == newItem
+        }
+    }
 
     private val selectedMedia = mutableListOf<SelectedMedia>()
     private val fragments = mutableListOf<FragmentEditState>()
@@ -92,7 +115,7 @@ class AddMemoryGroupFragment : Fragment() {
     private var isAllDay = false
     private var markerHue = DEFAULT_MARKER_HUE
     private var markerSaturation = DEFAULT_MARKER_SATURATION
-    private var markerValue = DEFAULT_MARKER_VALUE
+    private var markerBrightness = DEFAULT_MARKER_BRIGHTNESS
 
     private var listener: AddMemoryListener? = null
     private lateinit var backupManager: BackupManager
@@ -102,6 +125,7 @@ class AddMemoryGroupFragment : Fragment() {
     private var currentDeviceId: String? = null
     private var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     private var fragmentsExpanded = true
+    private var colorExpanded = false
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
@@ -178,8 +202,8 @@ class AddMemoryGroupFragment : Fragment() {
             updateLocationText()
             updateDateTimeButtons()
             setupPresetColors()
-            updateHueUI()
             updateFragmentsUI()
+            updateColorUI()
         }
 
         binding.selectLocationButton.setOnClickListener {
@@ -198,10 +222,26 @@ class AddMemoryGroupFragment : Fragment() {
         binding.endTimeButton.setOnClickListener { pickTime(false) }
         binding.dateRangeButton.setOnClickListener { pickDateRange() }
 
+        binding.colorHeader.setOnClickListener { toggleColor() }
+
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 markerHue = value
-                updateHueUI()
+                updateColorUI()
+            }
+        }
+
+        binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                markerSaturation = value
+                updateColorUI()
+            }
+        }
+
+        binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                markerBrightness = value
+                updateColorUI()
             }
         }
 
@@ -261,6 +301,97 @@ class AddMemoryGroupFragment : Fragment() {
             .start()
     }
 
+    private fun toggleColor() {
+        colorExpanded = !colorExpanded
+        updateColorUI()
+    }
+
+    private fun updateColorUI(animate: Boolean = false) {
+        binding.colorExpandedContent.visibility =
+            if (colorExpanded) View.VISIBLE else View.GONE
+        binding.colorChevron.animate()
+            .rotation(if (colorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
+            .start()
+
+        val color = ColorUtil.hsvToColor(markerHue, markerSaturation, markerBrightness)
+        val colorStateList = ColorStateList.valueOf(color)
+
+        if (animate) {
+            animateSlidersToTargets()
+        } else {
+            binding.hueSlider.value = markerHue
+            binding.saturationSlider.value = markerSaturation
+            binding.brightnessSlider.value = markerBrightness
+
+            binding.hueSlider.thumbTintList = colorStateList
+            binding.saturationSlider.thumbTintList = colorStateList
+            binding.brightnessSlider.thumbTintList = colorStateList
+
+            binding.colorIndicator.setBackgroundColor(color)
+        }
+    }
+
+    private fun animateSlidersToTargets() {
+        val startH = binding.hueSlider.value
+        val startS = binding.saturationSlider.value
+        val startV = binding.brightnessSlider.value
+
+        // Use a single animator from 0 to 1 (representing 0% to 100% of the transition)
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = COLOR_CHANGE_ANIMATION_DURATION
+            interpolator = AccelerateDecelerateInterpolator()
+
+            addUpdateListener { animator ->
+                val fraction = animator.animatedFraction
+
+                // Calculate current values based on the animation progress
+                val currentH = lerpWithStep(
+                    startH,
+                    markerHue,
+                    fraction,
+                    binding.hueSlider.stepSize
+                )
+                val currentS = lerpWithStep(
+                    startS,
+                    markerSaturation,
+                    fraction,
+                    binding.saturationSlider.stepSize
+                )
+                val currentV = lerpWithStep(
+                    startV,
+                    markerBrightness,
+                    fraction,
+                    binding.brightnessSlider.stepSize
+                )
+
+                binding.hueSlider.value = currentH
+                binding.saturationSlider.value = currentS
+                binding.brightnessSlider.value = currentV
+
+                val currentColor = ColorUtil.hsvToColor(currentH, currentS, currentV)
+                binding.colorIndicator.setBackgroundColor(currentColor)
+
+                val currentStateList = ColorStateList.valueOf(currentColor)
+                binding.hueSlider.thumbTintList = currentStateList
+                binding.saturationSlider.thumbTintList = currentStateList
+                binding.brightnessSlider.thumbTintList = currentStateList
+            }
+            start()
+        }
+    }
+
+    /**
+     * Helper to calculate Linear Interpolation while respecting step size
+     */
+    private fun lerpWithStep(start: Float, end: Float, fraction: Float, stepSize: Float): Float {
+        val rawValue = start + (end - start) * fraction
+        return if (stepSize > 0) {
+            ((rawValue / stepSize).roundToInt() * stepSize)
+        } else {
+            rawValue
+        }
+    }
+
     private fun addFragment() {
         fragments.add(
             FragmentEditState(
@@ -270,7 +401,7 @@ class AddMemoryGroupFragment : Fragment() {
                 address = address,
                 markerHue = markerHue,
                 markerSaturation = markerSaturation,
-                markerValue = markerValue
+                markerBrightness = markerBrightness
             )
         )
         if (!fragmentsExpanded) toggleFragments()
@@ -295,21 +426,15 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun setupPresetColors() {
         binding.presetColorsLayout.removeAllViews()
-        ColorUtil.HUE_PRESETS.forEach { hue ->
-            val view = ColorUtil.getPresetColorView(requireContext(), hue) {
-                markerHue = hue
-                updateHueUI()
+        ColorUtil.HSV_PRESETS.forEach { hsv ->
+            val view = ColorUtil.getPresetColorView(requireContext(), ColorUtil.hsvToColor(*hsv)) {
+                markerHue = hsv[0]
+                markerSaturation = hsv[1]
+                markerBrightness = hsv[2]
+                updateColorUI(animate = true)
             }
             binding.presetColorsLayout.addView(view)
         }
-    }
-
-    private fun updateHueUI() {
-        val color = ColorUtil.hsvToColor(markerHue, markerSaturation, markerValue)
-        val colorStateList = ColorStateList.valueOf(color)
-
-        binding.hueSlider.value = markerHue
-        binding.hueSlider.thumbTintList = colorStateList
     }
 
     private fun showClearConfirmationDialog() {
@@ -336,13 +461,16 @@ class AddMemoryGroupFragment : Fragment() {
         startDateTime = ZonedDateTime.now()
         endDateTime = ZonedDateTime.now().plusHours(1)
         markerHue = DEFAULT_MARKER_HUE
+        markerSaturation = DEFAULT_MARKER_SATURATION
+        markerBrightness = DEFAULT_MARKER_BRIGHTNESS
         updateDateTimeButtons()
-        updateHueUI()
         selectedMedia.clear()
         updateMediaUI()
         fragments.clear()
         fragmentsExpanded = true
         updateFragmentsUI()
+        colorExpanded = false
+        updateColorUI()
 
         binding.titleInput.text?.clear()
         binding.descriptionInput.text?.clear()
@@ -391,6 +519,9 @@ class AddMemoryGroupFragment : Fragment() {
                     startDateTime = group.startDate
                     endDateTime = group.endDate
                     markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
+                    markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
+                    markerBrightness =
+                        group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
 
                     binding.titleInput.setText(group.title)
                     binding.descriptionInput.setText(group.description)
@@ -420,8 +551,9 @@ class AddMemoryGroupFragment : Fragment() {
                                 isAllDay = it.isAllDay,
                                 markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
                                 markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                                markerValue = it.markerValue ?: DEFAULT_MARKER_VALUE,
+                                markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
                                 isTimeVisible = it.startDate != null,
+                                isColorExpanded = false,
                                 order = it.order
                             )
                         }
@@ -431,7 +563,7 @@ class AddMemoryGroupFragment : Fragment() {
 
                     updateLocationText()
                     updateDateTimeButtons()
-                    updateHueUI()
+                    updateColorUI()
                     binding.saveButton.text = "Update Memory"
                 }
             }
@@ -639,7 +771,9 @@ class AddMemoryGroupFragment : Fragment() {
         startDate = effectiveStart,
         endDate = effectiveEnd,
         isAllDay = isAllDay,
-        markerHue = markerHue
+        markerHue = markerHue,
+        markerSaturation = markerSaturation,
+        markerBrightness = markerBrightness
     )
 
     private suspend fun saveMemoryGroup(db: StoryMapDatabase, group: MemoryGroup): Long {
@@ -730,6 +864,8 @@ class AddMemoryGroupFragment : Fragment() {
                 endDate = fragmentEnd,
                 isAllDay = f.isAllDay && saveTime,
                 markerHue = f.markerHue,
+                markerSaturation = f.markerSaturation,
+                markerBrightness = f.markerBrightness,
                 order = index + 1
             )
         }
@@ -745,5 +881,6 @@ class AddMemoryGroupFragment : Fragment() {
         const val TAG = "AddMemoryGroupFragment"
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
+        private const val COLOR_CHANGE_ANIMATION_DURATION = 300L
     }
 }

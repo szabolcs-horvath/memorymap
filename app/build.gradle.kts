@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.robolectric.extension.gradle.plugin)
 }
 
 val localProperties = Properties()
@@ -33,6 +34,8 @@ kotlin {
             versionName = "Sokkal többre vagy képes, mint gondolod!"
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+            manifestPlaceholders["MAPS_API_KEY"] = System.getenv("MAPS_API_KEY") ?: ""
 
             val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
             buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
@@ -94,8 +97,11 @@ kotlin {
         }
 
         testOptions {
-            unitTests.all {
-                it.useJUnitPlatform()
+            unitTests {
+                isIncludeAndroidResources = true
+                all {
+                    it.useJUnitPlatform()
+                }
             }
         }
     }
@@ -150,6 +156,8 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockk)
+    testImplementation(libs.robolectric)
     testRuntimeOnly(libs.junit.platform.launcher)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

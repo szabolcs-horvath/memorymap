@@ -12,7 +12,7 @@ import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -51,7 +51,7 @@ class MemoryFragmentAdapter(
                 ColorUtil.hsvToColor(
                     fragment.markerHue ?: DEFAULT_MARKER_HUE,
                     fragment.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    fragment.markerValue ?: DEFAULT_MARKER_VALUE
+                    fragment.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                 )
             )
 

@@ -23,12 +23,14 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.AdvancedMarkerOptions
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.R
@@ -42,7 +44,7 @@ import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_VALUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
@@ -526,7 +528,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         ColorUtil.hsvToColor(
                             it.markerHue ?: DEFAULT_MARKER_HUE,
                             it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                            it.markerValue ?: DEFAULT_MARKER_VALUE
+                            it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                         )
                     }
                     .mapValues { it.value.size }
@@ -633,7 +635,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     ColorUtil.hsvToColor(
                         it.markerHue ?: DEFAULT_MARKER_HUE,
                         it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                        it.markerValue ?: DEFAULT_MARKER_VALUE
+                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                     )
                 }
                     .sorted()
@@ -648,13 +650,25 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     .anchor(MARKER_ANCHOR_U, MARKER_ANCHOR_V)
             )
         } else {
+            val color = ColorUtil.hsvToColor(
+                representative.markerHue ?: DEFAULT_MARKER_HUE,
+                representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+            )
+            val contrastColor =
+                ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
+
             googleMap.addMarker(
-                MarkerOptions()
+                AdvancedMarkerOptions()
                     .position(position)
                     .title(markerTitle)
                     .icon(
-                        BitmapDescriptorFactory.defaultMarker(
-                            ColorUtil.normalizeHue(representative.markerHue ?: DEFAULT_MARKER_HUE)
+                        BitmapDescriptorFactory.fromPinConfig(
+                            PinConfig.builder()
+                                .setBackgroundColor(color)
+                                .setGlyph(PinConfig.Glyph(contrastColor))
+                                .setBorderColor(contrastColor)
+                                .build()
                         )
                     )
             )
@@ -743,5 +757,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val GOOGLE_LOGO_HEIGHT = 25
         private const val MARKER_ANCHOR_U = 0.5f
         private const val MARKER_ANCHOR_V = 1.0f
+        private const val TARGET_CONTRAST_FOR_MARKER_COLORS = 2.0
     }
 }

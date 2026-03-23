@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
@@ -17,9 +16,7 @@ import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMed
 class SelectedMediaAdapter(
     private val currentDeviceId: String?,
     private val onRemove: (Int) -> Unit
-) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
-    SelectedMediaDiffCallback()
-) {
+) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(SelectedMedia.SelectedMediaDiffCallback()) {
 
     class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -55,13 +52,5 @@ class SelectedMediaAdapter(
         }
 
         holder.binding.removeButton.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
-    }
-
-    private class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
-        override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
-            oldItem.uri == newItem.uri
-
-        override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
-            oldItem == newItem
     }
 }
