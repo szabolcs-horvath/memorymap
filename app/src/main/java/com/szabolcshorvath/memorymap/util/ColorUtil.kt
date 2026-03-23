@@ -82,7 +82,7 @@ object ColorUtil {
         // resultLuminance = (inputLuminance + 0.05) / targetContrast - 0.05
         val darkerLuminance =
             (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast -
-                    CONTRAST_RATION_CALIBRATION_CONSTANT
+                CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (darkerLuminance in 0.0..inputLuminance) {
             val candidate = luminanceToColor(hsl.copyOf(), darkerLuminance)
@@ -99,7 +99,7 @@ object ColorUtil {
         // resultLuminance = targetContrast * (inputLuminance + 0.05) - 0.05
         val lighterLuminance =
             targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) -
-                    CONTRAST_RATION_CALIBRATION_CONSTANT
+                CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (lighterLuminance in inputLuminance..1.0) {
             val candidate = luminanceToColor(hsl.copyOf(), lighterLuminance)
