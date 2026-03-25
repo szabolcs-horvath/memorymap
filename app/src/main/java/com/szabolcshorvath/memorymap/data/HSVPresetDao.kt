@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.data
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -16,6 +17,9 @@ interface HSVPresetDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPresets(presets: List<HSVPreset>)
+
+    @Delete
+    suspend fun deletePreset(preset: HSVPreset)
 
     @Query("SELECT COUNT(*) FROM hsv_presets")
     suspend fun getCount(): Int

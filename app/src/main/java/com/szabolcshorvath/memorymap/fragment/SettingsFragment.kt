@@ -215,7 +215,9 @@ class SettingsFragment : Fragment() {
                     withContext(Dispatchers.Main) {
                         originalPreset = preset.copy()
                         editingPreset = preset.copy()
-                        binding.btnSavePresets.isEnabled = false
+//                        binding.btnSavePresets.isEnabled = false
+//                        binding.btnUndoPresets.isEnabled = false
+                        checkForChanges()
                         Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -227,6 +229,77 @@ class SettingsFragment : Fragment() {
             updatePresetCircle(editingPreset!!)
             updateSliders(editingPreset!!)
             checkForChanges()
+        }
+
+        binding.btnAddPreset.setOnClickListener {
+            addNewPreset()
+        }
+
+        binding.btnDeletePreset.setOnClickListener {
+            showDeletePresetConfirmation()
+        }
+    }
+
+    private fun addNewPreset() {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val newPreset = HSVPreset(
+                hue = ColorUtil.DEFAULT_MARKER_HUE,
+                saturation = ColorUtil.DEFAULT_MARKER_SATURATION,
+                brightness = ColorUtil.DEFAULT_MARKER_BRIGHTNESS
+            )
+            db.hsvPresetDao().insertPresets(listOf(newPreset))
+
+            // We need to find the newly created preset to select it. 
+            // Since ID is auto-generated, we get all and pick the last one.
+            val allPresets = db.hsvPresetDao().getAllPresets()
+            val latest = allPresets.lastOrNull()
+
+            withContext(Dispatchers.Main) {
+                if (latest != null) {
+                    // Delay slightly to ensure the view is created in the horizontal scroll view
+                    binding.presetColorsLayout.post {
+                        val view = binding.presetColorsLayout.findViewWithTag<View>(latest.id)
+                        if (view != null) {
+                            selectPreset(latest, view)
+                            binding.presetColorsScrollView.fullScroll(View.FOCUS_RIGHT)
+                        } else {
+                            // If view is not yet there, we'll try to select it via the observer 
+                            // by setting the editingPreset ID.
+                            editingPreset = latest
+                            originalPreset = latest
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showDeletePresetConfirmation() {
+        val presetToDelete = editingPreset ?: return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Delete Preset")
+            .setMessage("Are you sure you want to delete this color preset?")
+            .setPositiveButton("Delete") { _, _ ->
+                deletePreset(presetToDelete)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun deletePreset(preset: HSVPreset) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            db.hsvPresetDao().deletePreset(preset)
+            withContext(Dispatchers.Main) {
+                if (editingPreset?.id == preset.id) {
+                    editingPreset = null
+                    originalPreset = null
+                    binding.btnDeletePreset.visibility = View.GONE
+                    binding.colorIndicator.setBackgroundColor(Color.TRANSPARENT)
+                }
+                Toast.makeText(requireContext(), "Preset deleted", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -256,6 +329,11 @@ class SettingsFragment : Fragment() {
                         val callback = { view: View ->
                             val isSelected = editingPreset?.id == preset.id
                             updateCircleBackground(view, preset, isSelected = isSelected)
+                            if (isSelected) {
+                                // Ensure sliders match if it was selected by addNewPreset before view was ready
+                                updateSliders(preset)
+                                binding.btnDeletePreset.visibility = View.VISIBLE
+                            }
                         }
                         val view = ColorUtil.getPresetColorView(
                             requireContext(),
@@ -265,6 +343,12 @@ class SettingsFragment : Fragment() {
                         )
                         view.tag = preset.id
                         binding.presetColorsLayout.addView(view)
+                    }
+
+                    if (editingPreset != null && presets.none { it.id == editingPreset?.id }) {
+                        editingPreset = null
+                        originalPreset = null
+                        binding.btnDeletePreset.visibility = View.GONE
                     }
                 }
             }
@@ -318,6 +402,7 @@ class SettingsFragment : Fragment() {
         updateSliders(preset)
         binding.btnSavePresets.isEnabled = false
         binding.btnUndoPresets.isEnabled = false
+        binding.btnDeletePreset.visibility = View.VISIBLE
     }
 
     private fun updatePresetCircle(preset: HSVPreset) {
