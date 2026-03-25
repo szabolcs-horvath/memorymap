@@ -11,6 +11,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryListener
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.FragmentEditState
@@ -32,6 +33,8 @@ class MemoryFragmentEditAdapter(
 ) : ListAdapter<FragmentEditState, MemoryFragmentEditAdapter.MemoryFragmentEditViewHolder>(
     FragmentEditState.FragmentDiffCallback()
 ) {
+    private var hsvPresets: List<HSVPreset> = emptyList()
+
     class MemoryFragmentEditViewHolder(val binding: ItemMemoryFragmentEditBinding) :
         RecyclerView.ViewHolder(binding.root)
 
@@ -67,6 +70,11 @@ class MemoryFragmentEditAdapter(
         setupDateTimeSelectors(binding, holder, item)
         updateDateTimeSelectors(binding, item)
         setupColorSection(binding, item, holder)
+    }
+
+    fun setHSVPresets(presets: List<HSVPreset>) {
+        this.hsvPresets = presets
+        notifyItemRangeChanged(0, itemCount)
     }
 
     private fun setupDateTimeSelectors(
@@ -242,16 +250,19 @@ class MemoryFragmentEditAdapter(
 
     private fun setupFragmentPresetColors(binding: ItemMemoryFragmentEditBinding, position: Int) {
         binding.presetColorsLayout.removeAllViews()
-        ColorUtil.HSV_PRESETS.forEach { hsv ->
+        hsvPresets.forEach { preset ->
             val view =
-                ColorUtil.getPresetColorView(binding.root.context, ColorUtil.hsvToColor(*hsv)) {
+                ColorUtil.getPresetColorView(
+                    binding.root.context,
+                    ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
+                ) {
                     val pos =
                         if (position != RecyclerView.NO_POSITION) position else return@getPresetColorView
                     val current = fragments[pos]
                     fragments[pos] = current.copy(
-                        markerHue = hsv[0],
-                        markerSaturation = hsv[1],
-                        markerBrightness = hsv[2]
+                        markerHue = preset.hue,
+                        markerSaturation = preset.saturation,
+                        markerBrightness = preset.brightness
                     )
                     updateFragmentsUI()
                 }

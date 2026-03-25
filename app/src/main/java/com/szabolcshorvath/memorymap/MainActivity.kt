@@ -17,6 +17,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.StoryMapDatabase
@@ -29,6 +30,7 @@ import com.szabolcshorvath.memorymap.fragment.MemoryPagerFragment
 import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
+import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
@@ -248,6 +250,7 @@ class MainActivity :
                     launch {
                         LocalMediaUtil.verifyAndFixMediaItems(applicationContext)
                     }
+                    dataStore.edit { it[LAST_APP_VERSION] = currentVersion }
                 }
 
                 if (isFirstRun) {
@@ -255,9 +258,22 @@ class MainActivity :
                     dataStore.edit { it[LAST_APP_VERSION] = currentVersion }
                     dataStore.edit { it[IS_FIRST_RUN] = false }
                 }
+                withContext(Dispatchers.IO) {
+                    initializeHSVPresetsIfEmpty()
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to check app status", e)
             }
+        }
+    }
+
+    private suspend fun initializeHSVPresetsIfEmpty() {
+        val db = StoryMapDatabase.getDatabase(applicationContext)
+        if (db.hsvPresetDao().getCount() == 0) {
+            val defaultPresets = ColorUtil.DEFAULT_HSV_PRESETS.map { hsv ->
+                HSVPreset(hue = hsv[0], saturation = hsv[1], brightness = hsv[2])
+            }
+            db.hsvPresetDao().insertPresets(defaultPresets)
         }
     }
 

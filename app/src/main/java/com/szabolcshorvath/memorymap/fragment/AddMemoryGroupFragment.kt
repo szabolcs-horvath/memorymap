@@ -30,6 +30,7 @@ import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
@@ -201,7 +202,7 @@ class AddMemoryGroupFragment : Fragment() {
             setupRecyclerViews()
             updateLocationText()
             updateDateTimeButtons()
-            setupPresetColors()
+            loadHSVPresets()
             updateFragmentsUI()
             updateColorUI()
         }
@@ -424,13 +425,25 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
-    private fun setupPresetColors() {
+    private suspend fun loadHSVPresets() {
+        val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+        val presets = withContext(Dispatchers.IO) {
+            db.hsvPresetDao().getAllPresets()
+        }
+        setupPresetColors(presets)
+        fragmentsAdapter.setHSVPresets(presets)
+    }
+
+    private fun setupPresetColors(presets: List<HSVPreset>) {
         binding.presetColorsLayout.removeAllViews()
-        ColorUtil.HSV_PRESETS.forEach { hsv ->
-            val view = ColorUtil.getPresetColorView(requireContext(), ColorUtil.hsvToColor(*hsv)) {
-                markerHue = hsv[0]
-                markerSaturation = hsv[1]
-                markerBrightness = hsv[2]
+        presets.forEach { preset ->
+            val view = ColorUtil.getPresetColorView(
+                requireContext(),
+                ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
+            ) {
+                markerHue = preset.hue
+                markerSaturation = preset.saturation
+                markerBrightness = preset.brightness
                 updateColorUI(animate = true)
             }
             binding.presetColorsLayout.addView(view)
