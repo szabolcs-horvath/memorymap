@@ -1,6 +1,9 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -32,8 +35,11 @@ import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.data.HSVPreset
+import com.szabolcshorvath.memorymap.data.StoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
+import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +58,10 @@ class SettingsFragment : Fragment() {
     private lateinit var backupAdapter: BackupAdapter
     private var pendingRestoreFile: DriveFile? = null
     private var isBackupRequested = false
+
+    private var originalPreset: HSVPreset? = null
+    private var editingPreset: HSVPreset? = null
+    private var colorPresetsExpanded = false
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -99,6 +109,7 @@ class SettingsFragment : Fragment() {
         backupManager = BackupManager(requireContext())
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
+        setupColorPresetsSection()
         setupRecyclerView()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -153,6 +164,171 @@ class SettingsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun setupColorPresetsSection() {
+        binding.colorPresetsHeader.setOnClickListener {
+            colorPresetsExpanded = !colorPresetsExpanded
+            updateColorPresetsUI()
+        }
+
+        loadHSVPresets()
+
+        binding.hueSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                editingPreset?.let { preset ->
+                    val updated = preset.copy(hue = value)
+                    editingPreset = updated
+                    updatePresetCircle(updated)
+                    checkForChanges()
+                }
+            }
+        }
+
+        binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                editingPreset?.let { preset ->
+                    val updated = preset.copy(saturation = value)
+                    editingPreset = updated
+                    updatePresetCircle(updated)
+                    checkForChanges()
+                }
+            }
+        }
+
+        binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                editingPreset?.let { preset ->
+                    val updated = preset.copy(brightness = value)
+                    editingPreset = updated
+                    updatePresetCircle(updated)
+                    checkForChanges()
+                }
+            }
+        }
+
+        binding.btnSavePresets.setOnClickListener {
+            editingPreset?.let { preset ->
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+                    db.hsvPresetDao().insertPresets(listOf(preset))
+                    withContext(Dispatchers.Main) {
+                        originalPreset = preset.copy()
+                        editingPreset = preset.copy()
+                        binding.btnSavePresets.isEnabled = false
+                        Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        binding.btnUndoPresets.setOnClickListener {
+            editingPreset = originalPreset?.copy()
+            updatePresetCircle(editingPreset!!)
+            updateSliders(editingPreset!!)
+            checkForChanges()
+        }
+    }
+
+    private fun checkForChanges() {
+        binding.btnSavePresets.isEnabled = editingPreset != originalPreset
+        binding.btnUndoPresets.isEnabled = editingPreset != originalPreset
+    }
+
+    private fun updateColorPresetsUI() {
+        binding.colorPresetsExpandedContent.visibility =
+            if (colorPresetsExpanded) View.VISIBLE else View.GONE
+        binding.colorPresetsChevron.animate()
+            .rotation(if (colorPresetsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
+            .start()
+    }
+
+    private fun loadHSVPresets() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val presets = withContext(Dispatchers.IO) {
+                db.hsvPresetDao().getAllPresets()
+            }
+
+            binding.presetColorsLayout.removeAllViews()
+            presets.forEach { preset ->
+                val onClickListener = View.OnClickListener {
+                    selectPreset(preset, it)
+                }
+                val callback = { view: View ->
+                    updateCircleBackground(view, preset, isSelected = false)
+                }
+                val view = ColorUtil.getPresetColorView(
+                    requireContext(),
+                    preset,
+                    onClickListener,
+                    callback
+                )
+                binding.presetColorsLayout.addView(view)
+            }
+        }
+    }
+
+    private fun updateCircleBackground(view: View, preset: HSVPreset, isSelected: Boolean) {
+        val density = resources.displayMetrics.density
+        val color = ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
+        val shape = GradientDrawable()
+        shape.shape = GradientDrawable.OVAL
+        shape.setColor(color)
+
+        val strokeWidth = if (isSelected) (3 * density).toInt() else (1 * density).toInt()
+        val strokeColor = if (isSelected) Color.BLACK else Color.LTGRAY
+        shape.setStroke(strokeWidth, strokeColor)
+
+        view.background = shape
+
+        if (isSelected) {
+            binding.colorIndicator.setBackgroundColor(color)
+            val colorStateList = ColorStateList.valueOf(color)
+            binding.hueSlider.thumbTintList = colorStateList
+            binding.saturationSlider.thumbTintList = colorStateList
+            binding.brightnessSlider.thumbTintList = colorStateList
+        }
+    }
+
+    private fun selectPreset(preset: HSVPreset, view: View) {
+        // Unselect previous
+        editingPreset?.let { prev ->
+            val prevView = binding.presetColorsLayout.findViewWithTag<View>(prev.id)
+            if (prevView != null) {
+                originalPreset?.let { orig ->
+                    if (prev.id == orig.id) {
+                        updateCircleBackground(prevView, orig, isSelected = false)
+                    }
+                }
+            }
+        }
+
+        originalPreset = preset
+        editingPreset = preset.copy()
+        updateCircleBackground(view, editingPreset!!, isSelected = true)
+
+        if (!colorPresetsExpanded) {
+            colorPresetsExpanded = true
+            updateColorPresetsUI()
+        }
+
+        updateSliders(preset)
+        binding.btnSavePresets.isEnabled = false
+        binding.btnUndoPresets.isEnabled = false
+    }
+
+    private fun updatePresetCircle(preset: HSVPreset) {
+        val view = binding.presetColorsLayout.findViewWithTag<View>(preset.id)
+        if (view != null) {
+            updateCircleBackground(view, preset, isSelected = true)
+        }
+    }
+
+    private fun updateSliders(preset: HSVPreset) {
+        binding.hueSlider.value = preset.hue
+        binding.saturationSlider.value = preset.saturation
+        binding.brightnessSlider.value = preset.brightness
     }
 
     private fun setupSignInAndOutButtons() {
@@ -519,5 +695,7 @@ class SettingsFragment : Fragment() {
     companion object {
         const val TAG = "SettingsFragment"
         private const val ANIMATION_DURATION = 300L
+        private const val FACING_RIGHT_ROTATION = 0f
+        private const val FACING_DOWN_ROTATION = 90f
     }
 }

@@ -8,6 +8,7 @@ import android.widget.LinearLayout
 import androidx.annotation.ColorInt
 import androidx.core.graphics.ColorUtils
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.szabolcshorvath.memorymap.data.HSVPreset
 import kotlin.math.abs
 
 object ColorUtil {
@@ -135,8 +136,31 @@ object ColorUtil {
 
     fun getPresetColorView(
         context: Context,
+        preset: HSVPreset,
+        onClickListener: View.OnClickListener?,
+        callback: (View) -> Unit
+    ): View {
+        return getPresetColorView(
+            context,
+            hsvToColor(preset.hue, preset.saturation, preset.brightness),
+            onClickListener,
+            callback
+        )
+    }
+
+    fun getPresetColorView(
+        context: Context,
         @ColorInt color: Int,
         onClickListener: View.OnClickListener?
+    ): View {
+        return getPresetColorView(context, color, onClickListener) {}
+    }
+
+    fun getPresetColorView(
+        context: Context,
+        @ColorInt color: Int,
+        onClickListener: View.OnClickListener?,
+        callback: (View) -> Unit
     ): View {
         val size = (PRESET_COLOR_SIZE * context.resources.displayMetrics.density).toInt()
         val margin = (PRESET_COLOR_MARGIN * context.resources.displayMetrics.density).toInt()
@@ -153,6 +177,8 @@ object ColorUtil {
         view.background = shape
 
         view.setOnClickListener(onClickListener)
+
+        callback(view)
         return view
     }
 }
