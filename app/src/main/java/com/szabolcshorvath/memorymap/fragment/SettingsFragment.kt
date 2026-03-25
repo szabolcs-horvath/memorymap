@@ -250,7 +250,7 @@ class SettingsFragment : Fragment() {
             )
             db.hsvPresetDao().insertPresets(listOf(newPreset))
 
-            // We need to find the newly created preset to select it. 
+            // We need to find the newly created preset to select it.
             // Since ID is auto-generated, we get all and pick the last one.
             val allPresets = db.hsvPresetDao().getAllPresets()
             val latest = allPresets.lastOrNull()
@@ -264,7 +264,7 @@ class SettingsFragment : Fragment() {
                             selectPreset(latest, view)
                             binding.presetColorsScrollView.fullScroll(View.FOCUS_RIGHT)
                         } else {
-                            // If view is not yet there, we'll try to select it via the observer 
+                            // If view is not yet there, we'll try to select it via the observer
                             // by setting the editingPreset ID.
                             editingPreset = latest
                             originalPreset = latest
@@ -362,7 +362,11 @@ class SettingsFragment : Fragment() {
         shape.shape = GradientDrawable.OVAL
         shape.setColor(color)
 
-        val strokeWidth = if (isSelected) (3 * density).toInt() else (1 * density).toInt()
+        val strokeWidth = if (isSelected) {
+            (THICK_OUTLINE_FACTOR * density).toInt()
+        } else {
+            (THIN_OUTLINE_FACTOR * density).toInt()
+        }
         val strokeColor = if (isSelected) Color.BLACK else Color.LTGRAY
         shape.setStroke(strokeWidth, strokeColor)
 
@@ -784,5 +788,7 @@ class SettingsFragment : Fragment() {
         private const val ANIMATION_DURATION = 300L
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
+        private const val THICK_OUTLINE_FACTOR = 3
+        private const val THIN_OUTLINE_FACTOR = 1
     }
 }
