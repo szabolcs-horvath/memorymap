@@ -172,7 +172,7 @@ class SettingsFragment : Fragment() {
             updateColorPresetsUI()
         }
 
-        loadHSVPresets()
+        observeHSVPresets()
 
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
@@ -243,28 +243,30 @@ class SettingsFragment : Fragment() {
             .start()
     }
 
-    private fun loadHSVPresets() {
+    private fun observeHSVPresets() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
-            val presets = withContext(Dispatchers.IO) {
-                db.hsvPresetDao().getAllPresets()
-            }
-
-            binding.presetColorsLayout.removeAllViews()
-            presets.forEach { preset ->
-                val onClickListener = View.OnClickListener {
-                    selectPreset(preset, it)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+                db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
+                    binding.presetColorsLayout.removeAllViews()
+                    presets.forEach { preset ->
+                        val onClickListener = View.OnClickListener {
+                            selectPreset(preset, it)
+                        }
+                        val callback = { view: View ->
+                            val isSelected = editingPreset?.id == preset.id
+                            updateCircleBackground(view, preset, isSelected = isSelected)
+                        }
+                        val view = ColorUtil.getPresetColorView(
+                            requireContext(),
+                            preset,
+                            onClickListener,
+                            callback
+                        )
+                        view.tag = preset.id
+                        binding.presetColorsLayout.addView(view)
+                    }
                 }
-                val callback = { view: View ->
-                    updateCircleBackground(view, preset, isSelected = false)
-                }
-                val view = ColorUtil.getPresetColorView(
-                    requireContext(),
-                    preset,
-                    onClickListener,
-                    callback
-                )
-                binding.presetColorsLayout.addView(view)
             }
         }
     }

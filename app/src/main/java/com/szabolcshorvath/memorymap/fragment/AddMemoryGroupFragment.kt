@@ -21,7 +21,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -202,10 +204,11 @@ class AddMemoryGroupFragment : Fragment() {
             setupRecyclerViews()
             updateLocationText()
             updateDateTimeButtons()
-            loadHSVPresets()
             updateFragmentsUI()
             updateColorUI()
         }
+
+        observeHSVPresets()
 
         binding.selectLocationButton.setOnClickListener {
             activePickingIndex = -1
@@ -425,13 +428,16 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
-    private suspend fun loadHSVPresets() {
-        val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
-        val presets = withContext(Dispatchers.IO) {
-            db.hsvPresetDao().getAllPresets()
+    private fun observeHSVPresets() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+                db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
+                    setupPresetColors(presets)
+                    fragmentsAdapter.setHSVPresets(presets)
+                }
+            }
         }
-        setupPresetColors(presets)
-        fragmentsAdapter.setHSVPresets(presets)
     }
 
     private fun setupPresetColors(presets: List<HSVPreset>) {
