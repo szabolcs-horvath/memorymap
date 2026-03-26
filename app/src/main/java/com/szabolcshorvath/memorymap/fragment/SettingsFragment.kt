@@ -114,10 +114,10 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         googleAuthManager = GoogleAuthManager(requireContext())
         backupManager = BackupManager(requireContext())
+        setupRecyclerViews()
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
         setupColorPresetsSection()
-        setupRecyclerViews()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

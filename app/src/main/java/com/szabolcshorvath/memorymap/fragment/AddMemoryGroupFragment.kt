@@ -198,11 +198,13 @@ class AddMemoryGroupFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         backupManager = BackupManager(requireContext())
 
+        setupRecyclerViews()
+
         lifecycleScope.launch {
             if (currentDeviceId == null) {
                 currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
             }
-            setupRecyclerViews()
+            mediaAdapter.updateCurrentDeviceId(currentDeviceId)
             updateLocationText()
             updateDateTimeButtons()
             updateFragmentsUI()

@@ -14,7 +14,7 @@ import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 
 class SelectedMediaAdapter(
-    private val currentDeviceId: String?,
+    private var currentDeviceId: String?,
     private val onRemove: (Int) -> Unit
 ) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
     SelectedMedia.SelectedMediaDiffCallback()
@@ -22,6 +22,11 @@ class SelectedMediaAdapter(
 
     class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
         RecyclerView.ViewHolder(binding.root)
+
+    fun updateCurrentDeviceId(deviceId: String?) {
+        currentDeviceId = deviceId
+        notifyItemRangeChanged(0, itemCount)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = SelectedMediaViewHolder(
         ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false)
