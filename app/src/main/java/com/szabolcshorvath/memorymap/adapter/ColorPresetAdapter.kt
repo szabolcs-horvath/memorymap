@@ -12,25 +12,26 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 
 class ColorPresetAdapter(
     var onPresetClick: ((HSVPreset) -> Unit)? = null
-) : RecyclerView.Adapter<ColorPresetAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<ColorPresetAdapter.ColorPresetViewHolder>() {
 
     private val items = mutableListOf<HSVPreset>()
     private var selectedPresetId: Int? = null
 
     val currentList: List<HSVPreset> get() = items
 
-    class ViewHolder(val binding: ItemColorPresetBinding) : RecyclerView.ViewHolder(binding.root)
+    class ColorPresetViewHolder(val binding: ItemColorPresetBinding) :
+        RecyclerView.ViewHolder(binding.root)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ColorPresetViewHolder {
         val binding = ItemColorPresetBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
         )
-        return ViewHolder(binding)
+        return ColorPresetViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: ColorPresetViewHolder, position: Int) {
         val preset = items[position]
         val context = holder.itemView.context
         val density = context.resources.displayMetrics.density
