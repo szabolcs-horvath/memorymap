@@ -40,7 +40,11 @@ class ColorPresetAdapter(
         val shape = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(color)
-            val strokeWidth = if (isSelected) (3 * density).toInt() else (1 * density).toInt()
+            val strokeWidth = if (isSelected) {
+                (THICK_OUTLINE_FACTOR * density)
+            } else {
+                (THIN_OUTLINE_FACTOR * density)
+            }.toInt()
             val strokeColor = if (isSelected) Color.BLACK else Color.LTGRAY
             setStroke(strokeWidth, strokeColor)
         }
@@ -101,5 +105,10 @@ class ColorPresetAdapter(
             val newPos = items.indexOfFirst { it.id == id }
             if (newPos != -1) notifyItemChanged(newPos)
         }
+    }
+
+    companion object {
+        private const val THICK_OUTLINE_FACTOR = 3f
+        private const val THIN_OUTLINE_FACTOR = 1f
     }
 }
