@@ -89,8 +89,6 @@ class ColorPresetAdapter(
         }
     }
 
-    fun getItem(position: Int): HSVPreset = items[position]
-
     fun setSelectedPresetId(id: Int?) {
         val oldId = selectedPresetId
         if (oldId == id) return

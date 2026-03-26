@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -181,9 +180,11 @@ class SettingsFragment : Fragment() {
         }
 
         observeHSVPresets()
+        updateVisualsFromSliders()
 
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
+                updateVisualsFromSliders()
                 editingPreset?.let { preset ->
                     val updated = preset.copy(hue = value)
                     editingPreset = updated
@@ -195,6 +196,7 @@ class SettingsFragment : Fragment() {
 
         binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
+                updateVisualsFromSliders()
                 editingPreset?.let { preset ->
                     val updated = preset.copy(saturation = value)
                     editingPreset = updated
@@ -206,6 +208,7 @@ class SettingsFragment : Fragment() {
 
         binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
+                updateVisualsFromSliders()
                 editingPreset?.let { preset ->
                     val updated = preset.copy(brightness = value)
                     editingPreset = updated
@@ -234,8 +237,8 @@ class SettingsFragment : Fragment() {
         binding.btnUndoPresets.setOnClickListener {
             editingPreset = originalPreset?.copy()
             editingPreset?.let {
-                updateSelectionVisuals(it)
                 updateSliders(it)
+                updateSelectionVisuals(it)
             }
             checkForChanges()
         }
@@ -250,6 +253,9 @@ class SettingsFragment : Fragment() {
     }
 
     private fun addNewPreset() {
+        if (editingPreset != null && originalPreset != null && editingPreset != originalPreset) {
+            revertEditingPresetInList()
+        }
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
             val currentPresets = db.hsvPresetDao().getAllPresets()
@@ -294,7 +300,7 @@ class SettingsFragment : Fragment() {
             withContext(Dispatchers.Main) {
                 if (editingPreset?.id == preset.id) {
                     clearPresetSelection()
-                    binding.colorIndicator.setBackgroundColor(Color.TRANSPARENT)
+                    updateVisualsFromSliders()
                 }
                 Toast.makeText(requireContext(), "Preset deleted", Toast.LENGTH_SHORT).show()
                 backupManager.triggerAutomaticBackup()
@@ -368,13 +374,34 @@ class SettingsFragment : Fragment() {
         binding.btnDeletePreset.visibility = View.GONE
     }
 
-    private fun updateSelectionVisuals(preset: HSVPreset, skipSubmitList: Boolean = false) {
-        val color = ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
+    private fun revertEditingPresetInList() {
+        val original = originalPreset ?: return
+        if (editingPreset == original) return
+
+        val currentList = colorPresetAdapter.currentList
+        val index = currentList.indexOfFirst { it.id == original.id }
+        if (index != -1) {
+            val newList = currentList.toMutableList()
+            newList[index] = original
+            colorPresetAdapter.submitList(newList)
+        }
+    }
+
+    private fun updateVisualsFromSliders() {
+        val color = ColorUtil.hsvToColor(
+            binding.hueSlider.value,
+            binding.saturationSlider.value,
+            binding.brightnessSlider.value
+        )
         binding.colorIndicator.setBackgroundColor(color)
         val colorStateList = ColorStateList.valueOf(color)
         binding.hueSlider.thumbTintList = colorStateList
         binding.saturationSlider.thumbTintList = colorStateList
         binding.brightnessSlider.thumbTintList = colorStateList
+    }
+
+    private fun updateSelectionVisuals(preset: HSVPreset, skipSubmitList: Boolean = false) {
+        updateVisualsFromSliders()
 
         if (skipSubmitList) return
 
@@ -389,18 +416,25 @@ class SettingsFragment : Fragment() {
     }
 
     private fun selectPreset(preset: HSVPreset, shouldUpdateList: Boolean = true) {
-        originalPreset = preset
-        editingPreset = preset.copy()
+        val isSamePreset = editingPreset?.id == preset.id
+        if (editingPreset != null && originalPreset != null && editingPreset != originalPreset) {
+            revertEditingPresetInList()
+        }
 
-        colorPresetAdapter.setSelectedPresetId(preset.id)
+        val targetPreset = if (isSamePreset) originalPreset ?: preset else preset
+
+        originalPreset = targetPreset
+        editingPreset = targetPreset.copy()
+
+        colorPresetAdapter.setSelectedPresetId(targetPreset.id)
 
         if (!colorPresetsExpanded) {
             colorPresetsExpanded = true
             updateColorPresetsUI()
         }
 
-        updateSliders(preset)
-        updateSelectionVisuals(preset, skipSubmitList = !shouldUpdateList)
+        updateSliders(targetPreset)
+        updateSelectionVisuals(targetPreset, skipSubmitList = !shouldUpdateList)
         binding.btnSavePresets.isEnabled = false
         binding.btnUndoPresets.isEnabled = false
         binding.btnDeletePreset.visibility = View.VISIBLE
@@ -590,6 +624,19 @@ class SettingsFragment : Fragment() {
             btnBackupNow.isEnabled = enabled
             btnSignOut.isEnabled = enabled
             backupAdapter.setButtonsEnabled(enabled)
+
+            btnAddPreset.isEnabled = enabled
+            btnDeletePreset.isEnabled = enabled
+            hueSlider.isEnabled = enabled
+            saturationSlider.isEnabled = enabled
+            brightnessSlider.isEnabled = enabled
+
+            if (enabled) {
+                checkForChanges()
+            } else {
+                btnSavePresets.isEnabled = false
+                btnUndoPresets.isEnabled = false
+            }
 
             val showOverlay = isLoading && !swipeRefresh.isRefreshing
 
