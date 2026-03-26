@@ -36,16 +36,22 @@ class MemoryFragmentEditAdapter(
     private var hsvPresets: List<HSVPreset> = emptyList()
 
     class MemoryFragmentEditViewHolder(val binding: ItemMemoryFragmentEditBinding) :
-        RecyclerView.ViewHolder(binding.root)
+        RecyclerView.ViewHolder(binding.root) {
+        val colorPresetAdapter = ColorPresetAdapter()
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-        MemoryFragmentEditViewHolder(
-            ItemMemoryFragmentEditBinding.inflate(
-                LayoutInflater.from(parent.context),
-                parent,
-                false
-            )
+        init {
+            binding.presetColorsRecyclerView.adapter = colorPresetAdapter
+        }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentEditViewHolder {
+        val binding = ItemMemoryFragmentEditBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
         )
+        return MemoryFragmentEditViewHolder(binding)
+    }
 
     override fun onBindViewHolder(holder: MemoryFragmentEditViewHolder, position: Int) {
         val item = getItem(position)
@@ -186,7 +192,7 @@ class MemoryFragmentEditAdapter(
             }
         }
 
-        setupFragmentPresetColors(binding, holder.bindingAdapterPosition)
+        setupFragmentPresetColors(holder)
     }
 
     private fun updateFragmentColor(
@@ -248,25 +254,19 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun setupFragmentPresetColors(binding: ItemMemoryFragmentEditBinding, position: Int) {
-        binding.presetColorsLayout.removeAllViews()
-        hsvPresets.forEach { preset ->
-            val view =
-                ColorUtil.getPresetColorView(
-                    binding.root.context,
-                    ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
-                ) {
-                    val pos =
-                        if (position != RecyclerView.NO_POSITION) position else return@getPresetColorView
-                    val current = fragments[pos]
-                    fragments[pos] = current.copy(
-                        markerHue = preset.hue,
-                        markerSaturation = preset.saturation,
-                        markerBrightness = preset.brightness
-                    )
-                    updateFragmentsUI()
-                }
-            binding.presetColorsLayout.addView(view)
+    private fun setupFragmentPresetColors(holder: MemoryFragmentEditViewHolder) {
+        holder.colorPresetAdapter.submitList(hsvPresets.toList())
+        holder.colorPresetAdapter.onPresetClick = { preset ->
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                val current = fragments[pos]
+                fragments[pos] = current.copy(
+                    markerHue = preset.hue,
+                    markerSaturation = preset.saturation,
+                    markerBrightness = preset.brightness
+                )
+                updateFragmentsUI()
+            }
         }
     }
 

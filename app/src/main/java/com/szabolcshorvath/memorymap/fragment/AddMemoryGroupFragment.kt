@@ -29,10 +29,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.withTransaction
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
-import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
@@ -125,6 +125,7 @@ class AddMemoryGroupFragment : Fragment() {
     private var editingMemoryId: Int? = null
     private lateinit var mediaAdapter: SelectedMediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentEditAdapter
+    private lateinit var colorPresetAdapter: ColorPresetAdapter
     private var currentDeviceId: String? = null
     private var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     private var fragmentsExpanded = true
@@ -288,6 +289,14 @@ class AddMemoryGroupFragment : Fragment() {
         )
         binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(context)
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
+
+        colorPresetAdapter = ColorPresetAdapter { preset ->
+            markerHue = preset.hue
+            markerSaturation = preset.saturation
+            markerBrightness = preset.brightness
+            updateColorUI(animate = true)
+        }
+        binding.presetColorsRecyclerView.adapter = colorPresetAdapter
     }
 
     private fun updateMediaUI() {
@@ -433,26 +442,10 @@ class AddMemoryGroupFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
                 db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
-                    setupPresetColors(presets)
+                    colorPresetAdapter.submitList(presets)
                     fragmentsAdapter.setHSVPresets(presets)
                 }
             }
-        }
-    }
-
-    private fun setupPresetColors(presets: List<HSVPreset>) {
-        binding.presetColorsLayout.removeAllViews()
-        presets.forEach { preset ->
-            val view = ColorUtil.getPresetColorView(
-                requireContext(),
-                ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
-            ) {
-                markerHue = preset.hue
-                markerSaturation = preset.saturation
-                markerBrightness = preset.brightness
-                updateColorUI(animate = true)
-            }
-            binding.presetColorsLayout.addView(view)
         }
     }
 

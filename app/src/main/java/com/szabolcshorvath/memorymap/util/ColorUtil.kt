@@ -1,14 +1,9 @@
 package com.szabolcshorvath.memorymap.util
 
-import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.view.View
-import android.widget.LinearLayout
 import androidx.annotation.ColorInt
 import androidx.core.graphics.ColorUtils
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.szabolcshorvath.memorymap.data.HSVPreset
 import kotlin.math.abs
 
 object ColorUtil {
@@ -40,8 +35,6 @@ object ColorUtil {
     private const val TARGET_CONTRAST_THRESHOLD = 0.1
     private const val LUMINANCE_BINARY_SEARCH_ITERATIONS = 20
     private const val CONTRAST_RATION_CALIBRATION_CONSTANT = 0.05
-    private const val PRESET_COLOR_SIZE = 32
-    private const val PRESET_COLOR_MARGIN = 12
 
     fun normalizeHue(hue: Float): Float {
         return (hue % DEGREES_360 + DEGREES_360) % DEGREES_360
@@ -132,53 +125,5 @@ object ColorUtil {
         val lighter = maxOf(lum1, lum2)
         val darker = minOf(lum1, lum2)
         return (lighter + CONTRAST_RATION_CALIBRATION_CONSTANT) / (darker + CONTRAST_RATION_CALIBRATION_CONSTANT)
-    }
-
-    fun getPresetColorView(
-        context: Context,
-        preset: HSVPreset,
-        onClickListener: View.OnClickListener?,
-        callback: (View) -> Unit
-    ): View {
-        return getPresetColorView(
-            context,
-            hsvToColor(preset.hue, preset.saturation, preset.brightness),
-            onClickListener,
-            callback
-        )
-    }
-
-    fun getPresetColorView(
-        context: Context,
-        @ColorInt color: Int,
-        onClickListener: View.OnClickListener?
-    ): View {
-        return getPresetColorView(context, color, onClickListener) {}
-    }
-
-    fun getPresetColorView(
-        context: Context,
-        @ColorInt color: Int,
-        onClickListener: View.OnClickListener?,
-        callback: (View) -> Unit
-    ): View {
-        val size = (PRESET_COLOR_SIZE * context.resources.displayMetrics.density).toInt()
-        val margin = (PRESET_COLOR_MARGIN * context.resources.displayMetrics.density).toInt()
-
-        val view = View(context)
-        val params = LinearLayout.LayoutParams(size, size)
-        params.setMargins(0, 0, margin, 0)
-        view.layoutParams = params
-
-        val shape = GradientDrawable()
-        shape.shape = GradientDrawable.OVAL
-        shape.setColor(color)
-        shape.setStroke((1 * context.resources.displayMetrics.density).toInt(), Color.LTGRAY)
-        view.background = shape
-
-        view.setOnClickListener(onClickListener)
-
-        callback(view)
-        return view
     }
 }

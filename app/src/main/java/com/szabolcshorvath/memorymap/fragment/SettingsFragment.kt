@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.fragment
 import android.Manifest
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -23,6 +22,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
@@ -32,6 +32,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
+import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.backup.BackupManager
@@ -56,12 +57,14 @@ class SettingsFragment : Fragment() {
     private lateinit var backupManager: BackupManager
     private lateinit var startAuthorizationIntent: ActivityResultLauncher<IntentSenderRequest>
     private lateinit var backupAdapter: BackupAdapter
+    private lateinit var colorPresetAdapter: ColorPresetAdapter
     private var pendingRestoreFile: DriveFile? = null
     private var isBackupRequested = false
 
     private var originalPreset: HSVPreset? = null
     private var editingPreset: HSVPreset? = null
     private var colorPresetsExpanded = false
+    private var newlyAddedPresetId: Int? = null
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -110,7 +113,7 @@ class SettingsFragment : Fragment() {
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
         setupColorPresetsSection()
-        setupRecyclerView()
+        setupRecyclerViews()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -179,7 +182,7 @@ class SettingsFragment : Fragment() {
                 editingPreset?.let { preset ->
                     val updated = preset.copy(hue = value)
                     editingPreset = updated
-                    updatePresetCircle(updated)
+                    updateSelectionVisuals(updated)
                     checkForChanges()
                 }
             }
@@ -190,7 +193,7 @@ class SettingsFragment : Fragment() {
                 editingPreset?.let { preset ->
                     val updated = preset.copy(saturation = value)
                     editingPreset = updated
-                    updatePresetCircle(updated)
+                    updateSelectionVisuals(updated)
                     checkForChanges()
                 }
             }
@@ -201,7 +204,7 @@ class SettingsFragment : Fragment() {
                 editingPreset?.let { preset ->
                     val updated = preset.copy(brightness = value)
                     editingPreset = updated
-                    updatePresetCircle(updated)
+                    updateSelectionVisuals(updated)
                     checkForChanges()
                 }
             }
@@ -215,8 +218,6 @@ class SettingsFragment : Fragment() {
                     withContext(Dispatchers.Main) {
                         originalPreset = preset.copy()
                         editingPreset = preset.copy()
-//                        binding.btnSavePresets.isEnabled = false
-//                        binding.btnUndoPresets.isEnabled = false
                         checkForChanges()
                         Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
                     }
@@ -226,8 +227,10 @@ class SettingsFragment : Fragment() {
 
         binding.btnUndoPresets.setOnClickListener {
             editingPreset = originalPreset?.copy()
-            updatePresetCircle(editingPreset!!)
-            updateSliders(editingPreset!!)
+            editingPreset?.let {
+                updateSelectionVisuals(it)
+                updateSliders(it)
+            }
             checkForChanges()
         }
 
@@ -250,26 +253,12 @@ class SettingsFragment : Fragment() {
             )
             db.hsvPresetDao().insertPresets(listOf(newPreset))
 
-            // We need to find the newly created preset to select it.
-            // Since ID is auto-generated, we get all and pick the last one.
             val allPresets = db.hsvPresetDao().getAllPresets()
             val latest = allPresets.lastOrNull()
 
             withContext(Dispatchers.Main) {
                 if (latest != null) {
-                    // Delay slightly to ensure the view is created in the horizontal scroll view
-                    binding.presetColorsLayout.post {
-                        val view = binding.presetColorsLayout.findViewWithTag<View>(latest.id)
-                        if (view != null) {
-                            selectPreset(latest, view)
-                            binding.presetColorsScrollView.fullScroll(View.FOCUS_RIGHT)
-                        } else {
-                            // If view is not yet there, we'll try to select it via the observer
-                            // by setting the editingPreset ID.
-                            editingPreset = latest
-                            originalPreset = latest
-                        }
-                    }
+                    newlyAddedPresetId = latest.id
                 }
             }
         }
@@ -293,9 +282,7 @@ class SettingsFragment : Fragment() {
             db.hsvPresetDao().deletePreset(preset)
             withContext(Dispatchers.Main) {
                 if (editingPreset?.id == preset.id) {
-                    editingPreset = null
-                    originalPreset = null
-                    binding.btnDeletePreset.visibility = View.GONE
+                    clearPresetSelection()
                     binding.colorIndicator.setBackgroundColor(Color.TRANSPARENT)
                 }
                 Toast.makeText(requireContext(), "Preset deleted", Toast.LENGTH_SHORT).show()
@@ -321,82 +308,74 @@ class SettingsFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
                 db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
-                    binding.presetColorsLayout.removeAllViews()
-                    presets.forEach { preset ->
-                        val onClickListener = View.OnClickListener {
-                            selectPreset(preset, it)
-                        }
-                        val callback = { view: View ->
-                            val isSelected = editingPreset?.id == preset.id
-                            updateCircleBackground(view, preset, isSelected = isSelected)
-                            if (isSelected) {
-                                // Ensure sliders match if it was selected by addNewPreset before view was ready
-                                updateSliders(preset)
-                                binding.btnDeletePreset.visibility = View.VISIBLE
+                    colorPresetAdapter.submitList(presets) {
+                        newlyAddedPresetId?.let { id ->
+                            val index = presets.indexOfFirst { it.id == id }
+                            if (index != -1) {
+                                // Select it first to prepare the UI
+                                selectPreset(presets[index], shouldUpdateList = false)
+
+                                // Post the scroll to ensure layout is complete
+                                binding.presetColorsRecyclerView.post {
+                                    smoothScrollToPresetIndex(index)
+                                }
                             }
+                            newlyAddedPresetId = null
                         }
-                        val view = ColorUtil.getPresetColorView(
-                            requireContext(),
-                            preset,
-                            onClickListener,
-                            callback
-                        )
-                        view.tag = preset.id
-                        binding.presetColorsLayout.addView(view)
                     }
 
                     if (editingPreset != null && presets.none { it.id == editingPreset?.id }) {
-                        editingPreset = null
-                        originalPreset = null
-                        binding.btnDeletePreset.visibility = View.GONE
+                        clearPresetSelection()
                     }
                 }
             }
         }
     }
 
-    private fun updateCircleBackground(view: View, preset: HSVPreset, isSelected: Boolean) {
-        val density = resources.displayMetrics.density
+    private fun smoothScrollToPresetIndex(index: Int) {
+        val smoothScroller =
+            object : LinearSmoothScroller(requireContext()) {
+                override fun getHorizontalSnapPreference(): Int =
+                    SNAP_TO_END
+            }
+        smoothScroller.targetPosition = index
+        binding.presetColorsRecyclerView.layoutManager?.startSmoothScroll(
+            smoothScroller
+        )
+    }
+
+    private fun clearPresetSelection() {
+        editingPreset = null
+        originalPreset = null
+        colorPresetAdapter.setSelectedPresetId(null)
+        binding.btnDeletePreset.visibility = View.GONE
+    }
+
+    private fun updateSelectionVisuals(preset: HSVPreset, skipSubmitList: Boolean = false) {
         val color = ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
-        val shape = GradientDrawable()
-        shape.shape = GradientDrawable.OVAL
-        shape.setColor(color)
+        binding.colorIndicator.setBackgroundColor(color)
+        val colorStateList = ColorStateList.valueOf(color)
+        binding.hueSlider.thumbTintList = colorStateList
+        binding.saturationSlider.thumbTintList = colorStateList
+        binding.brightnessSlider.thumbTintList = colorStateList
 
-        val strokeWidth = if (isSelected) {
-            (THICK_OUTLINE_FACTOR * density).toInt()
-        } else {
-            (THIN_OUTLINE_FACTOR * density).toInt()
-        }
-        val strokeColor = if (isSelected) Color.BLACK else Color.LTGRAY
-        shape.setStroke(strokeWidth, strokeColor)
+        if (skipSubmitList) return
 
-        view.background = shape
-
-        if (isSelected) {
-            binding.colorIndicator.setBackgroundColor(color)
-            val colorStateList = ColorStateList.valueOf(color)
-            binding.hueSlider.thumbTintList = colorStateList
-            binding.saturationSlider.thumbTintList = colorStateList
-            binding.brightnessSlider.thumbTintList = colorStateList
+        // To reflect slider changes in the RecyclerView immediately
+        val currentList = colorPresetAdapter.currentList
+        val index = currentList.indexOfFirst { it.id == preset.id }
+        if (index != -1) {
+            val newList = currentList.toMutableList()
+            newList[index] = preset
+            colorPresetAdapter.submitList(newList)
         }
     }
 
-    private fun selectPreset(preset: HSVPreset, view: View) {
-        // Unselect previous
-        editingPreset?.let { prev ->
-            val prevView = binding.presetColorsLayout.findViewWithTag<View>(prev.id)
-            if (prevView != null) {
-                originalPreset?.let { orig ->
-                    if (prev.id == orig.id) {
-                        updateCircleBackground(prevView, orig, isSelected = false)
-                    }
-                }
-            }
-        }
-
+    private fun selectPreset(preset: HSVPreset, shouldUpdateList: Boolean = true) {
         originalPreset = preset
         editingPreset = preset.copy()
-        updateCircleBackground(view, editingPreset!!, isSelected = true)
+
+        colorPresetAdapter.setSelectedPresetId(preset.id)
 
         if (!colorPresetsExpanded) {
             colorPresetsExpanded = true
@@ -404,16 +383,10 @@ class SettingsFragment : Fragment() {
         }
 
         updateSliders(preset)
+        updateSelectionVisuals(preset, skipSubmitList = !shouldUpdateList)
         binding.btnSavePresets.isEnabled = false
         binding.btnUndoPresets.isEnabled = false
         binding.btnDeletePreset.visibility = View.VISIBLE
-    }
-
-    private fun updatePresetCircle(preset: HSVPreset) {
-        val view = binding.presetColorsLayout.findViewWithTag<View>(preset.id)
-        if (view != null) {
-            updateCircleBackground(view, preset, isSelected = true)
-        }
     }
 
     private fun updateSliders(preset: HSVPreset) {
@@ -488,7 +461,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun setupRecyclerView() {
+    private fun setupRecyclerViews() {
         backupAdapter = BackupAdapter(::onRestoreBackup, ::onDeleteBackup)
         backupAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
@@ -500,6 +473,11 @@ class SettingsFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = backupAdapter
         }
+
+        colorPresetAdapter = ColorPresetAdapter { preset ->
+            selectPreset(preset)
+        }
+        binding.presetColorsRecyclerView.adapter = colorPresetAdapter
     }
 
     private fun updateUI(email: String?) {
@@ -788,7 +766,5 @@ class SettingsFragment : Fragment() {
         private const val ANIMATION_DURATION = 300L
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
-        private const val THICK_OUTLINE_FACTOR = 3
-        private const val THIN_OUTLINE_FACTOR = 1
     }
 }

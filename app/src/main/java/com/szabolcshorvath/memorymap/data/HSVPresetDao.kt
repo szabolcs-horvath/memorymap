@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HSVPresetDao {
-    @Query("SELECT * FROM hsv_presets")
+    @Query("SELECT * FROM hsv_presets ORDER BY id ASC")
     suspend fun getAllPresets(): List<HSVPreset>
 
-    @Query("SELECT * FROM hsv_presets")
+    @Query("SELECT * FROM hsv_presets ORDER BY id ASC")
     fun getAllPresetsFlow(): Flow<List<HSVPreset>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
