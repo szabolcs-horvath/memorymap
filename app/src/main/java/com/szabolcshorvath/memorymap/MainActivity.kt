@@ -270,8 +270,8 @@ class MainActivity :
     private suspend fun initializeHSVPresetsIfEmpty() {
         val db = StoryMapDatabase.getDatabase(applicationContext)
         if (db.hsvPresetDao().getCount() == 0) {
-            val defaultPresets = ColorUtil.DEFAULT_HSV_PRESETS.map { hsv ->
-                HSVPreset(hue = hsv[0], saturation = hsv[1], brightness = hsv[2])
+            val defaultPresets = ColorUtil.DEFAULT_HSV_PRESETS.mapIndexed { index, hsv ->
+                HSVPreset(hue = hsv[0], saturation = hsv[1], brightness = hsv[2], order = index)
             }
             db.hsvPresetDao().insertPresets(defaultPresets)
         }

@@ -8,5 +8,6 @@ data class HSVPreset(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val hue: Float,
     val saturation: Float,
-    val brightness: Float
+    val brightness: Float,
+    val order: Int? = null
 )

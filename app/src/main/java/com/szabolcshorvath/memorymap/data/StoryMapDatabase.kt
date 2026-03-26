@@ -26,7 +26,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 12, to = 13),
         AutoMigration(from = 13, to = 14),
         AutoMigration(from = 14, to = 15, spec = AutoMigrationSpecFrom14To15::class),
-        AutoMigration(from = 15, to = 16)
+        AutoMigration(from = 15, to = 16),
+        AutoMigration(from = 16, to = 17)
     ],
     exportSchema = true
 )
@@ -36,7 +37,7 @@ abstract class StoryMapDatabase : RoomDatabase() {
     abstract fun hsvPresetDao(): HSVPresetDao
 
     companion object {
-        const val DB_VERSION = 16
+        const val DB_VERSION = 17
 
         @Volatile
         private var INSTANCE: StoryMapDatabase? = null

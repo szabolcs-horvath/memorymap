@@ -21,6 +21,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
@@ -44,6 +45,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -65,6 +67,8 @@ class SettingsFragment : Fragment() {
     private var editingPreset: HSVPreset? = null
     private var colorPresetsExpanded = false
     private var newlyAddedPresetId: Int? = null
+
+    private var savePresetsOrderJob: Job? = null
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -246,15 +250,19 @@ class SettingsFragment : Fragment() {
     private fun addNewPreset() {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val currentPresets = db.hsvPresetDao().getAllPresets()
+            val nextOrder = (currentPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
+
             val newPreset = HSVPreset(
-                hue = ColorUtil.DEFAULT_MARKER_HUE,
-                saturation = ColorUtil.DEFAULT_MARKER_SATURATION,
-                brightness = ColorUtil.DEFAULT_MARKER_BRIGHTNESS
+                hue = binding.hueSlider.value,
+                saturation = binding.saturationSlider.value,
+                brightness = binding.brightnessSlider.value,
+                order = nextOrder
             )
             db.hsvPresetDao().insertPresets(listOf(newPreset))
 
             val allPresets = db.hsvPresetDao().getAllPresets()
-            val latest = allPresets.lastOrNull()
+            val latest = allPresets.find { it.order == nextOrder }
 
             withContext(Dispatchers.Main) {
                 if (latest != null) {
@@ -478,6 +486,75 @@ class SettingsFragment : Fragment() {
             selectPreset(preset)
         }
         binding.presetColorsRecyclerView.adapter = colorPresetAdapter
+        setupColorPresetsTouchHelper()
+    }
+
+    private fun setupColorPresetsTouchHelper() {
+        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
+            0
+        ) {
+            private var initialOrder: List<Int>? = null
+
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                    initialOrder = colorPresetAdapter.currentList.map { it.id }
+                }
+            }
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val fromPos = viewHolder.bindingAdapterPosition
+                val toPos = target.bindingAdapterPosition
+                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
+
+                if (fromPos < toPos) {
+                    for (i in fromPos until toPos) {
+                        colorPresetAdapter.moveItem(i, i + 1)
+                    }
+                } else {
+                    for (i in fromPos downTo toPos + 1) {
+                        colorPresetAdapter.moveItem(i, i - 1)
+                    }
+                }
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+
+            override fun clearView(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ) {
+                super.clearView(recyclerView, viewHolder)
+                val currentOrder = colorPresetAdapter.currentList.map { it.id }
+                if (initialOrder != null && initialOrder != currentOrder) {
+                    saveNewPresetsOrder()
+                }
+                initialOrder = null
+            }
+        })
+        itemTouchHelper.attachToRecyclerView(binding.presetColorsRecyclerView)
+    }
+
+    private fun saveNewPresetsOrder() {
+        savePresetsOrderJob?.cancel()
+        val presets = colorPresetAdapter.currentList.mapIndexed { index, preset ->
+            preset.copy(order = index)
+        }
+
+        savePresetsOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            db.hsvPresetDao().updatePresets(presets)
+
+            withContext(Dispatchers.Main) {
+                backupManager.triggerAutomaticBackup()
+            }
+        }
     }
 
     private fun updateUI(email: String?) {
