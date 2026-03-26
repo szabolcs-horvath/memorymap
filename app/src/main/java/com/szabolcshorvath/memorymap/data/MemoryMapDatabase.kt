@@ -10,10 +10,11 @@ import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.szabolcshorvath.memorymap.util.PerfUtil.tracedDao
 
 @Database(
     entities = [MemoryGroup::class, MediaItem::class, MemoryFragment::class, HSVPreset::class],
-    version = StoryMapDatabase.DB_VERSION,
+    version = MemoryMapDatabase.DB_VERSION,
     autoMigrations = [
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 5, to = 6),
@@ -32,15 +33,24 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     exportSchema = true
 )
 @TypeConverters(Converters::class)
-abstract class StoryMapDatabase : RoomDatabase() {
-    abstract fun memoryGroupDao(): MemoryGroupDao
-    abstract fun hsvPresetDao(): HSVPresetDao
+abstract class MemoryMapDatabase : RoomDatabase() {
+    protected abstract fun memoryGroupDaoInternal(): MemoryGroupDao
+    protected abstract fun hsvPresetDaoInternal(): HSVPresetDao
+
+    private var _memoryGroupDao: MemoryGroupDao? = null
+    private var _hsvPresetDao: HSVPresetDao? = null
+
+    fun memoryGroupDao(): MemoryGroupDao =
+        _memoryGroupDao ?: tracedDao(memoryGroupDaoInternal()).also { _memoryGroupDao = it }
+
+    fun hsvPresetDao(): HSVPresetDao =
+        _hsvPresetDao ?: tracedDao(hsvPresetDaoInternal()).also { _hsvPresetDao = it }
 
     companion object {
         const val DB_VERSION = 17
 
         @Volatile
-        private var INSTANCE: StoryMapDatabase? = null
+        private var INSTANCE: MemoryMapDatabase? = null
 
         @Suppress("MagicNumber")
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -71,11 +81,11 @@ abstract class StoryMapDatabase : RoomDatabase() {
             }
         }
 
-        fun getDatabase(context: Context): StoryMapDatabase {
+        fun getDatabase(context: Context): MemoryMapDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
-                    StoryMapDatabase::class.java,
+                    MemoryMapDatabase::class.java,
                     "memory_map_database"
                 )
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5)

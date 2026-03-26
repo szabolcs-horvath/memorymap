@@ -9,9 +9,11 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
+import com.google.firebase.Firebase
+import com.google.firebase.perf.performance
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
-import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_FILE_NAME_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_METADATA_DATE_FORMATTER
@@ -49,7 +51,9 @@ class BackupManager(private val context: Context) {
 
     suspend fun triggerAutomaticBackup() {
         withContext(Dispatchers.IO) {
+            val trace = Firebase.performance.newTrace("backup_manager_trigger_automatic_backup")
             try {
+                trace.start()
                 val time = measureTimeMillis {
                     val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull()
                         ?: return@withContext
@@ -66,6 +70,7 @@ class BackupManager(private val context: Context) {
                 Log.e(TAG, "Failed to trigger automatic backup", e)
             } finally {
                 _backupEvents.emit(BackupEvent.FINISHED)
+                trace.stop()
             }
         }
     }
@@ -112,7 +117,7 @@ class BackupManager(private val context: Context) {
 
     private fun prepareDatabaseForBackup() {
         try {
-            StoryMapDatabase.getDatabase(context).openHelper.writableDatabase
+            MemoryMapDatabase.getDatabase(context).openHelper.writableDatabase
                 .query("PRAGMA wal_checkpoint(TRUNCATE)")
                 .close()
         } catch (e: Exception) {
@@ -130,7 +135,7 @@ class BackupManager(private val context: Context) {
         metadata.put("date", BACKUP_METADATA_DATE_FORMATTER.format(Date()))
         metadata.put("dbSize", dbFile.length())
         metadata.put("version", 2) // Metadata version
-        metadata.put("dbVersion", StoryMapDatabase.DB_VERSION)
+        metadata.put("dbVersion", MemoryMapDatabase.DB_VERSION)
         metadata.put("isAutomatic", isAutomatic)
 
         val metadataFile = File(tempDir, "metadata.json")
@@ -274,7 +279,7 @@ class BackupManager(private val context: Context) {
     }
 
     private fun restoreDatabaseFromBackup(tempRestoreDir: File) {
-        StoryMapDatabase.closeDatabase()
+        MemoryMapDatabase.closeDatabase()
 
         val dbFile = context.getDatabasePath("memory_map_database")
         val walFile = context.getDatabasePath("memory_map_database-wal")

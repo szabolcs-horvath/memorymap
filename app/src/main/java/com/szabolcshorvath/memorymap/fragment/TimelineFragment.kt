@@ -9,14 +9,17 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
-import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class TimelineFragment : Fragment() {
+class TimelineFragment
+@AddTrace(name = "timeline_fragment_constructor", enabled = true)
+constructor() : Fragment() {
 
     private var _binding: FragmentTimelineBinding? = null
     private val binding get() = _binding!!
@@ -65,7 +68,7 @@ class TimelineFragment : Fragment() {
     }
 
     private suspend fun loadMemories() {
-        val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+        val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
         val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
 
         withContext(Dispatchers.Main) {

@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryPagerBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,7 +43,7 @@ class MemoryPagerFragment : Fragment() {
 
     private fun loadMemoriesAndSetupPager() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
             memoryIds = groups.map { it.id }
 

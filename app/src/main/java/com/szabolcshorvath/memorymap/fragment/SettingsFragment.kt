@@ -30,6 +30,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
+import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
@@ -37,7 +38,7 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
-import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
@@ -51,7 +52,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.google.api.services.drive.model.File as DriveFile
 
-class SettingsFragment : Fragment() {
+class SettingsFragment
+@AddTrace(name = "settings_fragment_constructor", enabled = true)
+constructor() : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
     private lateinit var googleAuthManager: GoogleAuthManager
@@ -221,7 +224,7 @@ class SettingsFragment : Fragment() {
         binding.btnSavePresets.setOnClickListener {
             editingPreset?.let { preset ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+                    val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
                     db.hsvPresetDao().insertPresets(listOf(preset))
                     withContext(Dispatchers.Main) {
                         originalPreset = preset.copy()
@@ -257,7 +260,7 @@ class SettingsFragment : Fragment() {
             revertEditingPresetInList()
         }
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             val currentPresets = db.hsvPresetDao().getAllPresets()
             val nextOrder = (currentPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
 
@@ -295,7 +298,7 @@ class SettingsFragment : Fragment() {
 
     private fun deletePreset(preset: HSVPreset) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             db.hsvPresetDao().deletePreset(preset)
             withContext(Dispatchers.Main) {
                 if (editingPreset?.id == preset.id) {
@@ -325,7 +328,7 @@ class SettingsFragment : Fragment() {
         presetsObservationJob?.cancel()
         presetsObservationJob = viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+                val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
                 db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
                     colorPresetAdapter.submitList(presets) {
                         newlyAddedPresetId?.let { id ->
@@ -591,7 +594,7 @@ class SettingsFragment : Fragment() {
         }
 
         savePresetsOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             db.hsvPresetDao().updatePresets(presets)
 
             withContext(Dispatchers.Main) {

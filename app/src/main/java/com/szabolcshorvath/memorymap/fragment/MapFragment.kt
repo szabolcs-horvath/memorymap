@@ -32,13 +32,14 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
@@ -61,7 +62,9 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.system.measureTimeMillis
 
-class MapFragment : Fragment(), OnMapReadyCallback {
+class MapFragment
+@AddTrace(name = "map_fragment_constructor", enabled = true)
+constructor() : Fragment(), OnMapReadyCallback {
 
     private var _binding: FragmentMapsBinding? = null
     private val binding get() = _binding!!
@@ -428,7 +431,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private suspend fun loadMarkers() {
-        val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+        val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
         allGroups = db.memoryGroupDao().getAllGroups()
         allFragments = db.memoryGroupDao().getAllFragments()
 
@@ -591,6 +594,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    @AddTrace(name = "map_fragment_cluster_markerables", enabled = true)
     fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
         val n = items.size
         val parent = IntArray(n) { it }

@@ -16,11 +16,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment
 import com.szabolcshorvath.memorymap.fragment.MapFragment
@@ -268,7 +269,7 @@ class MainActivity :
     }
 
     private suspend fun initializeHSVPresetsIfEmpty() {
-        val db = StoryMapDatabase.getDatabase(applicationContext)
+        val db = MemoryMapDatabase.getDatabase(applicationContext)
         if (db.hsvPresetDao().getCount() == 0) {
             val defaultPresets = ColorUtil.DEFAULT_HSV_PRESETS.mapIndexed { index, hsv ->
                 HSVPreset(hue = hsv[0], saturation = hsv[1], brightness = hsv[2], order = index)
@@ -277,6 +278,7 @@ class MainActivity :
         }
     }
 
+    @AddTrace(name = "main_activity_refresh_data", enabled = true)
     suspend fun refreshData() = coroutineScope {
         val time = measureTimeMillis {
             val mapJob = launch { mapFragment.refreshData() }
@@ -402,7 +404,7 @@ class MainActivity :
         snackbar.anchorView = binding.bottomNavigation
         snackbar.setAction("Undo") {
             lifecycleScope.launch(Dispatchers.IO) {
-                val db = StoryMapDatabase.getDatabase(applicationContext)
+                val db = MemoryMapDatabase.getDatabase(applicationContext)
                 val newGroupId = db.memoryGroupDao().insertGroup(memoryGroup)
                 val restoredMediaItems =
                     mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }

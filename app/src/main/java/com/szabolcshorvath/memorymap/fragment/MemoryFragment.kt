@@ -12,13 +12,14 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.data.StoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -33,8 +34,9 @@ import kotlinx.coroutines.withContext
 import java.util.Collections
 import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
-class MemoryFragment : Fragment() {
-
+class MemoryFragment
+@AddTrace(name = "memory_fragment_constructor", enabled = true)
+constructor() : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
     private lateinit var mediaAdapter: MediaAdapter
@@ -263,7 +265,7 @@ class MemoryFragment : Fragment() {
         mediaItems.addAll(updatedItems)
 
         saveJob = lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             db.memoryGroupDao().updateMediaItems(updatedItems)
 
             withContext(Dispatchers.Main) {
@@ -284,7 +286,7 @@ class MemoryFragment : Fragment() {
         fragmentItems.addAll(updatedFragments)
 
         saveFragmentsJob = lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             db.memoryGroupDao().updateFragments(updatedFragments)
 
             withContext(Dispatchers.Main) {
@@ -298,7 +300,7 @@ class MemoryFragment : Fragment() {
         if (memoryId == -1) return
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             currentMemoryGroup = db.memoryGroupDao().getGroupWithMedia(memoryId)
 
             withContext(Dispatchers.Main) {
@@ -419,7 +421,7 @@ class MemoryFragment : Fragment() {
         if (currentMemoryGroup == null) return
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             db.memoryGroupDao().deleteGroup(currentMemoryGroup!!.group)
 
             withContext(Dispatchers.Main) {
