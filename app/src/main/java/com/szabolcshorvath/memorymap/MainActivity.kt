@@ -281,7 +281,8 @@ class MainActivity :
         val time = measureTimeMillis {
             val mapJob = launch { mapFragment.refreshData() }
             val timelineJob = launch { timelineFragment.refreshData() }
-            joinAll(mapJob, timelineJob)
+            val settingsJob = launch { settingsFragment.refreshData() }
+            joinAll(mapJob, timelineJob, settingsJob)
         }
         Log.d(TAG, "Total refresh time: $time ms")
     }

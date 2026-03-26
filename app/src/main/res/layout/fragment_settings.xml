@@ -121,6 +121,7 @@
                             android:id="@+id/hueSlider"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:value="0.0"
                             android:stepSize="5.0"
                             android:valueFrom="0.0"
                             android:valueTo="360.0" />
@@ -135,6 +136,7 @@
                             android:id="@+id/saturationSlider"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:value="1.0"
                             android:stepSize="0.05"
                             android:valueFrom="0.0"
                             android:valueTo="1.0" />
@@ -149,6 +151,7 @@
                             android:id="@+id/brightnessSlider"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:value="1.0"
                             android:stepSize="0.05"
                             android:valueFrom="0.0"
                             android:valueTo="1.0" />

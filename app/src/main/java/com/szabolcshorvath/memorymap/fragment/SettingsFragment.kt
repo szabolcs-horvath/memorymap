@@ -69,6 +69,7 @@ class SettingsFragment : Fragment() {
     private var newlyAddedPresetId: Int? = null
 
     private var savePresetsOrderJob: Job? = null
+    private var presetsObservationJob: Job? = null
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -224,6 +225,7 @@ class SettingsFragment : Fragment() {
                         editingPreset = preset.copy()
                         checkForChanges()
                         Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
+                        backupManager.triggerAutomaticBackup()
                     }
                 }
             }
@@ -268,6 +270,7 @@ class SettingsFragment : Fragment() {
                 if (latest != null) {
                     newlyAddedPresetId = latest.id
                 }
+                backupManager.triggerAutomaticBackup()
             }
         }
     }
@@ -294,6 +297,7 @@ class SettingsFragment : Fragment() {
                     binding.colorIndicator.setBackgroundColor(Color.TRANSPARENT)
                 }
                 Toast.makeText(requireContext(), "Preset deleted", Toast.LENGTH_SHORT).show()
+                backupManager.triggerAutomaticBackup()
             }
         }
     }
@@ -312,7 +316,8 @@ class SettingsFragment : Fragment() {
     }
 
     private fun observeHSVPresets() {
-        viewLifecycleOwner.lifecycleScope.launch {
+        presetsObservationJob?.cancel()
+        presetsObservationJob = viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 val db = StoryMapDatabase.getDatabase(requireContext().applicationContext)
                 db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
@@ -338,6 +343,10 @@ class SettingsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    fun refreshData() {
+        observeHSVPresets()
     }
 
     private fun smoothScrollToPresetIndex(index: Int) {
