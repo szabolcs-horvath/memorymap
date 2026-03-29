@@ -811,7 +811,7 @@ formatting:
     active: true
     autoCorrect: true
     indentSize: 4
-    maxLineLength: 120
+    maxLineLength: 160
   BlockCommentInitialStarAlignment:
     active: true
     autoCorrect: true
@@ -831,7 +831,7 @@ formatting:
   ContextReceiverMapping:
     active: false
     autoCorrect: true
-    maxLineLength: 120
+    maxLineLength: 160
     indentSize: 4
   DiscouragedCommentLocation:
     active: false
@@ -857,13 +857,13 @@ formatting:
   FunctionReturnTypeSpacing:
     active: true
     autoCorrect: true
-    maxLineLength: 120
+    maxLineLength: 160
   FunctionSignature:
     active: false
     autoCorrect: true
     forceMultilineWhenParameterCountGreaterOrEqualThan: 2147483647
     functionBodyExpressionWrapping: 'default'
-    maxLineLength: 120
+    maxLineLength: 160
     indentSize: 4
   FunctionStartOfBodySpacing:
     active: true
@@ -893,7 +893,7 @@ formatting:
     indentSize: 4
   MaximumLineLength:
     active: true
-    maxLineLength: 120
+    maxLineLength: 160
     ignoreBackTickedIdentifier: false
   ModifierListSpacing:
     active: true
@@ -973,20 +973,20 @@ formatting:
   ParameterListWrapping:
     active: true
     autoCorrect: true
-    maxLineLength: 120
+    maxLineLength: 160
     indentSize: 4
   ParameterWrapping:
     active: true
     autoCorrect: true
     indentSize: 4
-    maxLineLength: 120
+    maxLineLength: 160
   PropertyName:
     active: false
   PropertyWrapping:
     active: true
     autoCorrect: true
     indentSize: 4
-    maxLineLength: 120
+    maxLineLength: 160
   SpacingAroundAngleBrackets:
     active: true
     autoCorrect: true
@@ -1063,4 +1063,4 @@ formatting:
     active: true
     autoCorrect: true
     indentSize: 4
-    maxLineLength: 120
+    maxLineLength: 160

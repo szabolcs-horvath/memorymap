@@ -62,7 +62,10 @@ interface Markerable {
                 diff.add(DATE_DIFF_PAYLOAD)
             }
 
-            if (oldItem.markerHue != newItem.markerHue || oldItem.markerSaturation != newItem.markerSaturation || oldItem.markerBrightness != newItem.markerBrightness) {
+            if (oldItem.markerHue != newItem.markerHue ||
+                oldItem.markerSaturation != newItem.markerSaturation ||
+                oldItem.markerBrightness != newItem.markerBrightness
+            ) {
                 diff.add(COLOR_DIFF_PAYLOAD)
             }
 
