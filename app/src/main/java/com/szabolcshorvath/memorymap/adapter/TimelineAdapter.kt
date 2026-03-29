@@ -19,9 +19,8 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import java.time.LocalDate
 
-class TimelineAdapter(
-    private val onMemoryClick: (MemoryGroup) -> Unit
-) : ListAdapter<TimelineAdapter.TimelineItem, RecyclerView.ViewHolder>(TimelineItem.TimelineDiffCallback()) {
+class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
+    ListAdapter<TimelineAdapter.TimelineItem, RecyclerView.ViewHolder>(TimelineItem.TimelineDiffCallback()) {
 
     sealed class TimelineItem {
         data class Memory(val memoryGroup: MemoryGroup) : TimelineItem()
@@ -103,12 +102,7 @@ class TimelineAdapter(
             val originalColor = binding.root.cardBackgroundColor.defaultColor
             val flashColor = "#80AAAAAA".toColorInt()
 
-            val colorAnim = ValueAnimator.ofObject(
-                ArgbEvaluator(),
-                originalColor,
-                flashColor,
-                originalColor
-            )
+            val colorAnim = ValueAnimator.ofObject(ArgbEvaluator(), originalColor, flashColor, originalColor)
             colorAnim.duration = FLASH_ANIMATION_DURATION_MILLIS
             colorAnim.addUpdateListener { animator ->
                 binding.root.setCardBackgroundColor(animator.animatedValue as Int)
@@ -118,8 +112,9 @@ class TimelineAdapter(
         }
     }
 
-    class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) : RecyclerView.ViewHolder(
+        binding.root
+    ) {
         fun bind(date: LocalDate) {
             binding.dateText.text = date.format(dateFormatter())
         }

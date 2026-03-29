@@ -70,28 +70,21 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 when (result.resultCode) {
                     PlaceAutocompleteActivity.RESULT_OK -> {
                         val prediction = PlaceAutocomplete.getPredictionFromIntent(intent)!!
-                        val sessionTokenFromIntent =
-                            PlaceAutocomplete.getSessionTokenFromIntent(intent)
+                        val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
                         val placesClient = Places.createClient(requireContext())
 
                         lifecycleScope.launch {
                             try {
-                                val response =
-                                    placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
-                                        sessionToken = sessionTokenFromIntent
-                                    }
+                                val response = placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
+                                    sessionToken = sessionTokenFromIntent
+                                }
                                 val place = response.place
                                 val latLng = place.location
                                 if (latLng != null) {
                                     selectedPlaceName = place.displayName
                                     selectedAddress = place.formattedAddress
                                     updateSelectedLocation(latLng, selectedPlaceName)
-                                    mMap?.animateCamera(
-                                        CameraUpdateFactory.newLatLngZoom(
-                                            latLng,
-                                            CAMERA_ZOOM
-                                        )
-                                    )
+                                    mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error fetching place details: ${e.message}", e)
@@ -118,11 +111,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentPickLocationBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -144,13 +133,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             }
         }
 
-        binding.searchButton.setOnClickListener {
-            startAutocomplete()
-        }
+        binding.searchButton.setOnClickListener { startAutocomplete() }
 
-        binding.root.doOnLayout {
-            setGoogleMapPadding()
-        }
+        binding.root.doOnLayout { setGoogleMapPadding() }
     }
 
     override fun onResume() {
@@ -254,11 +239,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             } catch (e: Exception) {
                 when (e) {
                     is IllegalArgumentException,
-                    is IOException -> Log.e(
-                        TAG,
-                        "Reverse geocoding failed for $latLng: ${e.message}",
-                        e
-                    )
+                    is IOException -> Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
                 }
             }
         }
@@ -267,8 +248,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private fun setGoogleMapPadding() {
         val map = mMap ?: return
         val topPadding = binding.searchContainer.height + binding.searchContainer.top
-        val bottomPadding =
-            binding.confirmContainer.height + (binding.root.height - binding.confirmContainer.bottom)
+        val bottomPadding = binding.confirmContainer.height + (binding.root.height - binding.confirmContainer.bottom)
         map.setPadding(0, topPadding, 0, bottomPadding)
     }
 
@@ -311,8 +291,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
         if (hasLocationPermission()) {
-            val fusedLocationClient =
-                LocationServices.getFusedLocationProviderClient(requireContext())
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val map = mMap
                 if (location != null && map != null) {

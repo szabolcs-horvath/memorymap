@@ -12,8 +12,7 @@ object DateTimeFormatterUtil {
 
     private val DATE_FORMATTER_MEDIUM = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
     private val TIME_FORMATTER_SHORT = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-    private val DATE_TIME_FORMATTER_MEDIUM =
-        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+    private val DATE_TIME_FORMATTER_MEDIUM = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
 
     fun dateFormatter(): DateTimeFormatter {
         return DATE_FORMATTER_MEDIUM.withLocale(Locale.getDefault())

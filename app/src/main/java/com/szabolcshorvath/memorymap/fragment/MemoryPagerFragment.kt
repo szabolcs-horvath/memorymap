@@ -27,11 +27,7 @@ class MemoryPagerFragment : Fragment() {
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMemoryPagerBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -73,12 +69,11 @@ class MemoryPagerFragment : Fragment() {
         private const val ARG_INITIAL_MEMORY_ID = "initial_memory_id"
 
         @JvmStatic
-        fun newInstance(memoryId: Int) =
-            MemoryPagerFragment().apply {
-                arguments = Bundle().apply {
-                    putInt(ARG_INITIAL_MEMORY_ID, memoryId)
-                }
+        fun newInstance(memoryId: Int) = MemoryPagerFragment().apply {
+            arguments = Bundle().apply {
+                putInt(ARG_INITIAL_MEMORY_ID, memoryId)
             }
+        }
     }
 }
 

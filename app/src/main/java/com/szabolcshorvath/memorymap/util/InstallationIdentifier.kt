@@ -20,8 +20,7 @@ object InstallationIdentifier {
     }
 
     private suspend fun retrieveInstallationIdentifier(context: Context): String {
-        val idFromDataStore =
-            context.dataStore.data.map { it[INSTALLATION_IDENTIFIER_KEY] }.firstOrNull()
+        val idFromDataStore = context.dataStore.data.map { it[INSTALLATION_IDENTIFIER_KEY] }.firstOrNull()
 
         if (idFromDataStore != null) {
             Log.i(TAG, "Using existing installation identifier in dataStore: $idFromDataStore")

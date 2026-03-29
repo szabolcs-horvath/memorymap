@@ -14,11 +14,11 @@ import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.databinding.ItemMediaFullBinding
 
-class MediaPagerAdapter :
-    ListAdapter<Pair<String, String>, MediaPagerAdapter.MediaViewHolder>(MediaPageDiffCallback()) {
+class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.MediaViewHolder>(
+    MediaPageDiffCallback()
+) {
 
-    class MediaViewHolder(private val binding: ItemMediaFullBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    class MediaViewHolder(private val binding: ItemMediaFullBinding) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: Pair<String, String>) {
             val uri = item.first.toUri()
@@ -108,15 +108,8 @@ class MediaPagerAdapter :
         override fun areItemsTheSame(
             oldItem: Pair<String, String>,
             newItem: Pair<String, String>
-        ): Boolean {
-            return oldItem.first == newItem.first
-        }
+        ): Boolean = oldItem.first == newItem.first
 
-        override fun areContentsTheSame(
-            oldItem: Pair<String, String>,
-            newItem: Pair<String, String>
-        ): Boolean {
-            return oldItem == newItem
-        }
+        override fun areContentsTheSame(oldItem: Pair<String, String>, newItem: Pair<String, String>): Boolean = oldItem == newItem
     }
 }

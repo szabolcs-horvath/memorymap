@@ -24,17 +24,10 @@ class GoogleAuthManager(private val context: Context) {
 
     suspend fun signIn(callback: (String) -> Unit) {
         withContext(Dispatchers.Main) {
-            val googleIdOption =
-                GetSignInWithGoogleOption.Builder(BuildConfig.OAUTH_WEB_CLIENT_ID)
-                    .build()
-            val request = GetCredentialRequest.Builder()
-                .addCredentialOption(googleIdOption)
-                .build()
+            val googleIdOption = GetSignInWithGoogleOption.Builder(BuildConfig.OAUTH_WEB_CLIENT_ID).build()
+            val request = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
 
-            val result = credentialManager.getCredential(
-                request = request,
-                context = context
-            )
+            val result = credentialManager.getCredential(request = request, context = context)
 
             handleSignIn(result, callback)
         }
@@ -54,14 +47,12 @@ class GoogleAuthManager(private val context: Context) {
 //            }
             is CustomCredential -> {
                 if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                    val googleIdTokenCredential =
-                        GoogleIdTokenCredential.createFrom(credential.data)
+                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                     googleCredential = googleIdTokenCredential
                     callback(googleIdTokenCredential.id)
                 } else {
                     Log.e(TAG, "Unexpected credential type")
-                    Toast.makeText(context, "Unexpected credential type", Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(context, "Unexpected credential type", Toast.LENGTH_SHORT).show()
                 }
             }
 

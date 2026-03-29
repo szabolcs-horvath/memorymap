@@ -17,23 +17,16 @@ class MemoryMapApplication : Application() {
     private fun initializeMaps() {
         MapsInitializer.initialize(this, MapsInitializer.Renderer.LATEST) { renderer ->
             when (renderer) {
-                MapsInitializer.Renderer.LATEST -> Log.d(
-                    TAG,
-                    "The latest version of the renderer is used."
-                )
+                MapsInitializer.Renderer.LATEST -> Log.d(TAG, "The latest version of the renderer is used.")
 
-                MapsInitializer.Renderer.LEGACY -> Log.d(
-                    TAG,
-                    "The legacy version of the renderer is used."
-                )
+                MapsInitializer.Renderer.LEGACY -> Log.d(TAG, "The legacy version of the renderer is used.")
             }
         }
     }
 
     private fun initializePlaces() {
         try {
-            val appInfo =
-                packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+            val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
             val apiKey = appInfo.metaData.getString("com.google.android.geo.API_KEY")
             if (apiKey != null && !Places.isInitialized()) {
                 Places.initializeWithNewPlacesApiEnabled(applicationContext, apiKey)

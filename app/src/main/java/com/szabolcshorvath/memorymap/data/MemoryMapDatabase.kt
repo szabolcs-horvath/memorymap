@@ -40,11 +40,11 @@ abstract class MemoryMapDatabase : RoomDatabase() {
     private var _memoryGroupDao: MemoryGroupDao? = null
     private var _hsvPresetDao: HSVPresetDao? = null
 
-    fun memoryGroupDao(): MemoryGroupDao =
-        _memoryGroupDao ?: tracedDao(memoryGroupDaoInternal()).also { _memoryGroupDao = it }
+    fun memoryGroupDao(): MemoryGroupDao = _memoryGroupDao ?: tracedDao(memoryGroupDaoInternal()).also {
+        _memoryGroupDao = it
+    }
 
-    fun hsvPresetDao(): HSVPresetDao =
-        _hsvPresetDao ?: tracedDao(hsvPresetDaoInternal()).also { _hsvPresetDao = it }
+    fun hsvPresetDao(): HSVPresetDao = _hsvPresetDao ?: tracedDao(hsvPresetDaoInternal()).also { _hsvPresetDao = it }
 
     companion object {
         const val DB_VERSION = 17
@@ -83,11 +83,7 @@ abstract class MemoryMapDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): MemoryMapDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    MemoryMapDatabase::class.java,
-                    "memory_map_database"
-                )
+                val instance = Room.databaseBuilder(context.applicationContext, MemoryMapDatabase::class.java, "memory_map_database")
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5)
                     .fallbackToDestructiveMigration(false)
                     .build()

@@ -31,12 +31,7 @@ object MediaHasher {
         return "${size}_$hashString"
     }
 
-    private fun readFileAndUpdateDigest(
-        resolver: ContentResolver,
-        uri: Uri,
-        digest: MessageDigest,
-        size: Long
-    ) {
+    private fun readFileAndUpdateDigest(resolver: ContentResolver, uri: Uri, digest: MessageDigest, size: Long) {
         resolver.openInputStream(uri)?.use { fis ->
             val buffer = ByteArray(BUFFER_SIZE)
 
@@ -62,13 +57,7 @@ object MediaHasher {
         } ?: throw FileNotFoundException("File not found: $uri")
     }
 
-    private fun handleLargeFile(
-        size: Long,
-        bytesReadFirst: Int,
-        fis: InputStream,
-        buffer: ByteArray,
-        digest: MessageDigest
-    ) {
+    private fun handleLargeFile(size: Long, bytesReadFirst: Int, fis: InputStream, buffer: ByteArray, digest: MessageDigest) {
         val remaining = size - bytesReadFirst
         val skipAmount = remaining - BUFFER_SIZE
 

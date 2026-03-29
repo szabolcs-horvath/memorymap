@@ -93,20 +93,11 @@ class MainActivity :
 
             activeFragment = mapFragment
         } else {
-            mapFragment = supportFragmentManager.findFragmentByTag(MapFragment.TAG) as? MapFragment
-                ?: MapFragment()
-            timelineFragment =
-                supportFragmentManager.findFragmentByTag(TimelineFragment.TAG) as? TimelineFragment
-                    ?: TimelineFragment()
-            addMemoryFragment =
-                supportFragmentManager.findFragmentByTag(AddMemoryGroupFragment.TAG) as? AddMemoryGroupFragment
-                    ?: AddMemoryGroupFragment()
-            pickLocationFragment =
-                supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment
-                    ?: PickLocationFragment()
-            settingsFragment =
-                supportFragmentManager.findFragmentByTag(SettingsFragment.TAG) as? SettingsFragment
-                    ?: SettingsFragment()
+            mapFragment = supportFragmentManager.findFragmentByTag(MapFragment.TAG) as? MapFragment ?: MapFragment()
+            timelineFragment = supportFragmentManager.findFragmentByTag(TimelineFragment.TAG) as? TimelineFragment ?: TimelineFragment()
+            addMemoryFragment = supportFragmentManager.findFragmentByTag(AddMemoryGroupFragment.TAG) as? AddMemoryGroupFragment ?: AddMemoryGroupFragment()
+            pickLocationFragment = supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment ?: PickLocationFragment()
+            settingsFragment = supportFragmentManager.findFragmentByTag(SettingsFragment.TAG) as? SettingsFragment ?: SettingsFragment()
 
             activeFragment = if (!addMemoryFragment.isHidden) {
                 addMemoryFragment
@@ -133,10 +124,7 @@ class MainActivity :
             }
 
             if (supportFragmentManager.backStackEntryCount > 0) {
-                supportFragmentManager.popBackStack(
-                    null,
-                    FragmentManager.POP_BACK_STACK_INCLUSIVE
-                )
+                supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }
 
             when (item.itemId) {
@@ -305,10 +293,7 @@ class MainActivity :
         transaction.commit()
     }
 
-    override fun onMediaClick(
-        mediaItems: ArrayList<Pair<String, String>>,
-        startPosition: Int
-    ) {
+    override fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int) {
         val fragment = MediaViewerFragment.newInstance(mediaItems, startPosition)
         val memoryPagerFragment = supportFragmentManager.findFragmentByTag(MemoryPagerFragment.TAG)
 
@@ -329,10 +314,7 @@ class MainActivity :
 
     override fun onNavigateToTimeline(memoryId: Int) {
         // First pop the back stack to remove the details fragment
-        supportFragmentManager.popBackStack(
-            null,
-            FragmentManager.POP_BACK_STACK_INCLUSIVE
-        )
+        supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
 
         isProgrammaticSelection = true
         binding.bottomNavigation.selectedItemId = R.id.navigation_timeline
@@ -345,10 +327,7 @@ class MainActivity :
 
     override fun onNavigateToMap(lat: Double, lng: Double, id: Int) {
         // First pop the back stack to remove the details fragment
-        supportFragmentManager.popBackStack(
-            null,
-            FragmentManager.POP_BACK_STACK_INCLUSIVE
-        )
+        supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
 
         isProgrammaticSelection = true
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
@@ -366,13 +345,7 @@ class MainActivity :
         showFragment(pickLocationFragment)
     }
 
-    override fun onMemorySaved(
-        lat: Double,
-        lng: Double,
-        id: Int,
-        startDate: LocalDate,
-        endDate: LocalDate
-    ) {
+    override fun onMemorySaved(lat: Double, lng: Double, id: Int, startDate: LocalDate, endDate: LocalDate) {
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
 
         lifecycleScope.launch {
@@ -382,12 +355,7 @@ class MainActivity :
         }
     }
 
-    override fun onLocationConfirmed(
-        lat: Double,
-        lng: Double,
-        placeName: String?,
-        address: String?
-    ) {
+    override fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?) {
         showFragment(addMemoryFragment)
         addMemoryFragment.updateLocation(lat, lng, placeName, address)
     }
@@ -403,8 +371,7 @@ class MainActivity :
             lifecycleScope.launch(Dispatchers.IO) {
                 val db = MemoryMapDatabase.getDatabase(applicationContext)
                 val newGroupId = db.memoryGroupDao().insertGroup(memoryGroup)
-                val restoredMediaItems =
-                    mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
+                val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
                 db.memoryGroupDao().insertMediaItems(restoredMediaItems)
 
                 // Trigger automatic backup after undo
@@ -420,10 +387,7 @@ class MainActivity :
 
     override fun onEditMemory(memoryId: Int) {
         // Pop the back stack to remove the details fragment
-        supportFragmentManager.popBackStack(
-            null,
-            FragmentManager.POP_BACK_STACK_INCLUSIVE
-        )
+        supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
 
         showFragment(addMemoryFragment)
         addMemoryFragment.setEditMode(memoryId)

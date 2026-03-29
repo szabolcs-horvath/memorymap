@@ -43,12 +43,7 @@ object MultiColorMarkerGenerator {
         val paint: Paint
     ) {
         companion object {
-            fun initPinEssentials(
-                colors: List<Int>,
-                count: Int,
-                density: Float,
-                borderWidth: Float
-            ): PinEssentials {
+            fun initPinEssentials(colors: List<Int>, count: Int, density: Float, borderWidth: Float): PinEssentials {
                 val width = (MARKER_SIZE_DP * density).toInt()
                 val height = (width * WIDTH_TO_HEIGHT_SCALING_FACTOR).toInt()
                 val centerX = width / 2.0f
@@ -61,20 +56,7 @@ object MultiColorMarkerGenerator {
                 val textSize = (TEXT_SIZE_SP * density)
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-                return PinEssentials(
-                    width,
-                    height,
-                    centerX,
-                    centerY,
-                    radius,
-                    bitmap,
-                    canvas,
-                    pinPath,
-                    colors,
-                    text,
-                    textSize,
-                    paint
-                )
+                return PinEssentials(width, height, centerX, centerY, radius, bitmap, canvas, pinPath, colors, text, textSize, paint)
             }
         }
     }
@@ -136,11 +118,7 @@ object MultiColorMarkerGenerator {
         pinEssentials.pinPath.close()
     }
 
-    private fun drawMarkerContent(
-        pinEssentials: PinEssentials,
-        borderWidth: Float,
-        outlineWidth: Float
-    ) {
+    private fun drawMarkerContent(pinEssentials: PinEssentials, borderWidth: Float, outlineWidth: Float) {
         drawSegments(pinEssentials)
         drawBorder(pinEssentials, borderWidth)
         val textY = drawText(pinEssentials)
@@ -152,13 +130,12 @@ object MultiColorMarkerGenerator {
         pinEssentials.canvas.withClip(pinEssentials.pinPath) {
             if (pinEssentials.colors.isNotEmpty()) {
                 val angleStep = DEGREES_360 / pinEssentials.colors.size
-                val rect =
-                    RectF(
-                        pinEssentials.centerX - pinEssentials.height,
-                        pinEssentials.centerY - pinEssentials.height,
-                        pinEssentials.centerX + pinEssentials.height,
-                        pinEssentials.centerY + pinEssentials.height
-                    )
+                val rect = RectF(
+                    pinEssentials.centerX - pinEssentials.height,
+                    pinEssentials.centerY - pinEssentials.height,
+                    pinEssentials.centerX + pinEssentials.height,
+                    pinEssentials.centerY + pinEssentials.height
+                )
 
                 for (i in pinEssentials.colors.indices) {
                     pinEssentials.paint.color = pinEssentials.colors[i]
@@ -183,12 +160,7 @@ object MultiColorMarkerGenerator {
         pinEssentials.paint.textAlign = Paint.Align.CENTER
 
         val textBounds = Rect()
-        pinEssentials.paint.getTextBounds(
-            pinEssentials.text,
-            0,
-            pinEssentials.text.length,
-            textBounds
-        )
+        pinEssentials.paint.getTextBounds(pinEssentials.text, 0, pinEssentials.text.length, textBounds)
         val textY = pinEssentials.centerY - textBounds.exactCenterY()
         return textY
     }

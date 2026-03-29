@@ -15,22 +15,20 @@ object PerfUtil {
         }
     }
 
-    inline fun <reified T : Any> tracedDao(dao: T): T =
-        Proxy.newProxyInstance(
-            T::class.java.classLoader,
-            arrayOf(T::class.java)
-        ) { _, method, args ->
-            val trace =
-                Firebase.performance.newTrace("db_${T::class.simpleName}_${method.name}")
-            trace.start()
-            try {
-                if (args != null) {
-                    method.invoke(dao, *args)
-                } else {
-                    method.invoke(dao)
-                }
-            } finally {
-                trace.stop()
+    inline fun <reified T : Any> tracedDao(dao: T): T = Proxy.newProxyInstance(
+        T::class.java.classLoader,
+        arrayOf(T::class.java)
+    ) { _, method, args ->
+        val trace = Firebase.performance.newTrace("db_${T::class.simpleName}_${method.name}")
+        trace.start()
+        try {
+            if (args != null) {
+                method.invoke(dao, *args)
+            } else {
+                method.invoke(dao)
             }
-        } as T
+        } finally {
+            trace.stop()
+        }
+    } as T
 }

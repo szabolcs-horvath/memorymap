@@ -50,11 +50,7 @@ class MemoryFragment : Fragment() {
     private var isFragmentsExpanded = true
 
     interface MemoryFragmentListener {
-        fun onMediaClick(
-            mediaItems: ArrayList<Pair<String, String>>,
-            startPosition: Int
-        )
-
+        fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int)
         fun onBackFromMemory()
         fun onNavigateToTimeline(memoryId: Int)
         fun onNavigateToMap(lat: Double, lng: Double, id: Int)
@@ -76,11 +72,7 @@ class MemoryFragment : Fragment() {
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMemoryBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -145,11 +137,7 @@ class MemoryFragment : Fragment() {
                 }
             }
 
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean {
+            override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
                 val fromPos = viewHolder.bindingAdapterPosition
                 val toPos = target.bindingAdapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
@@ -172,10 +160,7 @@ class MemoryFragment : Fragment() {
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
 
-            override fun clearView(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder
-            ) {
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
                 // Only save and backup if the order actually changed during the drag operation
                 val currentOrder = mediaItems.map { it.id }
@@ -202,11 +187,7 @@ class MemoryFragment : Fragment() {
                 }
             }
 
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean {
+            override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
                 val fromPos = viewHolder.bindingAdapterPosition
                 val toPos = target.bindingAdapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
@@ -228,10 +209,7 @@ class MemoryFragment : Fragment() {
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
 
-            override fun clearView(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder
-            ) {
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
                 // Only save and backup if the order actually changed during the drag operation
                 val currentOrder = fragmentItems.map { it.id }
@@ -246,8 +224,7 @@ class MemoryFragment : Fragment() {
 
     private fun toggleFragments() {
         isFragmentsExpanded = !isFragmentsExpanded
-        binding.fragmentsExpandedContent.visibility =
-            if (isFragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsExpandedContent.visibility = if (isFragmentsExpanded) View.VISIBLE else View.GONE
         binding.fragmentsChevron.animate()
             .rotation(if (isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
             .start()

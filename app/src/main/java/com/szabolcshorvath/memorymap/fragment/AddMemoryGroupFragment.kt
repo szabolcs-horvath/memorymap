@@ -69,11 +69,9 @@ class AddMemoryGroupFragment : Fragment() {
         val deviceId: String
     ) {
         class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
-            override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
-                oldItem.uri == newItem.uri
+            override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) = oldItem.uri == newItem.uri
 
-            override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) =
-                oldItem == newItem
+            override fun areContentsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) = oldItem == newItem
         }
     }
 
@@ -95,13 +93,12 @@ class AddMemoryGroupFragment : Fragment() {
         val order: Int? = null
     ) {
         class FragmentDiffCallback : DiffUtil.ItemCallback<FragmentEditState>() {
-            override fun areItemsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) =
-                oldItem.localId == newItem.localId
-
-            override fun areContentsTheSame(
+            override fun areItemsTheSame(
                 oldItem: FragmentEditState,
                 newItem: FragmentEditState
-            ) = oldItem == newItem
+            ) = oldItem.localId == newItem.localId
+
+            override fun areContentsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) = oldItem == newItem
         }
     }
 
@@ -136,17 +133,13 @@ class AddMemoryGroupFragment : Fragment() {
             uris.let {
                 val contentResolver = requireContext().contentResolver
                 lifecycleScope.launch {
-                    val deviceId =
-                        currentDeviceId ?: InstallationIdentifier.getInstallationIdentifier(
-                            requireContext()
-                        )
+                    val deviceId = currentDeviceId ?: InstallationIdentifier.getInstallationIdentifier(requireContext())
                     val newItems = it.mapNotNull { uri ->
                         if (selectedMedia.any { m -> m.uri == uri }) {
                             null
                         } else {
                             val type = contentResolver.getType(uri)
-                            val mediaType =
-                                if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
+                            val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
                             SelectedMedia(uri, mediaType, deviceId)
                         }
                     }
@@ -156,10 +149,7 @@ class AddMemoryGroupFragment : Fragment() {
                 }
                 it.forEach { uri ->
                     try {
-                        contentResolver.takePersistableUriPermission(
-                            uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
+                        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     } catch (e: RemoteException) {
                         Log.e(TAG, "Error taking persistable permission for $uri", e)
                     }
@@ -259,9 +249,7 @@ class AddMemoryGroupFragment : Fragment() {
             pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
         }
 
-        binding.clearButton.setOnClickListener {
-            showClearConfirmationDialog()
-        }
+        binding.clearButton.setOnClickListener { showClearConfirmationDialog() }
 
         binding.saveButton.setOnClickListener {
             lifecycleScope.launch {
@@ -309,8 +297,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun toggleFragments() {
         fragmentsExpanded = !fragmentsExpanded
-        binding.fragmentsExpandedContent.visibility =
-            if (fragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsExpandedContent.visibility = if (fragmentsExpanded) View.VISIBLE else View.GONE
         binding.fragmentsChevron.animate()
             .rotation(if (fragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
             .start()
@@ -322,8 +309,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateColorUI(animate: Boolean = false) {
-        binding.colorExpandedContent.visibility =
-            if (colorExpanded) View.VISIBLE else View.GONE
+        binding.colorExpandedContent.visibility = if (colorExpanded) View.VISIBLE else View.GONE
         binding.colorChevron.animate()
             .rotation(if (colorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
             .start()
@@ -360,24 +346,9 @@ class AddMemoryGroupFragment : Fragment() {
                 val fraction = animator.animatedFraction
 
                 // Calculate current values based on the animation progress
-                val currentH = lerpWithStep(
-                    startH,
-                    markerHue,
-                    fraction,
-                    binding.hueSlider.stepSize
-                )
-                val currentS = lerpWithStep(
-                    startS,
-                    markerSaturation,
-                    fraction,
-                    binding.saturationSlider.stepSize
-                )
-                val currentV = lerpWithStep(
-                    startV,
-                    markerBrightness,
-                    fraction,
-                    binding.brightnessSlider.stepSize
-                )
+                val currentH = lerpWithStep(startH, markerHue, fraction, binding.hueSlider.stepSize)
+                val currentS = lerpWithStep(startS, markerSaturation, fraction, binding.saturationSlider.stepSize)
+                val currentV = lerpWithStep(startV, markerBrightness, fraction, binding.brightnessSlider.stepSize)
 
                 binding.hueSlider.value = currentH
                 binding.saturationSlider.value = currentS
@@ -424,10 +395,8 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateFragmentsUI(scrollToEnd: Boolean = false) {
-        binding.fragmentsExpandedContent.visibility =
-            if (fragmentsExpanded) View.VISIBLE else View.GONE
-        binding.fragmentsChevron.rotation =
-            if (fragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
+        binding.fragmentsExpandedContent.visibility = if (fragmentsExpanded) View.VISIBLE else View.GONE
+        binding.fragmentsChevron.rotation = if (fragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
         // We pass a new list instance (toList()) to ensure it detects the change.
         fragmentsAdapter.submitList(fragments.toList()) {
             if (scrollToEnd) {
@@ -493,12 +462,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.saveButton.text = "Save Memory"
     }
 
-    fun updateLocation(
-        newLat: Double,
-        newLng: Double,
-        newPlaceName: String? = null,
-        newAddress: String? = null
-    ) {
+    fun updateLocation(newLat: Double, newLng: Double, newPlaceName: String? = null, newAddress: String? = null) {
         if (activePickingIndex == -1) {
             lat = newLat
             lng = newLng
@@ -534,8 +498,7 @@ class AddMemoryGroupFragment : Fragment() {
                     endDateTime = group.endDate
                     markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
                     markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
-                    markerBrightness =
-                        group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                    markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
 
                     binding.titleInput.setText(group.title)
                     binding.descriptionInput.setText(group.description)
@@ -635,8 +598,7 @@ class AddMemoryGroupFragment : Fragment() {
 
             val startStr = startDateTime.format(dateFormatter())
             val endStr = endDateTime.format(dateFormatter())
-            binding.dateRangeButton.text =
-                if (startStr == endStr) startStr else "$startStr - $endStr"
+            binding.dateRangeButton.text = if (startStr == endStr) startStr else "$startStr - $endStr"
         } else {
             binding.startDateTimeLayout.visibility = View.VISIBLE
             binding.endDateTimeLayout.visibility = View.VISIBLE
@@ -676,12 +638,10 @@ class AddMemoryGroupFragment : Fragment() {
         DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
             val newDate = LocalDate.of(year, month + 1, dayOfMonth)
             if (isStart) {
-                startDateTime =
-                    newDate.atTime(startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+                startDateTime = newDate.atTime(startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
                 if (endDateTime.isBefore(startDateTime)) endDateTime = startDateTime.plusHours(1)
             } else {
-                endDateTime =
-                    newDate.atTime(endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+                endDateTime = newDate.atTime(endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
                 if (endDateTime.isBefore(startDateTime)) startDateTime = endDateTime.minusHours(1)
             }
             updateDateTimeButtons()
@@ -726,19 +686,12 @@ class AddMemoryGroupFragment : Fragment() {
                     val groupId = saveMemoryGroup(db, group)
                     saveMediaItems(db, groupId, context)
                     saveMemoryFragments(db, groupId)
-
                     groupId.toInt()
                 }
             }
 
             backupManager.triggerAutomaticBackup()
-            listener?.onMemorySaved(
-                lat,
-                lng,
-                groupIdResult,
-                effectiveStart.toLocalDate(),
-                effectiveEnd.toLocalDate()
-            )
+            listener?.onMemorySaved(lat, lng, groupIdResult, effectiveStart.toLocalDate(), effectiveEnd.toLocalDate())
             clearFields()
         } catch (e: Exception) {
             Log.e(TAG, "Error saving memory group", e)
@@ -757,8 +710,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun calculateEffectiveStartTime(): ZonedDateTime = if (isAllDay) {
-        startDateTime.toLocalDate()
-            .atStartOfDay(ZoneId.systemDefault())
+        startDateTime.toLocalDate().atStartOfDay(ZoneId.systemDefault())
     } else {
         startDateTime
     }
@@ -771,10 +723,7 @@ class AddMemoryGroupFragment : Fragment() {
         endDateTime
     }
 
-    private fun assembleMemoryGroup(
-        effectiveStart: ZonedDateTime,
-        effectiveEnd: ZonedDateTime
-    ): MemoryGroup = MemoryGroup(
+    private fun assembleMemoryGroup(effectiveStart: ZonedDateTime, effectiveEnd: ZonedDateTime): MemoryGroup = MemoryGroup(
         id = editingMemoryId ?: 0,
         title = binding.titleInput.text.toString(),
         description = binding.descriptionInput.text.toString().ifBlank { null },
@@ -821,10 +770,8 @@ class AddMemoryGroupFragment : Fragment() {
                 null
             )?.use { cursor ->
                 if (cursor.moveToFirst()) {
-                    size =
-                        cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE))
-                    date =
-                        cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN))
+                    size = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE))
+                    date = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN))
                 }
             }
 

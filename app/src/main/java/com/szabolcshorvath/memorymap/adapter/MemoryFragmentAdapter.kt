@@ -20,9 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MemoryFragmentAdapter(
-    private val onShowOnMapClick: (MemoryFragment) -> Unit
-) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
+class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
 
     private val items = mutableListOf<MemoryFragment>()
 
@@ -30,8 +28,9 @@ class MemoryFragmentAdapter(
         setHasStableIds(true)
     }
 
-    inner class MemoryFragmentViewHolder(private val binding: ItemMemoryFragmentBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    inner class MemoryFragmentViewHolder(private val binding: ItemMemoryFragmentBinding) : RecyclerView.ViewHolder(
+        binding.root
+    ) {
         fun bind(fragment: MemoryFragment) {
             binding.locationText.text = if (!fragment.placeName.isNullOrEmpty()) {
                 fragment.placeName
@@ -73,11 +72,7 @@ class MemoryFragmentAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentViewHolder {
         return MemoryFragmentViewHolder(
-            ItemMemoryFragmentBinding.inflate(
-                LayoutInflater.from(parent.context),
-                parent,
-                false
-            )
+            ItemMemoryFragmentBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         )
     }
 

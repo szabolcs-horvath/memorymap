@@ -13,19 +13,13 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 
-class MemoryOverlayAdapter(
-    private val onDetailsClick: (Int) -> Unit
-) : ListAdapter<Markerable, MemoryOverlayAdapter.MemoryOverlayViewHolder>(Markerable.MarkerableDiffCallback()) {
+class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
+    ListAdapter<Markerable, MemoryOverlayAdapter.MemoryOverlayViewHolder>(Markerable.MarkerableDiffCallback()) {
 
-    class MemoryOverlayViewHolder(val binding: ItemMemoryOverlayBinding) :
-        RecyclerView.ViewHolder(binding.root)
+    class MemoryOverlayViewHolder(val binding: ItemMemoryOverlayBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryOverlayViewHolder {
-        val binding = ItemMemoryOverlayBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
+        val binding = ItemMemoryOverlayBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return MemoryOverlayViewHolder(binding)
     }
 
@@ -44,11 +38,7 @@ class MemoryOverlayAdapter(
         }
     }
 
-    override fun onBindViewHolder(
-        holder: MemoryOverlayViewHolder,
-        position: Int,
-        payloads: MutableList<Any>
-    ) {
+    override fun onBindViewHolder(holder: MemoryOverlayViewHolder, position: Int, payloads: MutableList<Any>) {
         if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
         } else {
@@ -69,8 +59,7 @@ class MemoryOverlayAdapter(
     private fun bindDate(holder: MemoryOverlayViewHolder, item: Markerable) {
         val dateText = item.getFormattedDate()
         holder.binding.memoryDate.text = dateText
-        holder.binding.memoryDate.visibility =
-            if (dateText.isNullOrEmpty()) View.GONE else View.VISIBLE
+        holder.binding.memoryDate.visibility = if (dateText.isNullOrEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun bindColor(holder: MemoryOverlayViewHolder, item: Markerable) {

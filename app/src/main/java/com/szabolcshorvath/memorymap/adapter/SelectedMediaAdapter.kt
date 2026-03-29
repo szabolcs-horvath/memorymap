@@ -13,24 +13,20 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 
-class SelectedMediaAdapter(
-    private var currentDeviceId: String?,
-    private val onRemove: (Int) -> Unit
-) : ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
-    SelectedMedia.SelectedMediaDiffCallback()
-) {
+class SelectedMediaAdapter(private var currentDeviceId: String?, private val onRemove: (Int) -> Unit) :
+    ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
+        SelectedMedia.SelectedMediaDiffCallback()
+    ) {
 
-    class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) :
-        RecyclerView.ViewHolder(binding.root)
+    class SelectedMediaViewHolder(val binding: ItemMediaSelectedBinding) : RecyclerView.ViewHolder(binding.root)
 
     fun updateCurrentDeviceId(deviceId: String?) {
         currentDeviceId = deviceId
         notifyItemRangeChanged(0, itemCount)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = SelectedMediaViewHolder(
-        ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-    )
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+        SelectedMediaViewHolder(ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
     override fun onBindViewHolder(holder: SelectedMediaViewHolder, position: Int) {
         val item = getItem(position)
@@ -54,8 +50,7 @@ class SelectedMediaAdapter(
                     onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE }
                 )
             }
-            holder.binding.videoIcon.visibility =
-                if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
+            holder.binding.videoIcon.visibility = if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
         }
 
         holder.binding.removeButton.setOnClickListener { onRemove(holder.bindingAdapterPosition) }

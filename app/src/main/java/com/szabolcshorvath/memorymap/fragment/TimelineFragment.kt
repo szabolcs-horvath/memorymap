@@ -35,11 +35,7 @@ class TimelineFragment : Fragment() {
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentTimelineBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -96,24 +92,16 @@ class TimelineFragment : Fragment() {
 
             // We need to wait a bit for the scroll to happen and view holder to be bound/visible
             lifecycleScope.launch {
-                val viewHolder =
-                    binding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
+                val viewHolder = binding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
                 if (viewHolder is TimelineAdapter.TimelineViewHolder) {
                     viewHolder.flash()
                 } else {
                     // Sometimes the view holder isn't immediately available even after scroll
                     // Try waiting a bit more or listen for scroll idle
-                    binding.timelineRecyclerView.addOnScrollListener(object :
-                        RecyclerView.OnScrollListener() {
-                        override fun onScrollStateChanged(
-                            recyclerView: RecyclerView,
-                            newState: Int
-                        ) {
+                    binding.timelineRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                        override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                             if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                                val vh =
-                                    binding.timelineRecyclerView.findViewHolderForAdapterPosition(
-                                        position
-                                    )
+                                val vh = binding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
                                 if (vh is TimelineAdapter.TimelineViewHolder) {
                                     vh.flash()
                                 }

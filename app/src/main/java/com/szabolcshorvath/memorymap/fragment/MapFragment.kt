@@ -87,17 +87,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var isInitialZoomDone = false
     private var refreshJob: Job? = null
 
-    private val locationPermissionRequest = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        ) {
-            enableMyLocation()
-        } else {
-            permissionDenied = true
+    private val locationPermissionRequest =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            ) {
+                enableMyLocation()
+            } else {
+                permissionDenied = true
+            }
         }
-    }
 
     interface MapListener {
         fun onNavigateToTimeline(memoryId: Int)
@@ -112,11 +111,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMapsBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -165,10 +160,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         builder.setTitleText("Select dates")
 
         if (filterStartDate != null && filterEndDate != null) {
-            val startMillis =
-                filterStartDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
-            val endMillis =
-                filterEndDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            val startMillis = filterStartDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            val endMillis = filterEndDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
             builder.setSelection(androidx.core.util.Pair(startMillis, endMillis))
         }
 
@@ -196,16 +189,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             duration = ANIMATION_DURATION
         }
         TransitionManager.beginDelayedTransition(binding.root, transition)
-        binding.statsOverlayCard.visibility =
-            if (binding.statsOverlayCard.isVisible) View.GONE else View.VISIBLE
+        binding.statsOverlayCard.visibility = if (binding.statsOverlayCard.isVisible) View.GONE else View.VISIBLE
     }
 
     private fun updateDateRangeButtonText() {
         val dateFormatter = dateFormatter()
         if (filterStartDate != null && filterEndDate != null) {
             if (filterStartDate != filterEndDate) {
-                binding.btnDateRange.text =
-                    "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
+                binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
             } else {
                 binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)}"
             }
@@ -275,12 +266,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if (items != null) {
                 selectedMemoryId = items.firstOrNull()?.groupId
                 showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
-                mMap?.animateCamera(
-                    CameraUpdateFactory.newLatLngZoom(
-                        marker.position,
-                        MAX_CAMERA_ZOOM
-                    )
-                )
+                mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.position, MAX_CAMERA_ZOOM))
             }
             true
         }
@@ -365,28 +351,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
-        if (hasLocationPermission() && initialZoomAndCoordinatesNotReady()
-        ) {
-            val fusedLocationClient =
-                LocationServices.getFusedLocationProviderClient(requireContext())
+        if (hasLocationPermission() && initialZoomAndCoordinatesNotReady()) {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val googleMap = mMap
                 if (location != null && googleMap != null && initialZoomAndCoordinatesNotReady()) {
                     isInitialZoomDone = true
                     val latLng = LatLng(location.latitude, location.longitude)
-                    googleMap.animateCamera(
-                        CameraUpdateFactory.newLatLngZoom(
-                            latLng,
-                            DEFAULT_ZOOM
-                        )
-                    )
+                    googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM))
                 }
             }
         }
     }
 
-    private fun initialZoomAndCoordinatesNotReady(): Boolean =
-        !isInitialZoomDone && (initialSelectedLat == null || initialSelectedLng == null)
+    private fun initialZoomAndCoordinatesNotReady(): Boolean = !isInitialZoomDone && (initialSelectedLat == null || initialSelectedLng == null)
 
     override fun onResume() {
         super.onResume()
@@ -475,8 +453,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val start = filterStartDate ?: LocalDate.MIN
             val end = filterEndDate ?: LocalDate.MAX
 
-            val showFragments = requireContext().dataStore.data
-                .first()[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false
+            val showFragments = requireContext().dataStore.data.first()[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false
 
             // Perform filtering and clustering in the background
             val filteredItems = withContext(Dispatchers.Default) {
@@ -494,11 +471,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
 
                 candidateItems.filter { item ->
-                    val itemStart =
-                        (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
-                            ?: LocalDate.MIN
-                    val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
-                        ?: LocalDate.MAX
+                    val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate() ?: LocalDate.MIN
+                    val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate() ?: LocalDate.MAX
                     !itemEnd.isBefore(start) && !itemStart.isAfter(end)
                 }
             }
@@ -513,12 +487,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun updateUIWithFreshMarkers(
-        googleMap: GoogleMap,
-        filteredItems: List<Markerable>,
-        clusters: Collection<List<Markerable>>,
-        adjustCamera: Boolean
-    ) {
+    private fun updateUIWithFreshMarkers(googleMap: GoogleMap, filteredItems: List<Markerable>, clusters: Collection<List<Markerable>>, adjustCamera: Boolean) {
         trace("map_fragment_update_ui_with_fresh_markers") {
             googleMap.clear()
             markerMap.clear()
@@ -526,15 +495,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             // Update stats
             val totalCount = filteredItems.size.toFloat()
             if (totalCount > 0) {
-                val colorStats = filteredItems
-                    .groupBy {
-                        ColorUtil.hsvToColor(
-                            it.markerHue ?: DEFAULT_MARKER_HUE,
-                            it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                            it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                        )
-                    }
-                    .mapValues { it.value.size }
+                val colorStats = filteredItems.groupBy {
+                    ColorUtil.hsvToColor(
+                        it.markerHue ?: DEFAULT_MARKER_HUE,
+                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                    )
+                }.mapValues { it.value.size }
 
                 val sliceList = colorStats.map { (color, count) ->
                     Slice(count / totalCount, color, label = count.toString())
@@ -563,10 +530,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         }
                         // Favor the main location for the default groupId marker
                         val mainGroup = allGroups.find { it.id == item.groupId }
-                        if (mainGroup != null &&
-                            mainGroup.latitude == item.latitude &&
-                            mainGroup.longitude == item.longitude
-                        ) {
+                        if (mainGroup != null && mainGroup.latitude == item.latitude && mainGroup.longitude == item.longitude) {
                             markerMap[idKey] = marker
                         }
                     }
@@ -635,15 +599,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val markerTitle = if (items.size == 1) items[0].title else "${items.size} Memories"
 
         return if (items.size > 1) {
-            val colors =
-                items.map {
-                    ColorUtil.hsvToColor(
-                        it.markerHue ?: DEFAULT_MARKER_HUE,
-                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                    )
-                }
-                    .sorted()
+            val colors = items.map {
+                ColorUtil.hsvToColor(
+                    it.markerHue ?: DEFAULT_MARKER_HUE,
+                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                )
+            }.sorted()
             val density = resources.displayMetrics.density
             val bitmap = MultiColorMarkerGenerator.generateTapered(colors, items.size, density)
 
@@ -660,8 +622,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
                 representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
             )
-            val contrastColor =
-                ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
+            val contrastColor = ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
 
             googleMap.addMarker(
                 AdvancedMarkerOptions()
@@ -706,18 +667,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         @Suppress("UNCHECKED_CAST")
         val items = marker.tag as? List<Markerable>
         if (items != null) {
-            showMemoryOverlay(
-                marker.position.latitude,
-                marker.position.longitude,
-                items
-            )
+            showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
         }
     }
 
     private fun showMemoryOverlay(lat: Double, lng: Double, items: List<Markerable>) {
         val distinctItems = items.distinctBy { it.groupId }
-        val locationName = distinctItems.firstOrNull { it.placeName != null }?.placeName
-            ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
+        val locationName = distinctItems.firstOrNull {
+            it.placeName != null
+        }?.placeName ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
 
         // Smoothly animate the card appearance, title cross-fade, and list height changes
         val transition = TransitionSet().apply {

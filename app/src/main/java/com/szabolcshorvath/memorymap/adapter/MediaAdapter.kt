@@ -24,8 +24,9 @@ class MediaAdapter(
         setHasStableIds(true)
     }
 
-    inner class MediaViewHolder(private val binding: ItemMediaThumbnailBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    inner class MediaViewHolder(private val binding: ItemMediaThumbnailBinding) : RecyclerView.ViewHolder(
+        binding.root
+    ) {
         fun bind(mediaItem: MediaItem) {
             val isFromOtherDevice = currentDeviceId != null && mediaItem.deviceId != currentDeviceId
 
@@ -48,8 +49,7 @@ class MediaAdapter(
                     )
                 }
 
-                binding.videoIcon.visibility =
-                    if (mediaItem.type == MediaType.VIDEO) View.VISIBLE else View.GONE
+                binding.videoIcon.visibility = if (mediaItem.type == MediaType.VIDEO) View.VISIBLE else View.GONE
             }
 
             binding.root.setOnClickListener {
@@ -62,8 +62,7 @@ class MediaAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
-        val binding =
-            ItemMediaThumbnailBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding = ItemMediaThumbnailBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return MediaViewHolder(binding)
     }
 

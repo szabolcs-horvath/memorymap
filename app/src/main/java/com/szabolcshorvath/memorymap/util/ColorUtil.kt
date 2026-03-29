@@ -76,14 +76,11 @@ object ColorUtil {
         // We want result to be darker than input, so input is the lighter one:
         // targetContrast = (inputLuminance + 0.05) / (resultLuminance + 0.05)
         // resultLuminance = (inputLuminance + 0.05) / targetContrast - 0.05
-        val darkerLuminance =
-            (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast -
-                CONTRAST_RATION_CALIBRATION_CONSTANT
+        val darkerLuminance = (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast - CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (darkerLuminance in 0.0..inputLuminance) {
             val candidate = luminanceToColor(hsl.copyOf(), darkerLuminance)
-            val actualContrast =
-                contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
+            val actualContrast = contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
             if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
                 return candidate
             }
@@ -93,14 +90,11 @@ object ColorUtil {
         // Fall back to a lighter result
         // targetContrast = (resultLuminance + 0.05) / (inputLuminance + 0.05)
         // resultLuminance = targetContrast * (inputLuminance + 0.05) - 0.05
-        val lighterLuminance =
-            targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) -
-                CONTRAST_RATION_CALIBRATION_CONSTANT
+        val lighterLuminance = targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) - CONTRAST_RATION_CALIBRATION_CONSTANT
 
         if (lighterLuminance in inputLuminance..1.0) {
             val candidate = luminanceToColor(hsl.copyOf(), lighterLuminance)
-            val actualContrast =
-                contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
+            val actualContrast = contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
             if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
                 return candidate
             }

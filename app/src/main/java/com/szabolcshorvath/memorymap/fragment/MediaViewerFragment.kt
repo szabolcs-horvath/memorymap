@@ -21,20 +21,12 @@ class MediaViewerFragment : Fragment() {
         super.onCreate(savedInstanceState)
         arguments?.let {
             @Suppress("UNCHECKED_CAST")
-            mediaItems = BundleCompat.getSerializable(
-                it,
-                ARG_MEDIA_ITEMS,
-                ArrayList::class.java
-            ) as? ArrayList<Pair<String, String>>
+            mediaItems = BundleCompat.getSerializable(it, ARG_MEDIA_ITEMS, ArrayList::class.java) as? ArrayList<Pair<String, String>>
             startPosition = it.getInt(ARG_START_POSITION, 0)
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMediaViewerBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -65,10 +57,7 @@ class MediaViewerFragment : Fragment() {
         private const val ARG_START_POSITION = "start_position"
 
         @JvmStatic
-        fun newInstance(
-            mediaItems: ArrayList<Pair<String, String>>,
-            startPosition: Int
-        ) = MediaViewerFragment().apply {
+        fun newInstance(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int) = MediaViewerFragment().apply {
             arguments = Bundle().apply {
                 putSerializable(ARG_MEDIA_ITEMS, mediaItems)
                 putInt(ARG_START_POSITION, startPosition)

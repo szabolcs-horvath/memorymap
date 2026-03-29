@@ -51,31 +51,12 @@ object LocalMediaUtil {
         val selection = "${MediaStore.MediaColumns.SIZE} IN ($sizeList)"
 
         val mediaList = mutableListOf<LocalMediaInfo>()
-        mediaList.addAll(
-            queryMediaStore(
-                context,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                selection
-            )
-        )
-        mediaList.addAll(
-            queryMediaStore(
-                context,
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                selection
-            )
-        )
+        mediaList.addAll(queryMediaStore(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, selection))
+        mediaList.addAll(queryMediaStore(context, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, selection))
         return mediaList
     }
 
-    private fun queryMediaStore(
-        context: Context,
-        contentUri: Uri,
-        projection: Array<String>,
-        selection: String?
-    ): List<LocalMediaInfo> {
+    private fun queryMediaStore(context: Context, contentUri: Uri, projection: Array<String>, selection: String?): List<LocalMediaInfo> {
         val mediaList = mutableListOf<LocalMediaInfo>()
         try {
             context.contentResolver.query(contentUri, projection, selection, null, null)
@@ -88,11 +69,7 @@ object LocalMediaUtil {
                         val uri = ContentUris.withAppendedId(contentUri, id)
 
                         mediaList.add(
-                            LocalMediaInfo(
-                                uri.toString(),
-                                MediaHasher.calculateMediaSignature(context, uri),
-                                size
-                            )
+                            LocalMediaInfo(uri.toString(), MediaHasher.calculateMediaSignature(context, uri), size)
                         )
                     }
                 }
@@ -110,10 +87,7 @@ object LocalMediaUtil {
         val itemsToUpdate = mutableListOf<MediaItem>()
 
         for (item in mediaItems) {
-            if (item.deviceId != installationIdentifier ||
-                item.uri.contains("photopicker") ||
-                !isSignatureValid(context, item)
-            ) {
+            if (item.deviceId != installationIdentifier || item.uri.contains("photopicker") || !isSignatureValid(context, item)) {
                 val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
                 if (candidate != null) {
                     itemsToUpdate.add(

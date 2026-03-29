@@ -88,16 +88,11 @@ class SettingsFragment : Fragment() {
         pendingRestoreFile = null
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         startAuthorizationIntent =
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { activityResult ->
                 try {
-                    val authorizationResult = Identity.getAuthorizationClient(requireContext())
-                        .getAuthorizationResultFromIntent(activityResult.data)
+                    val authorizationResult = Identity.getAuthorizationClient(requireContext()).getAuthorizationResultFromIntent(activityResult.data)
                     successfulAuthorization(authorizationResult.grantedScopes)
                 } catch (e: ApiException) {
                     Log.e(TAG, "Authorization failed", e)
@@ -243,13 +238,8 @@ class SettingsFragment : Fragment() {
             checkForChanges()
         }
 
-        binding.btnAddPreset.setOnClickListener {
-            addNewPreset()
-        }
-
-        binding.btnDeletePreset.setOnClickListener {
-            showDeletePresetConfirmation()
-        }
+        binding.btnAddPreset.setOnClickListener { addNewPreset() }
+        binding.btnDeletePreset.setOnClickListener { showDeletePresetConfirmation() }
     }
 
     private fun addNewPreset() {
@@ -314,8 +304,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun updateColorPresetsUI() {
-        binding.colorPresetsExpandedContent.visibility =
-            if (colorPresetsExpanded) View.VISIBLE else View.GONE
+        binding.colorPresetsExpandedContent.visibility = if (colorPresetsExpanded) View.VISIBLE else View.GONE
         binding.colorPresetsChevron.animate()
             .rotation(if (colorPresetsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
             .start()
@@ -358,8 +347,7 @@ class SettingsFragment : Fragment() {
     private fun smoothScrollToPresetIndex(index: Int) {
         val smoothScroller =
             object : LinearSmoothScroller(requireContext()) {
-                override fun getHorizontalSnapPreference(): Int =
-                    SNAP_TO_END
+                override fun getHorizontalSnapPreference(): Int = SNAP_TO_END
             }
         smoothScroller.targetPosition = index
         binding.presetColorsRecyclerView.layoutManager?.startSmoothScroll(
@@ -468,11 +456,7 @@ class SettingsFragment : Fragment() {
                         is NoCredentialException,
                         is GetCredentialException -> {
                             Log.w(TAG, "Sign in failed", e)
-                            Toast.makeText(
-                                requireContext(),
-                                "Sign in failed: ${e.message}",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            Toast.makeText(requireContext(), "Sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
                         }
 
                         is CancellationException -> {
@@ -546,11 +530,7 @@ class SettingsFragment : Fragment() {
                 }
             }
 
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean {
+            override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
                 val fromPos = viewHolder.bindingAdapterPosition
                 val toPos = target.bindingAdapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
@@ -657,11 +637,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun updateViewVisibilityWithAnimation(
-        view: View,
-        isVisible: Boolean,
-        endAction: (() -> Unit)? = null
-    ) {
+    private fun updateViewVisibilityWithAnimation(view: View, isVisible: Boolean, endAction: (() -> Unit)? = null) {
         if (isVisible) {
             val wasVisible = view.isVisible
             if (!wasVisible || view.alpha < 1f) {
@@ -736,8 +712,7 @@ class SettingsFragment : Fragment() {
     private fun successfulAuthorization(scopes: List<String>) {
         viewLifecycleOwner.lifecycleScope.launch {
             val email =
-                requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }
-                    .firstOrNull() ?: (binding.tvAccountName.tag as? String)
+                requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }.firstOrNull() ?: (binding.tvAccountName.tag as? String)
 
             if (email == null) {
                 setLoadingState(false)
@@ -771,8 +746,7 @@ class SettingsFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Restore Backup")
             .setMessage(
-                "Are you sure you want to restore from the backup '${file.name}'?\n\n" +
-                    "This action will overwrite all your current data and it cannot be undone!"
+                "Are you sure you want to restore from the backup '${file.name}'?\n\nThis action will overwrite all your current data and it cannot be undone!"
             )
             .setPositiveButton("Restore") { _, _ ->
                 if (hasMediaPermissions()) {
@@ -800,10 +774,8 @@ class SettingsFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Media Access Required")
             .setMessage(
-                "To link your photos and videos correctly after the restore, " +
-                    "the app needs access to your entire media library.\n\n" +
-                    "In the next step, please choose 'Allow all' " +
-                    "(or 'All photos and videos') to ensure all your memories are restored correctly."
+                "To link your photos and videos correctly after the restore, the app needs access to your entire media library.\n\n" +
+                    "In the next step, please choose 'Allow all' (or 'All photos and videos') to ensure all your memories are restored correctly."
             )
             .setPositiveButton("Continue") { _, _ ->
                 launchPermissionRequest(file)
@@ -846,8 +818,7 @@ class SettingsFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Restore error", e)
-                Toast.makeText(requireContext(), "Restore failed: ${e.message}", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(requireContext(), "Restore failed: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
                 setLoadingState(false)
             }
@@ -868,21 +839,13 @@ class SettingsFragment : Fragment() {
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            requireContext(),
-                            "Failed to delete backup",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(requireContext(), "Failed to delete backup", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Delete error", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Delete failed: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(requireContext(), "Delete failed: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
                 setLoadingState(false)
             }

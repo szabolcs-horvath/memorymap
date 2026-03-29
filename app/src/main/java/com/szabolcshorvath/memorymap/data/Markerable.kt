@@ -28,13 +28,7 @@ interface Markerable {
         }
 
         val results = FloatArray(1)
-        Location.distanceBetween(
-            latitude,
-            longitude,
-            other.latitude,
-            other.longitude,
-            results
-        )
+        Location.distanceBetween(latitude, longitude, other.latitude, other.longitude, results)
         return results[0] < SAME_LOCATION_METERS_THRESHOLD
     }
 
@@ -43,9 +37,7 @@ interface Markerable {
 
     class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
         override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
-            return oldItem.groupId == newItem.groupId &&
-                oldItem.latitude == newItem.latitude &&
-                oldItem.longitude == newItem.longitude
+            return oldItem.groupId == newItem.groupId && oldItem.latitude == newItem.latitude && oldItem.longitude == newItem.longitude
         }
 
         override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
@@ -66,16 +58,11 @@ interface Markerable {
                 diff.add(TITLE_DIFF_PAYLOAD)
             }
 
-            if (oldItem.startDate != newItem.startDate ||
-                oldItem.endDate != newItem.endDate
-            ) {
+            if (oldItem.startDate != newItem.startDate || oldItem.endDate != newItem.endDate) {
                 diff.add(DATE_DIFF_PAYLOAD)
             }
 
-            if (oldItem.markerHue != newItem.markerHue ||
-                oldItem.markerSaturation != newItem.markerSaturation ||
-                oldItem.markerBrightness != newItem.markerBrightness
-            ) {
+            if (oldItem.markerHue != newItem.markerHue || oldItem.markerSaturation != newItem.markerSaturation || oldItem.markerBrightness != newItem.markerBrightness) {
                 diff.add(COLOR_DIFF_PAYLOAD)
             }
 

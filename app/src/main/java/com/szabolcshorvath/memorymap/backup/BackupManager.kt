@@ -42,18 +42,18 @@ class BackupManager(private val context: Context) {
 
     enum class BackupEvent { STARTED, FINISHED }
 
-    fun getDriveService(credential: GoogleAccountCredential): Drive = Drive.Builder(
-        NetHttpTransport(),
-        GsonFactory.getDefaultInstance(),
-        credential
-    ).setApplicationName("Memory Map").build()
+    fun getDriveService(credential: GoogleAccountCredential): Drive =
+        Drive.Builder(
+            NetHttpTransport(),
+            GsonFactory.getDefaultInstance(),
+            credential
+        ).setApplicationName("Memory Map").build()
 
     suspend fun triggerAutomaticBackup() {
         withContext(Dispatchers.IO) {
             trace("backup_manager_trigger_automatic_backup") {
                 try {
-                    val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull()
-                        ?: return@withContext
+                    val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull() ?: return@withContext
                     _backupEvents.emit(BackupEvent.STARTED)
                     val googleAuthManager = GoogleAuthManager(context)
                     val scopes = listOf(DriveScopes.DRIVE_FILE)
@@ -70,11 +70,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun performBackup(
-        credential: GoogleAccountCredential,
-        isAutomatic: Boolean = false,
-        onProgress: (String) -> Unit
-    ): Boolean {
+    suspend fun performBackup(credential: GoogleAccountCredential, isAutomatic: Boolean = false, onProgress: (String) -> Unit): Boolean {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_perform_backup") {
                 var tempDir: File? = null
@@ -157,16 +153,11 @@ class BackupManager(private val context: Context) {
     }
 
     @AddTrace(name = "backup_manager_upload_backup", enabled = true)
-    private fun uploadBackup(
-        credential: GoogleAccountCredential,
-        isAutomatic: Boolean,
-        zipFile: File
-    ) {
+    private fun uploadBackup(credential: GoogleAccountCredential, isAutomatic: Boolean, zipFile: File) {
         val driveService = getDriveService(credential)
         val folderId = getOrCreateBackupFolder(driveService)
         val fileMetadata = DriveFile()
-        val prefix =
-            if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
+        val prefix = if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
         fileMetadata.name = "$prefix${BACKUP_FILE_NAME_DATE_FORMATTER.format(Date())}.zip"
         fileMetadata.parents = listOf(folderId)
 
@@ -197,11 +188,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun restoreBackup(
-        credential: GoogleAccountCredential,
-        fileId: String,
-        onProgress: (String) -> Unit
-    ): Boolean {
+    suspend fun restoreBackup(credential: GoogleAccountCredential, fileId: String, onProgress: (String) -> Unit): Boolean {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_restore_backup") {
                 var tempZipFile: File? = null
@@ -241,8 +228,7 @@ class BackupManager(private val context: Context) {
     private fun downloadBackup(driveService: Drive, fileId: String): File {
         val tempZipFile = File(context.cacheDir, "restore_temp.zip")
         FileOutputStream(tempZipFile).use { outputStream ->
-            driveService.files().get(fileId)
-                .executeMediaAndDownloadTo(outputStream)
+            driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream)
         }
         return tempZipFile
     }
@@ -333,8 +319,7 @@ class BackupManager(private val context: Context) {
     @AddTrace(name = "backup_manager_get_or_create_backup_folder", enabled = true)
     private fun getOrCreateBackupFolder(driveService: Drive): String {
         val folderName = "Memory Map Backups"
-        val query =
-            "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
+        val query = "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
         val result = driveService.files().list().setQ(query).setSpaces("drive").execute()
         if (result.files.isNotEmpty()) return result.files.first().id
         val folderMetadata = DriveFile().apply {

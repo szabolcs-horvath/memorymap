@@ -19,8 +19,7 @@ class BackupAdapter(
 
     private var buttonsEnabled = true
 
-    inner class BackupViewHolder(private val binding: ItemBackupBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    inner class BackupViewHolder(private val binding: ItemBackupBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(backup: File) {
             val name = backup.name
             binding.tvBackupName.text = when {
@@ -73,13 +72,9 @@ class BackupAdapter(
     }
 
     private class BackupDiffCallback : DiffUtil.ItemCallback<File>() {
-        override fun areItemsTheSame(oldItem: File, newItem: File): Boolean {
-            return oldItem.id == newItem.id
-        }
+        override fun areItemsTheSame(oldItem: File, newItem: File): Boolean = oldItem.id == newItem.id
 
-        override fun areContentsTheSame(oldItem: File, newItem: File): Boolean {
-            return oldItem == newItem
-        }
+        override fun areContentsTheSame(oldItem: File, newItem: File): Boolean = oldItem == newItem
     }
 
     companion object {

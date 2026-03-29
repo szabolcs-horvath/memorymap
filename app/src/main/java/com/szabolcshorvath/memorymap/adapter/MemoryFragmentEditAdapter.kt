@@ -35,8 +35,9 @@ class MemoryFragmentEditAdapter(
 ) {
     private var hsvPresets: List<HSVPreset> = emptyList()
 
-    class MemoryFragmentEditViewHolder(val binding: ItemMemoryFragmentEditBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    class MemoryFragmentEditViewHolder(val binding: ItemMemoryFragmentEditBinding) : RecyclerView.ViewHolder(
+        binding.root
+    ) {
         val colorPresetAdapter = ColorPresetAdapter()
 
         init {
@@ -45,11 +46,7 @@ class MemoryFragmentEditAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentEditViewHolder {
-        val binding = ItemMemoryFragmentEditBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
+        val binding = ItemMemoryFragmentEditBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return MemoryFragmentEditViewHolder(binding)
     }
 
@@ -83,24 +80,17 @@ class MemoryFragmentEditAdapter(
         notifyItemRangeChanged(0, itemCount)
     }
 
-    private fun setupDateTimeSelectors(
-        binding: ItemMemoryFragmentEditBinding,
-        holder: MemoryFragmentEditViewHolder,
-        item: FragmentEditState
-    ) {
+    private fun setupDateTimeSelectors(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder, item: FragmentEditState) {
         binding.toggleTimeButton.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
             val current = getItem(pos)
-            val newStart =
-                if (!current.isTimeVisible && current.startDate == null) ZonedDateTime.now() else current.startDate
-            val newEnd =
-                if (!current.isTimeVisible && current.endDate == null) {
-                    ZonedDateTime.now()
-                        .plusHours(1)
-                } else {
-                    current.endDate
-                }
+            val newStart = if (!current.isTimeVisible && current.startDate == null) ZonedDateTime.now() else current.startDate
+            val newEnd = if (!current.isTimeVisible && current.endDate == null) {
+                ZonedDateTime.now().plusHours(1)
+            } else {
+                current.endDate
+            }
 
             fragments[pos] = current.copy(
                 isTimeVisible = !current.isTimeVisible,
@@ -138,15 +128,9 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun setupColorSection(
-        binding: ItemMemoryFragmentEditBinding,
-        item: FragmentEditState,
-        holder: MemoryFragmentEditViewHolder
-    ) {
-        binding.colorExpandedContent.visibility =
-            if (item.isColorExpanded) View.VISIBLE else View.GONE
-        binding.colorChevron.rotation =
-            if (item.isColorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
+    private fun setupColorSection(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState, holder: MemoryFragmentEditViewHolder) {
+        binding.colorExpandedContent.visibility = if (item.isColorExpanded) View.VISIBLE else View.GONE
+        binding.colorChevron.rotation = if (item.isColorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
 
         binding.colorHeader.setOnClickListener {
             val pos = holder.bindingAdapterPosition
@@ -157,8 +141,7 @@ class MemoryFragmentEditAdapter(
             }
         }
 
-        val color =
-            ColorUtil.hsvToColor(item.markerHue, item.markerSaturation, item.markerBrightness)
+        val color = ColorUtil.hsvToColor(item.markerHue, item.markerSaturation, item.markerBrightness)
         val colorStateList = ColorStateList.valueOf(color)
 
         binding.colorIndicator.setBackgroundColor(color)
@@ -195,13 +178,7 @@ class MemoryFragmentEditAdapter(
         setupFragmentPresetColors(holder)
     }
 
-    private fun updateFragmentColor(
-        binding: ItemMemoryFragmentEditBinding,
-        position: Int,
-        h: Float? = null,
-        s: Float? = null,
-        v: Float? = null
-    ) {
+    private fun updateFragmentColor(binding: ItemMemoryFragmentEditBinding, position: Int, h: Float? = null, s: Float? = null, v: Float? = null) {
         if (position == RecyclerView.NO_POSITION) return
         val current = fragments[position]
         val newH = h ?: current.markerHue
@@ -222,10 +199,7 @@ class MemoryFragmentEditAdapter(
         binding.brightnessSlider.thumbTintList = colorStateList
     }
 
-    private fun updateDateTimeSelectors(
-        binding: ItemMemoryFragmentEditBinding,
-        item: FragmentEditState
-    ) {
+    private fun updateDateTimeSelectors(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
         val dateFormatter = dateFormatter()
         val timeFormatter = timeFormatter()
 
@@ -273,24 +247,18 @@ class MemoryFragmentEditAdapter(
     private fun pickFragmentDateRange(index: Int) {
         if (index == RecyclerView.NO_POSITION) return
         val item = fragments[index]
-        val builder =
-            MaterialDatePicker.Builder.dateRangePicker().setTitleText("Select Date Range")
+        val builder = MaterialDatePicker.Builder.dateRangePicker().setTitleText("Select Date Range")
         val start = item.startDate ?: ZonedDateTime.now()
         val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
-        val selection = androidx.core.util.Pair(
-            start.toInstant().toEpochMilli(),
-            end.toInstant().toEpochMilli()
-        )
+        val selection = androidx.core.util.Pair(start.toInstant().toEpochMilli(), end.toInstant().toEpochMilli())
         builder.setSelection(selection)
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { range ->
             if (range.first != null && range.second != null) {
                 val current = fragments[index]
                 fragments[index] = current.copy(
-                    startDate = Instant.ofEpochMilli(range.first!!)
-                        .atZone(ZoneId.systemDefault()),
-                    endDate = Instant.ofEpochMilli(range.second!!)
-                        .atZone(ZoneId.systemDefault())
+                    startDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneId.systemDefault()),
+                    endDate = Instant.ofEpochMilli(range.second!!).atZone(ZoneId.systemDefault())
                 )
                 updateFragmentsUI()
             }
@@ -306,18 +274,15 @@ class MemoryFragmentEditAdapter(
             val newDate = LocalDate.of(year, month + 1, dayOfMonth)
             val currentItem = fragments[index]
             if (isStart) {
-                val newStart =
-                    newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
+                val newStart = newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
                 var newEnd = currentItem.endDate
                 if (newEnd != null && newEnd.isBefore(newStart)) newEnd = newStart.plusHours(1)
                 fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
             } else {
-                val newEnd =
-                    newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
+                val newEnd = newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
                 var newStart = currentItem.startDate
                 if (newStart != null && newEnd.isBefore(newStart)) {
-                    newStart =
-                        newEnd.minusHours(1)
+                    newStart = newEnd.minusHours(1)
                 }
                 fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
             }
@@ -341,8 +306,7 @@ class MemoryFragmentEditAdapter(
                 val newEnd = current.with(newTime)
                 var newStart = currentItem.startDate
                 if (newStart != null && newEnd.isBefore(newStart)) {
-                    newStart =
-                        newEnd.minusHours(1)
+                    newStart = newEnd.minusHours(1)
                 }
                 fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
             }
