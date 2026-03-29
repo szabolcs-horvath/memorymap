@@ -9,17 +9,15 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
+import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class TimelineFragment
-@AddTrace(name = "timeline_fragment_constructor", enabled = true)
-constructor() : Fragment() {
+class TimelineFragment : Fragment() {
 
     private var _binding: FragmentTimelineBinding? = null
     private val binding get() = _binding!!
@@ -68,23 +66,27 @@ constructor() : Fragment() {
     }
 
     private suspend fun loadMemories() {
-        val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-        val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
+        trace("timeline_fragment_load_memories") {
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
 
-        withContext(Dispatchers.Main) {
-            adapter.updateData(groups)
-            if (groups.isEmpty()) {
-                binding.emptyView.visibility = View.VISIBLE
-                binding.timelineRecyclerView.visibility = View.GONE
-            } else {
-                binding.emptyView.visibility = View.GONE
-                binding.timelineRecyclerView.visibility = View.VISIBLE
+            withContext(Dispatchers.Main) {
+                adapter.updateData(groups)
+                if (groups.isEmpty()) {
+                    binding.emptyView.visibility = View.VISIBLE
+                    binding.timelineRecyclerView.visibility = View.GONE
+                } else {
+                    binding.emptyView.visibility = View.GONE
+                    binding.timelineRecyclerView.visibility = View.VISIBLE
+                }
             }
         }
     }
 
     suspend fun refreshData() {
-        loadMemories()
+        trace("timeline_fragment_refresh_data") {
+            loadMemories()
+        }
     }
 
     fun scrollToAndFlash(memoryId: Int) {

@@ -16,7 +16,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
-import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -34,6 +33,7 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
@@ -41,7 +41,6 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
-import kotlin.system.measureTimeMillis
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
@@ -278,15 +277,13 @@ class MainActivity :
         }
     }
 
-    @AddTrace(name = "main_activity_refresh_data", enabled = true)
     suspend fun refreshData() = coroutineScope {
-        val time = measureTimeMillis {
+        trace("main_activity_refresh_data") {
             val mapJob = launch { mapFragment.refreshData() }
             val timelineJob = launch { timelineFragment.refreshData() }
             val settingsJob = launch { settingsFragment.refreshData() }
             joinAll(mapJob, timelineJob, settingsJob)
         }
-        Log.d(TAG, "Total refresh time: $time ms")
     }
 
     override fun startAddMemoryFlow(lat: Double, lng: Double) {

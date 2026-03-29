@@ -12,7 +12,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
@@ -34,9 +33,7 @@ import kotlinx.coroutines.withContext
 import java.util.Collections
 import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
-class MemoryFragment
-@AddTrace(name = "memory_fragment_constructor", enabled = true)
-constructor() : Fragment() {
+class MemoryFragment : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
     private lateinit var mediaAdapter: MediaAdapter

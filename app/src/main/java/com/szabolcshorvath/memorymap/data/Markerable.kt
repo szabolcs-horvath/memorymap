@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.data
 
 import android.location.Location
 import androidx.recyclerview.widget.DiffUtil
+import com.google.firebase.perf.metrics.AddTrace
 import java.time.ZonedDateTime
 
 interface Markerable {
@@ -20,6 +21,7 @@ interface Markerable {
 
     fun getFormattedDate(): String?
 
+    @AddTrace(name = "markerable_is_same_location_as", enabled = true)
     fun isSameLocationAs(other: Markerable): Boolean {
         if (placeAndAddressPresentForBoth(other)) {
             if (placeName == other.placeName && address == other.address) return true

@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -75,6 +76,7 @@ class GoogleAuthManager(private val context: Context) {
         credentialManager.clearCredentialState(ClearCredentialStateRequest())
     }
 
+    @AddTrace(name = "google_auth_manager_get_google_account_credential", enabled = true)
     fun getGoogleAccountCredential(email: String?, scopes: List<String>): GoogleAccountCredential {
         return GoogleAccountCredential.usingOAuth2(context, scopes).apply {
             selectedAccountName = email

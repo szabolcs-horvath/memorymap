@@ -1,10 +1,20 @@
 package com.szabolcshorvath.memorymap.util
 
 import com.google.firebase.Firebase
+import com.google.firebase.perf.metrics.Trace
 import com.google.firebase.perf.performance
 import java.lang.reflect.Proxy
 
 object PerfUtil {
+    inline fun <E> trace(traceName: String, block: (Trace) -> E): E {
+        val trace = Firebase.performance.newTrace(traceName) // creates & starts a new Trace
+        return try {
+            block(trace)
+        } finally {
+            trace.stop()
+        }
+    }
+
     inline fun <reified T : Any> tracedDao(dao: T): T =
         Proxy.newProxyInstance(
             T::class.java.classLoader,

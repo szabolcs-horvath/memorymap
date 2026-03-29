@@ -32,7 +32,6 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
-import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
@@ -48,6 +47,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
+import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.Dispatchers
@@ -60,11 +60,8 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import kotlin.system.measureTimeMillis
 
-class MapFragment
-@AddTrace(name = "map_fragment_constructor", enabled = true)
-constructor() : Fragment(), OnMapReadyCallback {
+class MapFragment : Fragment(), OnMapReadyCallback {
 
     private var _binding: FragmentMapsBinding? = null
     private val binding get() = _binding!!
@@ -401,125 +398,128 @@ constructor() : Fragment(), OnMapReadyCallback {
     }
 
     suspend fun refreshData() {
-        val currentSelectedId = selectedMemoryId
-        val currentPos = selectedMarkerPosition
+        trace("map_fragment_refresh_data") {
+            val currentSelectedId = selectedMemoryId
+            val currentPos = selectedMarkerPosition
 
-        loadMarkers()
+            loadMarkers()
 
-        if (currentSelectedId != null) {
-            val updatedSelectedMemory = allGroups.find { it.id == currentSelectedId }
-            if (updatedSelectedMemory != null) {
-                // Try to find the exact marker we had selected (by position)
-                var marker: Marker? = null
-                if (currentPos != null) {
-                    marker = markerMap.values.find { it.position == currentPos }
-                }
-                // Fallback to default marker for the ID
-                if (marker == null) {
-                    marker = markerMap[currentSelectedId.toString()]
-                }
+            if (currentSelectedId != null) {
+                val updatedSelectedMemory = allGroups.find { it.id == currentSelectedId }
+                if (updatedSelectedMemory != null) {
+                    // Try to find the exact marker we had selected (by position)
+                    var marker: Marker? = null
+                    if (currentPos != null) {
+                        marker = markerMap.values.find { it.position == currentPos }
+                    }
+                    // Fallback to default marker for the ID
+                    if (marker == null) {
+                        marker = markerMap[currentSelectedId.toString()]
+                    }
 
-                if (marker != null) {
-                    showMemoryOverlay(marker)
+                    if (marker != null) {
+                        showMemoryOverlay(marker)
+                    } else {
+                        hideMemoryOverlay()
+                    }
                 } else {
                     hideMemoryOverlay()
                 }
-            } else {
-                hideMemoryOverlay()
             }
         }
     }
 
     private suspend fun loadMarkers() {
-        val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-        allGroups = db.memoryGroupDao().getAllGroups()
-        allFragments = db.memoryGroupDao().getAllFragments()
+        trace("map_fragment_load_markers") {
+            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            allGroups = db.memoryGroupDao().getAllGroups()
+            allFragments = db.memoryGroupDao().getAllFragments()
 
-        withContext(Dispatchers.Main) {
-            val googleMap = mMap
-            if (googleMap != null) {
-                if (allGroups.isNotEmpty()) {
-                    val minDate = allGroups.minOf { it.startDate.toLocalDate() }
-                    val maxDate = allGroups.maxOf { it.endDate.toLocalDate() }
+            withContext(Dispatchers.Main) {
+                val googleMap = mMap
+                if (googleMap != null) {
+                    if (allGroups.isNotEmpty()) {
+                        val minDate = allGroups.minOf { it.startDate.toLocalDate() }
+                        val maxDate = allGroups.maxOf { it.endDate.toLocalDate() }
 
-                    if (filterStartDate == null || filterEndDate == null) {
-                        filterStartDate = minDate
-                        filterEndDate = maxDate
+                        if (filterStartDate == null || filterEndDate == null) {
+                            filterStartDate = minDate
+                            filterEndDate = maxDate
+                        }
                     }
-                }
 
-                updateDateRangeButtonText()
-                updateMapMarkers()
+                    updateDateRangeButtonText()
+                    updateMapMarkers()
 
-                if (initialSelectedLat != null && initialSelectedLng != null) {
-                    isInitialZoomDone = true
-                    moveToLocationAndSelectMarker(
-                        initialSelectedLat!!,
-                        initialSelectedLng!!,
-                        allGroups.find { it.id == initialSelectedId }
-                    )
-                    initialSelectedLat = null
-                    initialSelectedLng = null
-                    initialSelectedId = null
+                    if (initialSelectedLat != null && initialSelectedLng != null) {
+                        isInitialZoomDone = true
+                        moveToLocationAndSelectMarker(
+                            initialSelectedLat!!,
+                            initialSelectedLng!!,
+                            allGroups.find { it.id == initialSelectedId }
+                        )
+                        initialSelectedLat = null
+                        initialSelectedLng = null
+                        initialSelectedId = null
+                    }
                 }
             }
         }
     }
 
     private suspend fun updateMapMarkers(adjustCamera: Boolean = false) {
-        Log.d(TAG, "Updating map markers")
-        val googleMap = mMap ?: return
+        trace("map_fragment_update_map_markers") {
+            Log.d(TAG, "Updating map markers")
+            val googleMap = mMap ?: return
 
-        val start = filterStartDate ?: LocalDate.MIN
-        val end = filterEndDate ?: LocalDate.MAX
+            val start = filterStartDate ?: LocalDate.MIN
+            val end = filterEndDate ?: LocalDate.MAX
 
-        val showFragments = requireContext().dataStore.data
-            .first()[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false
+            val showFragments = requireContext().dataStore.data
+                .first()[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false
 
-        // Perform filtering and clustering in the background
-        val filteredItems = withContext(Dispatchers.Default) {
-            val groupsMap = allGroups.associateBy { it.id }
-            val candidateItems = mutableListOf<Markerable>()
-            candidateItems.addAll(allGroups)
+            // Perform filtering and clustering in the background
+            val filteredItems = withContext(Dispatchers.Default) {
+                val groupsMap = allGroups.associateBy { it.id }
+                val candidateItems = mutableListOf<Markerable>()
+                candidateItems.addAll(allGroups)
 
-            if (showFragments) {
-                allFragments.forEach { fragment ->
-                    groupsMap[fragment.groupId]?.let { parent ->
-                        fragment.title = parent.title
-                        candidateItems.add(fragment)
+                if (showFragments) {
+                    allFragments.forEach { fragment ->
+                        groupsMap[fragment.groupId]?.let { parent ->
+                            fragment.title = parent.title
+                            candidateItems.add(fragment)
+                        }
                     }
+                }
+
+                candidateItems.filter { item ->
+                    val itemStart =
+                        (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
+                            ?: LocalDate.MIN
+                    val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
+                        ?: LocalDate.MAX
+                    !itemEnd.isBefore(start) && !itemStart.isAfter(end)
                 }
             }
 
-            candidateItems.filter { item ->
-                val itemStart =
-                    (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
-                        ?: LocalDate.MIN
-                val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
-                    ?: LocalDate.MAX
-                !itemEnd.isBefore(start) && !itemStart.isAfter(end)
+            val clusters = withContext(Dispatchers.Default) {
+                clusterMarkerables(filteredItems)
+            }
+
+            withContext(Dispatchers.Main) {
+                updateUIWithFreshMarkers(googleMap, filteredItems, clusters, adjustCamera)
             }
         }
-
-        val clusters = withContext(Dispatchers.Default) {
-            var result: Collection<List<Markerable>>
-            val duration = measureTimeMillis {
-                result = clusterMarkerables(filteredItems)
-            }
-            Log.d(TAG, "Clustering took $duration ms")
-            result
-        }
-
-        updateUIWithFreshMarkers(googleMap, filteredItems, clusters, adjustCamera)
     }
 
-    private suspend fun updateUIWithFreshMarkers(
+    private fun updateUIWithFreshMarkers(
         googleMap: GoogleMap,
         filteredItems: List<Markerable>,
         clusters: Collection<List<Markerable>>,
         adjustCamera: Boolean
     ) {
-        withContext(Dispatchers.Main) {
+        trace("map_fragment_update_ui_with_fresh_markers") {
             googleMap.clear()
             markerMap.clear()
 
@@ -594,37 +594,38 @@ constructor() : Fragment(), OnMapReadyCallback {
         }
     }
 
-    @AddTrace(name = "map_fragment_cluster_markerables", enabled = true)
     fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
-        val n = items.size
-        val parent = IntArray(n) { it }
+        trace("map_fragment_cluster_markerables") {
+            val n = items.size
+            val parent = IntArray(n) { it }
 
-        fun find(i: Int): Int {
-            var curr = i
-            while (parent[curr] != curr) {
-                parent[curr] = parent[parent[curr]] // Path halving
-                curr = parent[curr]
+            fun find(i: Int): Int {
+                var curr = i
+                while (parent[curr] != curr) {
+                    parent[curr] = parent[parent[curr]] // Path halving
+                    curr = parent[curr]
+                }
+                return curr
             }
-            return curr
-        }
 
-        fun union(i: Int, j: Int) {
-            val rootI = find(i)
-            val rootJ = find(j)
-            if (rootI != rootJ) parent[rootI] = rootJ
-        }
+            fun union(i: Int, j: Int) {
+                val rootI = find(i)
+                val rootJ = find(j)
+                if (rootI != rootJ) parent[rootI] = rootJ
+            }
 
-        // O(N^2) comparisons, but with optimized distance check
-        for (i in 0 until n) {
-            for (j in i + 1 until n) {
-                if (items[i].isSameLocationAs(items[j])) {
-                    union(i, j)
+            // O(N^2) comparisons, but with optimized distance check
+            for (i in 0 until n) {
+                for (j in i + 1 until n) {
+                    if (items[i].isSameLocationAs(items[j])) {
+                        union(i, j)
+                    }
                 }
             }
-        }
 
-        return items.indices.groupBy { find(it) }.values.map { indices ->
-            indices.map { items[it] }
+            return items.indices.groupBy { find(it) }.values.map { indices ->
+                indices.map { items[it] }
+            }
         }
     }
 

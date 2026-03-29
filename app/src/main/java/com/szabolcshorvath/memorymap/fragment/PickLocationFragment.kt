@@ -28,7 +28,6 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.kotlin.awaitFetchPlace
 import com.google.android.libraries.places.widget.PlaceAutocomplete
 import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
-import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
@@ -38,9 +37,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Locale
 
-class PickLocationFragment
-@AddTrace(name = "pick_location_fragment_constructor", enabled = true)
-constructor() : Fragment(), OnMapReadyCallback {
+class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private var _binding: FragmentPickLocationBinding? = null
     private val binding get() = _binding!!

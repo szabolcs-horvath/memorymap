@@ -9,8 +9,7 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
-import com.google.firebase.Firebase
-import com.google.firebase.perf.performance
+import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
@@ -18,6 +17,7 @@ import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_FILE_NAME_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_METADATA_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -36,7 +36,6 @@ import java.util.Date
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
-import kotlin.system.measureTimeMillis
 import com.google.api.services.drive.model.File as DriveFile
 
 class BackupManager(private val context: Context) {
@@ -51,10 +50,8 @@ class BackupManager(private val context: Context) {
 
     suspend fun triggerAutomaticBackup() {
         withContext(Dispatchers.IO) {
-            val trace = Firebase.performance.newTrace("backup_manager_trigger_automatic_backup")
-            try {
-                trace.start()
-                val time = measureTimeMillis {
+            trace("backup_manager_trigger_automatic_backup") {
+                try {
                     val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull()
                         ?: return@withContext
                     _backupEvents.emit(BackupEvent.STARTED)
@@ -64,13 +61,11 @@ class BackupManager(private val context: Context) {
                     performBackup(credential, isAutomatic = true) {
                         Log.d(TAG, "Automatic backup progress: $it")
                     }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to trigger automatic backup", e)
+                } finally {
+                    _backupEvents.emit(BackupEvent.FINISHED)
                 }
-                Log.d(TAG, "Automatic backup took $time ms")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to trigger automatic backup", e)
-            } finally {
-                _backupEvents.emit(BackupEvent.FINISHED)
-                trace.stop()
             }
         }
     }
@@ -81,40 +76,43 @@ class BackupManager(private val context: Context) {
         onProgress: (String) -> Unit
     ): Boolean {
         return withContext(Dispatchers.IO) {
-            var tempDir: File? = null
-            var zipFile: File? = null
-            try {
-                onProgress("Preparing database...")
-                prepareDatabaseForBackup()
+            trace("backup_manager_perform_backup") {
+                var tempDir: File? = null
+                var zipFile: File? = null
+                try {
+                    onProgress("Preparing database...")
+                    prepareDatabaseForBackup()
 
-                tempDir = File(context.cacheDir, "backup_temp")
-                if (tempDir.exists()) tempDir.deleteRecursively()
-                tempDir.mkdirs()
+                    tempDir = File(context.cacheDir, "backup_temp")
+                    if (tempDir.exists()) tempDir.deleteRecursively()
+                    tempDir.mkdirs()
 
-                val dbFile = context.getDatabasePath("memory_map_database")
-                if (!dbFile.exists()) {
-                    throw FileNotFoundException("Database not found")
+                    val dbFile = context.getDatabasePath("memory_map_database")
+                    if (!dbFile.exists()) {
+                        throw FileNotFoundException("Database not found")
+                    }
+
+                    val metadataFile = createMetadataFile(dbFile, isAutomatic, tempDir)
+
+                    onProgress("Compressing data...")
+                    zipFile = zipBackup(dbFile, metadataFile)
+
+                    onProgress("Uploading backup...")
+                    uploadBackup(credential, isAutomatic, zipFile)
+
+                    return@withContext true
+                } catch (e: Exception) {
+                    Log.e(TAG, "Backup failed", e)
+                    return@withContext false
+                } finally {
+                    tempDir?.deleteRecursively()
+                    zipFile?.delete()
                 }
-
-                val metadataFile = createMetadataFile(dbFile, isAutomatic, tempDir)
-
-                onProgress("Compressing data...")
-                zipFile = zipBackup(dbFile, metadataFile)
-
-                onProgress("Uploading backup...")
-                uploadBackup(credential, isAutomatic, zipFile)
-
-                return@withContext true
-            } catch (e: Exception) {
-                Log.e(TAG, "Backup failed", e)
-                return@withContext false
-            } finally {
-                tempDir?.deleteRecursively()
-                zipFile?.delete()
             }
         }
     }
 
+    @AddTrace(name = "backup_manager_prepare_database_for_backup", enabled = true)
     private fun prepareDatabaseForBackup() {
         try {
             MemoryMapDatabase.getDatabase(context).openHelper.writableDatabase
@@ -129,6 +127,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
+    @AddTrace(name = "backup_manager_create_metadata_file", enabled = true)
     private fun createMetadataFile(dbFile: File, isAutomatic: Boolean, tempDir: File): File {
         val metadata = JSONObject()
         metadata.put("timestamp", System.currentTimeMillis())
@@ -143,6 +142,7 @@ class BackupManager(private val context: Context) {
         return metadataFile
     }
 
+    @AddTrace(name = "backup_manager_zip_backup", enabled = true)
     private fun zipBackup(dbFile: File, metadataFile: File): File {
         val zipFile = File(context.cacheDir, "backup.zip")
         ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { out ->
@@ -156,6 +156,7 @@ class BackupManager(private val context: Context) {
         return zipFile
     }
 
+    @AddTrace(name = "backup_manager_upload_backup", enabled = true)
     private fun uploadBackup(
         credential: GoogleAccountCredential,
         isAutomatic: Boolean,
@@ -177,19 +178,21 @@ class BackupManager(private val context: Context) {
 
     suspend fun listBackups(credential: GoogleAccountCredential): List<DriveFile> {
         return withContext(Dispatchers.IO) {
-            try {
-                val driveService = getDriveService(credential)
-                val folderId = getOrCreateBackupFolder(driveService)
-                val query = "'$folderId' in parents and trashed = false"
-                val result = driveService.files().list()
-                    .setQ(query)
-                    .setFields("files(id, name, modifiedTime, size)")
-                    .setOrderBy("modifiedTime desc")
-                    .execute()
-                return@withContext result.files ?: emptyList()
-            } catch (e: IOException) {
-                Log.e(TAG, "Failed to list backups", e)
-                return@withContext emptyList()
+            trace("backup_manager_list_backups") {
+                try {
+                    val driveService = getDriveService(credential)
+                    val folderId = getOrCreateBackupFolder(driveService)
+                    val query = "'$folderId' in parents and trashed = false"
+                    val result = driveService.files().list()
+                        .setQ(query)
+                        .setFields("files(id, name, modifiedTime, size)")
+                        .setOrderBy("modifiedTime desc")
+                        .execute()
+                    return@withContext result.files ?: emptyList()
+                } catch (e: IOException) {
+                    Log.e(TAG, "Failed to list backups", e)
+                    return@withContext emptyList()
+                }
             }
         }
     }
@@ -200,38 +203,41 @@ class BackupManager(private val context: Context) {
         onProgress: (String) -> Unit
     ): Boolean {
         return withContext(Dispatchers.IO) {
-            var tempZipFile: File? = null
-            var tempRestoreDir: File? = null
-            try {
-                val driveService = getDriveService(credential)
+            trace("backup_manager_restore_backup") {
+                var tempZipFile: File? = null
+                var tempRestoreDir: File? = null
+                try {
+                    val driveService = getDriveService(credential)
 
-                onProgress("Downloading backup...")
-                tempZipFile = downloadBackup(driveService, fileId)
-                tempRestoreDir = setupTempRestoreDir()
+                    onProgress("Downloading backup...")
+                    tempZipFile = downloadBackup(driveService, fileId)
+                    tempRestoreDir = setupTempRestoreDir()
 
-                onProgress("Uncompressing backup...")
-                unzipBackup(tempZipFile, tempRestoreDir)
+                    onProgress("Uncompressing backup...")
+                    unzipBackup(tempZipFile, tempRestoreDir)
 
-                onProgress("Verifying backup metadata...")
-                verifyBackupMetadata(tempRestoreDir)
+                    onProgress("Verifying backup metadata...")
+                    verifyBackupMetadata(tempRestoreDir)
 
-                onProgress("Restoring database...")
-                restoreDatabaseFromBackup(tempRestoreDir)
+                    onProgress("Restoring database...")
+                    restoreDatabaseFromBackup(tempRestoreDir)
 
-                onProgress("Verifying media...")
-                LocalMediaUtil.verifyAndFixMediaItems(context)
+                    onProgress("Verifying media...")
+                    LocalMediaUtil.verifyAndFixMediaItems(context)
 
-                return@withContext true
-            } catch (e: Exception) {
-                Log.e(TAG, "Restore failed", e)
-                return@withContext false
-            } finally {
-                tempZipFile?.delete()
-                tempRestoreDir?.deleteRecursively()
+                    return@withContext true
+                } catch (e: Exception) {
+                    Log.e(TAG, "Restore failed", e)
+                    return@withContext false
+                } finally {
+                    tempZipFile?.delete()
+                    tempRestoreDir?.deleteRecursively()
+                }
             }
         }
     }
 
+    @AddTrace(name = "backup_manager_download_backup", enabled = true)
     private fun downloadBackup(driveService: Drive, fileId: String): File {
         val tempZipFile = File(context.cacheDir, "restore_temp.zip")
         FileOutputStream(tempZipFile).use { outputStream ->
@@ -241,6 +247,7 @@ class BackupManager(private val context: Context) {
         return tempZipFile
     }
 
+    @AddTrace(name = "backup_manager_setup_temp_restore_dir", enabled = true)
     private fun setupTempRestoreDir(): File {
         val tempRestoreDir = File(context.cacheDir, "restore_temp_dir")
         if (tempRestoreDir.exists()) tempRestoreDir.deleteRecursively()
@@ -248,6 +255,7 @@ class BackupManager(private val context: Context) {
         return tempRestoreDir
     }
 
+    @AddTrace(name = "backup_manager_unzip_backup", enabled = true)
     private fun unzipBackup(tempZipFile: File, tempRestoreDir: File) {
         ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zis ->
             var entry = zis.nextEntry
@@ -271,6 +279,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
+    @AddTrace(name = "backup_manager_verify_backup_metadata", enabled = true)
     private fun verifyBackupMetadata(tempRestoreDir: File) {
         val metadataFile = File(tempRestoreDir, "metadata.json")
         if (!metadataFile.exists()) {
@@ -278,6 +287,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
+    @AddTrace(name = "backup_manager_restore_database_from_backup", enabled = true)
     private fun restoreDatabaseFromBackup(tempRestoreDir: File) {
         MemoryMapDatabase.closeDatabase()
 
@@ -307,17 +317,20 @@ class BackupManager(private val context: Context) {
 
     suspend fun deleteBackup(credential: GoogleAccountCredential, fileId: String): Boolean {
         return withContext(Dispatchers.IO) {
-            try {
-                val driveService = getDriveService(credential)
-                driveService.files().delete(fileId).execute()
-                true
-            } catch (e: IOException) {
-                Log.e(TAG, "Backup deletion failed", e)
-                return@withContext false
+            trace("backup_manager_delete_backup") {
+                try {
+                    val driveService = getDriveService(credential)
+                    driveService.files().delete(fileId).execute()
+                    true
+                } catch (e: IOException) {
+                    Log.e(TAG, "Backup deletion failed", e)
+                    return@withContext false
+                }
             }
         }
     }
 
+    @AddTrace(name = "backup_manager_get_or_create_backup_folder", enabled = true)
     private fun getOrCreateBackupFolder(driveService: Drive): String {
         val folderName = "Memory Map Backups"
         val query =

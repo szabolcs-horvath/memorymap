@@ -10,6 +10,7 @@ import android.graphics.RectF
 import android.util.LruCache
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withClip
+import com.google.firebase.perf.metrics.AddTrace
 
 object MultiColorMarkerGenerator {
     private const val CACHE_MAX_SIZE = 50
@@ -81,6 +82,7 @@ object MultiColorMarkerGenerator {
     /**
      * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
      */
+    @AddTrace(name = "multi_color_marker_generator_generate_tapered", enabled = true)
     fun generateTapered(colors: List<Int>, count: Int, density: Float): Bitmap {
         val cacheKey = "${colors.hashCode()}_${count}_$density"
         cache.get(cacheKey)?.let { return it }

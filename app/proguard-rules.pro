@@ -25,6 +25,11 @@
     <init>(...);
 }
 
+# Keep names for Room DAOs and their methods to ensure Firebase traces are readable
+-keep @androidx.room.Dao interface * {
+    <methods>;
+}
+
 -dontwarn org.apache.http.**
 -dontwarn android.net.http.AndroidHttpClient
 

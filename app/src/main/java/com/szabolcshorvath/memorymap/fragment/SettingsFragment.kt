@@ -30,7 +30,6 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
-import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
@@ -52,9 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.google.api.services.drive.model.File as DriveFile
 
-class SettingsFragment
-@AddTrace(name = "settings_fragment_constructor", enabled = true)
-constructor() : Fragment() {
+class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
     private lateinit var googleAuthManager: GoogleAuthManager

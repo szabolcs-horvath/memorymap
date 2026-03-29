@@ -29,7 +29,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.withTransaction
 import com.google.android.material.datepicker.MaterialDatePicker
-import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
@@ -59,9 +58,7 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.math.roundToInt
 
-class AddMemoryGroupFragment
-@AddTrace(name = "add_memory_group_fragment_constructor", enabled = true)
-constructor() : Fragment() {
+class AddMemoryGroupFragment : Fragment() {
 
     private var _binding: FragmentAddMemoryGroupBinding? = null
     private val binding get() = _binding!!
