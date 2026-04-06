@@ -8,13 +8,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryListener
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.FragmentEditState
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
@@ -24,6 +24,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Locale
+import java.util.UUID
 
 class MemoryFragmentEditAdapter(
     private val fragments: MutableList<FragmentEditState>,
@@ -31,10 +32,67 @@ class MemoryFragmentEditAdapter(
     private val getChildFragmentManager: () -> FragmentManager,
     private val setActivePickingIndex: (Int) -> Unit,
     private val updateFragmentsUI: () -> Unit
-) : ListAdapter<FragmentEditState, MemoryFragmentEditAdapter.MemoryFragmentEditViewHolder>(
-    FragmentEditState.FragmentDiffCallback()
-) {
+) : ListAdapter<MemoryFragmentEditAdapter.FragmentEditState, MemoryFragmentEditAdapter.MemoryFragmentEditViewHolder>(FragmentEditState.FragmentDiffCallback()) {
     private var hsvPresets: List<HSVPreset> = emptyList()
+
+    data class FragmentEditState(
+        val id: Int = 0,
+        val localId: String = UUID.randomUUID().toString(),
+        val latitude: Double = 0.0,
+        val longitude: Double = 0.0,
+        val placeName: String? = null,
+        val address: String? = null,
+        val startDate: ZonedDateTime? = null,
+        val endDate: ZonedDateTime? = null,
+        val isAllDay: Boolean = false,
+        val markerHue: Float = 0.0f,
+        val markerSaturation: Float = 1.0f,
+        val markerBrightness: Float = 1.0f,
+        val isTimeVisible: Boolean = false,
+        val isColorExpanded: Boolean = false,
+        val order: Int? = null
+    ) {
+        class FragmentDiffCallback : DiffUtil.ItemCallback<FragmentEditState>() {
+            override fun areItemsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) = oldItem.localId == newItem.localId
+
+            override fun areContentsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) = oldItem == newItem
+
+            override fun getChangePayload(oldItem: FragmentEditState, newItem: FragmentEditState): Any? {
+                val payloads = mutableSetOf<String>()
+                if (oldItem.latitude != newItem.latitude ||
+                    oldItem.longitude != newItem.longitude ||
+                    oldItem.placeName != newItem.placeName ||
+                    oldItem.address != newItem.address
+                ) {
+                    payloads.add(PAYLOAD_LOCATION)
+                }
+                if (oldItem.startDate != newItem.startDate ||
+                    oldItem.endDate != newItem.endDate ||
+                    oldItem.isAllDay != newItem.isAllDay ||
+                    oldItem.isTimeVisible != newItem.isTimeVisible
+                ) {
+                    payloads.add(PAYLOAD_DATE_TIME)
+                }
+                if (oldItem.markerHue != newItem.markerHue ||
+                    oldItem.markerSaturation != newItem.markerSaturation ||
+                    oldItem.markerBrightness != newItem.markerBrightness
+                ) {
+                    payloads.add(PAYLOAD_COLOR)
+                }
+                if (oldItem.isColorExpanded != newItem.isColorExpanded) {
+                    payloads.add(PAYLOAD_COLOR_EXPANDED)
+                }
+                return if (payloads.isEmpty()) null else payloads
+            }
+        }
+
+        companion object {
+            const val PAYLOAD_LOCATION = "PAYLOAD_LOCATION"
+            const val PAYLOAD_DATE_TIME = "PAYLOAD_DATE_TIME"
+            const val PAYLOAD_COLOR = "PAYLOAD_COLOR"
+            const val PAYLOAD_COLOR_EXPANDED = "PAYLOAD_COLOR_EXPANDED"
+        }
+    }
 
     class MemoryFragmentEditViewHolder(val binding: ItemMemoryFragmentEditBinding) : RecyclerView.ViewHolder(
         binding.root
@@ -55,25 +113,71 @@ class MemoryFragmentEditAdapter(
         val item = getItem(position)
         val binding = holder.binding
 
+        bindLocation(binding, item, holder)
+        setupClickListeners(binding, holder, item)
+        setupDateTimeSelectors(binding, holder, item)
+        updateDateTimeSelectors(binding, item)
+        setupColorSection(binding, item, holder)
+        updateColorUI(binding, item)
+    }
+
+    override fun onBindViewHolder(
+        holder: MemoryFragmentEditViewHolder,
+        position: Int,
+        payloads: MutableList<Any>
+    ) {
+        if (payloads.isEmpty()) {
+            super.onBindViewHolder(holder, position, payloads)
+        } else {
+            val item = getItem(position)
+            val binding = holder.binding
+            val combinedPayloads = payloads.flatMap { it as? Set<*> ?: listOf(it) }.toSet()
+
+            if (combinedPayloads.contains(FragmentEditState.PAYLOAD_LOCATION)) {
+                bindLocation(binding, item, holder)
+            }
+            if (combinedPayloads.contains(FragmentEditState.PAYLOAD_DATE_TIME)) {
+                updateDateTimeSelectors(binding, item)
+            }
+            if (combinedPayloads.contains(FragmentEditState.PAYLOAD_COLOR)) {
+                updateColorUI(binding, item)
+            }
+            if (combinedPayloads.contains(FragmentEditState.PAYLOAD_COLOR_EXPANDED)) {
+                updateColorExpansion(binding, item)
+            }
+        }
+    }
+
+    private fun bindLocation(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState, holder: MemoryFragmentEditViewHolder) {
         binding.locationText.text = if (!item.placeName.isNullOrEmpty()) {
             if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
         } else {
             "Coordinates: ${item.latitude} ${item.longitude}"
         }
+    }
 
+    private fun setupClickListeners(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder, item: FragmentEditState) {
         binding.selectLocationButton.setOnClickListener {
             setActivePickingIndex(holder.bindingAdapterPosition)
             getListener()?.onPickLocation(item.latitude, item.longitude)
         }
 
         binding.removeButton.setOnClickListener {
-            fragments.removeAt(holder.bindingAdapterPosition)
-            updateFragmentsUI()
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                fragments.removeAt(pos)
+                updateFragmentsUI()
+            }
         }
 
-        setupDateTimeSelectors(binding, holder, item)
-        updateDateTimeSelectors(binding, item)
-        setupColorSection(binding, item, holder)
+        binding.colorHeader.setOnClickListener {
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                val current = getItem(pos)
+                fragments[pos] = current.copy(isColorExpanded = !current.isColorExpanded)
+                updateFragmentsUI()
+            }
+        }
     }
 
     fun setHSVPresets(presets: List<HSVPreset>) {
@@ -100,7 +204,6 @@ class MemoryFragmentEditAdapter(
             )
             updateFragmentsUI()
         }
-        binding.timeSection.visibility = if (item.isTimeVisible) View.VISIBLE else View.GONE
 
         binding.allDayCheckbox.setOnCheckedChangeListener(null)
         binding.allDayCheckbox.isChecked = item.isAllDay
@@ -130,33 +233,6 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun setupColorSection(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState, holder: MemoryFragmentEditViewHolder) {
-        binding.colorExpandedContent.visibility = if (item.isColorExpanded) View.VISIBLE else View.GONE
-        binding.colorChevron.rotation = if (item.isColorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
-
-        binding.colorHeader.setOnClickListener {
-            val pos = holder.bindingAdapterPosition
-            if (pos != RecyclerView.NO_POSITION) {
-                val current = getItem(pos)
-                fragments[pos] = current.copy(isColorExpanded = !current.isColorExpanded)
-                updateFragmentsUI()
-            }
-        }
-
-        val color = ColorUtil.hsvToColor(item.markerHue, item.markerSaturation, item.markerBrightness)
-        val colorStateList = ColorStateList.valueOf(color)
-
-        binding.colorIndicator.setBackgroundColor(color)
-
-        binding.hueSlider.value = item.markerHue
-        binding.saturationSlider.value = item.markerSaturation
-        binding.brightnessSlider.value = item.markerBrightness
-
-        binding.hueSlider.thumbTintList = colorStateList
-        binding.saturationSlider.thumbTintList = colorStateList
-        binding.brightnessSlider.thumbTintList = colorStateList
-
-        updateValueTexts(binding, item.markerHue, item.markerSaturation, item.markerBrightness)
-
         binding.hueSlider.clearOnSliderTouchListeners()
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
@@ -179,6 +255,30 @@ class MemoryFragmentEditAdapter(
         }
 
         setupFragmentPresetColors(holder)
+    }
+
+    private fun updateColorExpansion(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
+        binding.colorExpandedContent.visibility = if (item.isColorExpanded) View.VISIBLE else View.GONE
+        binding.colorChevron.rotation = if (item.isColorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
+    }
+
+    private fun updateColorUI(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
+        updateColorExpansion(binding, item)
+
+        val color = ColorUtil.hsvToColor(item.markerHue, item.markerSaturation, item.markerBrightness)
+        val colorStateList = ColorStateList.valueOf(color)
+
+        binding.colorIndicator.setBackgroundColor(color)
+
+        binding.hueSlider.value = item.markerHue
+        binding.saturationSlider.value = item.markerSaturation
+        binding.brightnessSlider.value = item.markerBrightness
+
+        binding.hueSlider.thumbTintList = colorStateList
+        binding.saturationSlider.thumbTintList = colorStateList
+        binding.brightnessSlider.thumbTintList = colorStateList
+
+        updateValueTexts(binding, item.markerHue, item.markerSaturation, item.markerBrightness)
     }
 
     private fun updateValueTexts(binding: ItemMemoryFragmentEditBinding, h: Float, s: Float, v: Float) {
@@ -210,6 +310,8 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun updateDateTimeSelectors(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
+        binding.timeSection.visibility = if (item.isTimeVisible) View.VISIBLE else View.GONE
+
         val dateFormatter = dateFormatter()
         val timeFormatter = timeFormatter()
 

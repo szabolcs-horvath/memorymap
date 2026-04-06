@@ -56,7 +56,6 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Locale
-import java.util.UUID
 import kotlin.math.roundToInt
 
 class AddMemoryGroupFragment : Fragment() {
@@ -76,35 +75,8 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
-    data class FragmentEditState(
-        val id: Int = 0,
-        val localId: String = UUID.randomUUID().toString(),
-        val latitude: Double = 0.0,
-        val longitude: Double = 0.0,
-        val placeName: String? = null,
-        val address: String? = null,
-        val startDate: ZonedDateTime? = null,
-        val endDate: ZonedDateTime? = null,
-        val isAllDay: Boolean = false,
-        val markerHue: Float = 0.0f,
-        val markerSaturation: Float = 1.0f,
-        val markerBrightness: Float = 1.0f,
-        val isTimeVisible: Boolean = false,
-        val isColorExpanded: Boolean = false,
-        val order: Int? = null
-    ) {
-        class FragmentDiffCallback : DiffUtil.ItemCallback<FragmentEditState>() {
-            override fun areItemsTheSame(
-                oldItem: FragmentEditState,
-                newItem: FragmentEditState
-            ) = oldItem.localId == newItem.localId
-
-            override fun areContentsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) = oldItem == newItem
-        }
-    }
-
     private val selectedMedia = mutableListOf<SelectedMedia>()
-    private val fragments = mutableListOf<FragmentEditState>()
+    private val fragments = mutableListOf<MemoryFragmentEditAdapter.FragmentEditState>()
 
     private var lat = 0.0
     private var lng = 0.0
@@ -390,7 +362,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun addFragment() {
         fragments.add(
-            FragmentEditState(
+            MemoryFragmentEditAdapter.FragmentEditState(
                 latitude = lat,
                 longitude = lng,
                 placeName = placeName,
@@ -527,7 +499,7 @@ class AddMemoryGroupFragment : Fragment() {
                     fragments.clear()
                     fragments.addAll(
                         sortedFragments.map {
-                            FragmentEditState(
+                            MemoryFragmentEditAdapter.FragmentEditState(
                                 id = it.id,
                                 latitude = it.latitude,
                                 longitude = it.longitude,
