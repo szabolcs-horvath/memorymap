@@ -55,6 +55,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -329,7 +330,14 @@ class AddMemoryGroupFragment : Fragment() {
             binding.brightnessSlider.thumbTintList = colorStateList
 
             binding.colorIndicator.setBackgroundColor(color)
+            updateValueTexts(markerHue, markerSaturation, markerBrightness)
         }
+    }
+
+    private fun updateValueTexts(h: Float, s: Float, v: Float) {
+        binding.tvHueValue.text = h.toInt().toString()
+        binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", s)
+        binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", v)
     }
 
     private fun animateSlidersToTargets() {
@@ -361,6 +369,8 @@ class AddMemoryGroupFragment : Fragment() {
                 binding.hueSlider.thumbTintList = currentStateList
                 binding.saturationSlider.thumbTintList = currentStateList
                 binding.brightnessSlider.thumbTintList = currentStateList
+
+                updateValueTexts(currentH, currentS, currentV)
             }
             start()
         }

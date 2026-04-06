@@ -23,6 +23,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.Locale
 
 class MemoryFragmentEditAdapter(
     private val fragments: MutableList<FragmentEditState>,
@@ -154,6 +155,8 @@ class MemoryFragmentEditAdapter(
         binding.saturationSlider.thumbTintList = colorStateList
         binding.brightnessSlider.thumbTintList = colorStateList
 
+        updateValueTexts(binding, item.markerHue, item.markerSaturation, item.markerBrightness)
+
         binding.hueSlider.clearOnSliderTouchListeners()
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
@@ -178,6 +181,12 @@ class MemoryFragmentEditAdapter(
         setupFragmentPresetColors(holder)
     }
 
+    private fun updateValueTexts(binding: ItemMemoryFragmentEditBinding, h: Float, s: Float, v: Float) {
+        binding.tvHueValue.text = h.toInt().toString()
+        binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", s)
+        binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", v)
+    }
+
     private fun updateFragmentColor(binding: ItemMemoryFragmentEditBinding, position: Int, h: Float? = null, s: Float? = null, v: Float? = null) {
         if (position == RecyclerView.NO_POSITION) return
         val current = fragments[position]
@@ -197,6 +206,7 @@ class MemoryFragmentEditAdapter(
         binding.hueSlider.thumbTintList = colorStateList
         binding.saturationSlider.thumbTintList = colorStateList
         binding.brightnessSlider.thumbTintList = colorStateList
+        updateValueTexts(binding, newH, newS, newV)
     }
 
     private fun updateDateTimeSelectors(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
