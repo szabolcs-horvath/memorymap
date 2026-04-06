@@ -7,7 +7,8 @@ import java.lang.reflect.Proxy
 
 object PerfUtil {
     inline fun <E> trace(traceName: String, block: (Trace) -> E): E {
-        val trace = Firebase.performance.newTrace(traceName) // creates & starts a new Trace
+        val trace = Firebase.performance.newTrace(traceName)
+        trace.start()
         return try {
             block(trace)
         } finally {
