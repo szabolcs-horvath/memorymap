@@ -52,6 +52,7 @@ class MemoryFragmentEditAdapter(
         val markerSaturation: Float = 1.0f,
         val markerBrightness: Float = 1.0f,
         val isTimeVisible: Boolean = false,
+        val isDateExpanded: Boolean = false,
         val isColorExpanded: Boolean = false,
         val order: Int? = null
     ) {
@@ -72,7 +73,8 @@ class MemoryFragmentEditAdapter(
                 if (oldItem.startDate != newItem.startDate ||
                     oldItem.endDate != newItem.endDate ||
                     oldItem.isAllDay != newItem.isAllDay ||
-                    oldItem.isTimeVisible != newItem.isTimeVisible
+                    oldItem.isTimeVisible != newItem.isTimeVisible ||
+                    oldItem.isDateExpanded != newItem.isDateExpanded
                 ) {
                     payloads.add(PAYLOAD_DATE_TIME)
                 }
@@ -144,10 +146,6 @@ class MemoryFragmentEditAdapter(
                 updateDateTimeSelectors(binding, item)
             }
             if (combinedPayloads.contains(FragmentEditState.PAYLOAD_COLOR)) {
-                // If this color update came from a preset click, it might be already being animated.
-                // However, the standard updateColorUI will just set values.
-                // If we want to support animation here, we'd need a way to distinguish.
-                // For now, we only animate when the preset click itself triggers it.
                 updateColorUI(binding, item)
             }
             if (combinedPayloads.contains(FragmentEditState.PAYLOAD_COLOR_EXPANDED)) {
@@ -178,6 +176,15 @@ class MemoryFragmentEditAdapter(
             }
         }
 
+        binding.dateHeader.setOnClickListener {
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                val current = getItem(pos)
+                fragments[pos] = current.copy(isDateExpanded = !current.isDateExpanded)
+                updateFragmentsUI()
+            }
+        }
+
         binding.colorHeader.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
@@ -194,19 +201,21 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun setupDateTimeSelectors(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder, item: FragmentEditState) {
-        binding.toggleTimeButton.setOnClickListener {
+        binding.useSpecificTimeSwitch.setOnCheckedChangeListener(null)
+        binding.useSpecificTimeSwitch.isChecked = item.isTimeVisible
+        binding.useSpecificTimeSwitch.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
-            if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+            if (pos == RecyclerView.NO_POSITION) return@setOnCheckedChangeListener
             val current = getItem(pos)
-            val newStart = if (!current.isTimeVisible && current.startDate == null) ZonedDateTime.now() else current.startDate
-            val newEnd = if (!current.isTimeVisible && current.endDate == null) {
+            val newStart = if (isChecked && current.startDate == null) ZonedDateTime.now() else current.startDate
+            val newEnd = if (isChecked && current.endDate == null) {
                 ZonedDateTime.now().plusHours(1)
             } else {
                 current.endDate
             }
 
             fragments[pos] = current.copy(
-                isTimeVisible = !current.isTimeVisible,
+                isTimeVisible = isChecked,
                 startDate = newStart,
                 endDate = newEnd
             )
@@ -318,33 +327,51 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun updateDateTimeSelectors(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
-        binding.timeSection.visibility = if (item.isTimeVisible) View.VISIBLE else View.GONE
+        binding.dateExpandedContent.visibility = if (item.isDateExpanded) View.VISIBLE else View.GONE
+        binding.dateChevron.rotation = if (item.isDateExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
+
+        binding.timePickersLayout.visibility = if (item.isTimeVisible) View.VISIBLE else View.GONE
 
         val dateFormatter = dateFormatter()
         val timeFormatter = timeFormatter()
 
-        if (item.isAllDay) {
-            binding.startDateTimeLayout.visibility = View.GONE
-            binding.endDateTimeLayout.visibility = View.GONE
-            binding.dateRangeButton.visibility = View.VISIBLE
-
-            val start = item.startDate ?: ZonedDateTime.now()
-            val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
-            val startStr = start.format(dateFormatter)
-            val endStr = end.format(dateFormatter)
-            binding.dateRangeButton.text =
-                if (startStr == endStr) startStr else "$startStr - $endStr"
+        if (!item.isTimeVisible) {
+            binding.dateSummaryText.text = "Inherited from group"
         } else {
-            binding.startDateTimeLayout.visibility = View.VISIBLE
-            binding.endDateTimeLayout.visibility = View.VISIBLE
-            binding.dateRangeButton.visibility = View.GONE
-
             val start = item.startDate ?: ZonedDateTime.now()
             val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
-            binding.startDateButton.text = start.format(dateFormatter)
-            binding.startTimeButton.text = start.format(timeFormatter)
-            binding.endDateButton.text = end.format(dateFormatter)
-            binding.endTimeButton.text = end.format(timeFormatter)
+
+            if (item.isAllDay) {
+                binding.startDateTimeLayout.visibility = View.GONE
+                binding.endDateTimeLayout.visibility = View.GONE
+                binding.dateRangeButton.visibility = View.VISIBLE
+
+                val startStr = start.format(dateFormatter)
+                val endStr = end.format(dateFormatter)
+                val summary = if (startStr == endStr) startStr else "$startStr - $endStr"
+                binding.dateRangeButton.text = summary
+                binding.dateSummaryText.text = summary
+            } else {
+                binding.startDateTimeLayout.visibility = View.VISIBLE
+                binding.endDateTimeLayout.visibility = View.VISIBLE
+                binding.dateRangeButton.visibility = View.GONE
+
+                val startDStr = start.format(dateFormatter)
+                val startTStr = start.format(timeFormatter)
+                val endDStr = end.format(dateFormatter)
+                val endTStr = end.format(timeFormatter)
+
+                binding.startDateButton.text = startDStr
+                binding.startTimeButton.text = startTStr
+                binding.endDateButton.text = endDStr
+                binding.endTimeButton.text = endTStr
+
+                binding.dateSummaryText.text = if (startDStr == endDStr) {
+                    "$startDStr, $startTStr - $endTStr"
+                } else {
+                    "$startDStr, $startTStr - $endDStr, $endTStr"
+                }
+            }
         }
     }
 

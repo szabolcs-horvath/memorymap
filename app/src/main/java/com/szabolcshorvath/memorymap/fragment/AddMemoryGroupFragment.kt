@@ -100,6 +100,7 @@ class AddMemoryGroupFragment : Fragment() {
     private var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     private var fragmentsExpanded = true
     private var colorExpanded = false
+    private var dateExpanded = true
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
@@ -180,6 +181,8 @@ class AddMemoryGroupFragment : Fragment() {
             activePickingIndex = -1
             listener?.onPickLocation(lat, lng)
         }
+
+        binding.dateHeader.setOnClickListener { toggleDateSection() }
 
         binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
             isAllDay = isChecked
@@ -266,6 +269,11 @@ class AddMemoryGroupFragment : Fragment() {
         // We pass a new list instance (toList()) to ensure it detects the change.
         mediaAdapter.submitList(selectedMedia.toList())
         binding.selectedMediaCount.text = "${selectedMedia.size} items selected"
+    }
+
+    private fun toggleDateSection() {
+        dateExpanded = !dateExpanded
+        updateDateTimeButtons(animateExpansion = true)
     }
 
     private fun toggleFragments() {
@@ -369,7 +377,8 @@ class AddMemoryGroupFragment : Fragment() {
                 address = address,
                 markerHue = markerHue,
                 markerSaturation = markerSaturation,
-                markerBrightness = markerBrightness
+                markerBrightness = markerBrightness,
+                isDateExpanded = false
             )
         )
         if (!fragmentsExpanded) toggleFragments()
@@ -428,6 +437,7 @@ class AddMemoryGroupFragment : Fragment() {
         markerHue = DEFAULT_MARKER_HUE
         markerSaturation = DEFAULT_MARKER_SATURATION
         markerBrightness = DEFAULT_MARKER_BRIGHTNESS
+        dateExpanded = true
         updateDateTimeButtons()
         selectedMedia.clear()
         updateMediaUI()
@@ -512,6 +522,7 @@ class AddMemoryGroupFragment : Fragment() {
                                 markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
                                 markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
                                 isTimeVisible = it.startDate != null,
+                                isDateExpanded = false,
                                 isColorExpanded = false,
                                 order = it.order
                             )
@@ -521,6 +532,7 @@ class AddMemoryGroupFragment : Fragment() {
                     updateFragmentsUI()
 
                     updateLocationText()
+                    dateExpanded = true
                     updateDateTimeButtons()
                     updateColorUI()
                     binding.saveButton.text = "Update Memory"
@@ -570,7 +582,16 @@ class AddMemoryGroupFragment : Fragment() {
         binding.locationText.text = locationString.toString()
     }
 
-    private fun updateDateTimeButtons() {
+    private fun updateDateTimeButtons(animateExpansion: Boolean = false) {
+        binding.dateExpandedContent.visibility = if (dateExpanded) View.VISIBLE else View.GONE
+        if (animateExpansion) {
+            binding.dateChevron.animate()
+                .rotation(if (dateExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
+                .start()
+        } else {
+            binding.dateChevron.rotation = if (dateExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
+        }
+
         if (isAllDay) {
             binding.startDateTimeLayout.visibility = View.GONE
             binding.endDateTimeLayout.visibility = View.GONE
@@ -580,7 +601,9 @@ class AddMemoryGroupFragment : Fragment() {
 
             val startStr = startDateTime.format(dateFormatter())
             val endStr = endDateTime.format(dateFormatter())
-            binding.dateRangeButton.text = if (startStr == endStr) startStr else "$startStr - $endStr"
+            val dateRangeStr = if (startStr == endStr) startStr else "$startStr - $endStr"
+            binding.dateRangeButton.text = dateRangeStr
+            binding.dateSummaryText.text = dateRangeStr
         } else {
             binding.startDateTimeLayout.visibility = View.VISIBLE
             binding.endDateTimeLayout.visibility = View.VISIBLE
@@ -588,10 +611,23 @@ class AddMemoryGroupFragment : Fragment() {
             binding.endDateLabel.visibility = View.VISIBLE
             binding.dateRangeButton.visibility = View.GONE
 
-            binding.startDateButton.text = startDateTime.format(dateFormatter())
-            binding.endDateButton.text = endDateTime.format(dateFormatter())
-            binding.startTimeButton.text = startDateTime.format(timeFormatter())
-            binding.endTimeButton.text = endDateTime.format(timeFormatter())
+            val startDStr = startDateTime.format(dateFormatter())
+            val startTStr = startDateTime.format(timeFormatter())
+            val endDStr = endDateTime.format(dateFormatter())
+            val endTStr = endDateTime.format(timeFormatter())
+
+            binding.startDateButton.text = startDStr
+            binding.endDateButton.text = endDStr
+            binding.startTimeButton.text = startTStr
+            binding.endTimeButton.text = endTStr
+
+            val startFull = "$startDStr, $startTStr"
+            val endFull = "$endDStr, $endTStr"
+            binding.dateSummaryText.text = if (startDStr == endDStr) {
+                "$startDStr, $startTStr - $endTStr"
+            } else {
+                "$startFull - $endFull"
+            }
         }
     }
 
