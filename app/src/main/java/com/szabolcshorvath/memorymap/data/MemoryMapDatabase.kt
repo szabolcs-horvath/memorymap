@@ -84,8 +84,12 @@ abstract class MemoryMapDatabase : RoomDatabase() {
         @Suppress("MagicNumber")
         val MIGRATION_17_18 = object : Migration(17, 18) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("UPDATE memory_groups SET placeName = REPLACE(REPLACE(REPLACE(placeName, CHAR(13) || CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ');")
-                db.execSQL("UPDATE memory_fragments SET placeName = REPLACE(REPLACE(REPLACE(placeName, CHAR(13) || CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ');")
+                db.execSQL(
+                    "UPDATE memory_groups SET placeName = REPLACE(REPLACE(REPLACE(placeName, CHAR(13) || CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ');"
+                )
+                db.execSQL(
+                    "UPDATE memory_fragments SET placeName = REPLACE(REPLACE(REPLACE(placeName, CHAR(13) || CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ');"
+                )
             }
         }
 
