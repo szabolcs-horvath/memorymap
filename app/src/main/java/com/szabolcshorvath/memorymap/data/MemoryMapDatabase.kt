@@ -47,7 +47,7 @@ abstract class MemoryMapDatabase : RoomDatabase() {
     fun hsvPresetDao(): HSVPresetDao = _hsvPresetDao ?: tracedDao(hsvPresetDaoInternal()).also { _hsvPresetDao = it }
 
     companion object {
-        const val DB_VERSION = 17
+        const val DB_VERSION = 18
 
         @Volatile
         private var INSTANCE: MemoryMapDatabase? = null
@@ -55,36 +55,49 @@ abstract class MemoryMapDatabase : RoomDatabase() {
         @Suppress("MagicNumber")
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN startDate TEXT NOT NULL DEFAULT '';")
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN endDate TEXT NOT NULL DEFAULT '';")
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN isAllDay INTEGER NOT NULL DEFAULT 0;")
-                db.execSQL("UPDATE MemoryGroup SET startDate = date, endDate = date;")
-                db.execSQL("ALTER TABLE MemoryGroup DROP COLUMN date;")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN startDate TEXT NOT NULL DEFAULT '';")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN endDate TEXT NOT NULL DEFAULT '';")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN isAllDay INTEGER NOT NULL DEFAULT 0;")
+                db.execSQL("UPDATE memory_groups SET startDate = date, endDate = date;")
+                db.execSQL("ALTER TABLE memory_groups DROP COLUMN date;")
             }
         }
 
         @Suppress("MagicNumber")
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN originalFileName TEXT NOT NULL DEFAULT '';")
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN fileSize INTEGER NOT NULL DEFAULT 0;")
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN dateTaken INTEGER NOT NULL DEFAULT 0;")
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN deviceId TEXT NOT NULL DEFAULT '';")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN originalFileName TEXT NOT NULL DEFAULT '';")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN fileSize INTEGER NOT NULL DEFAULT 0;")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN dateTaken INTEGER NOT NULL DEFAULT 0;")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN deviceId TEXT NOT NULL DEFAULT '';")
             }
         }
 
         @Suppress("MagicNumber")
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE MemoryGroup DROP COLUMN originalFileName;")
-                db.execSQL("ALTER TABLE MemoryGroup ADD COLUMN mediaSignature TEXT NOT NULL DEFAULT '';")
+                db.execSQL("ALTER TABLE memory_groups DROP COLUMN originalFileName;")
+                db.execSQL("ALTER TABLE memory_groups ADD COLUMN mediaSignature TEXT NOT NULL DEFAULT '';")
+            }
+        }
+
+        @Suppress("MagicNumber")
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE memory_groups SET placeName = REPLACE(REPLACE(REPLACE(placeName, CHAR(13) || CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ');")
+                db.execSQL("UPDATE memory_fragments SET placeName = REPLACE(REPLACE(REPLACE(placeName, CHAR(13) || CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ');")
             }
         }
 
         fun getDatabase(context: Context): MemoryMapDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(context.applicationContext, MemoryMapDatabase::class.java, "memory_map_database")
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5)
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_4_5,
+                        MIGRATION_17_18
+                    )
                     .fallbackToDestructiveMigration(false)
                     .build()
                 INSTANCE = instance

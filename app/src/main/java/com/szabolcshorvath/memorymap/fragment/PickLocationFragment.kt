@@ -171,9 +171,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
 
         googleMap.setOnPoiClickListener { poi ->
-            selectedPlaceName = poi.name
+            val poiName = poi.name.replace(Regex("\\s+"), " ").trim()
+            selectedPlaceName = poiName
             selectedAddress = null
-            updateSelectedLocation(poi.latLng, poi.name)
+            updateSelectedLocation(poi.latLng, poiName)
             reverseGeocode(poi.latLng)
         }
 
