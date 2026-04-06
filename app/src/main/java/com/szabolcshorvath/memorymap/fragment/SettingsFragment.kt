@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
@@ -31,6 +32,7 @@ import com.google.android.gms.common.api.Scope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
 import com.szabolcshorvath.memorymap.MainActivity
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
@@ -41,6 +43,7 @@ import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -113,6 +116,7 @@ class SettingsFragment : Fragment() {
         setupRecyclerViews()
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
+        setupDefaultFilterDropdown()
         setupColorPresetsSection()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -164,6 +168,26 @@ class SettingsFragment : Fragment() {
             viewLifecycleOwner.lifecycleScope.launch {
                 requireContext().dataStore.edit { preferences ->
                     preferences[MainActivity.SHOW_FRAGMENT_MARKERS] = isChecked
+                }
+            }
+        }
+    }
+
+    private fun setupDefaultFilterDropdown() {
+        val options = DateFilterOption.allLabels()
+        val adapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, options)
+        binding.spinnerDefaultFilter.setAdapter(adapter)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val currentFilter = DateFilterOption.getFromDataStore(requireContext().dataStore)
+            binding.spinnerDefaultFilter.setText(currentFilter.label, false)
+        }
+
+        binding.spinnerDefaultFilter.setOnItemClickListener { _, _, position, _ ->
+            val selectedOption = options[position]
+            viewLifecycleOwner.lifecycleScope.launch {
+                requireContext().dataStore.edit { preferences ->
+                    preferences[MainActivity.DEFAULT_DATE_FILTER] = DateFilterOption.ofLabel(selectedOption).name
                 }
             }
         }

@@ -46,6 +46,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
 import com.szabolcshorvath.memorymap.util.PerfUtil
@@ -79,6 +80,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var allFragments: List<MemoryFragment> = emptyList()
     private var filterStartDate: LocalDate? = null
     private var filterEndDate: LocalDate? = null
+    private var appliedFilterLabel: String? = null
 
     // Parameters to handle initial selection
     private var initialSelectedLat: Double? = null
@@ -143,6 +145,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     .distinctUntilChanged()
                     .collect {
                         if (mMap != null) {
+                            updateDateFilter()
                             updateMapMarkers()
                         }
                     }
@@ -175,9 +178,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val startMillis = selection.first
             val endMillis = selection.second
 
-            filterStartDate =
-                Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+            filterStartDate = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
             filterEndDate = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+            appliedFilterLabel = null
 
             updateDateRangeButtonText()
             lifecycleScope.launch {
@@ -198,6 +201,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateDateRangeButtonText() {
+        if (appliedFilterLabel != null) {
+            binding.btnDateRange.text = appliedFilterLabel
+            return
+        }
+
         val dateFormatter = dateFormatter()
         if (filterStartDate != null && filterEndDate != null) {
             if (filterStartDate != filterEndDate) {
@@ -206,7 +214,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)}"
             }
         } else {
-            binding.btnDateRange.text = "Select Date Range"
+            binding.btnDateRange.text = DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label
         }
     }
 
@@ -239,8 +247,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val newStart = if (memoryStart.isBefore(currentStart)) memoryStart else currentStart
         val newEnd = if (memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
 
-        filterStartDate = newStart
-        filterEndDate = newEnd
+        if (newStart != filterStartDate || newEnd != filterEndDate) {
+            filterStartDate = newStart
+            filterEndDate = newEnd
+            appliedFilterLabel = null
+        }
 
         updateDateRangeButtonText()
         updateMapMarkers()
@@ -436,17 +447,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             withContext(Dispatchers.Main) {
                 val googleMap = mMap
                 if (googleMap != null) {
-                    if (allGroups.isNotEmpty()) {
-                        val minDate = allGroups.minOf { it.startDate.toLocalDate() }
-                        val maxDate = allGroups.maxOf { it.endDate.toLocalDate() }
-
-                        if (filterStartDate == null || filterEndDate == null) {
-                            filterStartDate = minDate
-                            filterEndDate = maxDate
-                        }
-                    }
-
-                    updateDateRangeButtonText()
+                    updateDateFilter()
                     updateMapMarkers()
 
                     if (initialSelectedLat != null && initialSelectedLng != null) {
@@ -463,6 +464,23 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             }
         }
+    }
+
+    private suspend fun updateDateFilter() {
+        if (filterStartDate == null || filterEndDate == null) {
+            val defaultFilter = DateFilterOption.getFromDataStore(requireContext().dataStore)
+            val (start, end) = defaultFilter.dateRangeProvider(LocalDate.now())
+            filterStartDate = start
+            filterEndDate = end
+            appliedFilterLabel = defaultFilter.label
+            if (filterStartDate == null || filterEndDate == null) {
+                if (allGroups.isNotEmpty()) {
+                    filterStartDate = allGroups.minOf { it.startDate.toLocalDate() }
+                    filterEndDate = allGroups.maxOf { it.endDate.toLocalDate() }
+                }
+            }
+        }
+        updateDateRangeButtonText()
     }
 
     private suspend fun updateMapMarkers(adjustCamera: Boolean = false) {
@@ -491,9 +509,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
 
                 candidateItems.filter { item ->
-                    val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate() ?: LocalDate.MIN
-                    val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate() ?: LocalDate.MAX
-                    !itemEnd.isBefore(start) && !itemStart.isAfter(end)
+                    val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
+                    val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
+
+                    if (itemStart == null || itemEnd == null) return@filter true
+
+                    // Strict filtering: items must be entirely within the selected range
+                    !itemStart.isBefore(start) && !itemEnd.isAfter(end)
                 }
             }
 

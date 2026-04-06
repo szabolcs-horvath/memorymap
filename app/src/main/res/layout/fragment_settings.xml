@@ -19,18 +19,54 @@
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
+                android:layout_marginBottom="2dp"
                 android:text="Settings"
                 android:textColor="?attr/colorOnSurface"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_show_fragments"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="40dp"
                 android:checked="false"
-                android:text="Show Memory Fragment Markers" />
+                android:text="Show Memory Fragment Markers"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Default Map Date Filter"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_default_filter"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense.ExposedDropdownMenu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="150dp"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/spinner_default_filter"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
 
             <!-- Color Presets Section -->
             <com.google.android.material.card.MaterialCardView

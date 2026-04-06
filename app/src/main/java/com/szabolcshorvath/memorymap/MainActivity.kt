@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -402,5 +403,6 @@ class MainActivity :
         private val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
         private val LAST_APP_VERSION = longPreferencesKey("last_app_version")
         val SHOW_FRAGMENT_MARKERS = booleanPreferencesKey("show_fragment_markers")
+        val DEFAULT_DATE_FILTER = stringPreferencesKey("default_date_filter")
     }
 }
