@@ -32,6 +32,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.firebase.perf.metrics.Trace
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
@@ -47,6 +48,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
+import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import ir.mahozad.android.PieChart.Slice
@@ -86,6 +88,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var permissionDenied = false
     private var isInitialZoomDone = false
     private var refreshJob: Job? = null
+    private var mapLoadTrace: Trace? = null
 
     private val locationPermissionRequest =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -118,6 +121,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        mapLoadTrace = PerfUtil.startTrace("map_full_load")
 
         binding.btnDateRange.setOnClickListener { showDateRangePicker() }
         binding.btnStats.setOnClickListener { toggleStatsOverlay() }
@@ -243,6 +248,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+
+        googleMap.setOnMapLoadedCallback {
+            mapLoadTrace?.stop()
+            mapLoadTrace = null
+        }
 
         googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         googleMap.uiSettings.isRotateGesturesEnabled = false
@@ -404,6 +414,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     hideMemoryOverlay()
                 }
             }
+        }
+    }
+
+    private fun showMemoryOverlay(marker: Marker) {
+        selectedMarker = marker
+        selectedMarkerPosition = marker.position
+        @Suppress("UNCHECKED_CAST")
+        val items = marker.tag as? List<Markerable>
+        if (items != null) {
+            showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
         }
     }
 
@@ -661,16 +681,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun showMemoryOverlay(marker: Marker) {
-        selectedMarker = marker
-        selectedMarkerPosition = marker.position
-        @Suppress("UNCHECKED_CAST")
-        val items = marker.tag as? List<Markerable>
-        if (items != null) {
-            showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
-        }
-    }
-
     private fun showMemoryOverlay(lat: Double, lng: Double, items: List<Markerable>) {
         val distinctItems = items.distinctBy { it.groupId }
         val locationName = distinctItems.firstOrNull {
@@ -708,6 +718,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        mapLoadTrace = null
         _binding = null
     }
 
