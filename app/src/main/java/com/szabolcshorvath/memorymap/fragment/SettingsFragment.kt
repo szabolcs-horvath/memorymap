@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import com.google.api.services.drive.model.File as DriveFile
 
 class SettingsFragment : Fragment() {
@@ -376,16 +377,20 @@ class SettingsFragment : Fragment() {
     }
 
     private fun updateVisualsFromSliders() {
-        val color = ColorUtil.hsvToColor(
-            binding.hueSlider.value,
-            binding.saturationSlider.value,
-            binding.brightnessSlider.value
-        )
+        val hue = binding.hueSlider.value
+        val saturation = binding.saturationSlider.value
+        val brightness = binding.brightnessSlider.value
+
+        val color = ColorUtil.hsvToColor(hue, saturation, brightness)
         binding.colorIndicator.setBackgroundColor(color)
         val colorStateList = ColorStateList.valueOf(color)
         binding.hueSlider.thumbTintList = colorStateList
         binding.saturationSlider.thumbTintList = colorStateList
         binding.brightnessSlider.thumbTintList = colorStateList
+
+        binding.tvHueValue.text = hue.toInt().toString()
+        binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", saturation)
+        binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", brightness)
     }
 
     private fun updateSelectionVisuals(preset: HSVPreset, skipSubmitList: Boolean = false) {
@@ -432,6 +437,7 @@ class SettingsFragment : Fragment() {
         binding.hueSlider.value = preset.hue
         binding.saturationSlider.value = preset.saturation
         binding.brightnessSlider.value = preset.brightness
+        updateVisualsFromSliders()
     }
 
     private fun setupSignInAndOutButtons() {
