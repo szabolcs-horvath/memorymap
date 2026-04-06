@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.adapter
 
+import android.animation.ValueAnimator
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
@@ -7,6 +8,7 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -25,6 +27,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.roundToInt
 
 class MemoryFragmentEditAdapter(
     private val fragments: MutableList<FragmentEditState>,
@@ -98,6 +101,7 @@ class MemoryFragmentEditAdapter(
         binding.root
     ) {
         val colorPresetAdapter = ColorPresetAdapter()
+        var colorAnimator: ValueAnimator? = null
 
         init {
             binding.presetColorsRecyclerView.adapter = colorPresetAdapter
@@ -140,6 +144,10 @@ class MemoryFragmentEditAdapter(
                 updateDateTimeSelectors(binding, item)
             }
             if (combinedPayloads.contains(FragmentEditState.PAYLOAD_COLOR)) {
+                // If this color update came from a preset click, it might be already being animated.
+                // However, the standard updateColorUI will just set values.
+                // If we want to support animation here, we'd need a way to distinguish.
+                // For now, we only animate when the preset click itself triggers it.
                 updateColorUI(binding, item)
             }
             if (combinedPayloads.contains(FragmentEditState.PAYLOAD_COLOR_EXPANDED)) {
@@ -345,14 +353,62 @@ class MemoryFragmentEditAdapter(
         holder.colorPresetAdapter.onPresetClick = { preset ->
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
+                animateFragmentColorToTargets(holder, preset)
+                
+                // Still update the underlying data so it's persisted/ready for save
                 val current = fragments[pos]
                 fragments[pos] = current.copy(
                     markerHue = preset.hue,
                     markerSaturation = preset.saturation,
                     markerBrightness = preset.brightness
                 )
-                updateFragmentsUI()
+                // We don't call updateFragmentsUI() here immediately to avoid re-binding during animation
             }
+        }
+    }
+
+    private fun animateFragmentColorToTargets(holder: MemoryFragmentEditViewHolder, targetPreset: HSVPreset) {
+        val binding = holder.binding
+        val startH = binding.hueSlider.value
+        val startS = binding.saturationSlider.value
+        val startV = binding.brightnessSlider.value
+
+        holder.colorAnimator?.cancel()
+        holder.colorAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = COLOR_CHANGE_ANIMATION_DURATION
+            interpolator = AccelerateDecelerateInterpolator()
+
+            addUpdateListener { animator ->
+                val fraction = animator.animatedFraction
+
+                val currentH = lerpWithStep(startH, targetPreset.hue, fraction, binding.hueSlider.stepSize)
+                val currentS = lerpWithStep(startS, targetPreset.saturation, fraction, binding.saturationSlider.stepSize)
+                val currentV = lerpWithStep(startV, targetPreset.brightness, fraction, binding.brightnessSlider.stepSize)
+
+                binding.hueSlider.value = currentH
+                binding.saturationSlider.value = currentS
+                binding.brightnessSlider.value = currentV
+
+                val currentColor = ColorUtil.hsvToColor(currentH, currentS, currentV)
+                binding.colorIndicator.setBackgroundColor(currentColor)
+
+                val currentStateList = ColorStateList.valueOf(currentColor)
+                binding.hueSlider.thumbTintList = currentStateList
+                binding.saturationSlider.thumbTintList = currentStateList
+                binding.brightnessSlider.thumbTintList = currentStateList
+
+                updateValueTexts(binding, currentH, currentS, currentV)
+            }
+            start()
+        }
+    }
+
+    private fun lerpWithStep(start: Float, end: Float, fraction: Float, stepSize: Float): Float {
+        val rawValue = start + (end - start) * fraction
+        return if (stepSize > 0) {
+            ((rawValue / stepSize).roundToInt() * stepSize)
+        } else {
+            rawValue
         }
     }
 
@@ -429,5 +485,6 @@ class MemoryFragmentEditAdapter(
     companion object {
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
+        private const val COLOR_CHANGE_ANIMATION_DURATION = 300L
     }
 }
