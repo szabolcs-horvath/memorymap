@@ -171,11 +171,30 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
 
         googleMap.setOnPoiClickListener { poi ->
-            val poiName = poi.name.replace(Regex("\\s+"), " ").trim()
-            selectedPlaceName = poiName
-            selectedAddress = null
-            updateSelectedLocation(poi.latLng, poiName)
-            reverseGeocode(poi.latLng)
+            val placeId = poi.placeId
+            val poiLatLng = poi.latLng
+            updateSelectedLocation(poiLatLng)
+
+            val placesClient = Places.createClient(requireContext())
+            lifecycleScope.launch {
+                try {
+                    val response = placesClient.awaitFetchPlace(placeId, placeFields)
+                    val place = response.place
+
+                    // Race condition check: Only update if the user hasn't clicked elsewhere
+                    if (poiLatLng.latitude == selectedLat && poiLatLng.longitude == selectedLng) {
+                        selectedPlaceName = place.displayName
+                        selectedAddress = place.formattedAddress
+                        updateSelectedLocation(poiLatLng, selectedPlaceName)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error fetching place details for POI: ${e.message}", e)
+                    // Fallback to reverse geocoding for address if fetch fails
+                    if (poiLatLng.latitude == selectedLat && poiLatLng.longitude == selectedLng) {
+                        reverseGeocode(poiLatLng)
+                    }
+                }
+            }
         }
 
         googleMap.setOnMyLocationButtonClickListener {
