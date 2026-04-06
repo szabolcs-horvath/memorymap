@@ -13,8 +13,8 @@ plugins {
 }
 
 val localProperties = Properties()
-val localPropertiesFile: File? = rootProject.file("local.properties")
-if (localPropertiesFile?.exists() == true) {
+val localPropertiesFile: File = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
@@ -31,7 +31,7 @@ kotlin {
             applicationId = "com.szabolcshorvath.memorymap"
             minSdk = 27
             targetSdk = 36
-            versionCode = 20
+            versionCode = 21
             versionName = "Minden sikerülni fog!"
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

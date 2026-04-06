@@ -39,7 +39,7 @@ class ColorUtilTest {
 
         @JvmStatic
         fun generateColorWithTargetContrastParameters(): List<Arguments> {
-            val arguments = mutableListOf<Arguments>(
+            val arguments = mutableListOf(
                 Arguments.of(HSV_BLACK[0], HSV_BLACK[1], HSV_BLACK[2]),
                 Arguments.of(HSV_WHITE[0], HSV_WHITE[1], HSV_WHITE[2])
             )
