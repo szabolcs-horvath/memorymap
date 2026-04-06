@@ -117,11 +117,11 @@ class MemoryFragmentEditAdapter(
         val item = getItem(position)
         val binding = holder.binding
 
-        bindLocation(binding, item, holder)
+        bindLocation(binding, item)
         setupClickListeners(binding, holder, item)
         setupDateTimeSelectors(binding, holder, item)
         updateDateTimeSelectors(binding, item)
-        setupColorSection(binding, item, holder)
+        setupColorSection(binding, holder)
         updateColorUI(binding, item)
     }
 
@@ -138,7 +138,7 @@ class MemoryFragmentEditAdapter(
             val combinedPayloads = payloads.flatMap { it as? Set<*> ?: listOf(it) }.toSet()
 
             if (combinedPayloads.contains(FragmentEditState.PAYLOAD_LOCATION)) {
-                bindLocation(binding, item, holder)
+                bindLocation(binding, item)
             }
             if (combinedPayloads.contains(FragmentEditState.PAYLOAD_DATE_TIME)) {
                 updateDateTimeSelectors(binding, item)
@@ -156,7 +156,7 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun bindLocation(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState, holder: MemoryFragmentEditViewHolder) {
+    private fun bindLocation(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
         binding.locationText.text = if (!item.placeName.isNullOrEmpty()) {
             if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
         } else {
@@ -240,7 +240,7 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun setupColorSection(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState, holder: MemoryFragmentEditViewHolder) {
+    private fun setupColorSection(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder) {
         binding.hueSlider.clearOnSliderTouchListeners()
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
@@ -354,7 +354,7 @@ class MemoryFragmentEditAdapter(
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
                 animateFragmentColorToTargets(holder, preset)
-                
+
                 // Still update the underlying data so it's persisted/ready for save
                 val current = fragments[pos]
                 fragments[pos] = current.copy(
