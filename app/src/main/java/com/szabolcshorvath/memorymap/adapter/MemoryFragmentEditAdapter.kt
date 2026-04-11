@@ -61,6 +61,7 @@ class MemoryFragmentEditAdapter(
 
             override fun areContentsTheSame(oldItem: FragmentEditState, newItem: FragmentEditState) = oldItem == newItem
 
+            @Suppress("CyclomaticComplexMethod")
             override fun getChangePayload(oldItem: FragmentEditState, newItem: FragmentEditState): Any? {
                 val payloads = mutableSetOf<String>()
                 if (oldItem.latitude != newItem.latitude ||

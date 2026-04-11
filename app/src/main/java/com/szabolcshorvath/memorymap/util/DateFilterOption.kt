@@ -10,9 +10,9 @@ import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
 
 enum class DateFilterOption(val label: String, val dateRangeProvider: (now: LocalDate) -> Pair<LocalDate?, LocalDate?>) {
-    LAST_7_DAYS("Last 7 Days", { now -> Pair(now.minusDays(6), now) }),
-    LAST_30_DAYS("Last 30 Days", { now -> Pair(now.minusDays(29), now) }),
-    LAST_365_DAYS("Last 365 Days", { now -> Pair(now.minusDays(364), now) }),
+    LAST_7_DAYS("Last 7 Days", { now -> Pair(now.minusDays(SEVEN_DAYS_MINUS_ONE), now) }),
+    LAST_30_DAYS("Last 30 Days", { now -> Pair(now.minusDays(THIRTY_DAYS_MINUS_ONE), now) }),
+    LAST_365_DAYS("Last 365 Days", { now -> Pair(now.minusDays(THREE_HUNDRED_SIXTY_FIVE_DAYS_MINUS_ONE), now) }),
     THIS_WEEK("This Week", { now -> Pair(now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)), now) }),
     THIS_MONTH("This Month", { now -> Pair(now.withDayOfMonth(1), now) }),
     THIS_YEAR("This Year", { now -> Pair(now.withDayOfYear(1), now) }),
@@ -20,6 +20,10 @@ enum class DateFilterOption(val label: String, val dateRangeProvider: (now: Loca
 
     companion object {
         val DEFAULT_DATE_FILTER_OPTION = ALL_TIME
+
+        private const val SEVEN_DAYS_MINUS_ONE = 6L
+        private const val THIRTY_DAYS_MINUS_ONE = 29L
+        private const val THREE_HUNDRED_SIXTY_FIVE_DAYS_MINUS_ONE = 364L
 
         fun allLabels(): List<String> {
             return entries.map { it.label }
