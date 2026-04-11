@@ -28,6 +28,22 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_quick_filter"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:padding="0dp"
+            app:cornerRadius="8dp"
+            app:icon="@android:drawable/ic_menu_sort_by_size"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btn_date_range"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_date_range"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="0dp"
@@ -38,7 +54,7 @@
             app:icon="@android:drawable/ic_menu_my_calendar"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/btn_stats"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btn_quick_filter"
             app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.button.MaterialButton
@@ -73,17 +89,17 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="16dp"
+            app:centerLabel="❤️"
+            app:centerLabelIconHeight="0dp"
+            app:centerLabelIconMargin="0dp"
+            app:centerLabelSize="16sp"
+            app:centerLabelStatus="enabled"
             app:gap="2dp"
             app:holeRatio="0.75"
             app:labelType="inside"
             app:labelsColor="?attr/colorOnSurface"
             app:labelsOffset="0.60"
             app:labelsSize="16sp"
-            app:centerLabel="❤️"
-            app:centerLabelStatus="enabled"
-            app:centerLabelIconHeight="0dp"
-            app:centerLabelIconMargin="0dp"
-            app:centerLabelSize="16sp"
             app:overlayRatio="1.0"
             app:startAngle="-90" />
     </com.google.android.material.card.MaterialCardView>

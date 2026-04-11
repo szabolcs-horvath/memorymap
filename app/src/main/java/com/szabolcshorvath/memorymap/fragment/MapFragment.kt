@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
@@ -127,6 +128,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         mapLoadTrace = PerfUtil.startTrace("map_full_load")
 
         binding.btnDateRange.setOnClickListener { showDateRangePicker() }
+        binding.btnQuickFilter.setOnClickListener { showQuickFilterMenu() }
         binding.btnStats.setOnClickListener { toggleStatsOverlay() }
 
         binding.root.doOnLayout {
@@ -161,6 +163,23 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             adapter = overlayAdapter
             itemAnimator = null // Disable cross-fade to eliminate "flickering" between markers
         }
+    }
+
+    private fun showQuickFilterMenu() {
+        val popup = PopupMenu(requireContext(), binding.btnQuickFilter)
+        DateFilterOption.entries.forEach { option ->
+            popup.menu.add(option.label)
+        }
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
+            val (start, end) = selectedOption.dateRangeProvider(LocalDate.now())
+            viewLifecycleOwner.lifecycleScope.launch {
+                updateDateFilterIfNeeded(start ?: LocalDate.MIN, end ?: LocalDate.MAX, selectedOption.label)
+            }
+            true
+        }
+        popup.show()
     }
 
     private fun showDateRangePicker() {
@@ -222,21 +241,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val googleMap = mMap
         if (googleMap != null) {
             val memory = allGroups.find { it.id == id }
-            updateDateFilterForMemory(memory)
-            moveToLocationAndSelectMarker(lat, lng, memory)
+            if (memory != null) {
+                updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
+                moveToLocationAndSelectMarker(lat, lng, memory)
+            }
         } else {
             initialSelectedLat = lat
             initialSelectedLng = lng
             initialSelectedId = id
-        }
-    }
-
-    suspend fun updateDateFilterForMemory(memory: MemoryGroup?) {
-        if (memory != null) {
-            val memoryStart = memory.startDate.toLocalDate()
-            val memoryEnd = memory.endDate.toLocalDate()
-
-            updateDateFilterForMemory(memoryStart, memoryEnd)
         }
     }
 
@@ -247,14 +259,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val newStart = if (memoryStart.isBefore(currentStart)) memoryStart else currentStart
         val newEnd = if (memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
 
-        if (newStart != filterStartDate || newEnd != filterEndDate) {
-            filterStartDate = newStart
-            filterEndDate = newEnd
-            appliedFilterLabel = null
-        }
+        updateDateFilterIfNeeded(newStart, newEnd)
+    }
 
-        updateDateRangeButtonText()
-        updateMapMarkers()
+    suspend fun updateDateFilterIfNeeded(start: LocalDate, end: LocalDate, dateFilterLabel: String? = null) {
+        if (start != filterStartDate || end != filterEndDate) {
+            filterStartDate = start
+            filterEndDate = end
+            appliedFilterLabel = dateFilterLabel
+            updateDateRangeButtonText()
+            updateMapMarkers()
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -455,7 +470,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         moveToLocationAndSelectMarker(
                             initialSelectedLat!!,
                             initialSelectedLng!!,
-                            allGroups.find { it.id == initialSelectedId }
+                            allGroups.find { it.id == initialSelectedId }!!
                         )
                         initialSelectedLat = null
                         initialSelectedLng = null
@@ -683,18 +698,18 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun moveToLocationAndSelectMarker(lat: Double, lng: Double, memory: MemoryGroup?) {
+    private fun moveToLocationAndSelectMarker(lat: Double, lng: Double, memory: MemoryGroup) {
         val googleMap = mMap ?: return
         val position = LatLng(lat, lng)
         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, MAX_CAMERA_ZOOM))
 
-        val key = "${memory?.id}|$lat|$lng"
-        val marker = markerMap[key] ?: markerMap[memory?.id.toString()]
+        val key = "${memory.id}|$lat|$lng"
+        val marker = markerMap[key] ?: markerMap[memory.id.toString()]
 
         if (marker != null) {
             selectedMarker = marker
             selectedMarkerPosition = marker.position
-            selectedMemoryId = memory?.id
+            selectedMemoryId = memory.id
             @Suppress("UNCHECKED_CAST")
             val items = marker.tag as? List<Markerable>
             if (items != null) {
