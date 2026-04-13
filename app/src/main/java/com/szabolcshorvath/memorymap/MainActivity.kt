@@ -82,14 +82,10 @@ class MainActivity :
 
             supportFragmentManager.beginTransaction()
                 .add(R.id.fragment_container, mapFragment, MapFragment.TAG)
-                .add(R.id.fragment_container, timelineFragment, TimelineFragment.TAG)
-                .add(R.id.fragment_container, addMemoryFragment, AddMemoryGroupFragment.TAG)
-                .add(R.id.fragment_container, pickLocationFragment, PickLocationFragment.TAG)
-                .add(R.id.fragment_container, settingsFragment, SettingsFragment.TAG)
-                .hide(timelineFragment)
-                .hide(addMemoryFragment)
-                .hide(pickLocationFragment)
-                .hide(settingsFragment)
+                .add(R.id.fragment_container, timelineFragment, TimelineFragment.TAG).hide(timelineFragment)
+                .add(R.id.fragment_container, addMemoryFragment, AddMemoryGroupFragment.TAG).hide(addMemoryFragment)
+                .add(R.id.fragment_container, pickLocationFragment, PickLocationFragment.TAG).hide(pickLocationFragment)
+                .add(R.id.fragment_container, settingsFragment, SettingsFragment.TAG).hide(settingsFragment)
                 .commit()
 
             activeFragment = mapFragment
@@ -154,6 +150,16 @@ class MainActivity :
         }
     }
 
+    private fun showFragment(fragment: Fragment) {
+        if (fragment != activeFragment) {
+            supportFragmentManager.beginTransaction()
+                .hide(activeFragment!!)
+                .show(fragment)
+                .commit()
+            activeFragment = fragment
+        }
+    }
+
     private fun setupBackPress() {
         onBackPressedDispatcher.addCallback(
             this,
@@ -208,16 +214,6 @@ class MainActivity :
                 }
             }
         )
-    }
-
-    private fun showFragment(fragment: Fragment) {
-        if (fragment != activeFragment) {
-            supportFragmentManager.beginTransaction()
-                .hide(activeFragment!!)
-                .show(fragment)
-                .commit()
-            activeFragment = fragment
-        }
     }
 
     private fun checkAppStatus() {
