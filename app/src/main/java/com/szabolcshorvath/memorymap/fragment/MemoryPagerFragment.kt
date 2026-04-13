@@ -39,7 +39,8 @@ class MemoryPagerFragment : Fragment() {
 
     private fun loadMemoriesAndSetupPager() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val context = context ?: return@launch
+            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
             val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
             memoryIds = groups.map { it.id }
 
@@ -50,6 +51,7 @@ class MemoryPagerFragment : Fragment() {
     }
 
     private fun setupViewPager() {
+        val binding = _binding ?: return
         val adapter = MemoryPagerAdapter(this, memoryIds)
         binding.memoryViewPager.adapter = adapter
 

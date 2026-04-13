@@ -210,10 +210,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private fun reverseGeocode(latLng: LatLng) {
         // Keep a reference to the coordinates for this specific request
         val requestLatLng = latLng
+        val context = context ?: return
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val geocoder = Geocoder(requireContext(), Locale.getDefault())
+                val geocoder = Geocoder(context, Locale.getDefault())
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1) { addresses ->
                         // RACE CONDITION CHECK:
@@ -266,6 +267,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun setGoogleMapPadding() {
+        val binding = _binding ?: return
         val map = mMap ?: return
         val topPadding = binding.searchContainer.height + binding.searchContainer.top
         val bottomPadding = binding.confirmContainer.height + (binding.root.height - binding.confirmContainer.bottom)

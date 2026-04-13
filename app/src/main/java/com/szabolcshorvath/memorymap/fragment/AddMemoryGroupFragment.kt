@@ -290,6 +290,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateColorUI(animate: Boolean = false) {
+        val binding = _binding ?: return
         binding.colorExpandedContent.visibility = if (colorExpanded) View.VISIBLE else View.GONE
         binding.colorChevron.animate()
             .rotation(if (colorExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
@@ -315,12 +316,14 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateValueTexts(h: Float, s: Float, v: Float) {
+        val binding = _binding ?: return
         binding.tvHueValue.text = h.toInt().toString()
         binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", s)
         binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", v)
     }
 
     private fun animateSlidersToTargets() {
+        val binding = _binding ?: return
         val startH = binding.hueSlider.value
         val startS = binding.saturationSlider.value
         val startV = binding.brightnessSlider.value
@@ -332,23 +335,24 @@ class AddMemoryGroupFragment : Fragment() {
 
             addUpdateListener { animator ->
                 val fraction = animator.animatedFraction
+                val currentBinding = _binding ?: return@addUpdateListener
 
                 // Calculate current values based on the animation progress
-                val currentH = lerpWithStep(startH, markerHue, fraction, binding.hueSlider.stepSize)
-                val currentS = lerpWithStep(startS, markerSaturation, fraction, binding.saturationSlider.stepSize)
-                val currentV = lerpWithStep(startV, markerBrightness, fraction, binding.brightnessSlider.stepSize)
+                val currentH = lerpWithStep(startH, markerHue, fraction, currentBinding.hueSlider.stepSize)
+                val currentS = lerpWithStep(startS, markerSaturation, fraction, currentBinding.saturationSlider.stepSize)
+                val currentV = lerpWithStep(startV, markerBrightness, fraction, currentBinding.brightnessSlider.stepSize)
 
-                binding.hueSlider.value = currentH
-                binding.saturationSlider.value = currentS
-                binding.brightnessSlider.value = currentV
+                currentBinding.hueSlider.value = currentH
+                currentBinding.saturationSlider.value = currentS
+                currentBinding.brightnessSlider.value = currentV
 
                 val currentColor = ColorUtil.hsvToColor(currentH, currentS, currentV)
-                binding.colorIndicator.setBackgroundColor(currentColor)
+                currentBinding.colorIndicator.setBackgroundColor(currentColor)
 
                 val currentStateList = ColorStateList.valueOf(currentColor)
-                binding.hueSlider.thumbTintList = currentStateList
-                binding.saturationSlider.thumbTintList = currentStateList
-                binding.brightnessSlider.thumbTintList = currentStateList
+                currentBinding.hueSlider.thumbTintList = currentStateList
+                currentBinding.saturationSlider.thumbTintList = currentStateList
+                currentBinding.brightnessSlider.thumbTintList = currentStateList
 
                 updateValueTexts(currentH, currentS, currentV)
             }
@@ -386,14 +390,15 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateFragmentsUI(scrollToEnd: Boolean = false) {
+        val binding = _binding ?: return
         binding.fragmentsExpandedContent.visibility = if (fragmentsExpanded) View.VISIBLE else View.GONE
         binding.fragmentsChevron.rotation = if (fragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
         // We pass a new list instance (toList()) to ensure it detects the change.
         fragmentsAdapter.submitList(fragments.toList()) {
             if (scrollToEnd) {
-                binding.root.post {
+                _binding?.root?.post {
                     // Scroll the NestedScrollView to the bottom of the fragments section
-                    binding.root.smoothScrollTo(0, binding.fragmentsSection.bottom)
+                    _binding?.root?.smoothScrollTo(0, _binding?.fragmentsSection?.bottom ?: 0)
                 }
             }
         }
@@ -402,7 +407,8 @@ class AddMemoryGroupFragment : Fragment() {
     private fun observeHSVPresets() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+                val context = context ?: return@repeatOnLifecycle
+                val db = MemoryMapDatabase.getDatabase(context.applicationContext)
                 db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
                     colorPresetAdapter.submitList(presets)
                     fragmentsAdapter.setHSVPresets(presets)
@@ -476,9 +482,11 @@ class AddMemoryGroupFragment : Fragment() {
     fun setEditMode(memoryId: Int) {
         editingMemoryId = memoryId
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val context = context ?: return@launch
+            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
             val groupWithMedia = db.memoryGroupDao().getGroupWithMedia(memoryId)
             withContext(Dispatchers.Main) {
+                val binding = _binding ?: return@withContext
                 groupWithMedia?.let { data ->
                     val group = data.group
                     lat = group.latitude
@@ -583,6 +591,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun updateDateTimeButtons(animateExpansion: Boolean = false) {
+        val binding = _binding ?: return
         binding.dateExpandedContent.visibility = if (dateExpanded) View.VISIBLE else View.GONE
         if (animateExpansion) {
             binding.dateChevron.animate()
@@ -682,10 +691,11 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private suspend fun saveMemoryGroup() {
+        val context = context ?: return
         try {
             validateRequiredFields()
         } catch (e: IllegalStateException) {
-            Toast.makeText(requireContext(), e.message, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, e.message, Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -696,13 +706,13 @@ class AddMemoryGroupFragment : Fragment() {
         try {
             binding.saveButton.isEnabled = false
 
-            val context = requireContext().applicationContext
-            val db = MemoryMapDatabase.getDatabase(context)
+            val appContext = context.applicationContext
+            val db = MemoryMapDatabase.getDatabase(appContext)
 
             val groupIdResult = withContext(Dispatchers.IO) {
                 db.withTransaction {
                     val groupId = saveMemoryGroup(db, group)
-                    saveMediaItems(db, groupId, context)
+                    saveMediaItems(db, groupId, appContext)
                     saveMemoryFragments(db, groupId)
                     groupId.toInt()
                 }
@@ -714,7 +724,7 @@ class AddMemoryGroupFragment : Fragment() {
         } catch (e: Exception) {
             Log.e(TAG, "Error saving memory group", e)
             Toast.makeText(
-                requireContext(),
+                context,
                 "Failed to save: ${e.localizedMessage ?: "Unknown error"}",
                 Toast.LENGTH_LONG
             ).show()
