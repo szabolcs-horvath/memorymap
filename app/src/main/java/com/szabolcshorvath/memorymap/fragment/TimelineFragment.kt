@@ -23,6 +23,7 @@ class TimelineFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var adapter: TimelineAdapter
     private var listener: TimelineListener? = null
+    private var pendingScrollMemoryId: Int? = null
 
     interface TimelineListener {
         fun onMemoryClicked(id: Int)
@@ -52,22 +53,24 @@ class TimelineFragment : Fragment() {
         adapter = TimelineAdapter { memoryGroup ->
             listener?.onMemoryClicked(memoryGroup.id)
         }
-        adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                binding.timelineRecyclerView.scrollToPosition(positionStart)
-            }
-        })
         binding.timelineRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.timelineRecyclerView.adapter = adapter
     }
 
     private suspend fun loadMemories() {
         trace("timeline_fragment_load_memories") {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val context = context ?: return@trace
+            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
             val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
 
             withContext(Dispatchers.Main) {
-                adapter.updateData(groups)
+                val binding = _binding ?: return@withContext
+                adapter.updateData(groups) {
+                    pendingScrollMemoryId?.let { id ->
+                        performScrollAndFlash(id)
+                        pendingScrollMemoryId = null
+                    }
+                }
                 if (groups.isEmpty()) {
                     binding.emptyView.visibility = View.VISIBLE
                     binding.timelineRecyclerView.visibility = View.GONE
@@ -86,26 +89,34 @@ class TimelineFragment : Fragment() {
     }
 
     fun scrollToAndFlash(memoryId: Int) {
+        if (adapter.itemCount > 0) {
+            performScrollAndFlash(memoryId)
+        } else {
+            pendingScrollMemoryId = memoryId
+        }
+    }
+
+    private fun performScrollAndFlash(memoryId: Int) {
+        val binding = _binding ?: return
         val position = adapter.getPositionForId(memoryId)
         if (position != -1) {
-            binding.timelineRecyclerView.scrollToPosition(position)
+            (binding.timelineRecyclerView.layoutManager as? LinearLayoutManager)
+                ?.scrollToPositionWithOffset(position, 100)
 
-            // We need to wait a bit for the scroll to happen and view holder to be bound/visible
-            lifecycleScope.launch {
-                val viewHolder = binding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
+            binding.timelineRecyclerView.post {
+                val postBinding = _binding ?: return@post
+                val viewHolder = postBinding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
                 if (viewHolder is TimelineAdapter.TimelineViewHolder) {
                     viewHolder.flash()
                 } else {
-                    // Sometimes the view holder isn't immediately available even after scroll
-                    // Try waiting a bit more or listen for scroll idle
-                    binding.timelineRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    postBinding.timelineRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
                         override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                             if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                                val vh = binding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
+                                val vh = _binding?.timelineRecyclerView?.findViewHolderForAdapterPosition(position)
                                 if (vh is TimelineAdapter.TimelineViewHolder) {
                                     vh.flash()
                                 }
-                                binding.timelineRecyclerView.removeOnScrollListener(this)
+                                recyclerView.removeOnScrollListener(this)
                             }
                         }
                     })
@@ -118,6 +129,15 @@ class TimelineFragment : Fragment() {
         super.onResume()
         lifecycleScope.launch {
             loadMemories()
+        }
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (!hidden) {
+            lifecycleScope.launch {
+                loadMemories()
+            }
         }
     }
 

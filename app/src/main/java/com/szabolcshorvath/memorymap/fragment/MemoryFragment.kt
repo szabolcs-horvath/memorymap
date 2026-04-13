@@ -239,7 +239,8 @@ class MemoryFragment : Fragment() {
         mediaItems.addAll(updatedItems)
 
         saveJob = lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val context = context ?: return@launch
+            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
             db.memoryGroupDao().updateMediaItems(updatedItems)
 
             withContext(Dispatchers.Main) {
@@ -260,7 +261,8 @@ class MemoryFragment : Fragment() {
         fragmentItems.addAll(updatedFragments)
 
         saveFragmentsJob = lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val context = context ?: return@launch
+            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
             db.memoryGroupDao().updateFragments(updatedFragments)
 
             withContext(Dispatchers.Main) {
@@ -274,12 +276,14 @@ class MemoryFragment : Fragment() {
         if (memoryId == -1) return
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
+            val context = context ?: return@launch
+            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
             currentMemoryGroup = db.memoryGroupDao().getGroupWithMedia(memoryId)
 
             withContext(Dispatchers.Main) {
-                if (currentMemoryGroup != null) {
-                    displayDetails(currentMemoryGroup!!)
+                val currentGroup = currentMemoryGroup
+                if (currentGroup != null) {
+                    displayDetails(currentGroup)
                 }
             }
         }
@@ -292,6 +296,7 @@ class MemoryFragment : Fragment() {
     }
 
     private fun displayMemoryGroupDetails(data: MemoryGroupWithMedia) {
+        val binding = _binding ?: return
         val group = data.group
         binding.titleText.text = group.title
 
@@ -335,6 +340,7 @@ class MemoryFragment : Fragment() {
     }
 
     private fun displayMemoryFragments(data: MemoryGroupWithMedia) {
+        val binding = _binding ?: return
         fragmentItems = data.fragments.sortedWith { a, b ->
             when {
                 a.order != null && b.order != null -> a.order.compareTo(b.order)
@@ -366,6 +372,8 @@ class MemoryFragment : Fragment() {
     }
 
     private suspend fun displayMediaItems(data: MemoryGroupWithMedia) {
+        val binding = _binding ?: return
+        val context = context ?: return
         mediaItems = data.mediaItems.sortedWith { a, b ->
             when {
                 a.order != null && b.order != null -> a.order.compareTo(b.order)
@@ -375,7 +383,7 @@ class MemoryFragment : Fragment() {
             }
         }.toMutableList()
 
-        val hasMissingMedia = LocalMediaUtil.hasMissingMedia(requireContext(), mediaItems)
+        val hasMissingMedia = LocalMediaUtil.hasMissingMedia(context, mediaItems)
         binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
         mediaAdapter.updateData(mediaItems.toList())
     }
@@ -392,16 +400,17 @@ class MemoryFragment : Fragment() {
     }
 
     private fun deleteMemory() {
-        if (currentMemoryGroup == null) return
+        val currentGroupWithMedia = currentMemoryGroup ?: return
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-            db.memoryGroupDao().deleteGroup(currentMemoryGroup!!.group)
+            val context = context ?: return@launch
+            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
+            db.memoryGroupDao().deleteGroup(currentGroupWithMedia.group)
 
             withContext(Dispatchers.Main) {
                 listener?.onMemoryDeleted(
-                    currentMemoryGroup!!.group,
-                    currentMemoryGroup!!.mediaItems
+                    currentGroupWithMedia.group,
+                    currentGroupWithMedia.mediaItems
                 )
                 listener?.onBackFromMemory()
             }

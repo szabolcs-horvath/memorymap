@@ -128,7 +128,7 @@ class SettingsFragment : Fragment() {
                         }
 
                         BackupManager.BackupEvent.FINISHED -> {
-                            val email = binding.tvAccountName.tag as? String
+                            val email = _binding?.tvAccountName?.tag as? String
                             if (email != null) {
                                 loadBackups(email)
                             }
@@ -161,7 +161,7 @@ class SettingsFragment : Fragment() {
             val showFragments = requireContext().dataStore.data
                 .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
                 .firstOrNull() ?: false
-            binding.switchShowFragments.isChecked = showFragments
+            _binding?.switchShowFragments?.isChecked = showFragments
         }
 
         binding.switchShowFragments.setOnCheckedChangeListener { _, isChecked ->
@@ -180,7 +180,7 @@ class SettingsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             val currentFilter = DateFilterOption.getFromDataStore(requireContext().dataStore)
-            binding.spinnerDefaultFilter.setText(currentFilter.label, false)
+            _binding?.spinnerDefaultFilter?.setText(currentFilter.label, false)
         }
 
         binding.spinnerDefaultFilter.setOnItemClickListener { _, _, position, _ ->
@@ -268,18 +268,24 @@ class SettingsFragment : Fragment() {
     }
 
     private fun addNewPreset() {
+        val binding = _binding ?: return
         if (editingPreset != null && originalPreset != null && editingPreset != originalPreset) {
             revertEditingPresetInList()
         }
+
+        val hue = binding.hueSlider.value
+        val saturation = binding.saturationSlider.value
+        val brightness = binding.brightnessSlider.value
+
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
             val currentPresets = db.hsvPresetDao().getAllPresets()
             val nextOrder = (currentPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
 
             val newPreset = HSVPreset(
-                hue = binding.hueSlider.value,
-                saturation = binding.saturationSlider.value,
-                brightness = binding.brightnessSlider.value,
+                hue = hue,
+                saturation = saturation,
+                brightness = brightness,
                 order = nextOrder
             )
             db.hsvPresetDao().insertPresets(listOf(newPreset))
@@ -324,11 +330,13 @@ class SettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
+        val binding = _binding ?: return
         binding.btnSavePresets.isEnabled = editingPreset != originalPreset
         binding.btnUndoPresets.isEnabled = editingPreset != originalPreset
     }
 
     private fun updateColorPresetsUI() {
+        val binding = _binding ?: return
         binding.colorPresetsExpandedContent.visibility = if (colorPresetsExpanded) View.VISIBLE else View.GONE
         binding.colorPresetsChevron.animate()
             .rotation(if (colorPresetsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
@@ -336,6 +344,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun observeHSVPresets() {
+        if (_binding == null) return
         presetsObservationJob?.cancel()
         presetsObservationJob = viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -349,7 +358,7 @@ class SettingsFragment : Fragment() {
                                 selectPreset(presets[index], shouldUpdateList = false)
 
                                 // Post the scroll to ensure layout is complete
-                                binding.presetColorsRecyclerView.post {
+                                _binding?.presetColorsRecyclerView?.post {
                                     smoothScrollToPresetIndex(index)
                                 }
                             }
@@ -370,6 +379,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun smoothScrollToPresetIndex(index: Int) {
+        val binding = _binding ?: return
         val smoothScroller =
             object : LinearSmoothScroller(requireContext()) {
                 override fun getHorizontalSnapPreference(): Int = SNAP_TO_END
@@ -384,7 +394,7 @@ class SettingsFragment : Fragment() {
         editingPreset = null
         originalPreset = null
         colorPresetAdapter.setSelectedPresetId(null)
-        binding.btnDeletePreset.visibility = View.GONE
+        _binding?.btnDeletePreset?.visibility = View.GONE
     }
 
     private fun revertEditingPresetInList() {
@@ -401,6 +411,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun updateVisualsFromSliders() {
+        val binding = _binding ?: return
         val hue = binding.hueSlider.value
         val saturation = binding.saturationSlider.value
         val brightness = binding.brightnessSlider.value
@@ -458,6 +469,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun updateSliders(preset: HSVPreset) {
+        val binding = _binding ?: return
         binding.hueSlider.value = preset.hue
         binding.saturationSlider.value = preset.saturation
         binding.brightnessSlider.value = preset.brightness
@@ -530,11 +542,11 @@ class SettingsFragment : Fragment() {
         backupAdapter = BackupAdapter(::onRestoreBackup, ::onDeleteBackup)
         backupAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                binding.rvBackups.scrollToPosition(positionStart)
+                _binding?.rvBackups?.scrollToPosition(positionStart)
             }
         })
 
-        binding.rvBackups.apply {
+        _binding?.rvBackups?.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = backupAdapter
         }
@@ -542,7 +554,7 @@ class SettingsFragment : Fragment() {
         colorPresetAdapter = ColorPresetAdapter { preset ->
             selectPreset(preset)
         }
-        binding.presetColorsRecyclerView.adapter = colorPresetAdapter
+        _binding?.presetColorsRecyclerView?.adapter = colorPresetAdapter
         setupColorPresetsTouchHelper()
     }
 
@@ -611,6 +623,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun updateUI(email: String?) {
+        val binding = _binding ?: return
         with(binding) {
             if (email != null) {
                 btnGoogleSignIn.visibility = View.GONE
@@ -628,6 +641,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setLoadingState(isLoading: Boolean, status: String? = null) {
+        val binding = _binding ?: return
         val enabled = !isLoading
         with(binding) {
             btnGoogleSignIn.isEnabled = enabled
@@ -708,7 +722,7 @@ class SettingsFragment : Fragment() {
                 Log.e(TAG, "Failed to list backups", e)
             } finally {
                 setLoadingState(false)
-                binding.swipeRefresh.isRefreshing = false
+                _binding?.swipeRefresh?.isRefreshing = false
             }
         }
     }
@@ -742,7 +756,7 @@ class SettingsFragment : Fragment() {
     private fun successfulAuthorization(scopes: List<String>) {
         viewLifecycleOwner.lifecycleScope.launch {
             val email =
-                requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }.firstOrNull() ?: (binding.tvAccountName.tag as? String)
+                requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }.firstOrNull() ?: (_binding?.tvAccountName?.tag as? String)
 
             if (email == null) {
                 setLoadingState(false)
@@ -828,7 +842,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun executeRestore(file: DriveFile) {
-        val email = binding.tvAccountName.tag as? String ?: return
+        val email = _binding?.tvAccountName?.tag as? String ?: return
         lifecycleScope.launch {
             setLoadingState(true, "Starting restore...")
             try {
@@ -856,7 +870,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun onDeleteBackup(file: DriveFile) {
-        val email = binding.tvAccountName.tag as? String ?: return
+        val email = _binding?.tvAccountName?.tag as? String ?: return
         lifecycleScope.launch {
             setLoadingState(true, "Deleting backup...")
             try {

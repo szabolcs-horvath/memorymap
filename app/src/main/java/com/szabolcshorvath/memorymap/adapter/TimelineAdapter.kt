@@ -5,10 +5,11 @@ import android.animation.ValueAnimator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.graphics.toColorInt
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.color.MaterialColors
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBinding
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
@@ -100,7 +101,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
         fun flash() {
             val originalColor = binding.root.cardBackgroundColor.defaultColor
-            val flashColor = "#80AAAAAA".toColorInt()
+            val flashColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondaryContainer)
 
             val colorAnim = ValueAnimator.ofObject(ArgbEvaluator(), originalColor, flashColor, originalColor)
             colorAnim.duration = FLASH_ANIMATION_DURATION_MILLIS
@@ -112,9 +113,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
         }
     }
 
-    class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) : RecyclerView.ViewHolder(
-        binding.root
-    ) {
+    class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(date: LocalDate) {
             binding.dateText.text = date.format(dateFormatter())
         }
@@ -151,13 +150,13 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
         }
     }
 
-    fun updateData(newGroups: List<MemoryGroup>) {
-        submitList(generateTimelineItems(newGroups))
+    fun updateData(newGroups: List<MemoryGroup>, commitCallback: Runnable? = null) {
+        submitList(generateTimelineItems(newGroups), commitCallback)
     }
 
     fun getPositionForId(id: Int): Int {
         for (i in 0 until itemCount) {
-            val item = getItem(i)
+            val item = currentList[i]
             if (item is TimelineItem.Memory && item.memoryGroup.id == id) {
                 return i
             }
