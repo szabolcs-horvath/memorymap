@@ -7,7 +7,7 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
 import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 
 object LocalMediaUtil {
     const val TAG = "LocalMediaUtil"
@@ -79,9 +79,8 @@ object LocalMediaUtil {
         return mediaList
     }
 
-    suspend fun verifyAndFixMediaItems(context: Context) {
+    suspend fun verifyAndFixMediaItems(context: Context, dao: MemoryGroupDao) {
         val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
-        val dao = MemoryMapDatabase.getDatabase(context).memoryGroupDao()
         val mediaItems = dao.getAllMediaItems()
         val localMediaList = getLocalMediaForItems(context, mediaItems)
         val itemsToUpdate = mutableListOf<MediaItem>()
@@ -107,11 +106,10 @@ object LocalMediaUtil {
         }
 
         // After fixing URIs, we can safely deduplicate based on (groupId, mediaSignature)
-        deduplicateMediaItems(context)
+        deduplicateMediaItems(dao)
     }
 
-    suspend fun deduplicateMediaItems(context: Context) {
-        val dao = MemoryMapDatabase.getDatabase(context).memoryGroupDao()
+    suspend fun deduplicateMediaItems(dao: MemoryGroupDao) {
         val allMedia = dao.getAllMediaItems()
 
         // Group items by groupId and signature. Any group with size > 1 has duplicates.

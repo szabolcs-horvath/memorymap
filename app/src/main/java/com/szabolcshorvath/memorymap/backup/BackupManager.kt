@@ -16,7 +16,6 @@ import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_FILE_NAME_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_METADATA_DATE_FORMATTER
-import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -49,7 +48,7 @@ class BackupManager(private val context: Context) {
             credential
         ).setApplicationName("Memory Map").build()
 
-    suspend fun triggerAutomaticBackup() {
+    suspend fun triggerAutomaticBackup(db: MemoryMapDatabase) {
         withContext(Dispatchers.IO) {
             trace("backup_manager_trigger_automatic_backup") {
                 try {
@@ -58,7 +57,7 @@ class BackupManager(private val context: Context) {
                     val googleAuthManager = GoogleAuthManager(context)
                     val scopes = listOf(DriveScopes.DRIVE_FILE)
                     val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                    performBackup(credential, isAutomatic = true) {
+                    performBackup(credential, db, isAutomatic = true) {
                         Log.d(TAG, "Automatic backup progress: $it")
                     }
                 } catch (e: Exception) {
@@ -70,14 +69,14 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun performBackup(credential: GoogleAccountCredential, isAutomatic: Boolean = false, onProgress: (String) -> Unit): Boolean {
+    suspend fun performBackup(credential: GoogleAccountCredential, db: MemoryMapDatabase, isAutomatic: Boolean = false, onProgress: (String) -> Unit): Boolean {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_perform_backup") {
                 var tempDir: File? = null
                 var zipFile: File? = null
                 try {
                     onProgress("Preparing database...")
-                    prepareDatabaseForBackup()
+                    prepareDatabaseForBackup(db)
 
                     tempDir = File(context.cacheDir, "backup_temp")
                     if (tempDir.exists()) tempDir.deleteRecursively()
@@ -109,9 +108,9 @@ class BackupManager(private val context: Context) {
     }
 
     @AddTrace(name = "backup_manager_prepare_database_for_backup", enabled = true)
-    private fun prepareDatabaseForBackup() {
+    private fun prepareDatabaseForBackup(db: MemoryMapDatabase) {
         try {
-            MemoryMapDatabase.getDatabase(context).openHelper.writableDatabase
+            db.openHelper.writableDatabase
                 .query("PRAGMA wal_checkpoint(TRUNCATE)")
                 .close()
         } catch (e: Exception) {
@@ -208,9 +207,6 @@ class BackupManager(private val context: Context) {
 
                     onProgress("Restoring database...")
                     restoreDatabaseFromBackup(tempRestoreDir)
-
-                    onProgress("Verifying media...")
-                    LocalMediaUtil.verifyAndFixMediaItems(context)
 
                     return@withContext true
                 } catch (e: Exception) {

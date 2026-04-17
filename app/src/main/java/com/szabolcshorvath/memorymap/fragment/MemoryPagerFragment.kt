@@ -5,20 +5,23 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.ViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryPagerBinding
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MemoryPagerFragment : Fragment() {
 
     private var _binding: FragmentMemoryPagerBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: ViewModel by activityViewModels()
     private var initialMemoryId: Int = -1
     private var memoryIds: List<Int> = emptyList()
+    private var isInitialSetupDone = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,36 +37,47 @@ class MemoryPagerFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        loadMemoriesAndSetupPager()
-    }
 
-    private fun loadMemoriesAndSetupPager() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val context = context ?: return@launch
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
-            memoryIds = groups.map { it.id }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.allGroups.collect { groups ->
+                    val sortedIds = groups.sortedByDescending { it.startDate }.map { it.id }
 
-            withContext(Dispatchers.Main) {
-                setupViewPager()
+                    if (memoryIds != sortedIds) {
+                        memoryIds = sortedIds
+                        updatePager()
+                    }
+                }
             }
         }
     }
 
-    private fun setupViewPager() {
+    private fun updatePager() {
         val binding = _binding ?: return
         val adapter = MemoryPagerAdapter(this, memoryIds)
         binding.memoryViewPager.adapter = adapter
 
-        val initialPosition = memoryIds.indexOf(initialMemoryId)
-        if (initialPosition != -1) {
-            binding.memoryViewPager.setCurrentItem(initialPosition, false)
+        if (!isInitialSetupDone) {
+            val initialPosition = memoryIds.indexOf(initialMemoryId)
+            if (initialPosition != -1) {
+                binding.memoryViewPager.setCurrentItem(initialPosition, false)
+            }
+            isInitialSetupDone = true
         }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private class MemoryPagerAdapter(fragment: Fragment, private val memoryIds: List<Int>) :
+        FragmentStateAdapter(fragment) {
+        override fun getItemCount(): Int = memoryIds.size
+
+        override fun createFragment(position: Int): Fragment {
+            return MemoryFragment.newInstance(memoryIds[position])
+        }
     }
 
     companion object {
@@ -76,14 +90,5 @@ class MemoryPagerFragment : Fragment() {
                 putInt(ARG_INITIAL_MEMORY_ID, memoryId)
             }
         }
-    }
-}
-
-class MemoryPagerAdapter(fragment: Fragment, private val memoryIds: List<Int>) :
-    FragmentStateAdapter(fragment) {
-    override fun getItemCount(): Int = memoryIds.size
-
-    override fun createFragment(position: Int): Fragment {
-        return MemoryFragment.newInstance(memoryIds[position])
     }
 }

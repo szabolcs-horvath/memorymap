@@ -7,7 +7,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -18,7 +21,7 @@ import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.ViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -27,7 +30,6 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
@@ -36,17 +38,15 @@ import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 class MemoryFragment : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: ViewModel by activityViewModels()
     private lateinit var mediaAdapter: MediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentAdapter
     private var memoryId: Int = -1
     private var mediaItems: MutableList<MediaItem> = mutableListOf()
     private var fragmentItems: MutableList<MemoryFragmentEntity> = mutableListOf()
     private var listener: MemoryFragmentListener? = null
-    private var currentMemoryGroup: MemoryGroupWithMedia? = null
     private var currentDeviceId: String? = null
     private lateinit var backupManager: BackupManager
-    private var saveJob: Job? = null
-    private var saveFragmentsJob: Job? = null
     private var isFragmentsExpanded = true
 
     interface MemoryFragmentListener {
@@ -84,7 +84,15 @@ class MemoryFragment : Fragment() {
         lifecycleScope.launch {
             currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
             setupRecyclerViews()
-            loadMemoryDetails()
+        }
+
+        // Each fragment instance observes its own specific ID through a private flow
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.getGroupWithMedia(memoryId).collect { data ->
+                    data?.let { displayDetails(it) }
+                }
+            }
         }
 
         binding.editButton.setOnClickListener {
@@ -110,13 +118,13 @@ class MemoryFragment : Fragment() {
                 binding.mediaRecyclerView.scrollToPosition(positionStart)
             }
         })
-        binding.mediaRecyclerView.layoutManager = GridLayoutManager(context, MEDIA_GRID_SPAN_COUNT)
+        binding.mediaRecyclerView.layoutManager = GridLayoutManager(requireContext(), MEDIA_GRID_SPAN_COUNT)
         binding.mediaRecyclerView.adapter = mediaAdapter
 
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             listener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
         }
-        binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(context)
+        binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
 
         setupMediaTouchHelper()
@@ -142,8 +150,6 @@ class MemoryFragment : Fragment() {
                 val toPos = target.bindingAdapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
 
-                // Synchronize both lists step-by-step using adjacent moves.
-                // This is much more stable for GridLayoutManager than a single jump move.
                 if (fromPos < toPos) {
                     for (i in fromPos until toPos) {
                         Collections.swap(mediaItems, i, i + 1)
@@ -162,7 +168,6 @@ class MemoryFragment : Fragment() {
 
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
-                // Only save and backup if the order actually changed during the drag operation
                 val currentOrder = mediaItems.map { it.id }
                 if (initialOrder != null && initialOrder != currentOrder) {
                     saveNewMediaOrder()
@@ -192,7 +197,6 @@ class MemoryFragment : Fragment() {
                 val toPos = target.bindingAdapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
 
-                // Synchronize both lists step-by-step using adjacent moves.
                 if (fromPos < toPos) {
                     for (i in fromPos until toPos) {
                         Collections.swap(fragmentItems, i, i + 1)
@@ -211,7 +215,6 @@ class MemoryFragment : Fragment() {
 
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
-                // Only save and backup if the order actually changed during the drag operation
                 val currentOrder = fragmentItems.map { it.id }
                 if (initialOrder != null && initialOrder != currentOrder) {
                     saveNewFragmentsOrder()
@@ -231,61 +234,22 @@ class MemoryFragment : Fragment() {
     }
 
     private fun saveNewMediaOrder() {
-        saveJob?.cancel()
         val updatedItems = mediaItems.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
-        mediaItems.clear()
-        mediaItems.addAll(updatedItems)
-
-        saveJob = lifecycleScope.launch(Dispatchers.IO) {
-            val context = context ?: return@launch
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            db.memoryGroupDao().updateMediaItems(updatedItems)
-
-            withContext(Dispatchers.Main) {
-                // Refresh adapter to ensure internal state is consistent.
-                // The custom DiffUtil will ignore the 'order' field changes to prevent jumpy animations.
-                mediaAdapter.updateData(mediaItems.toList())
-                backupManager.triggerAutomaticBackup()
-            }
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            viewModel.getMemoryGroupDao().updateMediaItems(updatedItems)
+            backupManager.triggerAutomaticBackup(viewModel.getDb())
         }
     }
 
     private fun saveNewFragmentsOrder() {
-        saveFragmentsJob?.cancel()
         val updatedFragments = fragmentItems.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
-        fragmentItems.clear()
-        fragmentItems.addAll(updatedFragments)
-
-        saveFragmentsJob = lifecycleScope.launch(Dispatchers.IO) {
-            val context = context ?: return@launch
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            db.memoryGroupDao().updateFragments(updatedFragments)
-
-            withContext(Dispatchers.Main) {
-                fragmentsAdapter.updateData(fragmentItems.toList())
-                backupManager.triggerAutomaticBackup()
-            }
-        }
-    }
-
-    private fun loadMemoryDetails() {
-        if (memoryId == -1) return
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            val context = context ?: return@launch
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            currentMemoryGroup = db.memoryGroupDao().getGroupWithMedia(memoryId)
-
-            withContext(Dispatchers.Main) {
-                val currentGroup = currentMemoryGroup
-                if (currentGroup != null) {
-                    displayDetails(currentGroup)
-                }
-            }
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            viewModel.getMemoryGroupDao().updateFragments(updatedFragments)
+            backupManager.triggerAutomaticBackup(viewModel.getDb())
         }
     }
 
@@ -400,18 +364,12 @@ class MemoryFragment : Fragment() {
     }
 
     private fun deleteMemory() {
-        val currentGroupWithMedia = currentMemoryGroup ?: return
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            val context = context ?: return@launch
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            db.memoryGroupDao().deleteGroup(currentGroupWithMedia.group)
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val groupWithMedia = viewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) ?: return@launch
+            viewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
 
             withContext(Dispatchers.Main) {
-                listener?.onMemoryDeleted(
-                    currentGroupWithMedia.group,
-                    currentGroupWithMedia.mediaItems
-                )
+                listener?.onMemoryDeleted(groupWithMedia.group, groupWithMedia.mediaItems)
                 listener?.onBackFromMemory()
             }
         }
