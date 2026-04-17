@@ -40,9 +40,7 @@ abstract class MemoryMapDatabase : RoomDatabase() {
     private var _memoryGroupDao: MemoryGroupDao? = null
     private var _hsvPresetDao: HSVPresetDao? = null
 
-    fun memoryGroupDao(): MemoryGroupDao = _memoryGroupDao ?: tracedDao(memoryGroupDaoInternal()).also {
-        _memoryGroupDao = it
-    }
+    fun memoryGroupDao(): MemoryGroupDao = _memoryGroupDao ?: tracedDao(memoryGroupDaoInternal()).also { _memoryGroupDao = it }
 
     fun hsvPresetDao(): HSVPresetDao = _hsvPresetDao ?: tracedDao(hsvPresetDaoInternal()).also { _hsvPresetDao = it }
 

@@ -6,16 +6,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.ViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
-import com.szabolcshorvath.memorymap.util.PerfUtil.trace
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class TimelineFragment : Fragment() {
 
@@ -24,6 +24,8 @@ class TimelineFragment : Fragment() {
     private lateinit var adapter: TimelineAdapter
     private var listener: TimelineListener? = null
     private var pendingScrollMemoryId: Int? = null
+
+    private val viewModel: ViewModel by activityViewModels()
 
     interface TimelineListener {
         fun onMemoryClicked(id: Int)
@@ -44,8 +46,26 @@ class TimelineFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
-        lifecycleScope.launch {
-            loadMemories()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.allGroups.collect { groups ->
+                    val sortedGroups = groups.sortedByDescending { it.startDate }
+                    adapter.updateData(sortedGroups) {
+                        pendingScrollMemoryId?.let { id ->
+                            performScrollAndFlash(id)
+                            pendingScrollMemoryId = null
+                        }
+                    }
+                    if (sortedGroups.isEmpty()) {
+                        binding.emptyView.visibility = View.VISIBLE
+                        binding.timelineRecyclerView.visibility = View.GONE
+                    } else {
+                        binding.emptyView.visibility = View.GONE
+                        binding.timelineRecyclerView.visibility = View.VISIBLE
+                    }
+                }
+            }
         }
     }
 
@@ -55,37 +75,6 @@ class TimelineFragment : Fragment() {
         }
         binding.timelineRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.timelineRecyclerView.adapter = adapter
-    }
-
-    private suspend fun loadMemories() {
-        trace("timeline_fragment_load_memories") {
-            val context = context ?: return@trace
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            val groups = db.memoryGroupDao().getAllGroups().sortedByDescending { it.startDate }
-
-            withContext(Dispatchers.Main) {
-                val binding = _binding ?: return@withContext
-                adapter.updateData(groups) {
-                    pendingScrollMemoryId?.let { id ->
-                        performScrollAndFlash(id)
-                        pendingScrollMemoryId = null
-                    }
-                }
-                if (groups.isEmpty()) {
-                    binding.emptyView.visibility = View.VISIBLE
-                    binding.timelineRecyclerView.visibility = View.GONE
-                } else {
-                    binding.emptyView.visibility = View.GONE
-                    binding.timelineRecyclerView.visibility = View.VISIBLE
-                }
-            }
-        }
-    }
-
-    suspend fun refreshData() {
-        trace("timeline_fragment_refresh_data") {
-            loadMemories()
-        }
     }
 
     fun scrollToAndFlash(memoryId: Int) {
@@ -121,22 +110,6 @@ class TimelineFragment : Fragment() {
                         }
                     })
                 }
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        lifecycleScope.launch {
-            loadMemories()
-        }
-    }
-
-    override fun onHiddenChanged(hidden: Boolean) {
-        super.onHiddenChanged(hidden)
-        if (!hidden) {
-            lifecycleScope.launch {
-                loadMemories()
             }
         }
     }

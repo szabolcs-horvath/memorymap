@@ -21,6 +21,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -37,7 +38,8 @@ import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryGroupDao
+import com.szabolcshorvath.memorymap.data.ViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -62,6 +64,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private var _binding: FragmentAddMemoryGroupBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: ViewModel by activityViewModels()
 
     data class SelectedMedia(
         val uri: Uri,
@@ -175,7 +178,14 @@ class AddMemoryGroupFragment : Fragment() {
             updateColorUI()
         }
 
-        observeHSVPresets()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.allPresets.collect { presets ->
+                    colorPresetAdapter.submitList(presets)
+                    fragmentsAdapter.setHSVPresets(presets)
+                }
+            }
+        }
 
         binding.selectLocationButton.setOnClickListener {
             activePickingIndex = -1
@@ -404,19 +414,6 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
-    private fun observeHSVPresets() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val context = context ?: return@repeatOnLifecycle
-                val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-                db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
-                    colorPresetAdapter.submitList(presets)
-                    fragmentsAdapter.setHSVPresets(presets)
-                }
-            }
-        }
-    }
-
     private fun showClearConfirmationDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle(if (editingMemoryId != null) "Discard Changes" else "Clear Fields")
@@ -482,9 +479,7 @@ class AddMemoryGroupFragment : Fragment() {
     fun setEditMode(memoryId: Int) {
         editingMemoryId = memoryId
         lifecycleScope.launch(Dispatchers.IO) {
-            val context = context ?: return@launch
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            val groupWithMedia = db.memoryGroupDao().getGroupWithMedia(memoryId)
+            val groupWithMedia = viewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
             withContext(Dispatchers.Main) {
                 val binding = _binding ?: return@withContext
                 groupWithMedia?.let { data ->
@@ -707,18 +702,18 @@ class AddMemoryGroupFragment : Fragment() {
             binding.saveButton.isEnabled = false
 
             val appContext = context.applicationContext
-            val db = MemoryMapDatabase.getDatabase(appContext)
 
             val groupIdResult = withContext(Dispatchers.IO) {
-                db.withTransaction {
-                    val groupId = saveMemoryGroup(db, group)
-                    saveMediaItems(db, groupId, appContext)
-                    saveMemoryFragments(db, groupId)
+                val dao = viewModel.getMemoryGroupDao()
+                viewModel.getDb().withTransaction {
+                    val groupId = saveMemoryGroup(dao, group)
+                    saveMediaItems(dao, groupId, appContext)
+                    saveMemoryFragments(dao, groupId)
                     groupId.toInt()
                 }
             }
 
-            backupManager.triggerAutomaticBackup()
+            backupManager.triggerAutomaticBackup(viewModel.getDb())
             listener?.onMemorySaved(lat, lng, groupIdResult, effectiveStart.toLocalDate(), effectiveEnd.toLocalDate())
             clearFields()
         } catch (e: Exception) {
@@ -767,20 +762,20 @@ class AddMemoryGroupFragment : Fragment() {
         markerBrightness = markerBrightness
     )
 
-    private suspend fun saveMemoryGroup(db: MemoryMapDatabase, group: MemoryGroup): Long {
+    private suspend fun saveMemoryGroup(dao: MemoryGroupDao, group: MemoryGroup): Long {
         val groupId = if (editingMemoryId != null) {
-            db.memoryGroupDao().updateGroup(group)
+            dao.updateGroup(group)
             editingMemoryId!!.toLong()
         } else {
-            db.memoryGroupDao().insertGroup(group)
+            dao.insertGroup(group)
         }
         return groupId
     }
 
-    private suspend fun saveMediaItems(db: MemoryMapDatabase, groupId: Long, context: Context) {
+    private suspend fun saveMediaItems(dao: MemoryGroupDao, groupId: Long, context: Context) {
         // If editing, we delete the old media associations and re-insert the current selection
         if (editingMemoryId != null) {
-            db.memoryGroupDao().deleteMediaByGroupId(groupId.toInt())
+            dao.deleteMediaByGroupId(groupId.toInt())
         }
 
         val mediaItems = selectedMedia.mapIndexed { index, (uri, type, itemDeviceId) ->
@@ -817,11 +812,11 @@ class AddMemoryGroupFragment : Fragment() {
             .distinctBy { it.mediaSignature }
             .mapIndexed { index, item -> item.copy(order = index + 1) }
 
-        db.memoryGroupDao().insertMediaItems(mediaItems)
+        dao.insertMediaItems(mediaItems)
     }
 
-    private suspend fun saveMemoryFragments(db: MemoryMapDatabase, groupId: Long) {
-        db.memoryGroupDao().deleteFragmentsByGroupId(groupId.toInt())
+    private suspend fun saveMemoryFragments(dao: MemoryGroupDao, groupId: Long) {
+        dao.deleteFragmentsByGroupId(groupId.toInt())
         val fragmentEntities = fragments.mapIndexed { index, f ->
             val saveTime = f.isTimeVisible
             val fragmentStart = if (saveTime) {
@@ -858,7 +853,7 @@ class AddMemoryGroupFragment : Fragment() {
                 order = index + 1
             )
         }
-        db.memoryGroupDao().insertFragments(fragmentEntities)
+        dao.insertFragments(fragmentEntities)
     }
 
     override fun onDestroyView() {

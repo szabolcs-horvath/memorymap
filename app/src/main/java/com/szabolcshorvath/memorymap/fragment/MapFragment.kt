@@ -3,15 +3,14 @@ package com.szabolcshorvath.memorymap.fragment
 import android.Manifest
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -34,14 +33,11 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.firebase.perf.metrics.Trace
-import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.Markerable
-import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
-import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.data.ViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -55,10 +51,7 @@ import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -77,11 +70,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var listener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
 
+    private val viewModel: ViewModel by activityViewModels()
     private var allGroups: List<MemoryGroup> = emptyList()
-    private var allFragments: List<MemoryFragment> = emptyList()
-    private var filterStartDate: LocalDate? = null
-    private var filterEndDate: LocalDate? = null
-    private var appliedFilterLabel: String? = null
 
     // Parameters to handle initial selection
     private var initialSelectedLat: Double? = null
@@ -90,19 +80,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private var permissionDenied = false
     private var isInitialZoomDone = false
-    private var refreshJob: Job? = null
     private var mapLoadTrace: Trace? = null
-
-    private val locationPermissionRequest =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-            ) {
-                enableMyLocation()
-            } else {
-                permissionDenied = true
-            }
-        }
 
     interface MapListener {
         fun onNavigateToTimeline(memoryId: Int)
@@ -140,17 +118,36 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
+        // Observe Groups (needed for focusOnMemory lookup)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                requireContext().dataStore.data
-                    .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
-                    .distinctUntilChanged()
-                    .collect {
-                        if (mMap != null) {
-                            updateDateFilter()
-                            updateMapMarkers()
-                        }
-                    }
+                viewModel.allGroups.collect { groups ->
+                    this@MapFragment.allGroups = groups
+                }
+            }
+        }
+
+        // Observe Filter State for UI updates
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                    viewModel.filterStartDate,
+                    viewModel.filterEndDate,
+                    viewModel.appliedFilterLabel
+                ) { start, end, label ->
+                    Triple(start, end, label)
+                }.collect { (start, end, label) ->
+                    updateDateRangeButtonText(start, end, label)
+                }
+            }
+        }
+
+        // Observe Filtered Data
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.filteredMarkerables.collect { items ->
+                    updateMapMarkers(items)
+                }
             }
         }
     }
@@ -175,9 +172,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         popup.setOnMenuItemClickListener { menuItem ->
             val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
             val (start, end) = selectedOption.dateRangeProvider(LocalDate.now())
-            viewLifecycleOwner.lifecycleScope.launch {
-                updateDateFilterIfNeeded(start ?: LocalDate.MIN, end ?: LocalDate.MAX, selectedOption.label)
-            }
+            viewModel.updateDateFilter(start, end, selectedOption.label)
             true
         }
         popup.show()
@@ -187,9 +182,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
         builder.setTitleText("Select dates")
 
-        if (filterStartDate != null && filterEndDate != null) {
-            val startMillis = filterStartDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
-            val endMillis = filterEndDate!!.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+        val currentStart = viewModel.filterStartDate.value
+        val currentEnd = viewModel.filterEndDate.value
+
+        if (currentStart != null && currentEnd != null) {
+            val startMillis = currentStart.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            val endMillis = currentEnd.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
             builder.setSelection(androidx.core.util.Pair(startMillis, endMillis))
         }
 
@@ -198,14 +196,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val startMillis = selection.first
             val endMillis = selection.second
 
-            filterStartDate = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
-            filterEndDate = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
-            appliedFilterLabel = null
+            val newStart = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+            val newEnd = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
 
-            updateDateRangeButtonText()
-            lifecycleScope.launch {
-                updateMapMarkers(adjustCamera = true)
-            }
+            viewModel.updateDateFilter(newStart, newEnd, null)
         }
         picker.show(childFragmentManager, picker.toString())
     }
@@ -221,26 +215,26 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         binding.statsOverlayCard.visibility = if (binding.statsOverlayCard.isVisible) View.GONE else View.VISIBLE
     }
 
-    private fun updateDateRangeButtonText() {
+    private fun updateDateRangeButtonText(start: LocalDate?, end: LocalDate?, label: String?) {
         val binding = _binding ?: return
-        if (appliedFilterLabel != null) {
-            binding.btnDateRange.text = appliedFilterLabel
+        if (label != null) {
+            binding.btnDateRange.text = label
             return
         }
 
         val dateFormatter = dateFormatter()
-        if (filterStartDate != null && filterEndDate != null) {
-            if (filterStartDate != filterEndDate) {
-                binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)} - ${dateFormatter.format(filterEndDate)}"
+        if (start != null && end != null) {
+            if (start != end) {
+                binding.btnDateRange.text = "${dateFormatter.format(start)} - ${dateFormatter.format(end)}"
             } else {
-                binding.btnDateRange.text = "${dateFormatter.format(filterStartDate)}"
+                binding.btnDateRange.text = "${dateFormatter.format(start)}"
             }
         } else {
             binding.btnDateRange.text = DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label
         }
     }
 
-    suspend fun focusOnMemory(lat: Double, lng: Double, id: Int) {
+    fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         val googleMap = mMap
         if (googleMap != null) {
             val memory = allGroups.find { it.id == id }
@@ -255,24 +249,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    suspend fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
-        val currentStart = filterStartDate ?: memoryStart
-        val currentEnd = filterEndDate ?: memoryEnd
+    fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
+        val currentStart = viewModel.filterStartDate.value ?: memoryStart
+        val currentEnd = viewModel.filterEndDate.value ?: memoryEnd
 
         val newStart = if (memoryStart.isBefore(currentStart)) memoryStart else currentStart
         val newEnd = if (memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
 
-        updateDateFilterIfNeeded(newStart, newEnd)
-    }
-
-    suspend fun updateDateFilterIfNeeded(start: LocalDate, end: LocalDate, dateFilterLabel: String? = null) {
-        if (start != filterStartDate || end != filterEndDate) {
-            filterStartDate = start
-            filterEndDate = end
-            appliedFilterLabel = dateFilterLabel
-            updateDateRangeButtonText()
-            updateMapMarkers()
-        }
+        viewModel.updateDateFilter(newStart, newEnd)
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -292,21 +276,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         enableMyLocation()
         setGoogleMapPadding()
 
-        refreshJob?.cancel()
-        refreshJob = lifecycleScope.launch {
-            refreshData()
-        }
-
         googleMap.setOnMarkerClickListener { marker ->
-            selectedMarker = marker
-            selectedMarkerPosition = marker.position
-            @Suppress("UNCHECKED_CAST")
-            val items = marker.tag as? List<Markerable>
-            if (items != null) {
-                selectedMemoryId = items.firstOrNull()?.groupId
-                showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
-                mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.position, MAX_CAMERA_ZOOM))
-            }
+            showMemoryOverlay(marker)
             true
         }
 
@@ -330,6 +301,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         binding.overlayCard.viewTreeObserver.addOnGlobalLayoutListener {
             setGoogleMapPadding()
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.filteredMarkerables.collect { markerables ->
+                    updateMapMarkers(markerables)
+                }
+            }
         }
     }
 
@@ -363,23 +342,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun requestLocationPermissionIfNeeded() {
-        if (!hasLocationPermission() && !permissionDenied) {
-            locationPermissionRequest.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        } else {
-            enableMyLocation()
-        }
-    }
-
     @SuppressWarnings("MissingPermission")
     private fun enableMyLocation() {
-        val googleMap = mMap
-        if (hasLocationPermission() && googleMap != null) {
+        val googleMap = mMap ?: return
+        if (hasLocationPermission()) {
             googleMap.isMyLocationEnabled = true
             permissionDenied = false
             zoomToUserLocationIfPossible()
@@ -407,150 +373,30 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun initialZoomAndCoordinatesNotReady(): Boolean = !isInitialZoomDone && (initialSelectedLat == null || initialSelectedLng == null)
 
-    override fun onResume() {
-        super.onResume()
-        refreshJob?.cancel()
-        refreshJob = lifecycleScope.launch {
-            refreshData()
-            requestLocationPermissionIfNeeded()
-        }
-    }
-
-    suspend fun refreshData() {
-        trace("map_fragment_refresh_data") {
-            val currentSelectedId = selectedMemoryId
-            val currentPos = selectedMarkerPosition
-
-            loadMarkers()
-
-            if (currentSelectedId != null) {
-                val updatedSelectedMemory = allGroups.find { it.id == currentSelectedId }
-                if (updatedSelectedMemory != null) {
-                    // Try to find the exact marker we had selected (by position)
-                    var marker: Marker? = null
-                    if (currentPos != null) {
-                        marker = markerMap.values.find { it.position == currentPos }
-                    }
-                    // Fallback to default marker for the ID
-                    if (marker == null) {
-                        marker = markerMap[currentSelectedId.toString()]
-                    }
-
-                    if (marker != null) {
-                        showMemoryOverlay(marker)
-                    } else {
-                        hideMemoryOverlay()
-                    }
-                } else {
-                    hideMemoryOverlay()
-                }
-            }
-        }
-    }
-
     private fun showMemoryOverlay(marker: Marker) {
         selectedMarker = marker
         selectedMarkerPosition = marker.position
         @Suppress("UNCHECKED_CAST")
         val items = marker.tag as? List<Markerable>
         if (items != null) {
+            selectedMemoryId = items.firstOrNull()?.groupId
             showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
+            mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.position, MAX_CAMERA_ZOOM))
         }
     }
 
-    private suspend fun loadMarkers() {
-        trace("map_fragment_load_markers") {
-            val context = context ?: return@trace
-            val db = MemoryMapDatabase.getDatabase(context.applicationContext)
-            allGroups = db.memoryGroupDao().getAllGroups()
-            allFragments = db.memoryGroupDao().getAllFragments()
-
-            withContext(Dispatchers.Main) {
-                val googleMap = mMap
-                if (googleMap != null) {
-                    updateDateFilter()
-                    updateMapMarkers()
-
-                    if (initialSelectedLat != null && initialSelectedLng != null) {
-                        isInitialZoomDone = true
-                        val selectedMemory = allGroups.find { it.id == initialSelectedId }
-                        if (selectedMemory != null) {
-                            moveToLocationAndSelectMarker(
-                                initialSelectedLat!!,
-                                initialSelectedLng!!,
-                                selectedMemory
-                            )
-                        }
-                        initialSelectedLat = null
-                        initialSelectedLng = null
-                        initialSelectedId = null
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun updateDateFilter() {
-        val context = context ?: return
-        if (filterStartDate == null || filterEndDate == null) {
-            val defaultFilter = DateFilterOption.getFromDataStore(context.dataStore)
-            val (start, end) = defaultFilter.dateRangeProvider(LocalDate.now())
-            filterStartDate = start
-            filterEndDate = end
-            appliedFilterLabel = defaultFilter.label
-            if (filterStartDate == null || filterEndDate == null) {
-                if (allGroups.isNotEmpty()) {
-                    filterStartDate = allGroups.minOf { it.startDate.toLocalDate() }
-                    filterEndDate = allGroups.maxOf { it.endDate.toLocalDate() }
-                }
-            }
-        }
-        updateDateRangeButtonText()
-    }
-
-    private suspend fun updateMapMarkers(adjustCamera: Boolean = false) {
+    private suspend fun updateMapMarkers(filteredItems: List<Markerable>? = null, adjustCamera: Boolean = false) {
         trace("map_fragment_update_map_markers") {
-            Log.d(TAG, "Updating map markers")
             val googleMap = mMap ?: return@trace
-            val context = context ?: return@trace
 
-            val start = filterStartDate ?: LocalDate.MIN
-            val end = filterEndDate ?: LocalDate.MAX
-
-            val showFragments = context.dataStore.data.first()[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false
-
-            // Perform filtering and clustering in the background
-            val filteredItems = withContext(Dispatchers.Default) {
-                val groupsMap = allGroups.associateBy { it.id }
-                val candidateItems = mutableListOf<Markerable>()
-                candidateItems.addAll(allGroups)
-
-                if (showFragments) {
-                    allFragments.forEach { fragment ->
-                        groupsMap[fragment.groupId]?.let { parent ->
-                            fragment.title = parent.title
-                            candidateItems.add(fragment)
-                        }
-                    }
-                }
-
-                candidateItems.filter { item ->
-                    val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
-                    val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
-
-                    if (itemStart == null || itemEnd == null) return@filter true
-
-                    // Strict filtering: items must be entirely within the selected range
-                    !itemStart.isBefore(start) && !itemEnd.isAfter(end)
-                }
-            }
+            val items = filteredItems ?: viewModel.filteredMarkerables.value
 
             val clusters = withContext(Dispatchers.Default) {
-                clusterMarkerables(filteredItems)
+                clusterMarkerables(items)
             }
 
             withContext(Dispatchers.Main) {
-                updateUIWithFreshMarkers(googleMap, filteredItems, clusters, adjustCamera)
+                updateUIWithFreshMarkers(googleMap, items, clusters, adjustCamera)
             }
         }
     }

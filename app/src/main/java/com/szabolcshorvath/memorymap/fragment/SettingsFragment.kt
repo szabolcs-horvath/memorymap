@@ -18,6 +18,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -39,11 +40,12 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.ViewModel
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateFilterOption
+import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +60,7 @@ import com.google.api.services.drive.model.File as DriveFile
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: ViewModel by activityViewModels()
     private lateinit var googleAuthManager: GoogleAuthManager
     private lateinit var backupManager: BackupManager
     private lateinit var startAuthorizationIntent: ActivityResultLauncher<IntentSenderRequest>
@@ -72,7 +75,7 @@ class SettingsFragment : Fragment() {
     private var newlyAddedPresetId: Int? = null
 
     private var savePresetsOrderJob: Job? = null
-    private var presetsObservationJob: Job? = null
+    private var allPresets: List<HSVPreset> = emptyList()
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -199,7 +202,32 @@ class SettingsFragment : Fragment() {
             updateColorPresetsUI()
         }
 
-        observeHSVPresets()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.allPresets.collect { presets ->
+                    allPresets = presets
+                    colorPresetAdapter.submitList(presets) {
+                        newlyAddedPresetId?.let { id ->
+                            val index = presets.indexOfFirst { it.id == id }
+                            if (index != -1) {
+                                // Select it first to prepare the UI
+                                selectPreset(presets[index], shouldUpdateList = false)
+
+                                // Post the scroll to ensure layout is complete
+                                _binding?.presetColorsRecyclerView?.post {
+                                    smoothScrollToPresetIndex(index)
+                                }
+                            }
+                            newlyAddedPresetId = null
+                        }
+                    }
+
+                    if (editingPreset != null && presets.none { it.id == editingPreset?.id }) {
+                        clearPresetSelection()
+                    }
+                }
+            }
+        }
         updateVisualsFromSliders()
 
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
@@ -241,14 +269,13 @@ class SettingsFragment : Fragment() {
         binding.btnSavePresets.setOnClickListener {
             editingPreset?.let { preset ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-                    db.hsvPresetDao().insertPresets(listOf(preset))
+                    viewModel.getHSVPresetDao().insertPresets(listOf(preset))
                     withContext(Dispatchers.Main) {
                         originalPreset = preset.copy()
                         editingPreset = preset.copy()
                         checkForChanges()
                         Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
-                        backupManager.triggerAutomaticBackup()
+                        backupManager.triggerAutomaticBackup(viewModel.getDb())
                     }
                 }
             }
@@ -278,9 +305,7 @@ class SettingsFragment : Fragment() {
         val brightness = binding.brightnessSlider.value
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-            val currentPresets = db.hsvPresetDao().getAllPresets()
-            val nextOrder = (currentPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
+            val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
 
             val newPreset = HSVPreset(
                 hue = hue,
@@ -288,16 +313,13 @@ class SettingsFragment : Fragment() {
                 brightness = brightness,
                 order = nextOrder
             )
-            db.hsvPresetDao().insertPresets(listOf(newPreset))
-
-            val allPresets = db.hsvPresetDao().getAllPresets()
-            val latest = allPresets.find { it.order == nextOrder }
+            val ids = viewModel.getHSVPresetDao().insertPresets(listOf(newPreset))
 
             withContext(Dispatchers.Main) {
-                if (latest != null) {
-                    newlyAddedPresetId = latest.id
+                if (ids.isNotEmpty()) {
+                    newlyAddedPresetId = ids[0].toInt()
+                    backupManager.triggerAutomaticBackup(viewModel.getDb())
                 }
-                backupManager.triggerAutomaticBackup()
             }
         }
     }
@@ -316,15 +338,14 @@ class SettingsFragment : Fragment() {
 
     private fun deletePreset(preset: HSVPreset) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-            db.hsvPresetDao().deletePreset(preset)
+            viewModel.getHSVPresetDao().deletePreset(preset)
             withContext(Dispatchers.Main) {
                 if (editingPreset?.id == preset.id) {
                     clearPresetSelection()
                     updateVisualsFromSliders()
                 }
                 Toast.makeText(requireContext(), "Preset deleted", Toast.LENGTH_SHORT).show()
-                backupManager.triggerAutomaticBackup()
+                backupManager.triggerAutomaticBackup(viewModel.getDb())
             }
         }
     }
@@ -341,41 +362,6 @@ class SettingsFragment : Fragment() {
         binding.colorPresetsChevron.animate()
             .rotation(if (colorPresetsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
             .start()
-    }
-
-    private fun observeHSVPresets() {
-        if (_binding == null) return
-        presetsObservationJob?.cancel()
-        presetsObservationJob = viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-                db.hsvPresetDao().getAllPresetsFlow().collect { presets ->
-                    colorPresetAdapter.submitList(presets) {
-                        newlyAddedPresetId?.let { id ->
-                            val index = presets.indexOfFirst { it.id == id }
-                            if (index != -1) {
-                                // Select it first to prepare the UI
-                                selectPreset(presets[index], shouldUpdateList = false)
-
-                                // Post the scroll to ensure layout is complete
-                                _binding?.presetColorsRecyclerView?.post {
-                                    smoothScrollToPresetIndex(index)
-                                }
-                            }
-                            newlyAddedPresetId = null
-                        }
-                    }
-
-                    if (editingPreset != null && presets.none { it.id == editingPreset?.id }) {
-                        clearPresetSelection()
-                    }
-                }
-            }
-        }
-    }
-
-    fun refreshData() {
-        observeHSVPresets()
     }
 
     private fun smoothScrollToPresetIndex(index: Int) {
@@ -613,11 +599,10 @@ class SettingsFragment : Fragment() {
         }
 
         savePresetsOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val db = MemoryMapDatabase.getDatabase(requireContext().applicationContext)
-            db.hsvPresetDao().updatePresets(presets)
+            viewModel.getHSVPresetDao().updatePresets(presets)
 
             withContext(Dispatchers.Main) {
-                backupManager.triggerAutomaticBackup()
+                backupManager.triggerAutomaticBackup(viewModel.getDb())
             }
         }
     }
@@ -767,7 +752,8 @@ class SettingsFragment : Fragment() {
             if (isBackupRequested) {
                 isBackupRequested = false
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                val success = backupManager.performBackup(credential) { status ->
+                val db = viewModel.getDb()
+                val success = backupManager.performBackup(credential, db, isAutomatic = false) { status ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.Main) {
                             setLoadingState(true, status)
@@ -856,7 +842,9 @@ class SettingsFragment : Fragment() {
                     }
                 }
                 if (success) {
-                    (requireActivity() as? MainActivity)?.refreshData()
+                    viewModel.refreshDatabase()
+                    LocalMediaUtil.verifyAndFixMediaItems(requireContext(), viewModel.getMemoryGroupDao())
+                    Toast.makeText(requireContext(), "Restore successful", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(requireContext(), "Restore failed", Toast.LENGTH_SHORT).show()
                 }

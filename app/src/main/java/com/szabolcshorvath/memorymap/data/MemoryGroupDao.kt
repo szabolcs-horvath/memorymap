@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MemoryGroupDao {
@@ -34,21 +35,18 @@ interface MemoryGroupDao {
     @Delete
     suspend fun deleteMediaItems(items: List<MediaItem>)
 
-    @Delete
-    suspend fun deleteFragments(fragments: List<MemoryFragment>)
-
     @Query("DELETE FROM media_items WHERE groupId = :groupId")
     suspend fun deleteMediaByGroupId(groupId: Int)
 
     @Query("DELETE FROM memory_fragments WHERE groupId = :groupId")
     suspend fun deleteFragmentsByGroupId(groupId: Int)
 
-    @Transaction
     @Query("SELECT * FROM memory_groups ORDER BY startDate DESC")
-    suspend fun getAllGroupsWithMedia(): List<MemoryGroupWithMedia>
+    fun getAllGroupsFlow(): Flow<List<MemoryGroup>>
 
-    @Query("SELECT * FROM memory_groups ORDER BY startDate DESC")
-    suspend fun getAllGroups(): List<MemoryGroup>
+    @Transaction
+    @Query("SELECT * FROM memory_groups WHERE id = :id")
+    fun getGroupWithMediaFlow(id: Int): Flow<MemoryGroupWithMedia?>
 
     @Transaction
     @Query("SELECT * FROM memory_groups WHERE id = :id")
@@ -58,5 +56,5 @@ interface MemoryGroupDao {
     suspend fun getAllMediaItems(): List<MediaItem>
 
     @Query("SELECT * FROM memory_fragments")
-    suspend fun getAllFragments(): List<MemoryFragment>
+    fun getAllFragmentsFlow(): Flow<List<MemoryFragment>>
 }

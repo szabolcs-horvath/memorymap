@@ -14,13 +14,15 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.room.withTransaction
 import com.google.android.material.snackbar.Snackbar
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.ViewModel
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment
 import com.szabolcshorvath.memorymap.fragment.MapFragment
@@ -33,11 +35,8 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
-import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -53,6 +52,7 @@ class MainActivity :
     PickLocationFragment.PickLocationListener {
 
     private lateinit var binding: ActivityMainContainerBinding
+    private lateinit var viewModel: ViewModel
 
     private lateinit var mapFragment: MapFragment
     private lateinit var timelineFragment: TimelineFragment
@@ -66,6 +66,8 @@ class MainActivity :
 
         binding = ActivityMainContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        viewModel = ViewModelProvider(this)[ViewModel::class.java]
 
         if (savedInstanceState == null) {
             mapFragment = MapFragment()
@@ -173,7 +175,7 @@ class MainActivity :
 
                 if (currentVersion > lastVersion) {
                     launch {
-                        LocalMediaUtil.verifyAndFixMediaItems(applicationContext)
+                        LocalMediaUtil.verifyAndFixMediaItems(applicationContext, viewModel.getMemoryGroupDao())
                     }
                     dataStore.edit { it[LAST_APP_VERSION] = currentVersion }
                 }
@@ -193,21 +195,11 @@ class MainActivity :
     }
 
     private suspend fun initializeHSVPresetsIfEmpty() {
-        val db = MemoryMapDatabase.getDatabase(applicationContext)
-        if (db.hsvPresetDao().getCount() == 0) {
+        if (viewModel.getHSVPresetDao().getCount() == 0) {
             val defaultPresets = ColorUtil.DEFAULT_HSV_PRESETS.mapIndexed { index, hsv ->
                 HSVPreset(hue = hsv[0], saturation = hsv[1], brightness = hsv[2], order = index)
             }
-            db.hsvPresetDao().insertPresets(defaultPresets)
-        }
-    }
-
-    suspend fun refreshData() = coroutineScope {
-        trace("main_activity_refresh_data") {
-            val mapJob = launch { mapFragment.refreshData() }
-            val timelineJob = launch { timelineFragment.refreshData() }
-            val settingsJob = launch { settingsFragment.refreshData() }
-            joinAll(mapJob, timelineJob, settingsJob)
+            viewModel.getHSVPresetDao().insertPresets(defaultPresets)
         }
     }
 
@@ -282,7 +274,6 @@ class MainActivity :
         binding.bottomNavigation.selectedItemId = R.id.navigation_map
 
         lifecycleScope.launch {
-            refreshData()
             mapFragment.updateDateFilterForMemory(startDate, endDate)
             mapFragment.focusOnMemory(lat, lng, id)
         }
@@ -295,25 +286,19 @@ class MainActivity :
     }
 
     override fun onMemoryDeleted(memoryGroup: MemoryGroup, mediaItems: List<MediaItem>) {
-        lifecycleScope.launch {
-            refreshData()
-        }
-
         val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
         snackbar.anchorView = binding.bottomNavigation
         snackbar.setAction("Undo") {
             lifecycleScope.launch(Dispatchers.IO) {
-                val db = MemoryMapDatabase.getDatabase(applicationContext)
-                val newGroupId = db.memoryGroupDao().insertGroup(memoryGroup)
-                val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
-                db.memoryGroupDao().insertMediaItems(restoredMediaItems)
+                val dao = viewModel.getMemoryGroupDao()
+                viewModel.getDb().withTransaction {
+                    val newGroupId = dao.insertGroup(memoryGroup)
+                    val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
+                    dao.insertMediaItems(restoredMediaItems)
+                }
 
                 // Trigger automatic backup after undo
-                BackupManager(applicationContext).triggerAutomaticBackup()
-
-                withContext(Dispatchers.Main) {
-                    refreshData()
-                }
+                BackupManager(applicationContext).triggerAutomaticBackup(viewModel.getDb())
             }
         }
         snackbar.show()
