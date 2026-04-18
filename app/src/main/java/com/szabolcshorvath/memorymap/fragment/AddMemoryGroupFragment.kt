@@ -699,15 +699,14 @@ class AddMemoryGroupFragment : Fragment() {
         val group = assembleMemoryGroup(effectiveStart, effectiveEnd)
 
         try {
-            binding.saveButton.isEnabled = false
-
-            val appContext = context.applicationContext
+            val saveButton = _binding?.saveButton ?: return
+            saveButton.isEnabled = false
 
             val groupIdResult = withContext(Dispatchers.IO) {
                 val dao = memoryMapViewModel.getMemoryGroupDao()
                 memoryMapViewModel.getDb().withTransaction {
                     val groupId = saveMemoryGroup(dao, group)
-                    saveMediaItems(dao, groupId, appContext)
+                    saveMediaItems(dao, groupId, context.applicationContext)
                     saveMemoryFragments(dao, groupId)
                     groupId.toInt()
                 }
