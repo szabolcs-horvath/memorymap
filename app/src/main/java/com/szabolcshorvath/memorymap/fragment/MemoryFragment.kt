@@ -30,6 +30,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
@@ -48,6 +49,8 @@ class MemoryFragment : Fragment() {
     private var currentDeviceId: String? = null
     private lateinit var backupManager: BackupManager
     private var isFragmentsExpanded = true
+    private var mediaOrderJob: Job? = null
+    private var fragmentsOrderJob: Job? = null
 
     interface MemoryFragmentListener {
         fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int)
@@ -234,20 +237,22 @@ class MemoryFragment : Fragment() {
     }
 
     private fun saveNewMediaOrder() {
+        mediaOrderJob?.cancel()
         val updatedItems = mediaItems.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+        mediaOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             memoryMapViewModel.getMemoryGroupDao().updateMediaItems(updatedItems)
             backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
         }
     }
 
     private fun saveNewFragmentsOrder() {
+        fragmentsOrderJob?.cancel()
         val updatedFragments = fragmentItems.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+        fragmentsOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             memoryMapViewModel.getMemoryGroupDao().updateFragments(updatedFragments)
             backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
         }
