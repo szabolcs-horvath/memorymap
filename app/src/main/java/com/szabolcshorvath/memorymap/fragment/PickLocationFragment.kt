@@ -86,6 +86,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                                     selectedAddress = place.formattedAddress
                                     updateSelectedLocation(latLng, selectedPlaceName)
                                     mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
+                                } else {
+                                    Log.e(TAG, "Fetched place has no location")
+                                    setConfirmButtonLoading(false)
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error fetching place details: ${e.message}", e)
