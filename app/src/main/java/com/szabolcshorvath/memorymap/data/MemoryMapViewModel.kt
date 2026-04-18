@@ -3,9 +3,9 @@ package com.szabolcshorvath.memorymap.data
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateFilterOption
+import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -56,7 +56,7 @@ class MemoryMapViewModel(application: Application) : AndroidViewModel(applicatio
     val appliedFilterLabel: StateFlow<String?> = _appliedFilterLabel.asStateFlow()
 
     val showFragments = dataStore.data
-        .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
+        .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), false)
 
     val filteredMarkerables: StateFlow<List<Markerable>> = combine(

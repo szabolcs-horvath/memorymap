@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.util
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import com.szabolcshorvath.memorymap.MainActivity
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import java.time.DayOfWeek
@@ -44,7 +43,7 @@ enum class DateFilterOption(val label: String, val dateRangeProvider: (now: Loca
 
         suspend fun getFromDataStore(dataStore: DataStore<Preferences>): DateFilterOption {
             val valueInDataStore = dataStore.data
-                .map { it[MainActivity.DEFAULT_DATE_FILTER] }
+                .map { it[PreferencesKeys.DEFAULT_DATE_FILTER] }
                 .firstOrNull()
             return if (valueInDataStore != null) DateFilterOption.valueOf(valueInDataStore) else DEFAULT_DATE_FILTER_OPTION
         }

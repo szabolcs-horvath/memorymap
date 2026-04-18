@@ -8,10 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.ViewModelProvider
@@ -35,6 +32,7 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -170,20 +168,20 @@ class MainActivity :
                     }
 
                 val prefs = dataStore.data.first()
-                val isFirstRun = prefs[IS_FIRST_RUN] ?: true
-                val lastVersion = prefs[LAST_APP_VERSION] ?: 0L
+                val isFirstRun = prefs[PreferencesKeys.IS_FIRST_RUN] ?: true
+                val lastVersion = prefs[PreferencesKeys.LAST_APP_VERSION] ?: 0L
 
                 if (currentVersion > lastVersion) {
                     launch(Dispatchers.IO) {
                         LocalMediaUtil.verifyAndFixMediaItems(applicationContext, memoryMapViewModel.getMemoryGroupDao())
                     }
-                    dataStore.edit { it[LAST_APP_VERSION] = currentVersion }
+                    dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
                 }
 
                 if (isFirstRun) {
                     InstallationIdentifier.getInstallationIdentifier(applicationContext)
-                    dataStore.edit { it[LAST_APP_VERSION] = currentVersion }
-                    dataStore.edit { it[IS_FIRST_RUN] = false }
+                    dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
+                    dataStore.edit { it[PreferencesKeys.IS_FIRST_RUN] = false }
                 }
                 withContext(Dispatchers.IO) {
                     initializeHSVPresetsIfEmpty()
@@ -317,9 +315,5 @@ class MainActivity :
 
     companion object {
         const val TAG = "MainActivity"
-        private val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
-        private val LAST_APP_VERSION = longPreferencesKey("last_app_version")
-        val SHOW_FRAGMENT_MARKERS = booleanPreferencesKey("show_fragment_markers")
-        val DEFAULT_DATE_FILTER = stringPreferencesKey("default_date_filter")
     }
 }

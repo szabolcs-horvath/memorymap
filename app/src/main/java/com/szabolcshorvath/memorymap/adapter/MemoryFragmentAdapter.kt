@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentBinding
@@ -13,6 +12,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -61,7 +61,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
             // Check if fragment markers are enabled to show/hide the button
             CoroutineScope(Dispatchers.IO).launch {
                 val showMarkers = binding.root.context.dataStore.data
-                    .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
+                    .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
                     .first()
                 withContext(Dispatchers.Main) {
                     binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
