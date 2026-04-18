@@ -33,6 +33,7 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.firebase.perf.metrics.AddTrace
 import com.google.firebase.perf.metrics.Trace
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
@@ -427,29 +428,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateUIWithFreshMarkers(googleMap: GoogleMap, filteredItems: List<Markerable>, clusters: Collection<List<Markerable>>, adjustCamera: Boolean) {
-        val binding = _binding ?: return
         trace("map_fragment_update_ui_with_fresh_markers") {
             googleMap.clear()
             markerMap.clear()
 
-            // Update stats
-            val totalCount = filteredItems.size.toFloat()
-            if (totalCount > 0) {
-                val colorStats = filteredItems.groupBy {
-                    ColorUtil.hsvToColor(
-                        it.markerHue ?: DEFAULT_MARKER_HUE,
-                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                    )
-                }.mapValues { it.value.size }
-
-                val sliceList = colorStats.map { (color, count) ->
-                    Slice(count / totalCount, color, label = count.toString())
-                }
-                binding.pieChart.slices = sliceList
-            } else {
-                binding.pieChart.slices = emptyList()
-            }
+            updatePieChart(filteredItems)
 
             val boundsBuilder = LatLngBounds.Builder()
             var markersCount = 0
@@ -514,41 +497,63 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
-        trace("map_fragment_cluster_markerables") {
-            val n = items.size
-            val parent = IntArray(n) { it }
+    @AddTrace(name = "map_fragment_update_pie_chart", enabled = true)
+    private fun updatePieChart(filteredItems: List<Markerable>) {
+        val binding = _binding ?: return
+        val totalCount = filteredItems.size.toFloat()
+        if (totalCount > 0) {
+            val colorStats = filteredItems.groupBy {
+                ColorUtil.hsvToColor(
+                    it.markerHue ?: DEFAULT_MARKER_HUE,
+                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                )
+            }.mapValues { it.value.size }
 
-            fun find(i: Int): Int {
-                var curr = i
-                while (parent[curr] != curr) {
-                    parent[curr] = parent[parent[curr]] // Path halving
-                    curr = parent[curr]
-                }
-                return curr
+            val sliceList = colorStats.map { (color, count) ->
+                Slice(count / totalCount, color, label = count.toString())
             }
-
-            fun union(i: Int, j: Int) {
-                val rootI = find(i)
-                val rootJ = find(j)
-                if (rootI != rootJ) parent[rootI] = rootJ
-            }
-
-            // O(N^2) comparisons, but with optimized distance check
-            for (i in 0 until n) {
-                for (j in i + 1 until n) {
-                    if (items[i].isSameLocationAs(items[j])) {
-                        union(i, j)
-                    }
-                }
-            }
-
-            return items.indices.groupBy { find(it) }.values.map { indices ->
-                indices.map { items[it] }
-            }
+            binding.pieChart.slices = sliceList
+        } else {
+            binding.pieChart.slices = emptyList()
         }
     }
 
+    @AddTrace(name = "map_fragment_cluster_markerables", enabled = true)
+    fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
+        val n = items.size
+        val parent = IntArray(n) { it }
+
+        fun find(i: Int): Int {
+            var curr = i
+            while (parent[curr] != curr) {
+                parent[curr] = parent[parent[curr]] // Path halving
+                curr = parent[curr]
+            }
+            return curr
+        }
+
+        fun union(i: Int, j: Int) {
+            val rootI = find(i)
+            val rootJ = find(j)
+            if (rootI != rootJ) parent[rootI] = rootJ
+        }
+
+        // O(N^2) comparisons, but with optimized distance check
+        for (i in 0 until n) {
+            for (j in i + 1 until n) {
+                if (items[i].isSameLocationAs(items[j])) {
+                    union(i, j)
+                }
+            }
+        }
+
+        return items.indices.groupBy { find(it) }.values.map { indices ->
+            indices.map { items[it] }
+        }
+    }
+
+    @AddTrace(name = "map_fragment_get_marker", enabled = true)
     private fun getMarker(items: List<Markerable>, googleMap: GoogleMap): Marker? {
         val representative = items.first()
         val position = LatLng(representative.latitude, representative.longitude)

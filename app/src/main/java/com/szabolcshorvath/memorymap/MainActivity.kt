@@ -33,6 +33,7 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -97,7 +98,9 @@ class MainActivity :
 
         setupBottomNavigationBar()
         setupBackPress()
-        checkAppStatus()
+        lifecycleScope.launch {
+            checkAppStatus()
+        }
     }
 
     private fun setupBottomNavigationBar() {
@@ -164,8 +167,8 @@ class MainActivity :
         )
     }
 
-    private fun checkAppStatus() {
-        lifecycleScope.launch {
+    private suspend fun checkAppStatus() {
+        trace("main_activity_check_app_status") {
             try {
                 val currentVersion =
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -180,7 +183,7 @@ class MainActivity :
                 val lastVersion = prefs[PreferencesKeys.LAST_APP_VERSION] ?: 0L
 
                 if (currentVersion > lastVersion) {
-                    launch(Dispatchers.IO) {
+                    withContext(Dispatchers.IO) {
                         LocalMediaUtil.verifyAndFixMediaItems(applicationContext, memoryMapViewModel.getMemoryGroupDao())
                     }
                     dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
