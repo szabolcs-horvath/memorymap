@@ -6,6 +6,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
+import com.google.firebase.perf.metrics.AddTrace
+import com.google.firebase.perf.trace
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 
@@ -19,12 +21,15 @@ object LocalMediaUtil {
     )
 
     suspend fun hasMissingMedia(context: Context, mediaItems: List<MediaItem>): Boolean {
-        val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
-        return mediaItems.any { item ->
-            item.deviceId != installationIdentifier || !isMediaAvailable(context, item.uri)
+        trace("local_media_util_has_missing_media") {
+            val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
+            return mediaItems.any { item ->
+                item.deviceId != installationIdentifier || !isMediaAvailable(context, item.uri)
+            }
         }
     }
 
+    @AddTrace(name = "local_media_util_is_media_available", enabled = true)
     fun isMediaAvailable(context: Context, uriString: String): Boolean {
         return try {
             context.contentResolver.openInputStream(uriString.toUri())?.use { true } ?: false
@@ -33,6 +38,7 @@ object LocalMediaUtil {
         }
     }
 
+    @AddTrace(name = "local_media_util_is_signature_valid", enabled = true)
     fun isSignatureValid(context: Context, item: MediaItem): Boolean {
         val uri = item.uri.toUri()
         return try {
@@ -43,6 +49,7 @@ object LocalMediaUtil {
         }
     }
 
+    @AddTrace(name = "local_media_util_get_local_media_for_items", enabled = true)
     fun getLocalMediaForItems(context: Context, mediaItems: List<MediaItem>): List<LocalMediaInfo> {
         val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
         val uniqueSizes = mediaItems.map { it.fileSize }.distinct()
@@ -56,6 +63,7 @@ object LocalMediaUtil {
         return mediaList
     }
 
+    @AddTrace(name = "local_media_util_query_media_store", enabled = true)
     private fun queryMediaStore(context: Context, contentUri: Uri, projection: Array<String>, selection: String?): List<LocalMediaInfo> {
         val mediaList = mutableListOf<LocalMediaInfo>()
         try {
@@ -80,52 +88,56 @@ object LocalMediaUtil {
     }
 
     suspend fun verifyAndFixMediaItems(context: Context, dao: MemoryGroupDao) {
-        val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
-        val mediaItems = dao.getAllMediaItems()
-        val localMediaList = getLocalMediaForItems(context, mediaItems)
-        val itemsToUpdate = mutableListOf<MediaItem>()
+        trace("local_media_util_verify_and_fix_media_items") {
+            val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
+            val mediaItems = dao.getAllMediaItems()
+            val localMediaList = getLocalMediaForItems(context, mediaItems)
+            val itemsToUpdate = mutableListOf<MediaItem>()
 
-        for (item in mediaItems) {
-            if (item.deviceId != installationIdentifier || item.uri.contains("photopicker") || !isSignatureValid(context, item)) {
-                val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
-                if (candidate != null) {
-                    itemsToUpdate.add(
-                        item.copy(
-                            deviceId = installationIdentifier,
-                            uri = candidate.uri
+            for (item in mediaItems) {
+                if (item.deviceId != installationIdentifier || item.uri.contains("photopicker") || !isSignatureValid(context, item)) {
+                    val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
+                    if (candidate != null) {
+                        itemsToUpdate.add(
+                            item.copy(
+                                deviceId = installationIdentifier,
+                                uri = candidate.uri
+                            )
                         )
-                    )
-                } else {
-                    Log.w(TAG, "No local media found with signature ${item.mediaSignature}")
+                    } else {
+                        Log.w(TAG, "No local media found with signature ${item.mediaSignature}")
+                    }
                 }
             }
-        }
 
-        if (itemsToUpdate.isNotEmpty()) {
-            dao.updateMediaItems(itemsToUpdate)
-        }
+            if (itemsToUpdate.isNotEmpty()) {
+                dao.updateMediaItems(itemsToUpdate)
+            }
 
-        // After fixing URIs, we can safely deduplicate based on (groupId, mediaSignature)
-        deduplicateMediaItems(dao)
+            // After fixing URIs, we can safely deduplicate based on (groupId, mediaSignature)
+            deduplicateMediaItems(dao)
+        }
     }
 
     suspend fun deduplicateMediaItems(dao: MemoryGroupDao) {
-        val allMedia = dao.getAllMediaItems()
+        trace("local_media_util_deduplicate_media_items") {
+            val allMedia = dao.getAllMediaItems()
 
-        // Group items by groupId and signature. Any group with size > 1 has duplicates.
-        val duplicates = allMedia.groupBy { it.groupId to it.mediaSignature }
-            .filter { it.value.size > 1 }
+            // Group items by groupId and signature. Any group with size > 1 has duplicates.
+            val duplicates = allMedia.groupBy { it.groupId to it.mediaSignature }
+                .filter { it.value.size > 1 }
 
-        val itemsToDelete = mutableListOf<MediaItem>()
-        for ((_, items) in duplicates) {
-            // Keep the one with the smallest ID (the oldest one)
-            val sorted = items.sortedBy { it.id }
-            itemsToDelete.addAll(sorted.drop(1))
-        }
+            val itemsToDelete = mutableListOf<MediaItem>()
+            for ((_, items) in duplicates) {
+                // Keep the one with the smallest ID (the oldest one)
+                val sorted = items.sortedBy { it.id }
+                itemsToDelete.addAll(sorted.drop(1))
+            }
 
-        if (itemsToDelete.isNotEmpty()) {
-            Log.d(TAG, "Deleting ${itemsToDelete.size} duplicate media items")
-            dao.deleteMediaItems(itemsToDelete)
+            if (itemsToDelete.isNotEmpty()) {
+                Log.d(TAG, "Deleting ${itemsToDelete.size} duplicate media items")
+                dao.deleteMediaItems(itemsToDelete)
+            }
         }
     }
 }
