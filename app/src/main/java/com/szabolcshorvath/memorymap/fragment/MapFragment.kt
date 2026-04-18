@@ -139,6 +139,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     Triple(start, end, label)
                 }.collect { (start, end, label) ->
                     updateDateRangeButtonText(start, end, label)
+                    updateMapMarkers(adjustCamera = true)
                 }
             }
         }
