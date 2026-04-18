@@ -47,6 +47,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
+import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -162,7 +163,7 @@ class SettingsFragment : Fragment() {
     private fun setupShowFragmentsSwitch() {
         viewLifecycleOwner.lifecycleScope.launch {
             val showFragments = requireContext().dataStore.data
-                .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
+                .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
                 .firstOrNull() ?: false
             _binding?.switchShowFragments?.isChecked = showFragments
         }
@@ -170,7 +171,7 @@ class SettingsFragment : Fragment() {
         binding.switchShowFragments.setOnCheckedChangeListener { _, isChecked ->
             viewLifecycleOwner.lifecycleScope.launch {
                 requireContext().dataStore.edit { preferences ->
-                    preferences[MainActivity.SHOW_FRAGMENT_MARKERS] = isChecked
+                    preferences[PreferencesKeys.SHOW_FRAGMENT_MARKERS] = isChecked
                 }
             }
         }
@@ -190,7 +191,7 @@ class SettingsFragment : Fragment() {
             val selectedOption = options[position]
             viewLifecycleOwner.lifecycleScope.launch {
                 requireContext().dataStore.edit { preferences ->
-                    preferences[MainActivity.DEFAULT_DATE_FILTER] = DateFilterOption.ofLabel(selectedOption).name
+                    preferences[PreferencesKeys.DEFAULT_DATE_FILTER] = DateFilterOption.ofLabel(selectedOption).name
                 }
             }
         }
