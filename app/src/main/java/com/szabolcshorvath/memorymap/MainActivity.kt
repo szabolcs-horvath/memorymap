@@ -214,7 +214,7 @@ class MainActivity :
     override fun onMemoryClicked(id: Int) {
         val fragment = MemoryPagerFragment.newInstance(id)
         supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment) // Replace the current tab
+            .replace(R.id.fragment_container, fragment, MemoryPagerFragment.TAG) // Replace the current tab
             .addToBackStack(null) // This is the ONLY place you use backstack
             .commit()
     }
