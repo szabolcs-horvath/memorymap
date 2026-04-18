@@ -22,7 +22,7 @@ class TimelineFragment : Fragment() {
     private var _binding: FragmentTimelineBinding? = null
     private val binding get() = _binding!!
     private lateinit var adapter: TimelineAdapter
-    private var listener: TimelineListener? = null
+    private var timelineListener: TimelineListener? = null
     private var pendingScrollMemoryId: Int? = null
 
     private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
@@ -34,7 +34,7 @@ class TimelineFragment : Fragment() {
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (context is TimelineListener) {
-            listener = context
+            timelineListener = context
         }
     }
 
@@ -71,7 +71,7 @@ class TimelineFragment : Fragment() {
 
     private fun setupRecyclerView() {
         adapter = TimelineAdapter { memoryGroup ->
-            listener?.onMemoryClicked(memoryGroup.id)
+            timelineListener?.onMemoryClicked(memoryGroup.id)
         }
         binding.timelineRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.timelineRecyclerView.adapter = adapter

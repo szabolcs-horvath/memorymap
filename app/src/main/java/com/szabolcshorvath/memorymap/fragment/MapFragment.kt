@@ -73,7 +73,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var pendingSelectionId: Int? = null
     private var pendingSelectionLat: Double? = null
     private var pendingSelectionLng: Double? = null
-    private var listener: MapListener? = null
+    private var timelineListener: TimelineFragment.TimelineListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
 
     private val locationPermissionRequest = registerForActivityResult(
@@ -95,14 +95,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var isInitialZoomDone = false
     private var mapLoadTrace: Trace? = null
 
-    interface MapListener {
-        fun onMemoryClicked(id: Int)
-    }
-
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        if (context is MapListener) {
-            listener = context
+        if (context is TimelineFragment.TimelineListener) {
+            timelineListener = context
         }
     }
 
@@ -172,7 +168,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun setupOverlayRecyclerView() {
         overlayAdapter = MemoryOverlayAdapter { memoryId ->
-            listener?.onMemoryClicked(memoryId)
+            timelineListener?.onMemoryClicked(memoryId)
         }
         binding.rvMemories.apply {
             adapter = overlayAdapter
@@ -277,7 +273,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
+    private fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
         val currentStart = memoryMapViewModel.filterStartDate.value ?: memoryStart
         val currentEnd = memoryMapViewModel.filterEndDate.value ?: memoryEnd
 
@@ -514,7 +510,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     @AddTrace(name = "map_fragment_cluster_markerables", enabled = true)
-    fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
+    private fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
         val n = items.size
         val parent = IntArray(n) { it }
 

@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryListener
+import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryGroupListener
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
@@ -31,7 +31,7 @@ import kotlin.math.roundToInt
 
 class MemoryFragmentEditAdapter(
     private val fragments: MutableList<FragmentEditState>,
-    private val getListener: () -> AddMemoryListener?,
+    private val getListener: () -> AddMemoryGroupListener?,
     private val getChildFragmentManager: () -> FragmentManager,
     private val setActivePickingIndex: (Int) -> Unit,
     private val updateFragmentsUI: () -> Unit
