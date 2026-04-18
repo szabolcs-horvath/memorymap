@@ -74,11 +74,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
     private var allGroups: List<MemoryGroup> = emptyList()
 
-    // Parameters to handle initial selection
-    private var initialSelectedLat: Double? = null
-    private var initialSelectedLng: Double? = null
-    private var initialSelectedId: Int? = null
-
     private var permissionDenied = false
     private var isInitialZoomDone = false
     private var mapLoadTrace: Trace? = null
@@ -139,7 +134,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     Triple(start, end, label)
                 }.collect { (start, end, label) ->
                     updateDateRangeButtonText(start, end, label)
-                    updateMapMarkers(adjustCamera = true)
                 }
             }
         }
@@ -175,6 +169,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
             val (start, end) = selectedOption.dateRangeProvider(LocalDate.now())
             memoryMapViewModel.updateDateFilter(start, end, selectedOption.label)
+            viewLifecycleOwner.lifecycleScope.launch {
+                updateMapMarkers(adjustCamera = true)
+            }
             true
         }
         popup.show()
@@ -202,6 +199,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val newEnd = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
 
             memoryMapViewModel.updateDateFilter(newStart, newEnd, null)
+            viewLifecycleOwner.lifecycleScope.launch {
+                updateMapMarkers(adjustCamera = true)
+            }
         }
         picker.show(childFragmentManager, picker.toString())
     }
@@ -244,10 +244,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
                 moveToLocationAndSelectMarker(lat, lng, memory)
             }
-        } else {
-            initialSelectedLat = lat
-            initialSelectedLng = lng
-            initialSelectedId = id
         }
     }
 
@@ -352,11 +348,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
-        if (hasLocationPermission() && initialZoomAndCoordinatesNotReady()) {
+        if (hasLocationPermission() && !isInitialZoomDone) {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val googleMap = mMap
-                if (location != null && googleMap != null && initialZoomAndCoordinatesNotReady()) {
+                if (location != null && googleMap != null && !isInitialZoomDone) {
                     isInitialZoomDone = true
                     val latLng = LatLng(location.latitude, location.longitude)
                     googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM))
@@ -364,8 +360,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
         }
     }
-
-    private fun initialZoomAndCoordinatesNotReady(): Boolean = !isInitialZoomDone && (initialSelectedLat == null || initialSelectedLng == null)
 
     private fun showMemoryOverlay(marker: Marker) {
         selectedMarker = marker
