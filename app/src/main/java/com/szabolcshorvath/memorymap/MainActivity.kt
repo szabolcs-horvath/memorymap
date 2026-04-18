@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.room.withTransaction
@@ -76,10 +77,15 @@ class MainActivity :
 
             supportFragmentManager.beginTransaction()
                 .add(R.id.fragment_container, mapFragment, MapFragment.TAG)
+                .setMaxLifecycle(mapFragment, Lifecycle.State.RESUMED)
                 .add(R.id.fragment_container, timelineFragment, TimelineFragment.TAG).hide(timelineFragment)
+                .setMaxLifecycle(timelineFragment, Lifecycle.State.CREATED)
                 .add(R.id.fragment_container, addMemoryFragment, AddMemoryGroupFragment.TAG).hide(addMemoryFragment)
+                .setMaxLifecycle(addMemoryFragment, Lifecycle.State.CREATED)
                 .add(R.id.fragment_container, pickLocationFragment, PickLocationFragment.TAG).hide(pickLocationFragment)
+                .setMaxLifecycle(pickLocationFragment, Lifecycle.State.CREATED)
                 .add(R.id.fragment_container, settingsFragment, SettingsFragment.TAG).hide(settingsFragment)
+                .setMaxLifecycle(settingsFragment, Lifecycle.State.CREATED)
                 .commit()
         } else {
             mapFragment = supportFragmentManager.findFragmentByTag(MapFragment.TAG) as? MapFragment ?: MapFragment()
@@ -122,10 +128,12 @@ class MainActivity :
         // This ensures that even if we just popped the backstack, everything is reset
         supportFragmentManager.fragments.forEach { fragment ->
             transaction.hide(fragment)
+            transaction.setMaxLifecycle(fragment, Lifecycle.State.CREATED)
         }
 
         // 3. Show the one we want
         transaction.show(targetFragment)
+        transaction.setMaxLifecycle(targetFragment, Lifecycle.State.RESUMED)
         transaction.commit()
     }
 
@@ -223,10 +231,12 @@ class MainActivity :
 
         val transaction = supportFragmentManager.beginTransaction()
             .add(R.id.fragment_container, fragment, MediaViewerFragment.TAG)
+            .setMaxLifecycle(fragment, Lifecycle.State.RESUMED)
             .addToBackStack(MediaViewerFragment.TAG)
 
         if (memoryPagerFragment != null && memoryPagerFragment.isVisible) {
             transaction.hide(memoryPagerFragment)
+            transaction.setMaxLifecycle(memoryPagerFragment, Lifecycle.State.CREATED)
         }
 
         transaction.commit()
@@ -263,7 +273,9 @@ class MainActivity :
 
         supportFragmentManager.beginTransaction()
             .hide(addMemoryFragment) // Specifically hide the caller
+            .setMaxLifecycle(addMemoryFragment, Lifecycle.State.CREATED)
             .show(pickLocationFragment)
+            .setMaxLifecycle(pickLocationFragment, Lifecycle.State.RESUMED)
             .addToBackStack(PickLocationFragment.TAG) // Use the TAG here
             .commit()
     }

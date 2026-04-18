@@ -49,6 +49,7 @@ import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -75,6 +76,8 @@ class SettingsFragment : Fragment() {
 
     private var savePresetsOrderJob: Job? = null
     private var allPresets: List<HSVPreset> = emptyList()
+    private var backupsLoadedForEmail: String? = null
+    private var lastLoadedBackups: List<DriveFile> = emptyList()
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -154,6 +157,17 @@ class SettingsFragment : Fragment() {
             if (email != null) {
                 setLoadingState(true, "Starting backup...")
                 requestDriveAuthorization(true)
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                requireContext().dataStore.data
+                    .map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }
+                    .distinctUntilChanged()
+                    .collect { email ->
+                        updateUI(email)
+                    }
             }
         }
     }
@@ -507,18 +521,12 @@ class SettingsFragment : Fragment() {
         binding.btnSignOut.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 googleAuthManager.signOut()
+                backupsLoadedForEmail = null
                 updateUI(null)
+                requireContext().dataStore.edit { preferences ->
+                    preferences.remove(PreferencesKeys.USER_EMAIL_KEY)
+                }
             }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewLifecycleOwner.lifecycleScope.launch {
-            val email = requireContext().dataStore.data
-                .map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }
-                .firstOrNull()
-            updateUI(email)
         }
     }
 
@@ -607,18 +615,28 @@ class SettingsFragment : Fragment() {
 
     private fun updateUI(email: String?) {
         val binding = _binding ?: return
+        val alreadyLoaded = email != null && backupsLoadedForEmail == email
+
         with(binding) {
             if (email != null) {
                 btnGoogleSignIn.visibility = View.GONE
                 backupControls.visibility = View.VISIBLE
                 tvAccountName.text = "Signed in as: $email"
                 tvAccountName.tag = email
-                loadBackups(email)
+                if (!alreadyLoaded || backupAdapter.itemCount == 0) {
+                    if (alreadyLoaded && lastLoadedBackups.isNotEmpty()) {
+                        backupAdapter.submitList(lastLoadedBackups)
+                    } else {
+                        loadBackups(email)
+                    }
+                }
             } else {
                 btnGoogleSignIn.visibility = View.VISIBLE
                 backupControls.visibility = View.GONE
                 tvAccountName.tag = null
-                backupAdapter.updateBackups(emptyList())
+                backupsLoadedForEmail = null
+                lastLoadedBackups = emptyList()
+                backupAdapter.submitList(emptyList())
             }
         }
     }
@@ -700,7 +718,9 @@ class SettingsFragment : Fragment() {
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val backups = backupManager.listBackups(credential)
-                backupAdapter.updateBackups(backups)
+                backupAdapter.submitList(backups)
+                backupsLoadedForEmail = email
+                lastLoadedBackups = backups
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to list backups", e)
             } finally {

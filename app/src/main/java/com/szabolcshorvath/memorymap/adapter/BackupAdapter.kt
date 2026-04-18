@@ -60,10 +60,6 @@ class BackupAdapter(
         holder.bind(getItem(position))
     }
 
-    fun updateBackups(newBackups: List<File>) {
-        submitList(newBackups)
-    }
-
     fun setButtonsEnabled(enabled: Boolean) {
         if (buttonsEnabled != enabled) {
             buttonsEnabled = enabled
