@@ -75,6 +75,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
                         viewLifecycleOwner.lifecycleScope.launch {
                             try {
+                                setConfirmButtonLoading(true)
                                 val response = placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
                                     sessionToken = sessionTokenFromIntent
                                 }
@@ -88,6 +89,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error fetching place details: ${e.message}", e)
+                                setConfirmButtonLoading(false)
                             }
                         }
                     }
@@ -166,14 +168,14 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         googleMap.setOnMapClickListener { latLng ->
             selectedPlaceName = null
             selectedAddress = null
-            updateSelectedLocation(latLng)
+            updateSelectedLocation(latLng, isLoading = true)
             reverseGeocode(latLng)
         }
 
         googleMap.setOnPoiClickListener { poi ->
             val placeId = poi.placeId
             val poiLatLng = poi.latLng
-            updateSelectedLocation(poiLatLng)
+            updateSelectedLocation(poiLatLng, isLoading = true)
 
             val placesClient = Places.createClient(requireContext())
             viewLifecycleOwner.lifecycleScope.launch {
@@ -192,6 +194,8 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     // Fallback to reverse geocoding for address if fetch fails
                     if (poiLatLng.latitude == selectedLat && poiLatLng.longitude == selectedLng) {
                         reverseGeocode(poiLatLng)
+                    } else {
+                        setConfirmButtonLoading(false)
                     }
                 }
             }
@@ -233,6 +237,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                                 selectedAddress = address.getAddressLine(0)
                                 updateSelectedLocation(latLng, selectedPlaceName)
                             }
+                        } else {
+                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                                setConfirmButtonLoading(false)
+                            }
                         }
                     }
                 } else {
@@ -255,12 +263,19 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                             selectedAddress = address.getAddressLine(0)
                             updateSelectedLocation(latLng, selectedPlaceName)
                         }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            setConfirmButtonLoading(false)
+                        }
                     }
                 }
             } catch (e: Exception) {
                 when (e) {
                     is IllegalArgumentException,
                     is IOException -> Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
+                }
+                withContext(Dispatchers.Main) {
+                    setConfirmButtonLoading(false)
                 }
             }
         }
@@ -274,16 +289,32 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         map.setPadding(0, topPadding, 0, bottomPadding)
     }
 
-    private fun updateSelectedLocation(latLng: LatLng, title: String? = null) {
+    private fun updateSelectedLocation(latLng: LatLng, title: String? = null, isLoading: Boolean = false) {
         val map = mMap ?: return
         map.clear()
+        val markerTitle = when {
+            isLoading -> "Loading details…"
+            title != null -> title
+            else -> "Selected Location"
+        }
         map.addMarker(
             MarkerOptions()
                 .position(latLng)
-                .title(title ?: "Selected Location")
+                .title(markerTitle)
         )?.showInfoWindow()
         selectedLat = latLng.latitude
         selectedLng = latLng.longitude
+
+        setConfirmButtonLoading(isLoading)
+    }
+
+    private fun setConfirmButtonLoading(isLoading: Boolean) {
+        binding.confirmButton.isEnabled = !isLoading
+        binding.confirmButton.text = if (isLoading) {
+            "Fetching location…"
+        } else {
+            "Confirm Location"
+        }
     }
 
     private fun requestLocationPermissionIfNeeded() {
@@ -318,7 +349,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 val map = mMap
                 if (location != null && map != null) {
                     val latLng = LatLng(location.latitude, location.longitude)
-                    updateSelectedLocation(latLng)
+                    updateSelectedLocation(latLng, isLoading = true)
                     reverseGeocode(latLng)
                     map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
                 }
