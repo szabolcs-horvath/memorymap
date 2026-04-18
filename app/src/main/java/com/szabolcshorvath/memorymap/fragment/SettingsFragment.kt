@@ -304,9 +304,8 @@ class SettingsFragment : Fragment() {
         val saturation = binding.saturationSlider.value
         val brightness = binding.brightnessSlider.value
 
+        val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
-
             val newPreset = HSVPreset(
                 hue = hue,
                 saturation = saturation,
