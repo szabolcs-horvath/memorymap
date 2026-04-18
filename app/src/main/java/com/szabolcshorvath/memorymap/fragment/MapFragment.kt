@@ -68,6 +68,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var selectedMemoryId: Int? = null
     private var selectedMarkerPosition: LatLng? = null
     private val markerMap = mutableMapOf<String, Marker>()
+    private var pendingSelectionId: Int? = null
+    private var pendingSelectionLat: Double? = null
+    private var pendingSelectionLng: Double? = null
     private var listener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
 
@@ -237,13 +240,22 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
-        val googleMap = mMap
-        if (googleMap != null) {
-            val memory = allGroups.find { it.id == id }
-            if (memory != null) {
-                updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
-                moveToLocationAndSelectMarker(lat, lng, memory)
-            }
+        val memory = allGroups.find { it.id == id } ?: return
+        
+        pendingSelectionId = id
+        pendingSelectionLat = lat
+        pendingSelectionLng = lng
+
+        val oldStart = memoryMapViewModel.filterStartDate.value
+        val oldEnd = memoryMapViewModel.filterEndDate.value
+        
+        updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
+        
+        if (oldStart == memoryMapViewModel.filterStartDate.value && 
+            oldEnd == memoryMapViewModel.filterEndDate.value) {
+            // Filter didn't change, we can try to select immediately
+            moveToLocationAndSelectMarker(lat, lng, memory)
+            pendingSelectionId = null
         }
     }
 
@@ -438,6 +450,22 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     }
                     boundsBuilder.include(marker.position)
                     markersCount++
+                }
+            }
+
+            // Handle pending selection if any
+            pendingSelectionId?.let { pId ->
+                if (filteredItems.any { it.groupId == pId }) {
+                    val pLat = pendingSelectionLat ?: 0.0
+                    val pLng = pendingSelectionLng ?: 0.0
+                    allGroups.find { it.id == pId }?.let { memory ->
+                        val key = "${memory.id}|$pLat|$pLng"
+                        val marker = markerMap[key] ?: markerMap[pId.toString()]
+                        if (marker != null) {
+                            moveToLocationAndSelectMarker(pLat, pLng, memory)
+                        }
+                    }
+                    pendingSelectionId = null
                 }
             }
 
