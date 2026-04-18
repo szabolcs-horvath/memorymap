@@ -166,29 +166,30 @@ class MainActivity :
     }
 
     private fun setupNavigationTracing() {
-        supportFragmentManager.registerFragmentLifecycleCallbacks(object : FragmentManager.FragmentLifecycleCallbacks() {
-            override fun onFragmentViewCreated(fm: FragmentManager, f: Fragment, v: View, savedInstanceState: Bundle?) {
-                val tag = f.tag
+        supportFragmentManager.registerFragmentLifecycleCallbacks(
+            object : FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentViewCreated(fm: FragmentManager, f: Fragment, v: View, savedInstanceState: Bundle?) {
+                    val tag = f.tag
 
-                // Only measure if this fragment matches the one we just triggered navigation for
-                if (tag != null && tag == pendingTraceTag) {
-
-                    // The View exists, but isn't rendered yet.
-                    // We wait for the PreDraw pass which happens right before pixels are sent to the GPU.
-                    v.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-                        override fun onPreDraw(): Boolean {
-                            v.viewTreeObserver.removeOnPreDrawListener(this)
-                            fragmentNavigationTrace?.stop()
-                            fragmentNavigationTrace = null
-                            pendingTraceTag = null
-                            return true
-                        }
-                    })
+                    // Only measure if this fragment matches the one we just triggered navigation for
+                    if (tag != null && tag == pendingTraceTag) {
+                        // The View exists, but isn't rendered yet.
+                        // We wait for the PreDraw pass which happens right before pixels are sent to the GPU.
+                        v.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+                            override fun onPreDraw(): Boolean {
+                                v.viewTreeObserver.removeOnPreDrawListener(this)
+                                fragmentNavigationTrace?.stop()
+                                fragmentNavigationTrace = null
+                                pendingTraceTag = null
+                                return true
+                            }
+                        })
+                    }
                 }
-            }
-        }, false)
+            },
+            false
+        )
     }
-
 
     private fun setupBackPress() {
         onBackPressedDispatcher.addCallback(
