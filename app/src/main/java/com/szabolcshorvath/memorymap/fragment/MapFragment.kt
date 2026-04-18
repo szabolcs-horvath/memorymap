@@ -73,8 +73,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var pendingSelectionId: Int? = null
     private var pendingSelectionLat: Double? = null
     private var pendingSelectionLng: Double? = null
-    private var timelineListener: TimelineFragment.TimelineListener? = null
+    private var mapListener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
+
+    interface MapListener {
+        fun onMemoryClicked(id: Int)
+    }
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -97,8 +101,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        if (context is TimelineFragment.TimelineListener) {
-            timelineListener = context
+        if (context is MapListener) {
+            mapListener = context
         }
     }
 
@@ -168,7 +172,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun setupOverlayRecyclerView() {
         overlayAdapter = MemoryOverlayAdapter { memoryId ->
-            timelineListener?.onMemoryClicked(memoryId)
+            mapListener?.onMemoryClicked(memoryId)
         }
         binding.rvMemories.apply {
             adapter = overlayAdapter

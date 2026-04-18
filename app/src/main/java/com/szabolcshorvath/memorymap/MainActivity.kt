@@ -49,6 +49,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "go
 
 class MainActivity :
     AppCompatActivity(),
+    MapFragment.MapListener,
     TimelineFragment.TimelineListener,
     MemoryFragment.MemoryFragmentListener,
     AddMemoryGroupFragment.AddMemoryGroupListener,
