@@ -49,6 +49,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private var pickLocationListener: PickLocationListener? = null
 
     private var permissionDenied = false
+    private var activeAutocompletePlaceId: String? = null
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -70,15 +71,27 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 when (result.resultCode) {
                     PlaceAutocompleteActivity.RESULT_OK -> {
                         val prediction = PlaceAutocomplete.getPredictionFromIntent(intent)!!
+                        val requestedPlaceId = prediction.placeId
                         val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
                         val placesClient = Places.createClient(requireContext())
+
+                        // Invalidate any ongoing map/POI selection or other autocomplete requests
+                        activeAutocompletePlaceId = requestedPlaceId
+                        selectedLat = null
+                        selectedLng = null
+                        selectedPlaceName = null
+                        selectedAddress = null
 
                         viewLifecycleOwner.lifecycleScope.launch {
                             try {
                                 setConfirmButtonLoading(true)
-                                val response = placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
+                                val response = placesClient.awaitFetchPlace(requestedPlaceId, placeFields) {
                                     sessionToken = sessionTokenFromIntent
                                 }
+
+                                // Race condition check: Only proceed if this is still the active request
+                                if (activeAutocompletePlaceId != requestedPlaceId) return@launch
+
                                 val place = response.place
                                 val latLng = place.location
                                 if (latLng != null) {
@@ -88,11 +101,15 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                                     mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
                                 } else {
                                     Log.e(TAG, "Fetched place has no location")
-                                    setConfirmButtonLoading(false)
+                                    if (activeAutocompletePlaceId == requestedPlaceId) {
+                                        setConfirmButtonLoading(false)
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error fetching place details: ${e.message}", e)
-                                setConfirmButtonLoading(false)
+                                if (activeAutocompletePlaceId == requestedPlaceId) {
+                                    setConfirmButtonLoading(false)
+                                }
                             }
                         }
                     }
@@ -197,8 +214,6 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     // Fallback to reverse geocoding for address if fetch fails
                     if (poiLatLng.latitude == selectedLat && poiLatLng.longitude == selectedLng) {
                         reverseGeocode(poiLatLng)
-                    } else {
-                        setConfirmButtonLoading(false)
                     }
                 }
             }
@@ -234,6 +249,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         if (addresses.isNotEmpty()) {
                             val address = addresses.first()
                             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                                // Re-verify on the Main thread before updating UI
+                                if (requestLatLng.latitude != selectedLat || requestLatLng.longitude != selectedLng) {
+                                    return@launch
+                                }
                                 if (selectedPlaceName == null) {
                                     selectedPlaceName = address.featureName ?: address.thoroughfare
                                 }
@@ -242,7 +261,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                             }
                         } else {
                             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                                setConfirmButtonLoading(false)
+                                if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
+                                    setConfirmButtonLoading(false)
+                                }
                             }
                         }
                     }
@@ -260,15 +281,19 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     if (!addresses.isNullOrEmpty()) {
                         val address = addresses.first()
                         withContext(Dispatchers.Main) {
-                            if (selectedPlaceName == null) {
-                                selectedPlaceName = address.featureName ?: address.thoroughfare
+                            if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
+                                if (selectedPlaceName == null) {
+                                    selectedPlaceName = address.featureName ?: address.thoroughfare
+                                }
+                                selectedAddress = address.getAddressLine(0)
+                                updateSelectedLocation(latLng, selectedPlaceName)
                             }
-                            selectedAddress = address.getAddressLine(0)
-                            updateSelectedLocation(latLng, selectedPlaceName)
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            setConfirmButtonLoading(false)
+                            if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
+                                setConfirmButtonLoading(false)
+                            }
                         }
                     }
                 }
@@ -278,7 +303,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     is IOException -> Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
                 }
                 withContext(Dispatchers.Main) {
-                    setConfirmButtonLoading(false)
+                    if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
+                        setConfirmButtonLoading(false)
+                    }
                 }
             }
         }
@@ -293,6 +320,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateSelectedLocation(latLng: LatLng, title: String? = null, isLoading: Boolean = false) {
+        activeAutocompletePlaceId = null
         val map = mMap ?: return
         map.clear()
         val markerTitle = when {
@@ -346,6 +374,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
+        activeAutocompletePlaceId = null
         if (hasLocationPermission()) {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
@@ -361,6 +390,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     fun clearSelection() {
+        activeAutocompletePlaceId = null
         selectedLat = null
         selectedLng = null
         selectedPlaceName = null
