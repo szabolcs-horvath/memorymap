@@ -51,6 +51,7 @@ import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -145,7 +146,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Observe Filtered Data
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                memoryMapViewModel.filteredMarkerables.collect { markerables ->
+                memoryMapViewModel.filteredMarkerables.collectLatest { markerables ->
                     updateMapMarkers(markerables)
                 }
             }
