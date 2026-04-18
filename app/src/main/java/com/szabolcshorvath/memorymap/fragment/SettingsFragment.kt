@@ -843,7 +843,9 @@ class SettingsFragment : Fragment() {
                 }
                 if (success) {
                     memoryMapViewModel.refreshDatabase()
-                    LocalMediaUtil.verifyAndFixMediaItems(requireContext(), memoryMapViewModel.getMemoryGroupDao())
+                    withContext(Dispatchers.IO) {
+                        LocalMediaUtil.verifyAndFixMediaItems(requireContext(), memoryMapViewModel.getMemoryGroupDao())
+                    }
                     Toast.makeText(requireContext(), "Restore successful", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(requireContext(), "Restore failed", Toast.LENGTH_SHORT).show()
