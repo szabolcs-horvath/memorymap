@@ -9,6 +9,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.DiffUtil
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryPagerBinding
@@ -22,6 +23,7 @@ class MemoryPagerFragment : Fragment() {
     private var initialMemoryId: Int = -1
     private var memoryIds: List<Int> = emptyList()
     private var isInitialSetupDone = false
+    private var pagerAdapter: MemoryPagerAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +40,9 @@ class MemoryPagerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        pagerAdapter = MemoryPagerAdapter(this)
+        binding.memoryViewPager.adapter = pagerAdapter
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 memoryMapViewModel.allGroups.collect { groups ->
@@ -53,9 +58,7 @@ class MemoryPagerFragment : Fragment() {
     }
 
     private fun updatePager() {
-        val binding = _binding ?: return
-        val adapter = MemoryPagerAdapter(this, memoryIds)
-        binding.memoryViewPager.adapter = adapter
+        pagerAdapter?.submitList(memoryIds)
 
         if (!isInitialSetupDone) {
             val initialPosition = memoryIds.indexOf(initialMemoryId)
@@ -69,15 +72,35 @@ class MemoryPagerFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        pagerAdapter = null
     }
 
-    private class MemoryPagerAdapter(fragment: Fragment, private val memoryIds: List<Int>) :
+    private class MemoryPagerAdapter(fragment: Fragment) :
         FragmentStateAdapter(fragment) {
+
+        private var memoryIds: List<Int> = emptyList()
+
+        fun submitList(newIds: List<Int>) {
+            val diffCallback = object : DiffUtil.Callback() {
+                override fun getOldListSize() = memoryIds.size
+                override fun getNewListSize() = newIds.size
+                override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) = memoryIds[oldItemPosition] == newIds[newItemPosition]
+                override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) = memoryIds[oldItemPosition] == newIds[newItemPosition]
+            }
+            val diffResult = DiffUtil.calculateDiff(diffCallback)
+            memoryIds = newIds
+            diffResult.dispatchUpdatesTo(this)
+        }
+
         override fun getItemCount(): Int = memoryIds.size
 
         override fun createFragment(position: Int): Fragment {
             return MemoryFragment.newInstance(memoryIds[position])
         }
+
+        override fun getItemId(position: Int): Long = memoryIds[position].toLong()
+
+        override fun containsItem(itemId: Long): Boolean = memoryIds.contains(itemId.toInt())
     }
 
     companion object {
