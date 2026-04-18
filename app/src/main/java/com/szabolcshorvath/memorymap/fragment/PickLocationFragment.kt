@@ -73,7 +73,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
                         val placesClient = Places.createClient(requireContext())
 
-                        lifecycleScope.launch {
+                        viewLifecycleOwner.lifecycleScope.launch {
                             try {
                                 val response = placesClient.awaitFetchPlace(prediction.placeId, placeFields) {
                                     sessionToken = sessionTokenFromIntent
@@ -176,7 +176,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             updateSelectedLocation(poiLatLng)
 
             val placesClient = Places.createClient(requireContext())
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val response = placesClient.awaitFetchPlace(placeId, placeFields)
                     val place = response.place
@@ -212,7 +212,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val requestLatLng = latLng
         val context = context ?: return
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val geocoder = Geocoder(context, Locale.getDefault())
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -226,7 +226,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
                         if (addresses.isNotEmpty()) {
                             val address = addresses.first()
-                            lifecycleScope.launch(Dispatchers.Main) {
+                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
                                 if (selectedPlaceName == null) {
                                     selectedPlaceName = address.featureName ?: address.thoroughfare
                                 }

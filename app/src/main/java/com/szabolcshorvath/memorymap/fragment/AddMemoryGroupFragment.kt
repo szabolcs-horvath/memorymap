@@ -109,7 +109,7 @@ class AddMemoryGroupFragment : Fragment() {
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
             uris.let {
                 val contentResolver = requireContext().contentResolver
-                lifecycleScope.launch {
+                viewLifecycleOwner.lifecycleScope.launch {
                     val deviceId = currentDeviceId ?: InstallationIdentifier.getInstallationIdentifier(requireContext())
                     val newItems = it.mapNotNull { uri ->
                         if (selectedMedia.any { m -> m.uri == uri }) {
@@ -167,7 +167,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         setupRecyclerViews()
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             if (currentDeviceId == null) {
                 currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
             }
@@ -238,7 +238,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.clearButton.setOnClickListener { showClearConfirmationDialog() }
 
         binding.saveButton.setOnClickListener {
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 saveMemoryGroup()
             }
         }
@@ -478,7 +478,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     fun setEditMode(memoryId: Int) {
         editingMemoryId = memoryId
-        lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val groupWithMedia = memoryMapViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
             withContext(Dispatchers.Main) {
                 val binding = _binding ?: return@withContext

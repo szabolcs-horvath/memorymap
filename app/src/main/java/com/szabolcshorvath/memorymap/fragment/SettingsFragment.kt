@@ -506,7 +506,7 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btnSignOut.setOnClickListener {
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 googleAuthManager.signOut()
                 updateUI(null)
             }
@@ -515,7 +515,7 @@ class SettingsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val email = requireContext().dataStore.data
                 .map { preferences -> preferences[USER_EMAIL_KEY] }
                 .firstOrNull()
@@ -828,7 +828,7 @@ class SettingsFragment : Fragment() {
 
     private fun executeRestore(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             setLoadingState(true, "Starting restore...")
             try {
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
@@ -860,7 +860,7 @@ class SettingsFragment : Fragment() {
 
     private fun onDeleteBackup(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             setLoadingState(true, "Deleting backup...")
             try {
                 val scopes = listOf(DriveScopes.DRIVE_FILE)

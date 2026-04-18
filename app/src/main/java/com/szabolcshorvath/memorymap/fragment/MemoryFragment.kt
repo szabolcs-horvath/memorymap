@@ -81,7 +81,7 @@ class MemoryFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         backupManager = BackupManager(requireContext())
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
             setupRecyclerViews()
         }
