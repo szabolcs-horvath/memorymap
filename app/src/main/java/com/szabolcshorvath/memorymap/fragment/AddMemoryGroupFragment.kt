@@ -93,7 +93,7 @@ class AddMemoryGroupFragment : Fragment() {
     private var markerSaturation = DEFAULT_MARKER_SATURATION
     private var markerBrightness = DEFAULT_MARKER_BRIGHTNESS
 
-    private var listener: AddMemoryListener? = null
+    private var addMemoryGroupListener: AddMemoryGroupListener? = null
     private lateinit var backupManager: BackupManager
     private var editingMemoryId: Int? = null
     private lateinit var mediaAdapter: SelectedMediaAdapter
@@ -134,21 +134,15 @@ class AddMemoryGroupFragment : Fragment() {
             }
         }
 
-    interface AddMemoryListener {
+    interface AddMemoryGroupListener {
         fun onPickLocation(lat: Double, lng: Double)
-        fun onMemorySaved(
-            lat: Double,
-            lng: Double,
-            id: Int,
-            startDate: LocalDate,
-            endDate: LocalDate
-        )
+        fun onMemorySaved(id: Int)
     }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        if (context is AddMemoryListener) {
-            listener = context
+        if (context is AddMemoryGroupListener) {
+            addMemoryGroupListener = context
         }
     }
 
@@ -189,7 +183,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         binding.selectLocationButton.setOnClickListener {
             activePickingIndex = -1
-            listener?.onPickLocation(lat, lng)
+            addMemoryGroupListener?.onPickLocation(lat, lng)
         }
 
         binding.dateHeader.setOnClickListener { toggleDateSection() }
@@ -258,7 +252,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         fragmentsAdapter = MemoryFragmentEditAdapter(
             fragments,
-            { listener },
+            { addMemoryGroupListener },
             { childFragmentManager },
             { activePickingIndex = it },
             this::updateFragmentsUI
@@ -428,7 +422,7 @@ class AddMemoryGroupFragment : Fragment() {
             .setNegativeButton("Cancel", null).show()
     }
 
-    fun clearFields() {
+    private fun clearFields() {
         editingMemoryId = null
         lat = 0.0
         lng = 0.0
@@ -713,7 +707,7 @@ class AddMemoryGroupFragment : Fragment() {
             }
 
             backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
-            listener?.onMemorySaved(lat, lng, groupIdResult, effectiveStart.toLocalDate(), effectiveEnd.toLocalDate())
+            addMemoryGroupListener?.onMemorySaved(groupIdResult)
             clearFields()
         } catch (e: Exception) {
             Log.e(TAG, "Error saving memory group", e)

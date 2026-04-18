@@ -39,16 +39,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
 class MainActivity :
     AppCompatActivity(),
-    MapFragment.MapListener,
     TimelineFragment.TimelineListener,
     MemoryFragment.MemoryFragmentListener,
-    AddMemoryGroupFragment.AddMemoryListener,
+    AddMemoryGroupFragment.AddMemoryGroupListener,
     PickLocationFragment.PickLocationListener {
 
     private lateinit var binding: ActivityMainContainerBinding
@@ -281,13 +279,8 @@ class MainActivity :
             .commit()
     }
 
-    override fun onMemorySaved(lat: Double, lng: Double, id: Int, startDate: LocalDate, endDate: LocalDate) {
-        selectTab(R.id.navigation_map) {
-            lifecycleScope.launch {
-                mapFragment.updateDateFilterForMemory(startDate, endDate)
-                mapFragment.focusOnMemory(lat, lng, id)
-            }
-        }
+    override fun onMemorySaved(id: Int) {
+        onMemoryClicked(id)
     }
 
     override fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?) {

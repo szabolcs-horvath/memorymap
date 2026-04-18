@@ -45,7 +45,7 @@ class MemoryFragment : Fragment() {
     private var memoryId: Int = -1
     private var mediaItems: MutableList<MediaItem> = mutableListOf()
     private var fragmentItems: MutableList<MemoryFragmentEntity> = mutableListOf()
-    private var listener: MemoryFragmentListener? = null
+    private var memoryFragmentListener: MemoryFragmentListener? = null
     private var currentDeviceId: String? = null
     private lateinit var backupManager: BackupManager
     private var isFragmentsExpanded = true
@@ -64,7 +64,7 @@ class MemoryFragment : Fragment() {
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (context is MemoryFragmentListener) {
-            listener = context
+            memoryFragmentListener = context
         }
     }
 
@@ -99,7 +99,7 @@ class MemoryFragment : Fragment() {
         }
 
         binding.editButton.setOnClickListener {
-            listener?.onEditMemory(memoryId)
+            memoryFragmentListener?.onEditMemory(memoryId)
         }
 
         binding.deleteButton.setOnClickListener {
@@ -114,7 +114,7 @@ class MemoryFragment : Fragment() {
     private fun setupRecyclerViews() {
         mediaAdapter = MediaAdapter(currentDeviceId) { position ->
             val mediaPairs = ArrayList(mediaItems.map { it.uri to it.type.name })
-            listener?.onMediaClick(mediaPairs, position)
+            memoryFragmentListener?.onMediaClick(mediaPairs, position)
         }
         mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
@@ -125,7 +125,7 @@ class MemoryFragment : Fragment() {
         binding.mediaRecyclerView.adapter = mediaAdapter
 
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
-            listener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
+            memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
         }
         binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
@@ -300,11 +300,11 @@ class MemoryFragment : Fragment() {
         )
 
         binding.showOnTimelineButton.setOnClickListener {
-            listener?.onNavigateToTimeline(group.id)
+            memoryFragmentListener?.onNavigateToTimeline(group.id)
         }
 
         binding.showOnMapButton.setOnClickListener {
-            listener?.onNavigateToMap(group.latitude, group.longitude, group.id)
+            memoryFragmentListener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
     }
 
@@ -376,8 +376,8 @@ class MemoryFragment : Fragment() {
             memoryMapViewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
 
             withContext(Dispatchers.Main) {
-                listener?.onMemoryDeleted(groupWithMedia.group, groupWithMedia.mediaItems)
-                listener?.onBackFromMemory()
+                memoryFragmentListener?.onMemoryDeleted(groupWithMedia.group, groupWithMedia.mediaItems)
+                memoryFragmentListener?.onBackFromMemory()
             }
         }
     }

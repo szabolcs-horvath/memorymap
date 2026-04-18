@@ -46,7 +46,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private var selectedLng: Double? = null
     private var selectedPlaceName: String? = null
     private var selectedAddress: String? = null
-    private var listener: PickLocationListener? = null
+    private var pickLocationListener: PickLocationListener? = null
 
     private var permissionDenied = false
 
@@ -107,7 +107,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (context is PickLocationListener) {
-            listener = context
+            pickLocationListener = context
         }
     }
 
@@ -124,7 +124,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
         binding.confirmButton.setOnClickListener {
             if (selectedLat != null && selectedLng != null) {
-                listener?.onLocationConfirmed(
+                pickLocationListener?.onLocationConfirmed(
                     selectedLat!!,
                     selectedLng!!,
                     selectedPlaceName,
