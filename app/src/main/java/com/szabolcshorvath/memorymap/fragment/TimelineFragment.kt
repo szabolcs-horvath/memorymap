@@ -13,7 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
-import com.szabolcshorvath.memorymap.data.ViewModel
+import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
 import kotlinx.coroutines.launch
 
@@ -25,7 +25,7 @@ class TimelineFragment : Fragment() {
     private var listener: TimelineListener? = null
     private var pendingScrollMemoryId: Int? = null
 
-    private val viewModel: ViewModel by activityViewModels()
+    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
 
     interface TimelineListener {
         fun onMemoryClicked(id: Int)
@@ -49,7 +49,7 @@ class TimelineFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.allGroups.collect { groups ->
+                memoryMapViewModel.allGroups.collect { groups ->
                     val sortedGroups = groups.sortedByDescending { it.startDate }
                     adapter.updateData(sortedGroups) {
                         pendingScrollMemoryId?.let { id ->

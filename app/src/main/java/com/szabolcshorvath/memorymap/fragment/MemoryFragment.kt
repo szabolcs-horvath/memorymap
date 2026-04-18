@@ -21,7 +21,7 @@ import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.data.ViewModel
+import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -38,7 +38,7 @@ import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 class MemoryFragment : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
-    private val viewModel: ViewModel by activityViewModels()
+    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
     private lateinit var mediaAdapter: MediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentAdapter
     private var memoryId: Int = -1
@@ -89,7 +89,7 @@ class MemoryFragment : Fragment() {
         // Each fragment instance observes its own specific ID through a private flow
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.getGroupWithMedia(memoryId).collect { data ->
+                memoryMapViewModel.getGroupWithMedia(memoryId).collect { data ->
                     data?.let { displayDetails(it) }
                 }
             }
@@ -238,8 +238,8 @@ class MemoryFragment : Fragment() {
             item.copy(order = index + 1)
         }
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            viewModel.getMemoryGroupDao().updateMediaItems(updatedItems)
-            backupManager.triggerAutomaticBackup(viewModel.getDb())
+            memoryMapViewModel.getMemoryGroupDao().updateMediaItems(updatedItems)
+            backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
         }
     }
 
@@ -248,8 +248,8 @@ class MemoryFragment : Fragment() {
             item.copy(order = index + 1)
         }
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            viewModel.getMemoryGroupDao().updateFragments(updatedFragments)
-            backupManager.triggerAutomaticBackup(viewModel.getDb())
+            memoryMapViewModel.getMemoryGroupDao().updateFragments(updatedFragments)
+            backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
         }
     }
 
@@ -365,8 +365,8 @@ class MemoryFragment : Fragment() {
 
     private fun deleteMemory() {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val groupWithMedia = viewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) ?: return@launch
-            viewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
+            val groupWithMedia = memoryMapViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) ?: return@launch
+            memoryMapViewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
 
             withContext(Dispatchers.Main) {
                 listener?.onMemoryDeleted(groupWithMedia.group, groupWithMedia.mediaItems)
