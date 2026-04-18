@@ -89,8 +89,7 @@ class TimelineFragment : Fragment() {
         val binding = _binding ?: return
         val position = adapter.getPositionForId(memoryId)
         if (position != -1) {
-            (binding.timelineRecyclerView.layoutManager as? LinearLayoutManager)
-                ?.scrollToPositionWithOffset(position, 100)
+            (binding.timelineRecyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, SCROLL_TO_POSITION_OFFSET)
 
             binding.timelineRecyclerView.post {
                 val postBinding = _binding ?: return@post
@@ -121,5 +120,7 @@ class TimelineFragment : Fragment() {
 
     companion object {
         const val TAG = "TimelineFragment"
+
+        private const val SCROLL_TO_POSITION_OFFSET = 100
     }
 }
