@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 
-class ViewModel(application: Application) : AndroidViewModel(application) {
+class MemoryMapViewModel(application: Application) : AndroidViewModel(application) {
     private val dataStore = application.dataStore
 
     private val _dbFlow = MutableStateFlow(MemoryMapDatabase.getDatabase(application))

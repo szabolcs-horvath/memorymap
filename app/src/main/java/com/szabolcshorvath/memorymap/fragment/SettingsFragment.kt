@@ -40,7 +40,7 @@ import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
-import com.szabolcshorvath.memorymap.data.ViewModel
+import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
@@ -60,7 +60,7 @@ import com.google.api.services.drive.model.File as DriveFile
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
-    private val viewModel: ViewModel by activityViewModels()
+    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
     private lateinit var googleAuthManager: GoogleAuthManager
     private lateinit var backupManager: BackupManager
     private lateinit var startAuthorizationIntent: ActivityResultLauncher<IntentSenderRequest>
@@ -204,7 +204,7 @@ class SettingsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.allPresets.collect { presets ->
+                memoryMapViewModel.allPresets.collect { presets ->
                     allPresets = presets
                     colorPresetAdapter.submitList(presets) {
                         newlyAddedPresetId?.let { id ->
@@ -269,13 +269,13 @@ class SettingsFragment : Fragment() {
         binding.btnSavePresets.setOnClickListener {
             editingPreset?.let { preset ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    viewModel.getHSVPresetDao().insertPresets(listOf(preset))
+                    memoryMapViewModel.getHSVPresetDao().insertPresets(listOf(preset))
                     withContext(Dispatchers.Main) {
                         originalPreset = preset.copy()
                         editingPreset = preset.copy()
                         checkForChanges()
                         Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
-                        backupManager.triggerAutomaticBackup(viewModel.getDb())
+                        backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
                     }
                 }
             }
@@ -313,12 +313,12 @@ class SettingsFragment : Fragment() {
                 brightness = brightness,
                 order = nextOrder
             )
-            val ids = viewModel.getHSVPresetDao().insertPresets(listOf(newPreset))
+            val ids = memoryMapViewModel.getHSVPresetDao().insertPresets(listOf(newPreset))
 
             withContext(Dispatchers.Main) {
                 if (ids.isNotEmpty()) {
                     newlyAddedPresetId = ids[0].toInt()
-                    backupManager.triggerAutomaticBackup(viewModel.getDb())
+                    backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
                 }
             }
         }
@@ -338,14 +338,14 @@ class SettingsFragment : Fragment() {
 
     private fun deletePreset(preset: HSVPreset) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            viewModel.getHSVPresetDao().deletePreset(preset)
+            memoryMapViewModel.getHSVPresetDao().deletePreset(preset)
             withContext(Dispatchers.Main) {
                 if (editingPreset?.id == preset.id) {
                     clearPresetSelection()
                     updateVisualsFromSliders()
                 }
                 Toast.makeText(requireContext(), "Preset deleted", Toast.LENGTH_SHORT).show()
-                backupManager.triggerAutomaticBackup(viewModel.getDb())
+                backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
             }
         }
     }
@@ -599,10 +599,10 @@ class SettingsFragment : Fragment() {
         }
 
         savePresetsOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            viewModel.getHSVPresetDao().updatePresets(presets)
+            memoryMapViewModel.getHSVPresetDao().updatePresets(presets)
 
             withContext(Dispatchers.Main) {
-                backupManager.triggerAutomaticBackup(viewModel.getDb())
+                backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
             }
         }
     }
@@ -752,7 +752,7 @@ class SettingsFragment : Fragment() {
             if (isBackupRequested) {
                 isBackupRequested = false
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                val db = viewModel.getDb()
+                val db = memoryMapViewModel.getDb()
                 val success = backupManager.performBackup(credential, db, isAutomatic = false) { status ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.Main) {
@@ -842,8 +842,8 @@ class SettingsFragment : Fragment() {
                     }
                 }
                 if (success) {
-                    viewModel.refreshDatabase()
-                    LocalMediaUtil.verifyAndFixMediaItems(requireContext(), viewModel.getMemoryGroupDao())
+                    memoryMapViewModel.refreshDatabase()
+                    LocalMediaUtil.verifyAndFixMediaItems(requireContext(), memoryMapViewModel.getMemoryGroupDao())
                     Toast.makeText(requireContext(), "Restore successful", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(requireContext(), "Restore failed", Toast.LENGTH_SHORT).show()

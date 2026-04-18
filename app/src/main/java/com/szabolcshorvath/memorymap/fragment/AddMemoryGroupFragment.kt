@@ -39,7 +39,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
-import com.szabolcshorvath.memorymap.data.ViewModel
+import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -64,7 +64,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private var _binding: FragmentAddMemoryGroupBinding? = null
     private val binding get() = _binding!!
-    private val viewModel: ViewModel by activityViewModels()
+    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
 
     data class SelectedMedia(
         val uri: Uri,
@@ -180,7 +180,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.allPresets.collect { presets ->
+                memoryMapViewModel.allPresets.collect { presets ->
                     colorPresetAdapter.submitList(presets)
                     fragmentsAdapter.setHSVPresets(presets)
                 }
@@ -479,7 +479,7 @@ class AddMemoryGroupFragment : Fragment() {
     fun setEditMode(memoryId: Int) {
         editingMemoryId = memoryId
         lifecycleScope.launch(Dispatchers.IO) {
-            val groupWithMedia = viewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
+            val groupWithMedia = memoryMapViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
             withContext(Dispatchers.Main) {
                 val binding = _binding ?: return@withContext
                 groupWithMedia?.let { data ->
@@ -704,8 +704,8 @@ class AddMemoryGroupFragment : Fragment() {
             val appContext = context.applicationContext
 
             val groupIdResult = withContext(Dispatchers.IO) {
-                val dao = viewModel.getMemoryGroupDao()
-                viewModel.getDb().withTransaction {
+                val dao = memoryMapViewModel.getMemoryGroupDao()
+                memoryMapViewModel.getDb().withTransaction {
                     val groupId = saveMemoryGroup(dao, group)
                     saveMediaItems(dao, groupId, appContext)
                     saveMemoryFragments(dao, groupId)
@@ -713,7 +713,7 @@ class AddMemoryGroupFragment : Fragment() {
                 }
             }
 
-            backupManager.triggerAutomaticBackup(viewModel.getDb())
+            backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
             listener?.onMemorySaved(lat, lng, groupIdResult, effectiveStart.toLocalDate(), effectiveEnd.toLocalDate())
             clearFields()
         } catch (e: Exception) {

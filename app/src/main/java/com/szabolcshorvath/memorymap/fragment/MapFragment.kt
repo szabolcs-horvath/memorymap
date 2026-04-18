@@ -37,7 +37,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.ViewModel
+import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -70,7 +70,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var listener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
 
-    private val viewModel: ViewModel by activityViewModels()
+    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
     private var allGroups: List<MemoryGroup> = emptyList()
 
     // Parameters to handle initial selection
@@ -121,7 +121,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Observe Groups (needed for focusOnMemory lookup)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.allGroups.collect { groups ->
+                memoryMapViewModel.allGroups.collect { groups ->
                     this@MapFragment.allGroups = groups
                 }
             }
@@ -131,9 +131,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(
-                    viewModel.filterStartDate,
-                    viewModel.filterEndDate,
-                    viewModel.appliedFilterLabel
+                    memoryMapViewModel.filterStartDate,
+                    memoryMapViewModel.filterEndDate,
+                    memoryMapViewModel.appliedFilterLabel
                 ) { start, end, label ->
                     Triple(start, end, label)
                 }.collect { (start, end, label) ->
@@ -145,7 +145,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Observe Filtered Data
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.filteredMarkerables.collect { items ->
+                memoryMapViewModel.filteredMarkerables.collect { items ->
                     updateMapMarkers(items)
                 }
             }
@@ -172,7 +172,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         popup.setOnMenuItemClickListener { menuItem ->
             val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
             val (start, end) = selectedOption.dateRangeProvider(LocalDate.now())
-            viewModel.updateDateFilter(start, end, selectedOption.label)
+            memoryMapViewModel.updateDateFilter(start, end, selectedOption.label)
             true
         }
         popup.show()
@@ -182,8 +182,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
         builder.setTitleText("Select dates")
 
-        val currentStart = viewModel.filterStartDate.value
-        val currentEnd = viewModel.filterEndDate.value
+        val currentStart = memoryMapViewModel.filterStartDate.value
+        val currentEnd = memoryMapViewModel.filterEndDate.value
 
         if (currentStart != null && currentEnd != null) {
             val startMillis = currentStart.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
@@ -199,7 +199,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val newStart = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
             val newEnd = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
 
-            viewModel.updateDateFilter(newStart, newEnd, null)
+            memoryMapViewModel.updateDateFilter(newStart, newEnd, null)
         }
         picker.show(childFragmentManager, picker.toString())
     }
@@ -250,13 +250,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
-        val currentStart = viewModel.filterStartDate.value ?: memoryStart
-        val currentEnd = viewModel.filterEndDate.value ?: memoryEnd
+        val currentStart = memoryMapViewModel.filterStartDate.value ?: memoryStart
+        val currentEnd = memoryMapViewModel.filterEndDate.value ?: memoryEnd
 
         val newStart = if (memoryStart.isBefore(currentStart)) memoryStart else currentStart
         val newEnd = if (memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
 
-        viewModel.updateDateFilter(newStart, newEnd)
+        memoryMapViewModel.updateDateFilter(newStart, newEnd)
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -305,7 +305,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.filteredMarkerables.collect { markerables ->
+                memoryMapViewModel.filteredMarkerables.collect { markerables ->
                     updateMapMarkers(markerables)
                 }
             }
@@ -389,7 +389,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         trace("map_fragment_update_map_markers") {
             val googleMap = mMap ?: return@trace
 
-            val items = filteredItems ?: viewModel.filteredMarkerables.value
+            val items = filteredItems ?: memoryMapViewModel.filteredMarkerables.value
 
             val clusters = withContext(Dispatchers.Default) {
                 clusterMarkerables(items)
