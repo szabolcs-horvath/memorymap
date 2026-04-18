@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -74,6 +75,18 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var listener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
 
+    private val locationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
+            enableMyLocation()
+        } else {
+            permissionDenied = true
+        }
+    }
+
     private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
     private var allGroups: List<MemoryGroup> = emptyList()
 
@@ -97,6 +110,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMapsBinding.inflate(inflater, container, false)
         return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (hasLocationPermission()) {
+            enableMyLocation()
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -350,6 +370,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             googleMap.isMyLocationEnabled = true
             permissionDenied = false
             zoomToUserLocationIfPossible()
+        } else if (!permissionDenied) {
+            locationPermissionRequest.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
         }
     }
 
