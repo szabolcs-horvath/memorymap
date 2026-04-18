@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.util.DateFilterOption
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,12 +15,21 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class MemoryMapViewModel(application: Application) : AndroidViewModel(application) {
     private val dataStore = application.dataStore
 
     private val _dbFlow = MutableStateFlow(MemoryMapDatabase.getDatabase(application))
+
+    init {
+        viewModelScope.launch {
+            val defaultOption = DateFilterOption.getFromDataStore(dataStore)
+            val (start, end) = defaultOption.dateRangeProvider(LocalDate.now())
+            updateDateFilter(start, end, defaultOption.label)
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val allGroups = _dbFlow.flatMapLatest { db ->
