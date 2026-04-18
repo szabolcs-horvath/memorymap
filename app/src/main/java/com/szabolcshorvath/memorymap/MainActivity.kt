@@ -174,7 +174,7 @@ class MainActivity :
                 val lastVersion = prefs[LAST_APP_VERSION] ?: 0L
 
                 if (currentVersion > lastVersion) {
-                    launch {
+                    launch(Dispatchers.IO) {
                         LocalMediaUtil.verifyAndFixMediaItems(applicationContext, memoryMapViewModel.getMemoryGroupDao())
                     }
                     dataStore.edit { it[LAST_APP_VERSION] = currentVersion }
