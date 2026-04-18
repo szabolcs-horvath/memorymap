@@ -96,8 +96,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var mapLoadTrace: Trace? = null
 
     interface MapListener {
-        fun onNavigateToTimeline(memoryId: Int)
-        fun startAddMemoryFlow(lat: Double, lng: Double)
         fun onMemoryClicked(id: Int)
     }
 
@@ -309,10 +307,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         googleMap.setOnMarkerClickListener { marker ->
             showMemoryOverlay(marker)
             true
-        }
-
-        googleMap.setOnMapLongClickListener { latLng ->
-            listener?.startAddMemoryFlow(latLng.latitude, latLng.longitude)
         }
 
         googleMap.setOnMapClickListener {

@@ -140,6 +140,21 @@ class MainActivity :
         transaction.commit()
     }
 
+    private fun selectTab(itemId: Int, action: (() -> Unit)? = null) {
+        val isAlreadySelected = binding.bottomNavigation.selectedItemId == itemId
+        binding.bottomNavigation.selectedItemId = itemId
+
+        // If the selection didn't change, the listener wasn't triggered,
+        // so we manually call navigateToTab to ensure backstack is cleared and fragment is shown.
+        if (isAlreadySelected) {
+            navigateToTab(itemId)
+        }
+
+        action?.let {
+            binding.root.post(it)
+        }
+    }
+
     private fun setupBackPress() {
         onBackPressedDispatcher.addCallback(
             this,
@@ -155,7 +170,7 @@ class MainActivity :
                     val currentTabId = binding.bottomNavigation.selectedItemId
                     if (currentTabId != R.id.navigation_map) {
                         // If not on Home tab, always go back to Home tab
-                        binding.bottomNavigation.selectedItemId = R.id.navigation_map
+                        selectTab(R.id.navigation_map)
                     } else {
                         // 3. We are on the Map tab: Exit the app
                         isEnabled = false // Disable this callback
@@ -212,14 +227,6 @@ class MainActivity :
         }
     }
 
-    override fun startAddMemoryFlow(lat: Double, lng: Double) {
-        addMemoryFragment.clearFields()
-        addMemoryFragment.updateLocation(lat, lng)
-
-        // Just trigger the UI selection; the logic follows automatically
-        binding.bottomNavigation.selectedItemId = R.id.navigation_add
-    }
-
     override fun onMemoryClicked(id: Int) {
         val fragment = MemoryPagerFragment.newInstance(id)
         supportFragmentManager.beginTransaction()
@@ -250,22 +257,13 @@ class MainActivity :
     }
 
     override fun onNavigateToTimeline(memoryId: Int) {
-        // 1. If we have a backstack (Detail views), clear it first
-        if (supportFragmentManager.backStackEntryCount > 0) {
-            supportFragmentManager.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-        }
-
-        // This triggers navigateToTab automatically via the listener
-        binding.bottomNavigation.selectedItemId = R.id.navigation_timeline
-
-        binding.root.post {
+        selectTab(R.id.navigation_timeline) {
             timelineFragment.scrollToAndFlash(memoryId)
         }
     }
 
     override fun onNavigateToMap(lat: Double, lng: Double, id: Int) {
-        binding.bottomNavigation.selectedItemId = R.id.navigation_map
-        lifecycleScope.launch {
+        selectTab(R.id.navigation_map) {
             mapFragment.focusOnMemory(lat, lng, id)
         }
     }
@@ -284,11 +282,11 @@ class MainActivity :
     }
 
     override fun onMemorySaved(lat: Double, lng: Double, id: Int, startDate: LocalDate, endDate: LocalDate) {
-        binding.bottomNavigation.selectedItemId = R.id.navigation_map
-
-        lifecycleScope.launch {
-            mapFragment.updateDateFilterForMemory(startDate, endDate)
-            mapFragment.focusOnMemory(lat, lng, id)
+        selectTab(R.id.navigation_map) {
+            lifecycleScope.launch {
+                mapFragment.updateDateFilterForMemory(startDate, endDate)
+                mapFragment.focusOnMemory(lat, lng, id)
+            }
         }
     }
 
@@ -318,14 +316,9 @@ class MainActivity :
     }
 
     override fun onEditMemory(memoryId: Int) {
-        // 1. Clear any detail views (like the Pager) to return to the tab level
-        supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-
-        // 2. Switch to the Add tab (this triggers navigateToTab)
-        binding.bottomNavigation.selectedItemId = R.id.navigation_add
-
-        // 3. Set the mode
-        addMemoryFragment.setEditMode(memoryId)
+        selectTab(R.id.navigation_add) {
+            addMemoryFragment.setEditMode(memoryId)
+        }
     }
 
     companion object {
