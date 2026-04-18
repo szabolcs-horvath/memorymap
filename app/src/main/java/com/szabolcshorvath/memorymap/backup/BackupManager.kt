@@ -11,12 +11,12 @@ import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
-import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_FILE_NAME_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_METADATA_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
+import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -52,7 +52,7 @@ class BackupManager(private val context: Context) {
         withContext(Dispatchers.IO) {
             trace("backup_manager_trigger_automatic_backup") {
                 try {
-                    val email = context.dataStore.data.map { it[USER_EMAIL_KEY] }.firstOrNull() ?: return@withContext
+                    val email = context.dataStore.data.map { it[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull() ?: return@withContext
                     _backupEvents.emit(BackupEvent.STARTED)
                     val googleAuthManager = GoogleAuthManager(context)
                     val scopes = listOf(DriveScopes.DRIVE_FILE)

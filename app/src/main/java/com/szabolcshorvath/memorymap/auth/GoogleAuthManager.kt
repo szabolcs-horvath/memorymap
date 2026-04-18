@@ -9,7 +9,6 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
@@ -76,6 +75,5 @@ class GoogleAuthManager(private val context: Context) {
 
     companion object {
         const val TAG = "GoogleAuthManager"
-        val USER_EMAIL_KEY = stringPreferencesKey("user_email")
     }
 }
