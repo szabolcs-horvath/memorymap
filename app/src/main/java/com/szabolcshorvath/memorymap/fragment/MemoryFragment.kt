@@ -347,7 +347,9 @@ class MemoryFragment : Fragment() {
             }
         }.toMutableList()
 
-        val hasMissingMedia = LocalMediaUtil.hasMissingMedia(context, mediaItems)
+        val hasMissingMedia = withContext(Dispatchers.IO) {
+            LocalMediaUtil.hasMissingMedia(context, mediaItems)
+        }
         binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
         mediaAdapter.updateData(mediaItems.toList())
     }
