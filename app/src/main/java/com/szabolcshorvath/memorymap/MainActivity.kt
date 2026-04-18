@@ -3,11 +3,10 @@ package com.szabolcshorvath.memorymap
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import android.view.View
-import android.view.ViewTreeObserver
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.doOnPreDraw
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -169,22 +168,20 @@ class MainActivity :
     private fun setupNavigationTracing() {
         supportFragmentManager.registerFragmentLifecycleCallbacks(
             object : FragmentManager.FragmentLifecycleCallbacks() {
-                override fun onFragmentViewCreated(fm: FragmentManager, f: Fragment, v: View, savedInstanceState: Bundle?) {
+                override fun onFragmentResumed(fm: FragmentManager, f: Fragment) {
                     val tag = f.tag
+                    val view = f.view
 
                     // Only measure if this fragment matches the one we just triggered navigation for
-                    if (tag != null && tag == pendingTraceTag) {
+                    if (tag != null && tag == pendingTraceTag && view != null) {
                         // The View exists, but isn't rendered yet.
                         // We wait for the PreDraw pass which happens right before pixels are sent to the GPU.
-                        v.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-                            override fun onPreDraw(): Boolean {
-                                v.viewTreeObserver.removeOnPreDrawListener(this)
-                                fragmentNavigationTrace?.stop()
-                                fragmentNavigationTrace = null
-                                pendingTraceTag = null
-                                return true
-                            }
-                        })
+                        view.doOnPreDraw {
+                            fragmentNavigationTrace?.stop()
+                            fragmentNavigationTrace = null
+                            pendingTraceTag = null
+                            Log.d(TAG, "Fragment navigation trace stopped for $tag")
+                        }
                     }
                 }
             },
