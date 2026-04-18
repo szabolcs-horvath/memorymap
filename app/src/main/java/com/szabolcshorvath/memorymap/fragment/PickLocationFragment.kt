@@ -81,6 +81,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         selectedLng = null
                         selectedPlaceName = null
                         selectedAddress = null
+                        mMap?.clear()
 
                         viewLifecycleOwner.lifecycleScope.launch {
                             try {
@@ -301,6 +302,8 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 when (e) {
                     is IllegalArgumentException,
                     is IOException -> Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
+
+                    else -> Log.e(TAG, "Reverse geocoding failed for $latLng", e)
                 }
                 withContext(Dispatchers.Main) {
                     if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
