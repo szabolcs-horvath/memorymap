@@ -145,8 +145,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Observe Filtered Data
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                memoryMapViewModel.filteredMarkerables.collect { items ->
-                    updateMapMarkers(items)
+                memoryMapViewModel.filteredMarkerables.collect { markerables ->
+                    updateMapMarkers(markerables)
                 }
             }
         }
@@ -302,14 +302,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         binding.overlayCard.viewTreeObserver.addOnGlobalLayoutListener {
             setGoogleMapPadding()
         }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                memoryMapViewModel.filteredMarkerables.collect { markerables ->
-                    updateMapMarkers(markerables)
-                }
-            }
-        }
     }
 
     private fun hideMemoryOverlay() {
@@ -386,9 +378,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private suspend fun updateMapMarkers(filteredItems: List<Markerable>? = null, adjustCamera: Boolean = false) {
+        val googleMap = mMap ?: return
         trace("map_fragment_update_map_markers") {
-            val googleMap = mMap ?: return@trace
-
             val items = filteredItems ?: memoryMapViewModel.filteredMarkerables.value
 
             val clusters = withContext(Dispatchers.Default) {
