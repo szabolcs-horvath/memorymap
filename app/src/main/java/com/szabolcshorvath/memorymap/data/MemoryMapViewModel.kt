@@ -24,17 +24,17 @@ class MemoryMapViewModel(application: Application) : AndroidViewModel(applicatio
     @OptIn(ExperimentalCoroutinesApi::class)
     val allGroups = _dbFlow.flatMapLatest { db ->
         db.memoryGroupDao().getAllGroupsFlow()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val allFragments = _dbFlow.flatMapLatest { db ->
         db.memoryGroupDao().getAllFragmentsFlow()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val allPresets = _dbFlow.flatMapLatest { db ->
         db.hsvPresetDao().getAllPresetsFlow()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
 
     private val _filterStartDate = MutableStateFlow<LocalDate?>(null)
     val filterStartDate: StateFlow<LocalDate?> = _filterStartDate.asStateFlow()
@@ -47,7 +47,7 @@ class MemoryMapViewModel(application: Application) : AndroidViewModel(applicatio
 
     val showFragments = dataStore.data
         .map { it[MainActivity.SHOW_FRAGMENT_MARKERS] ?: false }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), false)
 
     val filteredMarkerables: StateFlow<List<Markerable>> = combine(
         allGroups,
@@ -80,7 +80,7 @@ class MemoryMapViewModel(application: Application) : AndroidViewModel(applicatio
 
             !itemStart.isBefore(effectiveStart) && !itemEnd.isAfter(effectiveEnd)
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
 
     fun getDb() = _dbFlow.value
     fun getMemoryGroupDao() = _dbFlow.value.memoryGroupDao()
@@ -99,5 +99,9 @@ class MemoryMapViewModel(application: Application) : AndroidViewModel(applicatio
         _filterStartDate.value = start
         _filterEndDate.value = end
         _appliedFilterLabel.value = label
+    }
+
+    companion object {
+        private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
     }
 }
