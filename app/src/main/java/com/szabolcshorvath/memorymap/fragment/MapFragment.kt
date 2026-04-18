@@ -241,18 +241,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         val memory = allGroups.find { it.id == id } ?: return
-        
+
         pendingSelectionId = id
         pendingSelectionLat = lat
         pendingSelectionLng = lng
 
         val oldStart = memoryMapViewModel.filterStartDate.value
         val oldEnd = memoryMapViewModel.filterEndDate.value
-        
+
         updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
-        
-        if (oldStart == memoryMapViewModel.filterStartDate.value && 
-            oldEnd == memoryMapViewModel.filterEndDate.value) {
+
+        if (oldStart == memoryMapViewModel.filterStartDate.value && oldEnd == memoryMapViewModel.filterEndDate.value) {
             // Filter didn't change, we can try to select immediately
             moveToLocationAndSelectMarker(lat, lng, memory)
             pendingSelectionId = null
