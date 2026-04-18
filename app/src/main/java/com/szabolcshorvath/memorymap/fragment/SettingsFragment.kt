@@ -32,12 +32,10 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
-import com.szabolcshorvath.memorymap.MainActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
-import com.szabolcshorvath.memorymap.auth.GoogleAuthManager.Companion.USER_EMAIL_KEY
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
@@ -471,7 +469,7 @@ class SettingsFragment : Fragment() {
                         viewLifecycleOwner.lifecycleScope.launch {
                             requireContext().dataStore.updateData {
                                 it.toMutablePreferences().also { preferences ->
-                                    preferences[USER_EMAIL_KEY] = email
+                                    preferences[PreferencesKeys.USER_EMAIL_KEY] = email
                                 }
                             }
                             updateUI(email)
@@ -518,7 +516,7 @@ class SettingsFragment : Fragment() {
         super.onResume()
         viewLifecycleOwner.lifecycleScope.launch {
             val email = requireContext().dataStore.data
-                .map { preferences -> preferences[USER_EMAIL_KEY] }
+                .map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }
                 .firstOrNull()
             updateUI(email)
         }
@@ -740,8 +738,8 @@ class SettingsFragment : Fragment() {
 
     private fun successfulAuthorization(scopes: List<String>) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val email =
-                requireContext().dataStore.data.map { preferences -> preferences[USER_EMAIL_KEY] }.firstOrNull() ?: (_binding?.tvAccountName?.tag as? String)
+            val email = requireContext().dataStore.data.map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull()
+                ?: (_binding?.tvAccountName?.tag as? String)
 
             if (email == null) {
                 setLoadingState(false)
