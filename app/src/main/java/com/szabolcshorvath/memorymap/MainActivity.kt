@@ -3,6 +3,8 @@ package com.szabolcshorvath.memorymap
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -10,12 +12,14 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.room.withTransaction
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.perf.metrics.Trace
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -33,6 +37,7 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +62,9 @@ class MainActivity :
     private lateinit var addMemoryFragment: AddMemoryGroupFragment
     private lateinit var pickLocationFragment: PickLocationFragment
     private lateinit var settingsFragment: SettingsFragment
+
+    private var fragmentNavigationTrace: Trace? = null
+    private var pendingTraceTag: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -96,6 +104,7 @@ class MainActivity :
 
         setupBottomNavigationBar()
         setupBackPress()
+        setupNavigationTracing()
         lifecycleScope.launch {
             checkAppStatus()
         }
@@ -116,6 +125,9 @@ class MainActivity :
             R.id.navigation_settings -> SettingsFragment.TAG
             else -> return
         }
+
+        pendingTraceTag = targetTag
+        fragmentNavigationTrace = PerfUtil.startTrace("main_activity_navigate_to_tab_$targetTag")
 
         // 1. If we have a backstack (Detail views), clear it first
         if (supportFragmentManager.backStackEntryCount > 0) {
@@ -152,6 +164,31 @@ class MainActivity :
             binding.root.post(it)
         }
     }
+
+    private fun setupNavigationTracing() {
+        supportFragmentManager.registerFragmentLifecycleCallbacks(object : FragmentManager.FragmentLifecycleCallbacks() {
+            override fun onFragmentViewCreated(fm: FragmentManager, f: Fragment, v: View, savedInstanceState: Bundle?) {
+                val tag = f.tag
+
+                // Only measure if this fragment matches the one we just triggered navigation for
+                if (tag != null && tag == pendingTraceTag) {
+
+                    // The View exists, but isn't rendered yet.
+                    // We wait for the PreDraw pass which happens right before pixels are sent to the GPU.
+                    v.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+                        override fun onPreDraw(): Boolean {
+                            v.viewTreeObserver.removeOnPreDrawListener(this)
+                            fragmentNavigationTrace?.stop()
+                            fragmentNavigationTrace = null
+                            pendingTraceTag = null
+                            return true
+                        }
+                    })
+                }
+            }
+        }, false)
+    }
+
 
     private fun setupBackPress() {
         onBackPressedDispatcher.addCallback(
