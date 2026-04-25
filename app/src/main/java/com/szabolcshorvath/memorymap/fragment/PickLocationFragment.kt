@@ -193,12 +193,14 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             selectedAddress = null
             updateSelectedLocation(latLng, isLoading = true)
             reverseGeocode(latLng)
+            googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
         }
 
         googleMap.setOnPoiClickListener { poi ->
             val placeId = poi.placeId
             val poiLatLng = poi.latLng
             updateSelectedLocation(poiLatLng, isLoading = true)
+            googleMap.animateCamera(CameraUpdateFactory.newLatLng(poiLatLng))
 
             val placesClient = Places.createClient(requireContext())
             viewLifecycleOwner.lifecycleScope.launch {
