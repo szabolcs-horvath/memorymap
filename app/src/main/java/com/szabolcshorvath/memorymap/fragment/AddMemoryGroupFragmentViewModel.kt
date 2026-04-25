@@ -20,6 +20,8 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.LocalTime
@@ -35,6 +37,9 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     private val _saveResult = Channel<SaveResult>(Channel.BUFFERED)
     val saveResult = _saveResult.receiveAsFlow()
+
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving = _isSaving.asStateFlow()
 
     var selectedMedia = mutableListOf<AddMemoryGroupFragment.SelectedMedia>()
     var fragments = mutableListOf<MemoryFragmentEditAdapter.FragmentEditState>()
@@ -60,29 +65,45 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     var isInitialized = false
 
-    fun saveMemoryGroup(
-        title: String,
-        description: String?,
-        database: MemoryMapDatabase,
-        backupManager: BackupManager
-    ) {
+    fun saveMemoryGroup(title: String, description: String?, database: MemoryMapDatabase, backupManager: BackupManager) {
+        if (_isSaving.value) return
+
+        val snapshotMedia = selectedMedia.toList()
+        val snapshotFragments = fragments.toList()
+        val snapshotLat = lat
+        val snapshotLng = lng
+        val snapshotPlaceName = placeName
+        val snapshotAddress = address
+        val snapshotStart = startDateTime
+        val snapshotEnd = endDateTime
+        val snapshotIsAllDay = isAllDay
+        val snapshotHue = markerHue
+        val snapshotSat = markerSaturation
+        val snapshotBri = markerBrightness
+        val snapshotEditingId = editingMemoryId
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val effectiveStart = calculateEffectiveStartTime()
-                val effectiveEnd = calculateEffectiveEndTime()
-                val group = assembleMemoryGroup(title, description, effectiveStart, effectiveEnd)
+                _isSaving.value = true
+                val effectiveStart = calculateEffectiveStartTime(snapshotIsAllDay, snapshotStart)
+                val effectiveEnd = calculateEffectiveEndTime(snapshotIsAllDay, snapshotEnd)
+                val group = assembleMemoryGroup(
+                    snapshotEditingId, title, description, snapshotLat, snapshotLng,
+                    snapshotPlaceName, snapshotAddress, effectiveStart, effectiveEnd,
+                    snapshotIsAllDay, snapshotHue, snapshotSat, snapshotBri
+                )
                 val dao = database.memoryGroupDao()
 
                 val groupIdResult = database.withTransaction {
-                    val groupId = if (editingMemoryId != null) {
+                    val groupId = if (snapshotEditingId != null) {
                         dao.updateGroup(group)
-                        editingMemoryId!!.toLong()
+                        snapshotEditingId.toLong()
                     } else {
                         dao.insertGroup(group)
                     }
 
-                    saveMediaItems(dao, groupId, getApplication())
-                    saveMemoryFragments(dao, groupId)
+                    saveMediaItems(dao, groupId, getApplication(), snapshotMedia, snapshotEditingId)
+                    saveMemoryFragments(dao, groupId, snapshotFragments)
                     groupId.toInt()
                 }
 
@@ -91,17 +112,19 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
             } catch (e: Exception) {
                 Log.e("AddMemoryVM", "Error saving memory group", e)
                 _saveResult.send(SaveResult.Error(e.localizedMessage ?: "Unknown error"))
+            } finally {
+                _isSaving.value = false
             }
         }
     }
 
-    private fun calculateEffectiveStartTime(): ZonedDateTime = if (isAllDay) {
+    private fun calculateEffectiveStartTime(isAllDay: Boolean, startDateTime: ZonedDateTime): ZonedDateTime = if (isAllDay) {
         startDateTime.toLocalDate().atStartOfDay(ZoneId.systemDefault())
     } else {
         startDateTime
     }
 
-    private fun calculateEffectiveEndTime(): ZonedDateTime = if (isAllDay) {
+    private fun calculateEffectiveEndTime(isAllDay: Boolean, endDateTime: ZonedDateTime): ZonedDateTime = if (isAllDay) {
         endDateTime.toLocalDate()
             .atTime(LocalTime.MAX)
             .atZone(ZoneId.systemDefault())
@@ -109,8 +132,23 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         endDateTime
     }
 
-    private fun assembleMemoryGroup(title: String, description: String?, effectiveStart: ZonedDateTime, effectiveEnd: ZonedDateTime): MemoryGroup = MemoryGroup(
-        id = editingMemoryId ?: 0,
+    @Suppress("LongParameterList")
+    private fun assembleMemoryGroup(
+        editingId: Int?,
+        title: String,
+        description: String?,
+        lat: Double,
+        lng: Double,
+        placeName: String?,
+        address: String?,
+        effectiveStart: ZonedDateTime,
+        effectiveEnd: ZonedDateTime,
+        isAllDay: Boolean,
+        markerHue: Float,
+        markerSaturation: Float,
+        markerBrightness: Float
+    ): MemoryGroup = MemoryGroup(
+        id = editingId ?: 0,
         title = title,
         description = description,
         latitude = lat,
@@ -125,12 +163,18 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         markerBrightness = markerBrightness
     )
 
-    private suspend fun saveMediaItems(dao: MemoryGroupDao, groupId: Long, context: Context) {
-        if (editingMemoryId != null) {
+    private suspend fun saveMediaItems(
+        dao: MemoryGroupDao,
+        groupId: Long,
+        context: Context,
+        mediaToSave: List<AddMemoryGroupFragment.SelectedMedia>,
+        editingId: Int?
+    ) {
+        if (editingId != null) {
             dao.deleteMediaByGroupId(groupId.toInt())
         }
 
-        val mediaItems = selectedMedia.mapIndexed { index, (uri, type, itemDeviceId) ->
+        val mediaItems = mediaToSave.mapIndexed { index, (uri, type, itemDeviceId) ->
             var size = 0L
             var date = 0L
 
@@ -164,9 +208,9 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         dao.insertMediaItems(mediaItems)
     }
 
-    private suspend fun saveMemoryFragments(dao: MemoryGroupDao, groupId: Long) {
+    private suspend fun saveMemoryFragments(dao: MemoryGroupDao, groupId: Long, fragmentsToSave: List<MemoryFragmentEditAdapter.FragmentEditState>) {
         dao.deleteFragmentsByGroupId(groupId.toInt())
-        val fragmentEntities = fragments.mapIndexed { index, f ->
+        val fragmentEntities = fragmentsToSave.mapIndexed { index, f ->
             val saveTime = f.isTimeVisible
             val fragmentStart = if (saveTime) {
                 if (f.isAllDay) f.startDate?.toLocalDate()?.atStartOfDay(ZoneId.systemDefault()) else f.startDate
