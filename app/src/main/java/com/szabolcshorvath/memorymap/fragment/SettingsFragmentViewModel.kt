@@ -8,10 +8,10 @@ import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import com.google.api.services.drive.model.File as DriveFile
 
@@ -26,8 +26,8 @@ class SettingsFragmentViewModel : ViewModel() {
     private val _operationStatus = MutableStateFlow<String?>(null)
     val operationStatus = _operationStatus.asStateFlow()
 
-    private val _backupRestoreOperationResult = MutableSharedFlow<BackupRestoreOperationResult>()
-    val backupRestoreOperationResult = _backupRestoreOperationResult.asSharedFlow()
+    private val _backupRestoreOperationResult = Channel<BackupRestoreOperationResult>(Channel.BUFFERED)
+    val backupRestoreOperationResult = _backupRestoreOperationResult.receiveAsFlow()
 
     var originalPreset: HSVPreset? = null
     var editingPreset: HSVPreset? = null
@@ -58,9 +58,9 @@ class SettingsFragmentViewModel : ViewModel() {
             }
             _operationStatus.value = null
             if (success) {
-                _backupRestoreOperationResult.emit(BackupRestoreOperationResult.Success("Backup successful"))
+                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup successful"))
             } else {
-                _backupRestoreOperationResult.emit(BackupRestoreOperationResult.Error("Backup failed"))
+                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error("Backup failed"))
             }
         }
     }
@@ -73,9 +73,9 @@ class SettingsFragmentViewModel : ViewModel() {
             }
             _operationStatus.value = null
             if (success) {
-                _backupRestoreOperationResult.emit(BackupRestoreOperationResult.RestoreSuccess("Restore successful"))
+                _backupRestoreOperationResult.send(BackupRestoreOperationResult.RestoreSuccess("Restore successful"))
             } else {
-                _backupRestoreOperationResult.emit(BackupRestoreOperationResult.Error("Restore failed"))
+                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error("Restore failed"))
             }
         }
     }
@@ -86,9 +86,9 @@ class SettingsFragmentViewModel : ViewModel() {
             val success = backupManager.deleteBackup(credential, fileId)
             _operationStatus.value = null
             if (success) {
-                _backupRestoreOperationResult.emit(BackupRestoreOperationResult.Success("Backup deleted"))
+                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup deleted"))
             } else {
-                _backupRestoreOperationResult.emit(BackupRestoreOperationResult.Error("Failed to delete backup"))
+                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error("Failed to delete backup"))
             }
         }
     }

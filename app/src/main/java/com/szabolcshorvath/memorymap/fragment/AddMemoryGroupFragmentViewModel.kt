@@ -19,8 +19,8 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.ZoneId
@@ -33,8 +33,8 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         data class Error(val message: String) : SaveResult()
     }
 
-    private val _saveResult = MutableSharedFlow<SaveResult>()
-    val saveResult = _saveResult.asSharedFlow()
+    private val _saveResult = Channel<SaveResult>(Channel.BUFFERED)
+    val saveResult = _saveResult.receiveAsFlow()
 
     var selectedMedia = mutableListOf<AddMemoryGroupFragment.SelectedMedia>()
     var fragments = mutableListOf<MemoryFragmentEditAdapter.FragmentEditState>()
@@ -87,10 +87,10 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                 }
 
                 backupManager.triggerAutomaticBackup(database)
-                _saveResult.emit(SaveResult.Success(groupIdResult))
+                _saveResult.send(SaveResult.Success(groupIdResult))
             } catch (e: Exception) {
                 Log.e("AddMemoryVM", "Error saving memory group", e)
-                _saveResult.emit(SaveResult.Error(e.localizedMessage ?: "Unknown error"))
+                _saveResult.send(SaveResult.Error(e.localizedMessage ?: "Unknown error"))
             }
         }
     }
