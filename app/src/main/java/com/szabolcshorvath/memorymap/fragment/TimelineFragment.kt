@@ -78,7 +78,8 @@ class TimelineFragment : Fragment() {
     }
 
     fun scrollToAndFlash(memoryId: Int) {
-        if (adapter.itemCount > 0) {
+        val position = adapter.getPositionForId(memoryId)
+        if (position != -1) {
             performScrollAndFlash(memoryId)
         } else {
             pendingScrollMemoryId = memoryId
