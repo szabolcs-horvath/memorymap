@@ -40,6 +40,10 @@ class MemoryPagerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        if (savedInstanceState != null) {
+            isInitialSetupDone = true
+        }
+
         pagerAdapter = MemoryPagerAdapter(this)
         binding.memoryViewPager.adapter = pagerAdapter
 
@@ -58,14 +62,17 @@ class MemoryPagerFragment : Fragment() {
     }
 
     private fun updatePager() {
-        pagerAdapter?.submitList(memoryIds)
-
         if (!isInitialSetupDone) {
             val initialPosition = memoryIds.indexOf(initialMemoryId)
             if (initialPosition != -1) {
-                binding.memoryViewPager.setCurrentItem(initialPosition, false)
+                pagerAdapter?.submitList(memoryIds)
+                binding.memoryViewPager.post {
+                    _binding?.memoryViewPager?.setCurrentItem(initialPosition, false)
+                }
+                isInitialSetupDone = true
             }
-            isInitialSetupDone = true
+        } else {
+            pagerAdapter?.submitList(memoryIds)
         }
     }
 
