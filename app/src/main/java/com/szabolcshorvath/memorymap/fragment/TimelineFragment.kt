@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -23,9 +24,9 @@ class TimelineFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var adapter: TimelineAdapter
     private var timelineListener: TimelineListener? = null
-    private var pendingScrollMemoryId: Int? = null
 
     private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val viewModel: TimelineFragmentViewModel by viewModels()
 
     interface TimelineListener {
         fun onMemoryClicked(id: Int)
@@ -52,9 +53,9 @@ class TimelineFragment : Fragment() {
                 memoryMapViewModel.allGroups.collect { groups ->
                     val sortedGroups = groups.sortedByDescending { it.startDate }
                     adapter.updateData(sortedGroups) {
-                        pendingScrollMemoryId?.let { id ->
+                        viewModel.pendingScrollMemoryId?.let { id ->
                             performScrollAndFlash(id)
-                            pendingScrollMemoryId = null
+                            viewModel.pendingScrollMemoryId = null
                         }
                     }
                     if (sortedGroups.isEmpty()) {
@@ -82,7 +83,7 @@ class TimelineFragment : Fragment() {
         if (position != -1) {
             performScrollAndFlash(memoryId)
         } else {
-            pendingScrollMemoryId = memoryId
+            viewModel.pendingScrollMemoryId = memoryId
         }
     }
 

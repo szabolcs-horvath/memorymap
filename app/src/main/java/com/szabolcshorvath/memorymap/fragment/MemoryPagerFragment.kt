@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -20,9 +21,8 @@ class MemoryPagerFragment : Fragment() {
     private var _binding: FragmentMemoryPagerBinding? = null
     private val binding get() = _binding!!
     private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val viewModel: MemoryPagerFragmentViewModel by viewModels()
     private var initialMemoryId: Int = -1
-    private var memoryIds: List<Int> = emptyList()
-    private var isInitialSetupDone = false
     private var pagerAdapter: MemoryPagerAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,20 +40,20 @@ class MemoryPagerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (savedInstanceState != null) {
-            isInitialSetupDone = true
-        }
-
         pagerAdapter = MemoryPagerAdapter(this)
         binding.memoryViewPager.adapter = pagerAdapter
+
+        if (viewModel.memoryIds.isNotEmpty()) {
+            updatePager()
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 memoryMapViewModel.allGroups.collect { groups ->
                     val sortedIds = groups.sortedByDescending { it.startDate }.map { it.id }
 
-                    if (memoryIds != sortedIds) {
-                        memoryIds = sortedIds
+                    if (viewModel.memoryIds != sortedIds) {
+                        viewModel.memoryIds = sortedIds
                         updatePager()
                     }
                 }
@@ -62,17 +62,17 @@ class MemoryPagerFragment : Fragment() {
     }
 
     private fun updatePager() {
-        if (!isInitialSetupDone) {
-            val initialPosition = memoryIds.indexOf(initialMemoryId)
+        if (!viewModel.isInitialSetupDone) {
+            val initialPosition = viewModel.memoryIds.indexOf(initialMemoryId)
+            pagerAdapter?.submitList(viewModel.memoryIds)
             if (initialPosition != -1) {
-                pagerAdapter?.submitList(memoryIds)
                 binding.memoryViewPager.post {
                     _binding?.memoryViewPager?.setCurrentItem(initialPosition, false)
                 }
-                isInitialSetupDone = true
             }
+            viewModel.isInitialSetupDone = true
         } else {
-            pagerAdapter?.submitList(memoryIds)
+            pagerAdapter?.submitList(viewModel.memoryIds)
         }
     }
 

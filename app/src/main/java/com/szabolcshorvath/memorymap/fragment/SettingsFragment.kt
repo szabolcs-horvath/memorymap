@@ -19,6 +19,7 @@ import androidx.credentials.exceptions.NoCredentialException
 import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -48,7 +49,6 @@ import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -61,30 +61,20 @@ class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
     private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val viewModel: SettingsFragmentViewModel by viewModels()
     private lateinit var googleAuthManager: GoogleAuthManager
     private lateinit var backupManager: BackupManager
     private lateinit var startAuthorizationIntent: ActivityResultLauncher<IntentSenderRequest>
     private lateinit var backupAdapter: BackupAdapter
     private lateinit var colorPresetAdapter: ColorPresetAdapter
-    private var pendingRestoreFile: DriveFile? = null
-    private var isBackupRequested = false
-
-    private var originalPreset: HSVPreset? = null
-    private var editingPreset: HSVPreset? = null
-    private var colorPresetsExpanded = false
-    private var newlyAddedPresetId: Int? = null
-
-    private var savePresetsOrderJob: Job? = null
     private var allPresets: List<HSVPreset> = emptyList()
-    private var backupsLoadedForEmail: String? = null
-    private var lastLoadedBackups: List<DriveFile> = emptyList()
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (allGranted) {
-            pendingRestoreFile?.let { executeRestore(it) }
+            viewModel.pendingRestoreFile?.let { executeRestore(it) }
         } else {
             Toast.makeText(
                 requireContext(),
@@ -92,9 +82,9 @@ class SettingsFragment : Fragment() {
                     "Please retry the restore, and grant permissions to all images and videos needed!",
                 Toast.LENGTH_LONG
             ).show()
-            pendingRestoreFile?.let { executeRestore(it) }
+            return@registerForActivityResult
         }
-        pendingRestoreFile = null
+        viewModel.pendingRestoreFile = null
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -105,7 +95,7 @@ class SettingsFragment : Fragment() {
                     successfulAuthorization(authorizationResult.grantedScopes)
                 } catch (e: ApiException) {
                     Log.e(TAG, "Authorization failed", e)
-                    isBackupRequested = false
+                    viewModel.isBackupRequested = false
                     setLoadingState(false)
                 }
             }
@@ -122,6 +112,55 @@ class SettingsFragment : Fragment() {
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
         setupDefaultFilterDropdown()
+        updateColorPresetsUI()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.operationStatus.collect { status ->
+                    if (status != null) {
+                        setLoadingState(true, status)
+                    } else {
+                        setLoadingState(false)
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.backupRestoreOperationResult.collect { result ->
+                    when (result) {
+                        is SettingsFragmentViewModel.BackupRestoreOperationResult.Success -> {
+                            result.message?.let { Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show() }
+                            (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
+                        }
+
+                        is SettingsFragmentViewModel.BackupRestoreOperationResult.RestoreSuccess -> {
+                            result.message?.let { Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show() }
+                            memoryMapViewModel.refreshDatabase()
+                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                                LocalMediaUtil.verifyAndFixMediaItems(requireContext(), memoryMapViewModel.getMemoryGroupDao())
+                            }
+                            (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
+                        }
+
+                        is SettingsFragmentViewModel.BackupRestoreOperationResult.Error -> {
+                            Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        }
+
+        if (viewModel.isInitialized) {
+            viewModel.editingPreset?.let {
+                updateSliders(it)
+                updateSelectionVisuals(it)
+                checkForChanges()
+            }
+        } else {
+            viewModel.isInitialized = true
+        }
         setupColorPresetsSection()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -211,7 +250,7 @@ class SettingsFragment : Fragment() {
 
     private fun setupColorPresetsSection() {
         binding.colorPresetsHeader.setOnClickListener {
-            colorPresetsExpanded = !colorPresetsExpanded
+            viewModel.colorPresetsExpanded = !viewModel.colorPresetsExpanded
             updateColorPresetsUI()
         }
 
@@ -220,7 +259,7 @@ class SettingsFragment : Fragment() {
                 memoryMapViewModel.allPresets.collect { presets ->
                     allPresets = presets
                     colorPresetAdapter.submitList(presets) {
-                        newlyAddedPresetId?.let { id ->
+                        viewModel.newlyAddedPresetId?.let { id ->
                             val index = presets.indexOfFirst { it.id == id }
                             if (index != -1) {
                                 // Select it first to prepare the UI
@@ -231,11 +270,11 @@ class SettingsFragment : Fragment() {
                                     smoothScrollToPresetIndex(index)
                                 }
                             }
-                            newlyAddedPresetId = null
+                            viewModel.newlyAddedPresetId = null
                         }
                     }
 
-                    if (editingPreset != null && presets.none { it.id == editingPreset?.id }) {
+                    if (viewModel.editingPreset != null && presets.none { it.id == viewModel.editingPreset?.id }) {
                         clearPresetSelection()
                     }
                 }
@@ -246,9 +285,9 @@ class SettingsFragment : Fragment() {
         binding.hueSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateVisualsFromSliders()
-                editingPreset?.let { preset ->
+                viewModel.editingPreset?.let { preset ->
                     val updated = preset.copy(hue = value)
-                    editingPreset = updated
+                    viewModel.editingPreset = updated
                     updateSelectionVisuals(updated)
                     checkForChanges()
                 }
@@ -258,9 +297,9 @@ class SettingsFragment : Fragment() {
         binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateVisualsFromSliders()
-                editingPreset?.let { preset ->
+                viewModel.editingPreset?.let { preset ->
                     val updated = preset.copy(saturation = value)
-                    editingPreset = updated
+                    viewModel.editingPreset = updated
                     updateSelectionVisuals(updated)
                     checkForChanges()
                 }
@@ -270,9 +309,9 @@ class SettingsFragment : Fragment() {
         binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateVisualsFromSliders()
-                editingPreset?.let { preset ->
+                viewModel.editingPreset?.let { preset ->
                     val updated = preset.copy(brightness = value)
-                    editingPreset = updated
+                    viewModel.editingPreset = updated
                     updateSelectionVisuals(updated)
                     checkForChanges()
                 }
@@ -280,12 +319,12 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btnSavePresets.setOnClickListener {
-            editingPreset?.let { preset ->
+            viewModel.editingPreset?.let { preset ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     memoryMapViewModel.getHSVPresetDao().insertPresets(listOf(preset))
                     withContext(Dispatchers.Main) {
-                        originalPreset = preset.copy()
-                        editingPreset = preset.copy()
+                        viewModel.originalPreset = preset.copy()
+                        viewModel.editingPreset = preset.copy()
                         checkForChanges()
                         Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
                         backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
@@ -295,8 +334,8 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btnUndoPresets.setOnClickListener {
-            editingPreset = originalPreset?.copy()
-            editingPreset?.let {
+            viewModel.editingPreset = viewModel.originalPreset?.copy()
+            viewModel.editingPreset?.let {
                 updateSliders(it)
                 updateSelectionVisuals(it)
             }
@@ -309,7 +348,7 @@ class SettingsFragment : Fragment() {
 
     private fun addNewPreset() {
         val binding = _binding ?: return
-        if (editingPreset != null && originalPreset != null && editingPreset != originalPreset) {
+        if (viewModel.editingPreset != null && viewModel.originalPreset != null && viewModel.editingPreset != viewModel.originalPreset) {
             revertEditingPresetInList()
         }
 
@@ -329,7 +368,7 @@ class SettingsFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 if (ids.isNotEmpty()) {
-                    newlyAddedPresetId = ids[0].toInt()
+                    viewModel.newlyAddedPresetId = ids[0].toInt()
                     backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
                 }
             }
@@ -337,7 +376,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun showDeletePresetConfirmation() {
-        val presetToDelete = editingPreset ?: return
+        val presetToDelete = viewModel.editingPreset ?: return
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Delete Preset")
             .setMessage("Are you sure you want to delete this color preset?")
@@ -352,7 +391,7 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             memoryMapViewModel.getHSVPresetDao().deletePreset(preset)
             withContext(Dispatchers.Main) {
-                if (editingPreset?.id == preset.id) {
+                if (viewModel.editingPreset?.id == preset.id) {
                     clearPresetSelection()
                     updateVisualsFromSliders()
                 }
@@ -364,15 +403,15 @@ class SettingsFragment : Fragment() {
 
     private fun checkForChanges() {
         val binding = _binding ?: return
-        binding.btnSavePresets.isEnabled = editingPreset != originalPreset
-        binding.btnUndoPresets.isEnabled = editingPreset != originalPreset
+        binding.btnSavePresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
+        binding.btnUndoPresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
     }
 
     private fun updateColorPresetsUI() {
         val binding = _binding ?: return
-        binding.colorPresetsExpandedContent.visibility = if (colorPresetsExpanded) View.VISIBLE else View.GONE
+        binding.colorPresetsExpandedContent.visibility = if (viewModel.colorPresetsExpanded) View.VISIBLE else View.GONE
         binding.colorPresetsChevron.animate()
-            .rotation(if (colorPresetsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
+            .rotation(if (viewModel.colorPresetsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
             .start()
     }
 
@@ -389,15 +428,15 @@ class SettingsFragment : Fragment() {
     }
 
     private fun clearPresetSelection() {
-        editingPreset = null
-        originalPreset = null
+        viewModel.editingPreset = null
+        viewModel.originalPreset = null
         colorPresetAdapter.setSelectedPresetId(null)
         _binding?.btnDeletePreset?.visibility = View.GONE
     }
 
     private fun revertEditingPresetInList() {
-        val original = originalPreset ?: return
-        if (editingPreset == original) return
+        val original = viewModel.originalPreset ?: return
+        if (viewModel.editingPreset == original) return
 
         val currentList = colorPresetAdapter.currentList
         val index = currentList.indexOfFirst { it.id == original.id }
@@ -442,20 +481,20 @@ class SettingsFragment : Fragment() {
     }
 
     private fun selectPreset(preset: HSVPreset, shouldUpdateList: Boolean = true) {
-        val isSamePreset = editingPreset?.id == preset.id
-        if (editingPreset != null && originalPreset != null && editingPreset != originalPreset) {
+        val isSamePreset = viewModel.editingPreset?.id == preset.id
+        if (viewModel.editingPreset != null && viewModel.originalPreset != null && viewModel.editingPreset != viewModel.originalPreset) {
             revertEditingPresetInList()
         }
 
-        val targetPreset = if (isSamePreset) originalPreset ?: preset else preset
+        val targetPreset = if (isSamePreset) viewModel.originalPreset ?: preset else preset
 
-        originalPreset = targetPreset
-        editingPreset = targetPreset.copy()
+        viewModel.originalPreset = targetPreset
+        viewModel.editingPreset = targetPreset.copy()
 
         colorPresetAdapter.setSelectedPresetId(targetPreset.id)
 
-        if (!colorPresetsExpanded) {
-            colorPresetsExpanded = true
+        if (!viewModel.colorPresetsExpanded) {
+            viewModel.colorPresetsExpanded = true
             updateColorPresetsUI()
         }
 
@@ -521,7 +560,7 @@ class SettingsFragment : Fragment() {
         binding.btnSignOut.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 googleAuthManager.signOut()
-                backupsLoadedForEmail = null
+                viewModel.backupsLoadedForEmail = null
                 updateUI(null)
                 requireContext().dataStore.edit { preferences ->
                     preferences.remove(PreferencesKeys.USER_EMAIL_KEY)
@@ -599,23 +638,15 @@ class SettingsFragment : Fragment() {
     }
 
     private fun saveNewPresetsOrder() {
-        savePresetsOrderJob?.cancel()
         val presets = colorPresetAdapter.currentList.mapIndexed { index, preset ->
             preset.copy(order = index)
         }
-
-        savePresetsOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            memoryMapViewModel.getHSVPresetDao().updatePresets(presets)
-
-            withContext(Dispatchers.Main) {
-                backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
-            }
-        }
+        viewModel.saveNewPresetsOrder(presets, memoryMapViewModel.getDb(), backupManager)
     }
 
     private fun updateUI(email: String?) {
         val binding = _binding ?: return
-        val alreadyLoaded = email != null && backupsLoadedForEmail == email
+        val alreadyLoaded = email != null && viewModel.backupsLoadedForEmail == email
 
         with(binding) {
             if (email != null) {
@@ -624,8 +655,8 @@ class SettingsFragment : Fragment() {
                 tvAccountName.text = "Signed in as: $email"
                 tvAccountName.tag = email
                 if (!alreadyLoaded || backupAdapter.itemCount == 0) {
-                    if (alreadyLoaded && lastLoadedBackups.isNotEmpty()) {
-                        backupAdapter.submitList(lastLoadedBackups)
+                    if (alreadyLoaded && viewModel.lastLoadedBackups.isNotEmpty()) {
+                        backupAdapter.submitList(viewModel.lastLoadedBackups)
                     } else {
                         loadBackups(email)
                     }
@@ -634,8 +665,8 @@ class SettingsFragment : Fragment() {
                 btnGoogleSignIn.visibility = View.VISIBLE
                 backupControls.visibility = View.GONE
                 tvAccountName.tag = null
-                backupsLoadedForEmail = null
-                lastLoadedBackups = emptyList()
+                viewModel.backupsLoadedForEmail = null
+                viewModel.lastLoadedBackups = emptyList()
                 backupAdapter.submitList(emptyList())
             }
         }
@@ -719,8 +750,8 @@ class SettingsFragment : Fragment() {
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val backups = backupManager.listBackups(credential)
                 backupAdapter.submitList(backups)
-                backupsLoadedForEmail = email
-                lastLoadedBackups = backups
+                viewModel.backupsLoadedForEmail = email
+                viewModel.lastLoadedBackups = backups
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to list backups", e)
             } finally {
@@ -731,7 +762,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun requestDriveAuthorization(isBackup: Boolean) {
-        isBackupRequested = isBackup
+        viewModel.isBackupRequested = isBackup
         val requestedScopes: List<Scope> = listOf(Scope(DriveScopes.DRIVE_FILE))
         Identity.getAuthorizationClient(requireContext())
             .authorize(
@@ -752,7 +783,7 @@ class SettingsFragment : Fragment() {
             .addOnFailureListener { e ->
                 Log.e(TAG, "Failed to authorize", e)
                 setLoadingState(false)
-                isBackupRequested = false
+                viewModel.isBackupRequested = false
             }
     }
 
@@ -763,27 +794,14 @@ class SettingsFragment : Fragment() {
 
             if (email == null) {
                 setLoadingState(false)
-                isBackupRequested = false
+                viewModel.isBackupRequested = false
                 return@launch
             }
 
-            if (isBackupRequested) {
-                isBackupRequested = false
+            if (viewModel.isBackupRequested) {
+                viewModel.isBackupRequested = false
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                val db = memoryMapViewModel.getDb()
-                val success = backupManager.performBackup(credential, db, isAutomatic = false) { status ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        withContext(Dispatchers.Main) {
-                            setLoadingState(true, status)
-                        }
-                    }
-                }
-
-                if (success) {
-                    loadBackups(email)
-                } else {
-                    setLoadingState(false)
-                }
+                viewModel.performBackup(credential, memoryMapViewModel.getDb(), backupManager)
             } else {
                 loadBackups(email)
             }
@@ -833,7 +851,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun launchPermissionRequest(file: DriveFile) {
-        pendingRestoreFile = file
+        viewModel.pendingRestoreFile = file
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(
                 Manifest.permission.READ_MEDIA_IMAGES,
@@ -847,61 +865,16 @@ class SettingsFragment : Fragment() {
 
     private fun executeRestore(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            setLoadingState(true, "Starting restore...")
-            try {
-                val scopes = listOf(DriveScopes.DRIVE_FILE)
-                val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                val success = backupManager.restoreBackup(credential, file.id) { status ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        withContext(Dispatchers.Main) {
-                            setLoadingState(true, status)
-                        }
-                    }
-                }
-                if (success) {
-                    memoryMapViewModel.refreshDatabase()
-                    withContext(Dispatchers.IO) {
-                        LocalMediaUtil.verifyAndFixMediaItems(requireContext(), memoryMapViewModel.getMemoryGroupDao())
-                    }
-                    Toast.makeText(requireContext(), "Restore successful", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(requireContext(), "Restore failed", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Restore error", e)
-                Toast.makeText(requireContext(), "Restore failed: ${e.message}", Toast.LENGTH_SHORT).show()
-            } finally {
-                setLoadingState(false)
-            }
-        }
+        val scopes = listOf(DriveScopes.DRIVE_FILE)
+        val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
+        viewModel.restoreBackup(credential, file.id, backupManager)
     }
 
     private fun onDeleteBackup(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            setLoadingState(true, "Deleting backup...")
-            try {
-                val scopes = listOf(DriveScopes.DRIVE_FILE)
-                val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                val success = backupManager.deleteBackup(credential, file.id)
-                if (success) {
-                    withContext(Dispatchers.Main) {
-                        loadBackups(email)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(requireContext(), "Failed to delete backup", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Delete error", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "Delete failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-                setLoadingState(false)
-            }
-        }
+        val scopes = listOf(DriveScopes.DRIVE_FILE)
+        val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
+        viewModel.deleteBackup(credential, file.id, backupManager)
     }
 
     override fun onDestroyView() {

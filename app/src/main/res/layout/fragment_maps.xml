@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -25,7 +26,8 @@
         android:background="@android:color/transparent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_max="500dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_quick_filter"
@@ -108,21 +110,25 @@
         android:id="@+id/overlay_card"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
+        android:layout_margin="8dp"
         android:visibility="gone"
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp"
+        app:layout_constrainedHeight="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/date_filter_container"
+        app:layout_constraintVertical_bias="1.0"
+        app:layout_constraintWidth_max="500dp"
         app:strokeWidth="0dp">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="16dp">
+            android:padding="12dp">
 
-            <com.google.android.material.textview.MaterialTextView xmlns:tools="http://schemas.android.com/tools"
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/overlay_location_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -137,7 +143,7 @@
                 android:id="@+id/rv_memories"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                 app:layout_constrainedHeight="true"
                 app:layout_constraintBottom_toBottomOf="parent"
@@ -146,31 +152,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/overlay_location_title" />
 
-            <!-- Single memory views kept for reference if needed but hidden -->
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/overlay_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintTop_toBottomOf="@id/rv_memories" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/overlay_description"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintTop_toBottomOf="@id/overlay_title" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/overlay_action_button"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/overlay_description" />
-
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.card.MaterialCardView>
-
 </androidx.constraintlayout.widget.ConstraintLayout>
