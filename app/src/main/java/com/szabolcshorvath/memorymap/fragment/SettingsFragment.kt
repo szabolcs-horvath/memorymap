@@ -651,6 +651,7 @@ class SettingsFragment : Fragment() {
         with(binding) {
             if (email != null) {
                 btnGoogleSignIn.visibility = View.GONE
+                tvBackupDescription.visibility = View.GONE
                 backupControls.visibility = View.VISIBLE
                 tvAccountName.text = "Signed in as: $email"
                 tvAccountName.tag = email
@@ -663,6 +664,7 @@ class SettingsFragment : Fragment() {
                 }
             } else {
                 btnGoogleSignIn.visibility = View.VISIBLE
+                tvBackupDescription.visibility = View.VISIBLE
                 backupControls.visibility = View.GONE
                 tvAccountName.tag = null
                 viewModel.backupsLoadedForEmail = null
