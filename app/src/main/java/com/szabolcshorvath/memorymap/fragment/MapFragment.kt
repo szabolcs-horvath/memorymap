@@ -366,7 +366,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val googleMap = mMap ?: return
 
         val density = resources.displayMetrics.density
-        val controlMarginThreshold = MAP_CONTROLS_MARGIN * density // Margin required to avoid overlapping corner controls
+        val controlMarginThreshold = MAP_CONTROLS_MARGIN_DP * density // Margin required to avoid overlapping corner controls
 
         val rootWidth = binding.root.width
         if (rootWidth == 0) return
@@ -387,7 +387,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val cardWidth = binding.overlayCard.width
             val sideMargin = (rootWidth - cardWidth) / 2f
             if (sideMargin < controlMarginThreshold) {
-                binding.overlayCard.height + GOOGLE_LOGO_HEIGHT
+                binding.overlayCard.height + GOOGLE_LOGO_HEIGHT_DP
             } else {
                 0
             }
@@ -724,8 +724,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val DEFAULT_ZOOM = 12f
         private const val ZOOM_PADDING = 100
         private const val ANIMATION_DURATION = 250L
-        private const val MAP_CONTROLS_MARGIN = 100
-        private const val GOOGLE_LOGO_HEIGHT = 25
+        private const val MAP_CONTROLS_MARGIN_DP = 100
+        private const val GOOGLE_LOGO_HEIGHT_DP = 25
         private const val MARKER_ANCHOR_U = 0.5f
         private const val MARKER_ANCHOR_V = 1.0f
         private const val TARGET_CONTRAST_FOR_MARKER_COLORS = 2.0
