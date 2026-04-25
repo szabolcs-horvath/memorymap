@@ -12,6 +12,7 @@ import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -67,14 +68,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val binding get() = _binding!!
     private var mMap: GoogleMap? = null
     private var selectedMarker: Marker? = null
-    private var selectedMemoryId: Int? = null
-    private var selectedMarkerPosition: LatLng? = null
     private val markerMap = mutableMapOf<String, Marker>()
-    private var pendingSelectionId: Int? = null
-    private var pendingSelectionLat: Double? = null
-    private var pendingSelectionLng: Double? = null
     private var mapListener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
+
+    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val viewModel: MapFragmentViewModel by viewModels()
+    private var allGroups: List<MemoryGroup> = emptyList()
+
+    private var permissionDenied = false
+    private var mapLoadTrace: Trace? = null
 
     interface MapListener {
         fun onMemoryClicked(id: Int)
@@ -91,13 +94,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             permissionDenied = true
         }
     }
-
-    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
-    private var allGroups: List<MemoryGroup> = emptyList()
-
-    private var permissionDenied = false
-    private var isInitialZoomDone = false
-    private var mapLoadTrace: Trace? = null
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -126,6 +122,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         binding.btnDateRange.setOnClickListener { showDateRangePicker() }
         binding.btnQuickFilter.setOnClickListener { showQuickFilterMenu() }
         binding.btnStats.setOnClickListener { toggleStatsOverlay() }
+
+        if (viewModel.isStatsVisible) {
+            binding.statsOverlayCard.visibility = View.VISIBLE
+        }
 
         binding.root.doOnLayout {
             setGoogleMapPadding()
@@ -236,7 +236,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             duration = ANIMATION_DURATION
         }
         TransitionManager.beginDelayedTransition(binding.root, transition)
-        binding.statsOverlayCard.visibility = if (binding.statsOverlayCard.isVisible) View.GONE else View.VISIBLE
+        viewModel.isStatsVisible = !viewModel.isStatsVisible
+        binding.statsOverlayCard.visibility = if (viewModel.isStatsVisible) View.VISIBLE else View.GONE
     }
 
     private fun updateDateRangeButtonText(start: LocalDate?, end: LocalDate?, label: String?) {
@@ -261,9 +262,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         val memory = allGroups.find { it.id == id } ?: return
 
-        pendingSelectionId = id
-        pendingSelectionLat = lat
-        pendingSelectionLng = lng
+        viewModel.pendingSelectionId = id
+        viewModel.pendingSelectionLat = lat
+        viewModel.pendingSelectionLng = lng
 
         val oldStart = memoryMapViewModel.filterStartDate.value
         val oldEnd = memoryMapViewModel.filterEndDate.value
@@ -273,7 +274,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (oldStart == memoryMapViewModel.filterStartDate.value && oldEnd == memoryMapViewModel.filterEndDate.value) {
             // Filter didn't change, we can try to select immediately
             moveToLocationAndSelectMarker(lat, lng, memory)
-            pendingSelectionId = null
+            viewModel.pendingSelectionId = null
         }
     }
 
@@ -301,8 +302,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         googleMap.uiSettings.isMyLocationButtonEnabled = true
         googleMap.uiSettings.isZoomControlsEnabled = true
 
+        viewModel.lastCameraPosition?.let { position ->
+            viewModel.isInitialZoomDone = true
+            googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(position))
+        }
+
         enableMyLocation()
         setGoogleMapPadding()
+
+        googleMap.setOnCameraIdleListener {
+            viewModel.lastCameraPosition = googleMap.cameraPosition
+        }
 
         googleMap.setOnMarkerClickListener { marker ->
             showMemoryOverlay(marker)
@@ -326,6 +336,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         binding.overlayCard.viewTreeObserver.addOnGlobalLayoutListener {
             setGoogleMapPadding()
         }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            updateMapMarkers()
+        }
     }
 
     private fun hideMemoryOverlay() {
@@ -341,8 +355,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             )
             binding.overlayCard.visibility = View.GONE
             selectedMarker = null
-            selectedMemoryId = null
-            selectedMarkerPosition = null
+            viewModel.selectedMemoryId = null
+            viewModel.selectedMarkerPosition = null
             setGoogleMapPadding()
         }
     }
@@ -350,12 +364,38 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun setGoogleMapPadding() {
         val binding = _binding ?: return
         val googleMap = mMap ?: return
-        val topPadding = binding.dateFilterContainer.height + binding.dateFilterContainer.top
-        if (binding.overlayCard.isVisible) {
-            googleMap.setPadding(0, topPadding, 0, binding.overlayCard.height + GOOGLE_LOGO_HEIGHT)
+
+        val density = resources.displayMetrics.density
+        val controlMarginThreshold = MAP_CONTROLS_MARGIN * density // Margin required to avoid overlapping corner controls
+
+        val rootWidth = binding.root.width
+        if (rootWidth == 0) return
+
+        val topPadding = if (binding.dateFilterContainer.height > 0) {
+            val containerWidth = binding.dateFilterContainer.width
+            val sideMargin = (rootWidth - containerWidth) / 2f
+            if (sideMargin < controlMarginThreshold) {
+                binding.dateFilterContainer.height + binding.dateFilterContainer.top
+            } else {
+                0
+            }
         } else {
-            googleMap.setPadding(0, topPadding, 0, 0)
+            0
         }
+
+        val bottomPadding = if (binding.overlayCard.isVisible) {
+            val cardWidth = binding.overlayCard.width
+            val sideMargin = (rootWidth - cardWidth) / 2f
+            if (sideMargin < controlMarginThreshold) {
+                binding.overlayCard.height + GOOGLE_LOGO_HEIGHT
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+
+        googleMap.setPadding(0, topPadding, 0, bottomPadding)
     }
 
     @SuppressWarnings("MissingPermission")
@@ -381,12 +421,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
-        if (hasLocationPermission() && !isInitialZoomDone) {
+        if (hasLocationPermission() && !viewModel.isInitialZoomDone) {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val googleMap = mMap
-                if (location != null && googleMap != null && !isInitialZoomDone) {
-                    isInitialZoomDone = true
+                if (location != null && googleMap != null && !viewModel.isInitialZoomDone) {
+                    viewModel.isInitialZoomDone = true
                     val latLng = LatLng(location.latitude, location.longitude)
                     googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM))
                 }
@@ -396,11 +436,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun showMemoryOverlay(marker: Marker) {
         selectedMarker = marker
-        selectedMarkerPosition = marker.position
+        viewModel.selectedMarkerPosition = marker.position
         @Suppress("UNCHECKED_CAST")
         val items = marker.tag as? List<Markerable>
         if (items != null) {
-            selectedMemoryId = items.firstOrNull()?.groupId
+            viewModel.selectedMemoryId = items.firstOrNull()?.groupId
             showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
             mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.position, MAX_CAMERA_ZOOM))
         }
@@ -457,10 +497,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
 
             // Handle pending selection if any
-            pendingSelectionId?.let { pId ->
+            viewModel.pendingSelectionId?.let { pId ->
                 if (filteredItems.any { it.groupId == pId }) {
-                    val pLat = pendingSelectionLat ?: 0.0
-                    val pLng = pendingSelectionLng ?: 0.0
+                    val pLat = viewModel.pendingSelectionLat ?: 0.0
+                    val pLng = viewModel.pendingSelectionLng ?: 0.0
                     allGroups.find { it.id == pId }?.let { memory ->
                         val key = "${memory.id}|$pLat|$pLng"
                         val marker = markerMap[key] ?: markerMap[pId.toString()]
@@ -468,7 +508,27 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                             moveToLocationAndSelectMarker(pLat, pLng, memory)
                         }
                     }
-                    pendingSelectionId = null
+                    viewModel.pendingSelectionId = null
+                }
+            }
+
+            // Handle existing selection after rotation
+            if (selectedMarker == null && viewModel.selectedMemoryId != null) {
+                val sId = viewModel.selectedMemoryId!!
+                val sPos = viewModel.selectedMarkerPosition
+                allGroups.find { it.id == sId }?.let { memory ->
+                    val lat = sPos?.latitude ?: memory.latitude
+                    val lng = sPos?.longitude ?: memory.longitude
+                    val key = "${memory.id}|$lat|$lng"
+                    val marker = markerMap[key] ?: markerMap[sId.toString()]
+                    if (marker != null) {
+                        selectedMarker = marker
+                        @Suppress("UNCHECKED_CAST")
+                        val items = marker.tag as? List<Markerable>
+                        if (items != null) {
+                            showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
+                        }
+                    }
                 }
             }
 
@@ -606,8 +666,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         if (marker != null) {
             selectedMarker = marker
-            selectedMarkerPosition = marker.position
-            selectedMemoryId = memory.id
+            viewModel.selectedMarkerPosition = marker.position
+            viewModel.selectedMemoryId = memory.id
             @Suppress("UNCHECKED_CAST")
             val items = marker.tag as? List<Markerable>
             if (items != null) {
@@ -643,7 +703,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
 
         overlayAdapter?.submitList(distinctItems) {
-            val index = distinctItems.indexOfFirst { it.groupId == selectedMemoryId }
+            val index = distinctItems.indexOfFirst { it.groupId == viewModel.selectedMemoryId }
             if (index != -1) {
                 binding.rvMemories.scrollToPosition(index)
             }
@@ -664,6 +724,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val DEFAULT_ZOOM = 12f
         private const val ZOOM_PADDING = 100
         private const val ANIMATION_DURATION = 250L
+        private const val MAP_CONTROLS_MARGIN = 100
         private const val GOOGLE_LOGO_HEIGHT = 25
         private const val MARKER_ANCHOR_U = 0.5f
         private const val MARKER_ANCHOR_V = 1.0f

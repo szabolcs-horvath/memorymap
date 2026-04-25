@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -30,27 +31,20 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
-import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
 class MemoryFragment : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
     private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val viewModel: MemoryFragmentViewModel by viewModels()
     private lateinit var mediaAdapter: MediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentAdapter
     private var memoryId: Int = -1
-    private var mediaItems: MutableList<MediaItem> = mutableListOf()
-    private var fragmentItems: MutableList<MemoryFragmentEntity> = mutableListOf()
     private var memoryFragmentListener: MemoryFragmentListener? = null
-    private var currentDeviceId: String? = null
     private lateinit var backupManager: BackupManager
-    private var isFragmentsExpanded = true
-    private var mediaOrderJob: Job? = null
-    private var fragmentsOrderJob: Job? = null
 
     interface MemoryFragmentListener {
         fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int)
@@ -84,13 +78,28 @@ class MemoryFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         backupManager = BackupManager(requireContext())
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
-            setupRecyclerViews()
+        setupRecyclerViews()
+
+        // Restore lists in adapter if they are already in ViewModel (on rotation)
+        if (viewModel.fragmentItems.isNotEmpty()) {
+            binding.fragmentsSection.visibility = View.VISIBLE
+            fragmentsAdapter.updateData(viewModel.fragmentItems)
+            binding.fragmentsExpandedContent.visibility =
+                if (viewModel.isFragmentsExpanded) View.VISIBLE else View.GONE
+            binding.fragmentsChevron.rotation =
+                if (viewModel.isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
+        }
+        if (viewModel.mediaItems.isNotEmpty()) {
+            mediaAdapter.updateData(viewModel.mediaItems)
         }
 
         // Each fragment instance observes its own specific ID through a private flow
         viewLifecycleOwner.lifecycleScope.launch {
+            if (viewModel.currentDeviceId == null) {
+                viewModel.currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
+            }
+            mediaAdapter.updateCurrentDeviceId(viewModel.currentDeviceId)
+
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 memoryMapViewModel.getGroupWithMedia(memoryId).collect { data ->
                     data?.let { displayDetails(it) }
@@ -112,8 +121,8 @@ class MemoryFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        mediaAdapter = MediaAdapter(currentDeviceId) { position ->
-            val mediaPairs = ArrayList(mediaItems.map { it.uri to it.type.name })
+        mediaAdapter = MediaAdapter(viewModel.currentDeviceId) { position ->
+            val mediaPairs = ArrayList(viewModel.mediaItems.map { it.uri to it.type.name })
             memoryFragmentListener?.onMediaClick(mediaPairs, position)
         }
         mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
@@ -144,7 +153,7 @@ class MemoryFragment : Fragment() {
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(viewHolder, actionState)
                 if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
-                    initialOrder = mediaItems.map { it.id }
+                    initialOrder = viewModel.mediaItems.map { it.id }
                 }
             }
 
@@ -153,17 +162,19 @@ class MemoryFragment : Fragment() {
                 val toPos = target.bindingAdapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
 
+                val mutableMedia = viewModel.mediaItems.toMutableList()
                 if (fromPos < toPos) {
                     for (i in fromPos until toPos) {
-                        Collections.swap(mediaItems, i, i + 1)
+                        Collections.swap(mutableMedia, i, i + 1)
                         mediaAdapter.moveItem(i, i + 1)
                     }
                 } else {
                     for (i in fromPos downTo toPos + 1) {
-                        Collections.swap(mediaItems, i, i - 1)
+                        Collections.swap(mutableMedia, i, i - 1)
                         mediaAdapter.moveItem(i, i - 1)
                     }
                 }
+                viewModel.mediaItems = mutableMedia
                 return true
             }
 
@@ -171,7 +182,7 @@ class MemoryFragment : Fragment() {
 
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
-                val currentOrder = mediaItems.map { it.id }
+                val currentOrder = viewModel.mediaItems.map { it.id }
                 if (initialOrder != null && initialOrder != currentOrder) {
                     saveNewMediaOrder()
                 }
@@ -191,7 +202,7 @@ class MemoryFragment : Fragment() {
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(viewHolder, actionState)
                 if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
-                    initialOrder = fragmentItems.map { it.id }
+                    initialOrder = viewModel.fragmentItems.map { it.id }
                 }
             }
 
@@ -200,17 +211,19 @@ class MemoryFragment : Fragment() {
                 val toPos = target.bindingAdapterPosition
                 if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
 
+                val mutableFragments = viewModel.fragmentItems.toMutableList()
                 if (fromPos < toPos) {
                     for (i in fromPos until toPos) {
-                        Collections.swap(fragmentItems, i, i + 1)
+                        Collections.swap(mutableFragments, i, i + 1)
                         fragmentsAdapter.moveItem(i, i + 1)
                     }
                 } else {
                     for (i in fromPos downTo toPos + 1) {
-                        Collections.swap(fragmentItems, i, i - 1)
+                        Collections.swap(mutableFragments, i, i - 1)
                         fragmentsAdapter.moveItem(i, i - 1)
                     }
                 }
+                viewModel.fragmentItems = mutableFragments
                 return true
             }
 
@@ -218,7 +231,7 @@ class MemoryFragment : Fragment() {
 
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
-                val currentOrder = fragmentItems.map { it.id }
+                val currentOrder = viewModel.fragmentItems.map { it.id }
                 if (initialOrder != null && initialOrder != currentOrder) {
                     saveNewFragmentsOrder()
                 }
@@ -229,33 +242,19 @@ class MemoryFragment : Fragment() {
     }
 
     private fun toggleFragments() {
-        isFragmentsExpanded = !isFragmentsExpanded
-        binding.fragmentsExpandedContent.visibility = if (isFragmentsExpanded) View.VISIBLE else View.GONE
+        viewModel.isFragmentsExpanded = !viewModel.isFragmentsExpanded
+        binding.fragmentsExpandedContent.visibility = if (viewModel.isFragmentsExpanded) View.VISIBLE else View.GONE
         binding.fragmentsChevron.animate()
-            .rotation(if (isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
+            .rotation(if (viewModel.isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
             .start()
     }
 
     private fun saveNewMediaOrder() {
-        mediaOrderJob?.cancel()
-        val updatedItems = mediaItems.mapIndexed { index, item ->
-            item.copy(order = index + 1)
-        }
-        mediaOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            memoryMapViewModel.getMemoryGroupDao().updateMediaItems(updatedItems)
-            backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
-        }
+        viewModel.saveNewMediaOrder(viewModel.mediaItems, memoryMapViewModel.getDb(), backupManager)
     }
 
     private fun saveNewFragmentsOrder() {
-        fragmentsOrderJob?.cancel()
-        val updatedFragments = fragmentItems.mapIndexed { index, item ->
-            item.copy(order = index + 1)
-        }
-        fragmentsOrderJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            memoryMapViewModel.getMemoryGroupDao().updateFragments(updatedFragments)
-            backupManager.triggerAutomaticBackup(memoryMapViewModel.getDb())
-        }
+        viewModel.saveNewFragmentsOrder(viewModel.fragmentItems, memoryMapViewModel.getDb(), backupManager)
     }
 
     private suspend fun displayDetails(data: MemoryGroupWithMedia) {
@@ -310,7 +309,7 @@ class MemoryFragment : Fragment() {
 
     private fun displayMemoryFragments(data: MemoryGroupWithMedia) {
         val binding = _binding ?: return
-        fragmentItems = data.fragments.sortedWith { a, b ->
+        viewModel.fragmentItems = data.fragments.sortedWith { a, b ->
             when {
                 a.order != null && b.order != null -> a.order.compareTo(b.order)
                 a.order != null -> -1
@@ -326,37 +325,37 @@ class MemoryFragment : Fragment() {
                     }
                 }
             }
-        }.toMutableList()
+        }
 
-        if (fragmentItems.isEmpty()) {
+        if (viewModel.fragmentItems.isEmpty()) {
             binding.fragmentsSection.visibility = View.GONE
         } else {
             binding.fragmentsSection.visibility = View.VISIBLE
-            fragmentsAdapter.updateData(fragmentItems.toList())
+            fragmentsAdapter.updateData(viewModel.fragmentItems)
             binding.fragmentsExpandedContent.visibility =
-                if (isFragmentsExpanded) View.VISIBLE else View.GONE
+                if (viewModel.isFragmentsExpanded) View.VISIBLE else View.GONE
             binding.fragmentsChevron.rotation =
-                if (isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
+                if (viewModel.isFragmentsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION
         }
     }
 
     private suspend fun displayMediaItems(data: MemoryGroupWithMedia) {
         val binding = _binding ?: return
         val context = context ?: return
-        mediaItems = data.mediaItems.sortedWith { a, b ->
+        viewModel.mediaItems = data.mediaItems.sortedWith { a, b ->
             when {
                 a.order != null && b.order != null -> a.order.compareTo(b.order)
                 a.order != null -> -1
                 b.order != null -> 1
                 else -> b.dateTaken.compareTo(a.dateTaken)
             }
-        }.toMutableList()
+        }
 
         val hasMissingMedia = withContext(Dispatchers.IO) {
-            LocalMediaUtil.hasMissingMedia(context, mediaItems)
+            LocalMediaUtil.hasMissingMedia(context, viewModel.mediaItems)
         }
         binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
-        mediaAdapter.updateData(mediaItems.toList())
+        mediaAdapter.updateData(viewModel.mediaItems)
     }
 
     private fun showDeleteConfirmationDialog() {

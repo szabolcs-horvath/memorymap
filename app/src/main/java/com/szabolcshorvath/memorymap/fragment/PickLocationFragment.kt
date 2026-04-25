@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -43,15 +44,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private var _binding: FragmentPickLocationBinding? = null
     private val binding get() = _binding!!
+    private val viewModel: PickLocationFragmentViewModel by viewModels()
     private var mMap: GoogleMap? = null
-    private var selectedLat: Double? = null
-    private var selectedLng: Double? = null
-    private var selectedPlaceName: String? = null
-    private var selectedAddress: String? = null
     private var pickLocationListener: PickLocationListener? = null
-
-    private var permissionDenied = false
-    private var activeAutocompletePlaceId: String? = null
 
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -62,7 +57,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             enableMyLocation()
             selectUserLocation()
         } else {
-            permissionDenied = true
+            viewModel.permissionDenied = true
         }
     }
 
@@ -78,11 +73,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         val placesClient = Places.createClient(requireContext())
 
                         // Invalidate any ongoing map/POI selection or other autocomplete requests
-                        activeAutocompletePlaceId = requestedPlaceId
-                        selectedLat = null
-                        selectedLng = null
-                        selectedPlaceName = null
-                        selectedAddress = null
+                        viewModel.activeAutocompletePlaceId = requestedPlaceId
+                        viewModel.selectedLat = null
+                        viewModel.selectedLng = null
+                        viewModel.selectedPlaceName = null
+                        viewModel.selectedAddress = null
                         mMap?.clear()
 
                         viewLifecycleOwner.lifecycleScope.launch {
@@ -93,24 +88,24 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                                 }
 
                                 // Race condition check: Only proceed if this is still the active request
-                                if (activeAutocompletePlaceId != requestedPlaceId) return@launch
+                                if (viewModel.activeAutocompletePlaceId != requestedPlaceId) return@launch
 
                                 val place = response.place
                                 val latLng = place.location
                                 if (latLng != null) {
-                                    selectedPlaceName = place.displayName
-                                    selectedAddress = place.formattedAddress
-                                    updateSelectedLocation(latLng, selectedPlaceName)
+                                    viewModel.selectedPlaceName = place.displayName
+                                    viewModel.selectedAddress = place.formattedAddress
+                                    updateSelectedLocation(latLng, viewModel.selectedPlaceName)
                                     mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
                                 } else {
                                     Log.e(TAG, "Fetched place has no location")
-                                    if (activeAutocompletePlaceId == requestedPlaceId) {
+                                    if (viewModel.activeAutocompletePlaceId == requestedPlaceId) {
                                         setConfirmButtonLoading(false)
                                     }
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error fetching place details: ${e.message}", e)
-                                if (activeAutocompletePlaceId == requestedPlaceId) {
+                                if (viewModel.activeAutocompletePlaceId == requestedPlaceId) {
                                     setConfirmButtonLoading(false)
                                 }
                             }
@@ -148,12 +143,12 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
 
         binding.confirmButton.setOnClickListener {
-            if (selectedLat != null && selectedLng != null) {
+            if (viewModel.selectedLat != null && viewModel.selectedLng != null) {
                 pickLocationListener?.onLocationConfirmed(
-                    selectedLat!!,
-                    selectedLng!!,
-                    selectedPlaceName,
-                    selectedAddress
+                    viewModel.selectedLat!!,
+                    viewModel.selectedLng!!,
+                    viewModel.selectedPlaceName,
+                    viewModel.selectedAddress
                 )
             }
         }
@@ -189,8 +184,8 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         setGoogleMapPadding()
 
         googleMap.setOnMapClickListener { latLng ->
-            selectedPlaceName = null
-            selectedAddress = null
+            viewModel.selectedPlaceName = null
+            viewModel.selectedAddress = null
             updateSelectedLocation(latLng, isLoading = true)
             reverseGeocode(latLng)
             googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
@@ -209,15 +204,15 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     val place = response.place
 
                     // Race condition check: Only update if the user hasn't clicked elsewhere
-                    if (poiLatLng.latitude == selectedLat && poiLatLng.longitude == selectedLng) {
-                        selectedPlaceName = place.displayName
-                        selectedAddress = place.formattedAddress
-                        updateSelectedLocation(poiLatLng, selectedPlaceName)
+                    if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
+                        viewModel.selectedPlaceName = place.displayName
+                        viewModel.selectedAddress = place.formattedAddress
+                        updateSelectedLocation(poiLatLng, viewModel.selectedPlaceName)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error fetching place details for POI: ${e.message}", e)
                     // Fallback to reverse geocoding for address if fetch fails
-                    if (poiLatLng.latitude == selectedLat && poiLatLng.longitude == selectedLng) {
+                    if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
                         reverseGeocode(poiLatLng)
                     }
                 }
@@ -229,8 +224,13 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             true
         }
 
-        if (selectedLat == null) {
+        if (viewModel.selectedLat == null) {
             selectUserLocation()
+        } else {
+            // Restore marker after rotation
+            val latLng = LatLng(viewModel.selectedLat!!, viewModel.selectedLng!!)
+            updateSelectedLocation(latLng, viewModel.selectedPlaceName)
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
         }
     }
 
@@ -247,7 +247,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         // RACE CONDITION CHECK:
                         // Only process the result if the currently selected location hasn't changed
                         // since this request was initiated.
-                        if (requestLatLng.latitude != selectedLat || requestLatLng.longitude != selectedLng) {
+                        if (requestLatLng.latitude != viewModel.selectedLat || requestLatLng.longitude != viewModel.selectedLng) {
                             return@getFromLocation
                         }
 
@@ -255,18 +255,18 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                             val address = addresses.first()
                             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
                                 // Re-verify on the Main thread before updating UI
-                                if (requestLatLng.latitude != selectedLat || requestLatLng.longitude != selectedLng) {
+                                if (requestLatLng.latitude != viewModel.selectedLat || requestLatLng.longitude != viewModel.selectedLng) {
                                     return@launch
                                 }
-                                if (selectedPlaceName == null) {
-                                    selectedPlaceName = address.featureName ?: address.thoroughfare
+                                if (viewModel.selectedPlaceName == null) {
+                                    viewModel.selectedPlaceName = address.featureName ?: address.thoroughfare
                                 }
-                                selectedAddress = address.getAddressLine(0)
-                                updateSelectedLocation(latLng, selectedPlaceName)
+                                viewModel.selectedAddress = address.getAddressLine(0)
+                                updateSelectedLocation(latLng, viewModel.selectedPlaceName)
                             }
                         } else {
                             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                                if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
+                                if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
                                     setConfirmButtonLoading(false)
                                 }
                             }
@@ -279,24 +279,24 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     // RACE CONDITION CHECK:
                     // Only process the result if the currently selected location hasn't changed
                     // since this request was initiated.
-                    if (requestLatLng.latitude != selectedLat || requestLatLng.longitude != selectedLng) {
+                    if (requestLatLng.latitude != viewModel.selectedLat || requestLatLng.longitude != viewModel.selectedLng) {
                         return@launch
                     }
 
                     if (!addresses.isNullOrEmpty()) {
                         val address = addresses.first()
                         withContext(Dispatchers.Main) {
-                            if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
-                                if (selectedPlaceName == null) {
-                                    selectedPlaceName = address.featureName ?: address.thoroughfare
+                            if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
+                                if (viewModel.selectedPlaceName == null) {
+                                    viewModel.selectedPlaceName = address.featureName ?: address.thoroughfare
                                 }
-                                selectedAddress = address.getAddressLine(0)
-                                updateSelectedLocation(latLng, selectedPlaceName)
+                                viewModel.selectedAddress = address.getAddressLine(0)
+                                updateSelectedLocation(latLng, viewModel.selectedPlaceName)
                             }
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
+                            if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
                                 setConfirmButtonLoading(false)
                             }
                         }
@@ -310,7 +310,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     else -> Log.e(TAG, "Reverse geocoding failed for $latLng", e)
                 }
                 withContext(Dispatchers.Main) {
-                    if (requestLatLng.latitude == selectedLat && requestLatLng.longitude == selectedLng) {
+                    if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
                         setConfirmButtonLoading(false)
                     }
                 }
@@ -327,7 +327,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateSelectedLocation(latLng: LatLng, title: String? = null, isLoading: Boolean = false) {
-        activeAutocompletePlaceId = null
+        viewModel.activeAutocompletePlaceId = null
         val map = mMap ?: return
         map.clear()
         val markerTitle = when {
@@ -340,8 +340,8 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 .position(latLng)
                 .title(markerTitle)
         )?.showInfoWindow()
-        selectedLat = latLng.latitude
-        selectedLng = latLng.longitude
+        viewModel.selectedLat = latLng.latitude
+        viewModel.selectedLng = latLng.longitude
 
         setConfirmButtonLoading(isLoading)
     }
@@ -362,7 +362,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun requestLocationPermissionIfNeeded() {
-        if (!hasLocationPermission() && !permissionDenied) {
+        if (!hasLocationPermission() && !viewModel.permissionDenied) {
             locationPermissionRequest.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -381,13 +381,13 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val map = mMap
         if (hasLocationPermission() && map != null) {
             map.isMyLocationEnabled = true
-            permissionDenied = false
+            viewModel.permissionDenied = false
         }
     }
 
     @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
-        activeAutocompletePlaceId = null
+        viewModel.activeAutocompletePlaceId = null
         if (hasLocationPermission()) {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
@@ -403,11 +403,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     fun clearSelection() {
-        activeAutocompletePlaceId = null
-        selectedLat = null
-        selectedLng = null
-        selectedPlaceName = null
-        selectedAddress = null
+        viewModel.activeAutocompletePlaceId = null
+        viewModel.selectedLat = null
+        viewModel.selectedLng = null
+        viewModel.selectedPlaceName = null
+        viewModel.selectedAddress = null
         val map = mMap
         if (map != null) {
             map.clear()

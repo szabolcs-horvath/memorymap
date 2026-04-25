@@ -14,7 +14,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaThumbnailBinding
 
 class MediaAdapter(
-    private val currentDeviceId: String?,
+    private var currentDeviceId: String?,
     private val onMediaClick: (Int) -> Unit
 ) : RecyclerView.Adapter<MediaAdapter.MediaViewHolder>() {
 
@@ -22,6 +22,11 @@ class MediaAdapter(
 
     init {
         setHasStableIds(true)
+    }
+
+    fun updateCurrentDeviceId(deviceId: String?) {
+        currentDeviceId = deviceId
+        notifyItemRangeChanged(0, itemCount)
     }
 
     inner class MediaViewHolder(private val binding: ItemMediaThumbnailBinding) : RecyclerView.ViewHolder(
