@@ -25,12 +25,12 @@ kotlin {
 
     android {
         namespace = "com.szabolcshorvath.memorymap"
-        compileSdk = 37
+        compileSdk = 36
 
         defaultConfig {
             applicationId = "com.szabolcshorvath.memorymap"
             minSdk = 27
-            targetSdk = 37
+            targetSdk = 36
             versionCode = 25
             versionName = "Imádlak :3"
 
