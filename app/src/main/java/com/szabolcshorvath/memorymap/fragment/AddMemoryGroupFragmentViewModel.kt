@@ -67,6 +67,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     fun saveMemoryGroup(title: String, description: String?, database: MemoryMapDatabase, backupManager: BackupManager) {
         if (_isSaving.value) return
+        _isSaving.value = true
 
         val snapshotMedia = selectedMedia.toList()
         val snapshotFragments = fragments.toList()
@@ -84,7 +85,6 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                _isSaving.value = true
                 val effectiveStart = calculateEffectiveStartTime(snapshotIsAllDay, snapshotStart)
                 val effectiveEnd = calculateEffectiveEndTime(snapshotIsAllDay, snapshotEnd)
                 val group = assembleMemoryGroup(
