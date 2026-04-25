@@ -222,7 +222,6 @@ class AddMemoryGroupFragment : Fragment() {
                 Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            binding.saveButton.isEnabled = false
             viewModel.saveMemoryGroup(
                 title = title,
                 description = binding.descriptionInput.text.toString().ifBlank { null },
@@ -233,16 +232,22 @@ class AddMemoryGroupFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.saveResult.collect { result ->
-                    binding.saveButton.isEnabled = true
-                    when (result) {
-                        is AddMemoryGroupFragmentViewModel.SaveResult.Success -> {
-                            addMemoryGroupListener?.onMemorySaved(result.groupId)
-                            clearFields()
-                        }
+                launch {
+                    viewModel.isSaving.collect { isSaving ->
+                        binding.saveButton.isEnabled = !isSaving
+                    }
+                }
+                launch {
+                    viewModel.saveResult.collect { result ->
+                        when (result) {
+                            is AddMemoryGroupFragmentViewModel.SaveResult.Success -> {
+                                addMemoryGroupListener?.onMemorySaved(result.groupId)
+                                clearFields()
+                            }
 
-                        is AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
-                            Toast.makeText(requireContext(), "Failed to save: ${result.message}", Toast.LENGTH_LONG).show()
+                            is AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
+                                Toast.makeText(requireContext(), "Failed to save: ${result.message}", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 }
