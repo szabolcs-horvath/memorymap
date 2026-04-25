@@ -465,6 +465,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         trace("map_fragment_update_ui_with_fresh_markers") {
             googleMap.clear()
             markerMap.clear()
+            selectedMarker = null
 
             updatePieChart(filteredItems)
 
@@ -516,20 +517,25 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if (selectedMarker == null && viewModel.selectedMemoryId != null) {
                 val sId = viewModel.selectedMemoryId!!
                 val sPos = viewModel.selectedMarkerPosition
-                allGroups.find { it.id == sId }?.let { memory ->
+                val restoredMarker = allGroups.find { it.id == sId }?.let { memory ->
                     val lat = sPos?.latitude ?: memory.latitude
                     val lng = sPos?.longitude ?: memory.longitude
                     val key = "${memory.id}|$lat|$lng"
-                    val marker = markerMap[key] ?: markerMap[sId.toString()]
-                    if (marker != null) {
-                        selectedMarker = marker
-                        @Suppress("UNCHECKED_CAST")
-                        val items = marker.tag as? List<Markerable>
-                        if (items != null) {
-                            showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
-                        }
-                    }
+                    markerMap[key] ?: markerMap[sId.toString()]
                 }
+
+                if (restoredMarker != null) {
+                    selectedMarker = restoredMarker
+                    @Suppress("UNCHECKED_CAST")
+                    val items = restoredMarker.tag as? List<Markerable>
+                    if (items != null) {
+                        showMemoryOverlay(restoredMarker.position.latitude, restoredMarker.position.longitude, items)
+                    }
+                } else {
+                    hideMemoryOverlay()
+                }
+            } else if (selectedMarker == null) {
+                hideMemoryOverlay()
             }
 
             if (adjustCamera && markersCount > 0) {
