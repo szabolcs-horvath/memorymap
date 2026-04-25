@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.fragment
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.ColorStateList
 import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -349,6 +351,12 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         } else {
             "Confirm Location"
         }
+
+        // Use solid colors to avoid transparency over the map when disabled
+        val colorRes = if (isLoading) R.color.md_theme_surfaceVariant else R.color.md_theme_primary
+        binding.confirmButton.backgroundTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(requireContext(), colorRes)
+        )
     }
 
     private fun requestLocationPermissionIfNeeded() {
