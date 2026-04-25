@@ -69,8 +69,8 @@ class MemoryPagerFragment : Fragment() {
                 binding.memoryViewPager.post {
                     _binding?.memoryViewPager?.setCurrentItem(initialPosition, false)
                 }
+                viewModel.isInitialSetupDone = true
             }
-            viewModel.isInitialSetupDone = true
         } else {
             pagerAdapter?.submitList(viewModel.memoryIds)
         }
