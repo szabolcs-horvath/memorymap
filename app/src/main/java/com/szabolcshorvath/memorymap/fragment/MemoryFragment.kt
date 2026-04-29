@@ -19,10 +19,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -38,7 +38,7 @@ import java.util.Collections
 class MemoryFragment : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
-    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels()
     private val viewModel: MemoryFragmentViewModel by viewModels()
     private lateinit var mediaAdapter: MediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentAdapter
@@ -65,7 +65,7 @@ class MemoryFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            memoryId = it.getInt(ARG_MEMORY_ID)
+            memoryId = it.getInt(MemoryFragmentViewModel.ARG_MEMORY_ID)
         }
     }
 
@@ -101,7 +101,7 @@ class MemoryFragment : Fragment() {
             mediaAdapter.updateCurrentDeviceId(viewModel.currentDeviceId)
 
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                memoryMapViewModel.getGroupWithMedia(memoryId).collect { data ->
+                viewModel.groupWithMedia.collect { data ->
                     data?.let { displayDetails(it) }
                 }
             }
@@ -250,11 +250,11 @@ class MemoryFragment : Fragment() {
     }
 
     private fun saveNewMediaOrder() {
-        viewModel.saveNewMediaOrder(viewModel.mediaItems, memoryMapViewModel.getDb(), backupManager)
+        viewModel.saveNewMediaOrder(viewModel.mediaItems, commonViewModel.getDb(), backupManager)
     }
 
     private fun saveNewFragmentsOrder() {
-        viewModel.saveNewFragmentsOrder(viewModel.fragmentItems, memoryMapViewModel.getDb(), backupManager)
+        viewModel.saveNewFragmentsOrder(viewModel.fragmentItems, commonViewModel.getDb(), backupManager)
     }
 
     private suspend fun displayDetails(data: MemoryGroupWithMedia) {
@@ -371,8 +371,8 @@ class MemoryFragment : Fragment() {
 
     private fun deleteMemory() {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val groupWithMedia = memoryMapViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) ?: return@launch
-            memoryMapViewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
+            val groupWithMedia = commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) ?: return@launch
+            commonViewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
 
             withContext(Dispatchers.Main) {
                 memoryFragmentListener?.onMemoryDeleted(groupWithMedia.group, groupWithMedia.mediaItems)
@@ -387,7 +387,6 @@ class MemoryFragment : Fragment() {
     }
 
     companion object {
-        private const val ARG_MEMORY_ID = "memory_id"
         private const val MEDIA_GRID_SPAN_COUNT = 3
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
@@ -396,7 +395,7 @@ class MemoryFragment : Fragment() {
         fun newInstance(memoryId: Int) =
             MemoryFragment().apply {
                 arguments = Bundle().apply {
-                    putInt(ARG_MEMORY_ID, memoryId)
+                    putInt(MemoryFragmentViewModel.ARG_MEMORY_ID, memoryId)
                 }
             }
     }

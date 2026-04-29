@@ -12,7 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.DiffUtil
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
+import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryPagerBinding
 import kotlinx.coroutines.launch
 
@@ -20,7 +20,7 @@ class MemoryPagerFragment : Fragment() {
 
     private var _binding: FragmentMemoryPagerBinding? = null
     private val binding get() = _binding!!
-    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels()
     private val viewModel: MemoryPagerFragmentViewModel by viewModels()
     private var initialMemoryId: Int = -1
     private var pagerAdapter: MemoryPagerAdapter? = null
@@ -49,7 +49,7 @@ class MemoryPagerFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                memoryMapViewModel.allGroups.collect { groups ->
+                commonViewModel.allGroups.collect { groups ->
                     val sortedIds = groups.sortedByDescending { it.startDate }.map { it.id }
 
                     if (viewModel.memoryIds != sortedIds) {
