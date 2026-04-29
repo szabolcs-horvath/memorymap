@@ -23,7 +23,7 @@ import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
+import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment
 import com.szabolcshorvath.memorymap.fragment.MapFragment
@@ -55,7 +55,7 @@ class MainActivity :
     PickLocationFragment.PickLocationListener {
 
     private lateinit var binding: ActivityMainContainerBinding
-    private lateinit var memoryMapViewModel: MemoryMapViewModel
+    private lateinit var commonViewModel: CommonViewModel
 
     private lateinit var mapFragment: MapFragment
     private lateinit var timelineFragment: TimelineFragment
@@ -73,7 +73,7 @@ class MainActivity :
         binding = ActivityMainContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        memoryMapViewModel = ViewModelProvider(this)[MemoryMapViewModel::class.java]
+        commonViewModel = ViewModelProvider(this)[CommonViewModel::class.java]
 
         if (savedInstanceState == null) {
             mapFragment = MapFragment()
@@ -233,7 +233,7 @@ class MainActivity :
 
                 if (currentVersion > lastVersion) {
                     withContext(Dispatchers.IO) {
-                        LocalMediaUtil.verifyAndFixMediaItems(applicationContext, memoryMapViewModel.getMemoryGroupDao())
+                        LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
                     }
                     dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
                 }
@@ -253,11 +253,11 @@ class MainActivity :
     }
 
     private suspend fun initializeHSVPresetsIfEmpty() {
-        if (memoryMapViewModel.getHSVPresetDao().getCount() == 0) {
+        if (commonViewModel.getHSVPresetDao().getCount() == 0) {
             val defaultPresets = ColorUtil.DEFAULT_HSV_PRESETS.mapIndexed { index, hsv ->
                 HSVPreset(hue = hsv[0], saturation = hsv[1], brightness = hsv[2], order = index)
             }
-            memoryMapViewModel.getHSVPresetDao().insertPresets(defaultPresets)
+            commonViewModel.getHSVPresetDao().insertPresets(defaultPresets)
         }
     }
 
@@ -330,15 +330,15 @@ class MainActivity :
         snackbar.anchorView = binding.bottomNavigation
         snackbar.setAction("Undo") {
             lifecycleScope.launch(Dispatchers.IO) {
-                val dao = memoryMapViewModel.getMemoryGroupDao()
-                memoryMapViewModel.getDb().withTransaction {
+                val dao = commonViewModel.getMemoryGroupDao()
+                commonViewModel.getDb().withTransaction {
                     val newGroupId = dao.insertGroup(memoryGroup)
                     val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
                     dao.insertMediaItems(restoredMediaItems)
                 }
 
                 // Trigger automatic backup after undo
-                BackupManager(applicationContext).triggerAutomaticBackup(memoryMapViewModel.getDb())
+                BackupManager(applicationContext).triggerAutomaticBackup(commonViewModel.getDb())
             }
         }
         snackbar.show()

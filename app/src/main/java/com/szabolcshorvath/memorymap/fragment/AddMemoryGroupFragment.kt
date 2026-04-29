@@ -36,7 +36,7 @@ import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
-import com.szabolcshorvath.memorymap.data.MemoryMapViewModel
+import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -60,7 +60,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private var _binding: FragmentAddMemoryGroupBinding? = null
     private val binding get() = _binding!!
-    private val memoryMapViewModel: MemoryMapViewModel by activityViewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels()
     private val viewModel: AddMemoryGroupFragmentViewModel by viewModels()
 
     data class SelectedMedia(
@@ -159,7 +159,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                memoryMapViewModel.allPresets.collect { presets ->
+                commonViewModel.allPresets.collect { presets ->
                     colorPresetAdapter.submitList(presets)
                     fragmentsAdapter.setHSVPresets(presets)
                 }
@@ -225,7 +225,7 @@ class AddMemoryGroupFragment : Fragment() {
             viewModel.saveMemoryGroup(
                 title = title,
                 description = binding.descriptionInput.text.toString().ifBlank { null },
-                database = memoryMapViewModel.getDb(),
+                database = commonViewModel.getDb(),
                 backupManager = backupManager
             )
         }
@@ -490,7 +490,7 @@ class AddMemoryGroupFragment : Fragment() {
     fun setEditMode(memoryId: Int) {
         viewModel.editingMemoryId = memoryId
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val groupWithMedia = memoryMapViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
+            val groupWithMedia = commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
             withContext(Dispatchers.Main) {
                 val binding = _binding ?: return@withContext
                 groupWithMedia?.let { data ->
