@@ -114,14 +114,14 @@
         android:visibility="gone"
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp"
-        app:layout_constrainedHeight="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/date_filter_container"
         app:layout_constraintVertical_bias="1.0"
         app:layout_constraintWidth_max="500dp"
-        app:strokeWidth="0dp">
+        app:strokeWidth="0dp"
+        tools:visibility="visible">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -134,6 +134,7 @@
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceTitleLarge"
                 android:textColor="?attr/colorOnSurface"
+                app:layout_constraintBottom_toTopOf="@id/rv_memories"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
@@ -150,8 +151,13 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHeight_max="240dp"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/overlay_location_title" />
+                app:layout_constraintTop_toBottomOf="@id/overlay_location_title"
+                app:layout_constraintVertical_bias="0.0"
+                tools:itemCount="6"
+                tools:listitem="@layout/item_memory_overlay" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
+
     </com.google.android.material.card.MaterialCardView>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
