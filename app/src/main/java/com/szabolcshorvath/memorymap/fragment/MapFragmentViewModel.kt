@@ -46,6 +46,9 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     private val _appliedFilterLabel = MutableStateFlow<String?>(null)
     val appliedFilterLabel: StateFlow<String?> = _appliedFilterLabel.asStateFlow()
 
+    private val _isDateFilterLoaded = MutableStateFlow(false)
+    val isDateFilterLoaded: StateFlow<Boolean> = _isDateFilterLoaded.asStateFlow()
+
     val showFragments = dataStore.data
         .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), false)
@@ -53,8 +56,10 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     init {
         viewModelScope.launch {
             val defaultOption = DateFilterOption.getFromDataStore(dataStore)
-            val (start, end) = defaultOption.dateRangeProvider(LocalDate.now())
-            updateDateFilter(start, end, defaultOption.label)
+            if (!_isDateFilterLoaded.value) {
+                val (start, end) = defaultOption.dateRangeProvider(LocalDate.now())
+                updateDateFilter(start, end, defaultOption.label)
+            }
         }
     }
 
@@ -97,6 +102,7 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         _filterStartDate.value = start
         _filterEndDate.value = end
         _appliedFilterLabel.value = label
+        _isDateFilterLoaded.value = true
     }
 
     companion object {

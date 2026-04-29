@@ -56,6 +56,7 @@ import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -260,32 +261,45 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
-        val memory = allGroups.find { it.id == id } ?: return
+        lifecycleScope.launch {
+            // Wait for groups to be loaded if they are empty
+            val groups = allGroups.ifEmpty {
+                commonViewModel.allGroups.first { it.isNotEmpty() }
+            }
+            val memory = groups.find { it.id == id } ?: return@launch
 
-        viewModel.pendingSelectionId = id
-        viewModel.pendingSelectionLat = lat
-        viewModel.pendingSelectionLng = lng
+            // Wait for filter to be loaded from DataStore
+            viewModel.isDateFilterLoaded.first { it }
 
-        val oldStart = viewModel.filterStartDate.value
-        val oldEnd = viewModel.filterEndDate.value
+            viewModel.pendingSelectionId = id
+            viewModel.pendingSelectionLat = lat
+            viewModel.pendingSelectionLng = lng
 
-        updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
+            val oldStart = viewModel.filterStartDate.value
+            val oldEnd = viewModel.filterEndDate.value
 
-        if (oldStart == viewModel.filterStartDate.value && oldEnd == viewModel.filterEndDate.value) {
-            // Filter didn't change, we can try to select immediately
-            moveToLocationAndSelectMarker(lat, lng, memory)
-            viewModel.pendingSelectionId = null
+            updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
+
+            if (oldStart == viewModel.filterStartDate.value && oldEnd == viewModel.filterEndDate.value) {
+                // Filter didn't change, we can try to select immediately
+                moveToLocationAndSelectMarker(lat, lng, memory)
+                viewModel.pendingSelectionId = null
+            }
         }
     }
 
     private fun updateDateFilterForMemory(memoryStart: LocalDate, memoryEnd: LocalDate) {
-        val currentStart = viewModel.filterStartDate.value ?: memoryStart
-        val currentEnd = viewModel.filterEndDate.value ?: memoryEnd
+        val currentStart = viewModel.filterStartDate.value
+        val currentEnd = viewModel.filterEndDate.value
 
-        val newStart = if (memoryStart.isBefore(currentStart)) memoryStart else currentStart
-        val newEnd = if (memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
+        // If current is null, it means ALL_TIME (unbounded), so memory is already within range.
+        // If current is NOT null, and memory is outside, we expand to include it.
+        val newStart = if (currentStart != null && memoryStart.isBefore(currentStart)) memoryStart else currentStart
+        val newEnd = if (currentEnd != null && memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
 
-        viewModel.updateDateFilter(newStart, newEnd)
+        if (newStart != currentStart || newEnd != currentEnd) {
+            viewModel.updateDateFilter(newStart, newEnd)
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
