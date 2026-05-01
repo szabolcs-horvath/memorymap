@@ -3,7 +3,7 @@
 agp = "9.2.0"
 googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
 googleServices = "4.4.4"
-ksp = "2.3.6"
+ksp = "2.3.7"
 detekt = "1.23.8"
 
 # Core & UI
