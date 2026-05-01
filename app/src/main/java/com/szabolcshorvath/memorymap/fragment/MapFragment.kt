@@ -187,7 +187,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         popup.setOnMenuItemClickListener { menuItem ->
             val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
             val (start, end) = selectedOption.dateRangeProvider(LocalDate.now())
-            shouldAdjustCameraOnUpdate = true
+            if (start != viewModel.filterStartDate.value || end != viewModel.filterEndDate.value) {
+                shouldAdjustCameraOnUpdate = true
+            }
             viewModel.updateDateFilter(start, end, selectedOption.label)
             true
         }

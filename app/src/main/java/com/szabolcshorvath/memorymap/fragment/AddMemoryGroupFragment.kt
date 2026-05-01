@@ -223,7 +223,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         binding.saveButton.setOnClickListener {
             try {
-                require(viewModel.title?.isNotBlank() ?: false) { "The title must not be blank! " }
+                require(viewModel.title?.isNotBlank() ?: false) { "The title must not be blank!" }
                 require(viewModel.lat != null && viewModel.lng != null) { "The location must be specified!" }
                 require(viewModel.fragments.all { it.lat != null && it.lng != null }) { "The location must be specified for all fragments!" }
             } catch (e: IllegalArgumentException) {
