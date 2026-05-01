@@ -703,18 +703,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             it.placeName != null
         }?.placeName ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
 
-        // Smoothly animate the card appearance, title cross-fade, and list height changes
-        val transition = TransitionSet().apply {
-            ordering = TransitionSet.ORDERING_TOGETHER
-            addTransition(Fade())
-            addTransition(ChangeBounds())
-            duration = ANIMATION_DURATION
-        }
-
-        TransitionManager.beginDelayedTransition(binding.root, transition)
-
         if (binding.overlayCard.isVisible && binding.overlayLocationTitle.text != locationName) {
-            // Briefly toggling visibility triggers a smooth Fade cross-fade for the text change
+            // Smoothly animate the title cross-fade if the card is already visible
+            val titleTransition = TransitionSet().apply {
+                addTransition(Fade())
+                duration = ANIMATION_DURATION
+            }
+            TransitionManager.beginDelayedTransition(binding.overlayCard, titleTransition)
             binding.overlayLocationTitle.visibility = View.INVISIBLE
             binding.overlayLocationTitle.text = locationName
             binding.overlayLocationTitle.visibility = View.VISIBLE
@@ -723,13 +718,21 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
 
         overlayAdapter?.submitList(distinctItems) {
+            val transition = TransitionSet().apply {
+                ordering = TransitionSet.ORDERING_TOGETHER
+                addTransition(Fade())
+                addTransition(ChangeBounds())
+                duration = ANIMATION_DURATION
+            }
+            TransitionManager.beginDelayedTransition(binding.root, transition)
+
             val index = distinctItems.indexOfFirst { it.groupId == viewModel.selectedMemoryId }
             if (index != -1) {
                 binding.rvMemories.scrollToPosition(index)
             }
+            binding.overlayCard.visibility = View.VISIBLE
+            setGoogleMapPadding()
         }
-        binding.overlayCard.visibility = View.VISIBLE
-        setGoogleMapPadding()
     }
 
     override fun onDestroyView() {
