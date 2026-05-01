@@ -25,14 +25,10 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.AdvancedMarkerOptions
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.PinConfig
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.firebase.perf.metrics.AddTrace
 import com.google.firebase.perf.metrics.Trace
@@ -48,7 +44,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
-import com.szabolcshorvath.memorymap.util.MultiColorMarkerGenerator
+import com.szabolcshorvath.memorymap.util.MarkerGenerator
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
@@ -641,38 +637,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                 )
             }.sorted()
-            val density = resources.displayMetrics.density
-            val bitmap = MultiColorMarkerGenerator.generateTapered(colors, items.size, density)
 
-            googleMap.addMarker(
-                MarkerOptions()
-                    .position(position)
-                    .title(markerTitle)
-                    .icon(BitmapDescriptorFactory.fromBitmap(bitmap))
-                    .anchor(MARKER_ANCHOR_U, MARKER_ANCHOR_V)
-            )
+            googleMap.addMarker(MarkerGenerator.advancedMarkerOptions(position, markerTitle, colors, items.size, resources.displayMetrics.density))
         } else {
             val color = ColorUtil.hsvToColor(
                 representative.markerHue ?: DEFAULT_MARKER_HUE,
                 representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
                 representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
             )
-            val contrastColor = ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
 
-            googleMap.addMarker(
-                AdvancedMarkerOptions()
-                    .position(position)
-                    .title(markerTitle)
-                    .icon(
-                        BitmapDescriptorFactory.fromPinConfig(
-                            PinConfig.builder()
-                                .setBackgroundColor(color)
-                                .setGlyph(PinConfig.Glyph(contrastColor))
-                                .setBorderColor(contrastColor)
-                                .build()
-                        )
-                    )
-            )
+            googleMap.addMarker(MarkerGenerator.advancedMarkerOptions(position, markerTitle, color))
         }
     }
 
@@ -749,8 +723,5 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val ANIMATION_DURATION = 250L
         private const val MAP_CONTROLS_MARGIN_DP = 100
         private const val GOOGLE_LOGO_HEIGHT_DP = 25
-        private const val MARKER_ANCHOR_U = 0.5f
-        private const val MARKER_ANCHOR_V = 1.0f
-        private const val TARGET_CONTRAST_FOR_MARKER_COLORS = 2.0
     }
 }

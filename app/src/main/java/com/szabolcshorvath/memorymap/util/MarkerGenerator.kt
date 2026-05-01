@@ -8,12 +8,21 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.LruCache
+import androidx.annotation.ColorInt
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withClip
+import com.google.android.gms.maps.model.AdvancedMarkerOptions
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.PinConfig
 import com.google.firebase.perf.metrics.AddTrace
 
-object MultiColorMarkerGenerator {
-    private const val CACHE_MAX_SIZE = 50
+object MarkerGenerator {
+    private const val TARGET_CONTRAST_FOR_MARKER_COLORS = 2.0
+    private const val MARKER_ANCHOR_U = 0.5f
+    private const val MARKER_ANCHOR_V = 1.0f
+
     private const val MARKER_SIZE_DP = 25.0f
     private const val BORDER_WIDTH_DP = 1.0f
     private const val TEXT_SIZE_SP = 12.0f
@@ -22,50 +31,41 @@ object MultiColorMarkerGenerator {
     private const val DEGREES_360 = 360.0f
     private const val DEGREES_180 = 180.0f
     private const val DEGREES_90 = 90.0f
-
     private const val TAPERED_CURVE_BOTTOM_Y_FACTOR = 0.7f
     private const val TAPERED_CURVE_CENTER_Y_FACTOR = 0.6f
 
-    private val cache = LruCache<String, Bitmap>(CACHE_MAX_SIZE)
+    private const val CACHE_MAX_SIZE = 50
+    private val cache = LruCache<String, BitmapDescriptor>(CACHE_MAX_SIZE)
 
-    private data class PinEssentials(
-        val width: Int,
-        val height: Int,
-        val centerX: Float,
-        val centerY: Float,
-        val radius: Float,
-        val bitmap: Bitmap,
-        val canvas: Canvas,
-        val pinPath: Path,
-        val colors: List<Int>,
-        val text: String,
-        val textSize: Float,
-        val paint: Paint
-    ) {
-        companion object {
-            fun initPinEssentials(colors: List<Int>, count: Int, density: Float, borderWidth: Float): PinEssentials {
-                val width = (MARKER_SIZE_DP * density).toInt()
-                val height = (width * WIDTH_TO_HEIGHT_SCALING_FACTOR).toInt()
-                val centerX = width / 2.0f
-                val centerY = width / 2.0f
-                val radius = (width / 2.0f) - (borderWidth / 2.0f)
-                val bitmap = createBitmap(width, height)
-                val canvas = Canvas(bitmap)
-                val pinPath = Path()
-                val text = count.toString()
-                val textSize = (TEXT_SIZE_SP * density)
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-                return PinEssentials(width, height, centerX, centerY, radius, bitmap, canvas, pinPath, colors, text, textSize, paint)
-            }
-        }
+    fun advancedMarkerOptions(position: LatLng, title: String, @ColorInt color: Int): AdvancedMarkerOptions {
+        return AdvancedMarkerOptions()
+            .position(position)
+            .title(title)
+            .icon(singleColorPinConfigIcon(color))
     }
 
-    /**
-     * Generates a pin with a tapered, smooth tail resembling the Google Maps pin shape.
-     */
-    @AddTrace(name = "multi_color_marker_generator_generate_tapered", enabled = true)
-    fun generateTapered(colors: List<Int>, count: Int, density: Float): Bitmap {
+    fun advancedMarkerOptions(position: LatLng, title: String, @ColorInt colors: List<Int>, count: Int, density: Float): AdvancedMarkerOptions {
+        return AdvancedMarkerOptions()
+            .position(position)
+            .title(title)
+            .icon(multiColorBitmapIcon(colors, count, density))
+            .anchor(MARKER_ANCHOR_U, MARKER_ANCHOR_V)
+    }
+
+    @AddTrace(name = "marker_generator_single_color_pin_config_icon")
+    private fun singleColorPinConfigIcon(@ColorInt color: Int): BitmapDescriptor {
+        val contrastColor = ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
+        return BitmapDescriptorFactory.fromPinConfig(
+            PinConfig.builder()
+                .setBackgroundColor(color)
+                .setGlyph(PinConfig.Glyph(contrastColor))
+                .setBorderColor(contrastColor)
+                .build()
+        )
+    }
+
+    @AddTrace(name = "marker_generator_multi_color_bitmap_icon", enabled = true)
+    private fun multiColorBitmapIcon(colors: List<Int>, count: Int, density: Float): BitmapDescriptor {
         val cacheKey = "${colors.hashCode()}_${count}_$density"
         cache.get(cacheKey)?.let { return it }
 
@@ -77,8 +77,9 @@ object MultiColorMarkerGenerator {
         definePinPath(pinEssentials, bottomY)
         drawMarkerContent(pinEssentials, borderWidth, outlineWidth)
 
-        cache.put(cacheKey, pinEssentials.bitmap)
-        return pinEssentials.bitmap
+        val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(pinEssentials.bitmap)
+        cache.put(cacheKey, bitmapDescriptor)
+        return bitmapDescriptor
     }
 
     private fun definePinPath(pinEssentials: PinEssentials, bottomY: Float) {
@@ -180,6 +181,39 @@ object MultiColorMarkerGenerator {
         pinEssentials.paint.color = Color.WHITE
         pinEssentials.text.let {
             pinEssentials.canvas.drawText(it, pinEssentials.centerX, textY, pinEssentials.paint)
+        }
+    }
+
+    private data class PinEssentials(
+        val width: Int,
+        val height: Int,
+        val centerX: Float,
+        val centerY: Float,
+        val radius: Float,
+        val bitmap: Bitmap,
+        val canvas: Canvas,
+        val pinPath: Path,
+        val colors: List<Int>,
+        val text: String,
+        val textSize: Float,
+        val paint: Paint
+    ) {
+        companion object {
+            fun initPinEssentials(colors: List<Int>, count: Int, density: Float, borderWidth: Float): PinEssentials {
+                val width = (MARKER_SIZE_DP * density).toInt()
+                val height = (width * WIDTH_TO_HEIGHT_SCALING_FACTOR).toInt()
+                val centerX = width / 2.0f
+                val centerY = width / 2.0f
+                val radius = (width / 2.0f) - (borderWidth / 2.0f)
+                val bitmap = createBitmap(width, height)
+                val canvas = Canvas(bitmap)
+                val pinPath = Path()
+                val text = count.toString()
+                val textSize = (TEXT_SIZE_SP * density)
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+                return PinEssentials(width, height, centerX, centerY, radius, bitmap, canvas, pinPath, colors, text, textSize, paint)
+            }
         }
     }
 }
