@@ -256,9 +256,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         lifecycleScope.launch {
-            // Wait for groups to be loaded if they are empty
+            // Wait for the first groups emission if the current snapshot is empty
             val groups = allGroups.ifEmpty {
-                commonViewModel.allGroups.first { it.isNotEmpty() }
+                commonViewModel.allGroups.first()
             }
             val memory = groups.find { it.id == id } ?: return@launch
 
