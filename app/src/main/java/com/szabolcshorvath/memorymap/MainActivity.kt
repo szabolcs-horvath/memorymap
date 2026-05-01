@@ -16,7 +16,6 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.room.withTransaction
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.perf.metrics.Trace
 import com.szabolcshorvath.memorymap.backup.BackupManager
@@ -38,6 +37,7 @@ import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
+import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -302,9 +302,12 @@ class MainActivity :
         }
     }
 
-    override fun onPickLocation(lat: Double, lng: Double) {
-        pickLocationFragment.clearSelection()
-        addMemoryFragment.updateLocation(lat, lng)
+    override fun onPickLocation(lat: Double?, lng: Double?, placeName: String?, address: String?) {
+        if (lat == null || lng == null) {
+            pickLocationFragment.clearSelection()
+        } else {
+            pickLocationFragment.setInitialLocation(lat, lng, placeName, address)
+        }
 
         supportFragmentManager.beginTransaction()
             .hide(addMemoryFragment) // Specifically hide the caller
@@ -331,7 +334,7 @@ class MainActivity :
         snackbar.setAction("Undo") {
             lifecycleScope.launch(Dispatchers.IO) {
                 val dao = commonViewModel.getMemoryGroupDao()
-                commonViewModel.getDb().withTransaction {
+                commonViewModel.getDb().withTransaction("on_memory_delete") {
                     val newGroupId = dao.insertGroup(memoryGroup)
                     val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
                     dao.insertMediaItems(restoredMediaItems)

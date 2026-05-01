@@ -347,6 +347,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun setConfirmButtonLoading(isLoading: Boolean) {
+        val binding = _binding ?: return
         binding.confirmButton.isEnabled = !isLoading
         binding.confirmButton.text = if (isLoading) {
             "Fetching location…"
@@ -389,7 +390,8 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private fun selectUserLocation() {
         viewModel.activeAutocompletePlaceId = null
         if (hasLocationPermission()) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+            val context = context ?: return
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 val map = mMap
                 if (location != null && map != null) {
@@ -399,6 +401,20 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                     map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
                 }
             }
+        }
+    }
+
+    fun setInitialLocation(lat: Double, lng: Double, placeName: String?, address: String?) {
+        viewModel.selectedLat = lat
+        viewModel.selectedLng = lng
+        viewModel.selectedPlaceName = placeName
+        viewModel.selectedAddress = address
+
+        val map = mMap
+        if (map != null && _binding != null) {
+            val latLng = LatLng(lat, lng)
+            updateSelectedLocation(latLng, placeName)
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
         }
     }
 
@@ -418,6 +434,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        mMap = null
     }
 
     companion object {

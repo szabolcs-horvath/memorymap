@@ -6,7 +6,6 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.withTransaction
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -18,6 +17,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.MediaHasher
+import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,8 +44,11 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
     var selectedMedia = mutableListOf<AddMemoryGroupFragment.SelectedMedia>()
     var fragments = mutableListOf<MemoryFragmentEditAdapter.FragmentEditState>()
 
-    var lat = 0.0
-    var lng = 0.0
+    var title: String? = null
+    var description: String? = null
+
+    var lat: Double? = null
+    var lng: Double? = null
     var placeName: String? = null
     var address: String? = null
 
@@ -65,14 +68,16 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     var isInitialized = false
 
-    fun saveMemoryGroup(title: String, description: String?, database: MemoryMapDatabase, backupManager: BackupManager) {
+    fun saveMemoryGroup(database: MemoryMapDatabase, backupManager: BackupManager) {
         if (_isSaving.value) return
         _isSaving.value = true
 
         val snapshotMedia = selectedMedia.toList()
         val snapshotFragments = fragments.toList()
-        val snapshotLat = lat
-        val snapshotLng = lng
+        val snapshotTitle = title!!
+        val snapshotDescription = description
+        val snapshotLat = lat!!
+        val snapshotLng = lng!!
         val snapshotPlaceName = placeName
         val snapshotAddress = address
         val snapshotStart = startDateTime
@@ -88,13 +93,13 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                 val effectiveStart = calculateEffectiveStartTime(snapshotIsAllDay, snapshotStart)
                 val effectiveEnd = calculateEffectiveEndTime(snapshotIsAllDay, snapshotEnd)
                 val group = assembleMemoryGroup(
-                    snapshotEditingId, title, description, snapshotLat, snapshotLng,
+                    snapshotEditingId, snapshotTitle, snapshotDescription, snapshotLat, snapshotLng,
                     snapshotPlaceName, snapshotAddress, effectiveStart, effectiveEnd,
                     snapshotIsAllDay, snapshotHue, snapshotSat, snapshotBri
                 )
                 val dao = database.memoryGroupDao()
 
-                val groupIdResult = database.withTransaction {
+                val groupIdResult = database.withTransaction("save_memory_group") {
                     val groupId = if (snapshotEditingId != null) {
                         dao.updateGroup(group)
                         snapshotEditingId.toLong()
@@ -225,8 +230,8 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
             MemoryFragment(
                 groupId = groupId.toInt(),
-                latitude = f.latitude,
-                longitude = f.longitude,
+                latitude = f.lat!!,
+                longitude = f.lng!!,
                 placeName = f.placeName,
                 address = f.address,
                 startDate = fragmentStart,
