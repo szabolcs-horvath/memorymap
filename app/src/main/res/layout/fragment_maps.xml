@@ -84,7 +84,8 @@
         app:cardElevation="4dp"
         app:layout_constraintEnd_toEndOf="@+id/date_filter_container"
         app:layout_constraintTop_toBottomOf="@id/date_filter_container"
-        app:strokeWidth="0dp">
+        app:strokeWidth="0dp"
+        tools:visibility="visible">
 
         <ir.mahozad.android.PieChart
             android:id="@+id/pie_chart"
