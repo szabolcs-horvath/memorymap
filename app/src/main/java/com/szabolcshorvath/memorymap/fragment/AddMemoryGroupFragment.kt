@@ -33,10 +33,10 @@ import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
-import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -417,9 +417,9 @@ class AddMemoryGroupFragment : Fragment() {
         // We pass a new list instance (toList()) to ensure it detects the change.
         fragmentsAdapter.submitList(viewModel.fragments.toList()) {
             if (scrollToEnd) {
-                _binding?.root?.post {
+                binding.nestedScrollView.post {
                     // Scroll the NestedScrollView to the bottom of the fragments section
-                    _binding?.root?.smoothScrollTo(0, _binding?.fragmentsSection?.bottom ?: 0)
+                    binding.nestedScrollView.smoothScrollTo(0, binding.fragmentsSection.bottom)
                 }
             }
         }
