@@ -52,7 +52,7 @@ object MarkerGenerator {
             .anchor(MARKER_ANCHOR_U, MARKER_ANCHOR_V)
     }
 
-    @AddTrace(name = "marker_generator_single_color_pin_config_icon")
+    @AddTrace(name = "marker_generator_single_color_pin_config_icon", enabled = true)
     private fun singleColorPinConfigIcon(@ColorInt color: Int): BitmapDescriptor {
         val contrastColor = ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
         return BitmapDescriptorFactory.fromPinConfig(

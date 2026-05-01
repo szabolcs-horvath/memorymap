@@ -41,8 +41,8 @@ class MemoryFragmentEditAdapter(
     data class FragmentEditState(
         val id: Int = 0,
         val localId: String = UUID.randomUUID().toString(),
-        val latitude: Double = 0.0,
-        val longitude: Double = 0.0,
+        val lat: Double? = null,
+        val lng: Double? = null,
         val placeName: String? = null,
         val address: String? = null,
         val startDate: ZonedDateTime? = null,
@@ -64,8 +64,8 @@ class MemoryFragmentEditAdapter(
             @Suppress("CyclomaticComplexMethod")
             override fun getChangePayload(oldItem: FragmentEditState, newItem: FragmentEditState): Any? {
                 val payloads = mutableSetOf<String>()
-                if (oldItem.latitude != newItem.latitude ||
-                    oldItem.longitude != newItem.longitude ||
+                if (oldItem.lat != newItem.lat ||
+                    oldItem.lng != newItem.lng ||
                     oldItem.placeName != newItem.placeName ||
                     oldItem.address != newItem.address
                 ) {
@@ -158,15 +158,17 @@ class MemoryFragmentEditAdapter(
     private fun bindLocation(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
         binding.locationText.text = if (!item.placeName.isNullOrEmpty()) {
             if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
+        } else if (item.lat != null && item.lng != null) {
+            "Coordinates: ${item.lat} ${item.lng}"
         } else {
-            "Coordinates: ${item.latitude} ${item.longitude}"
+            "No location selected"
         }
     }
 
     private fun setupClickListeners(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder, item: FragmentEditState) {
         binding.selectLocationButton.setOnClickListener {
             setActivePickingIndex(holder.bindingAdapterPosition)
-            getListener()?.onPickLocation(item.latitude, item.longitude)
+            getListener()?.onPickLocation(item.lat, item.lng, item.placeName, item.address)
         }
 
         binding.removeButton.setOnClickListener {

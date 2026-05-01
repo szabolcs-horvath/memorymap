@@ -19,6 +19,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.net.toUri
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -111,7 +112,7 @@ class AddMemoryGroupFragment : Fragment() {
         }
 
     interface AddMemoryGroupListener {
-        fun onPickLocation(lat: Double, lng: Double)
+        fun onPickLocation(lat: Double?, lng: Double?, placeName: String?, address: String?)
         fun onMemorySaved(id: Int)
     }
 
@@ -137,6 +138,9 @@ class AddMemoryGroupFragment : Fragment() {
 
         setupRecyclerViews()
 
+        binding.titleInput.doAfterTextChanged { viewModel.title = it?.toString()?.ifBlank { null } }
+        binding.descriptionInput.doAfterTextChanged { viewModel.description = it?.toString()?.ifBlank { null } }
+
         viewLifecycleOwner.lifecycleScope.launch {
             if (viewModel.currentDeviceId == null) {
                 viewModel.currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
@@ -144,6 +148,7 @@ class AddMemoryGroupFragment : Fragment() {
             mediaAdapter.updateCurrentDeviceId(viewModel.currentDeviceId)
 
             // Ensure UI matches ViewModel state (both on first load and after rotation)
+            updateTitleAndDescription()
             updateLocationText()
             updateDateTimeButtons()
             updateColorUI()
@@ -168,7 +173,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         binding.selectLocationButton.setOnClickListener {
             viewModel.activePickingIndex = -1
-            addMemoryGroupListener?.onPickLocation(viewModel.lat, viewModel.lng)
+            addMemoryGroupListener?.onPickLocation(viewModel.lat, viewModel.lng, viewModel.placeName, viewModel.address)
         }
 
         binding.dateHeader.setOnClickListener { toggleDateSection() }
@@ -217,17 +222,15 @@ class AddMemoryGroupFragment : Fragment() {
         binding.clearButton.setOnClickListener { showClearConfirmationDialog() }
 
         binding.saveButton.setOnClickListener {
-            val title = binding.titleInput.text.toString()
-            if (title.isBlank()) {
-                Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
+            try {
+                require(viewModel.title?.isNotBlank() ?: false) { "The title must not be blank! " }
+                require(viewModel.lat != null && viewModel.lng != null) { "The location must be specified!" }
+                require(viewModel.fragments.all { it.lat != null && it.lng != null }) { "The location must be specified for all fragments!" }
+            } catch (e: IllegalArgumentException) {
+                Toast.makeText(requireContext(), e.message, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            viewModel.saveMemoryGroup(
-                title = title,
-                description = binding.descriptionInput.text.toString().ifBlank { null },
-                database = commonViewModel.getDb(),
-                backupManager = backupManager
-            )
+            viewModel.saveMemoryGroup(commonViewModel.getDb(), backupManager)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -396,8 +399,8 @@ class AddMemoryGroupFragment : Fragment() {
     private fun addFragment() {
         viewModel.fragments.add(
             MemoryFragmentEditAdapter.FragmentEditState(
-                latitude = viewModel.lat,
-                longitude = viewModel.lng,
+                lat = viewModel.lat,
+                lng = viewModel.lng,
                 placeName = viewModel.placeName,
                 address = viewModel.address,
                 markerHue = viewModel.markerHue,
@@ -441,8 +444,10 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun clearFields() {
         viewModel.editingMemoryId = null
-        viewModel.lat = 0.0
-        viewModel.lng = 0.0
+        viewModel.title = null
+        viewModel.description = null
+        viewModel.lat = null
+        viewModel.lng = null
         viewModel.placeName = null
         viewModel.address = null
         viewModel.isAllDay = false
@@ -478,8 +483,8 @@ class AddMemoryGroupFragment : Fragment() {
         } else if (viewModel.activePickingIndex in viewModel.fragments.indices) {
             val fragment = viewModel.fragments[viewModel.activePickingIndex]
             viewModel.fragments[viewModel.activePickingIndex] = fragment.copy(
-                latitude = newLat,
-                longitude = newLng,
+                lat = newLat,
+                lng = newLng,
                 placeName = newPlaceName,
                 address = newAddress
             )
@@ -499,6 +504,8 @@ class AddMemoryGroupFragment : Fragment() {
                     viewModel.lng = group.longitude
                     viewModel.placeName = group.placeName
                     viewModel.address = group.address
+                    viewModel.title = group.title
+                    viewModel.description = group.description
                     viewModel.isAllDay = group.isAllDay
                     viewModel.startDateTime = group.startDate
                     viewModel.endDateTime = group.endDate
@@ -506,8 +513,8 @@ class AddMemoryGroupFragment : Fragment() {
                     viewModel.markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
                     viewModel.markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
 
-                    binding.titleInput.setText(group.title)
-                    binding.descriptionInput.setText(group.description)
+                    binding.titleInput.setText(viewModel.title)
+                    binding.descriptionInput.setText(viewModel.description)
                     binding.allDayCheckbox.isChecked = viewModel.isAllDay
 
                     val sortedItems = data.mediaItems.sortedWith(MediaItemComparator())
@@ -525,8 +532,8 @@ class AddMemoryGroupFragment : Fragment() {
                         sortedFragments.map {
                             MemoryFragmentEditAdapter.FragmentEditState(
                                 id = it.id,
-                                latitude = it.latitude,
-                                longitude = it.longitude,
+                                lat = it.latitude,
+                                lng = it.longitude,
                                 placeName = it.placeName,
                                 address = it.address,
                                 startDate = it.startDate,
@@ -588,11 +595,24 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
+    private fun updateTitleAndDescription() {
+        binding.titleInput.setText(viewModel.title)
+        binding.descriptionInput.setText(viewModel.description)
+    }
+
     private fun updateLocationText() {
+        val lat = viewModel.lat
+        val lng = viewModel.lng
         val locationString = StringBuilder()
         if (viewModel.placeName != null) locationString.append(viewModel.placeName).append(System.lineSeparator())
         if (viewModel.address != null) locationString.append(viewModel.address).append(System.lineSeparator())
-        if (locationString.isEmpty()) locationString.append("Coordinates: ${viewModel.lat}, ${viewModel.lng}")
+        if (locationString.isEmpty()) {
+            if (lat != null && lng != null) {
+                locationString.append("Coordinates: $lat, $lng")
+            } else {
+                locationString.append("No location selected")
+            }
+        }
         binding.locationText.text = locationString.toString()
     }
 
