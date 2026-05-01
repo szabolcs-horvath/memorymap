@@ -49,12 +49,10 @@ import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import ir.mahozad.android.PieChart.Slice
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -74,6 +72,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var allGroups: List<MemoryGroup> = emptyList()
 
     private var permissionDenied = false
+    private var shouldAdjustCameraOnUpdate = false
     private var mapLoadTrace: Trace? = null
 
     interface MapListener {
@@ -157,11 +156,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
         }
 
-        // Observe Filtered Data
+        // Observe Filtered Data (Clusters)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.filteredMarkerables.collectLatest { markerables ->
-                    updateMapMarkers(markerables)
+                viewModel.markerClusters.collectLatest { clusters ->
+                    updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
+                    shouldAdjustCameraOnUpdate = false
                 }
             }
         }
@@ -187,10 +187,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         popup.setOnMenuItemClickListener { menuItem ->
             val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
             val (start, end) = selectedOption.dateRangeProvider(LocalDate.now())
+            shouldAdjustCameraOnUpdate = true
             viewModel.updateDateFilter(start, end, selectedOption.label)
-            viewLifecycleOwner.lifecycleScope.launch {
-                updateMapMarkers(adjustCamera = true)
-            }
             true
         }
         popup.show()
@@ -217,10 +215,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             val newStart = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
             val newEnd = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
 
+            shouldAdjustCameraOnUpdate = true
             viewModel.updateDateFilter(newStart, newEnd)
-            viewLifecycleOwner.lifecycleScope.launch {
-                updateMapMarkers(adjustCamera = true)
-            }
         }
         picker.show(childFragmentManager, picker.toString())
     }
@@ -456,18 +452,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private suspend fun updateMapMarkers(filteredItems: List<Markerable>? = null, adjustCamera: Boolean = false) {
+    private fun updateMapMarkers(clusters: Collection<List<Markerable>>? = null, adjustCamera: Boolean = false) {
         val googleMap = mMap ?: return
         trace("map_fragment_update_map_markers") {
-            val items = filteredItems ?: viewModel.filteredMarkerables.value
+            val items = viewModel.filteredMarkerables.value
+            val clustersToUse = clusters ?: viewModel.markerClusters.value
 
-            val clusters = withContext(Dispatchers.Default) {
-                clusterMarkerables(items)
-            }
-
-            withContext(Dispatchers.Main) {
-                updateUIWithFreshMarkers(googleMap, items, clusters, adjustCamera)
-            }
+            updateUIWithFreshMarkers(googleMap, items, clustersToUse, adjustCamera)
         }
     }
 
@@ -586,40 +577,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             binding.pieChart.slices = sliceList
         } else {
             binding.pieChart.slices = emptyList()
-        }
-    }
-
-    @AddTrace(name = "map_fragment_cluster_markerables", enabled = true)
-    private fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
-        val n = items.size
-        val parent = IntArray(n) { it }
-
-        fun find(i: Int): Int {
-            var curr = i
-            while (parent[curr] != curr) {
-                parent[curr] = parent[parent[curr]] // Path halving
-                curr = parent[curr]
-            }
-            return curr
-        }
-
-        fun union(i: Int, j: Int) {
-            val rootI = find(i)
-            val rootJ = find(j)
-            if (rootI != rootJ) parent[rootI] = rootJ
-        }
-
-        // O(N^2) comparisons, but with optimized distance check
-        for (i in 0 until n) {
-            for (j in i + 1 until n) {
-                if (items[i].isSameLocationAs(items[j])) {
-                    union(i, j)
-                }
-            }
-        }
-
-        return items.indices.groupBy { find(it) }.values.map { indices ->
-            indices.map { items[it] }
         }
     }
 
