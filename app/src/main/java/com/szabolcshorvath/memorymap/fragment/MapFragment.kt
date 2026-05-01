@@ -455,8 +455,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun updateMapMarkers(clusters: Collection<List<Markerable>>? = null, adjustCamera: Boolean = false) {
         val googleMap = mMap ?: return
         trace("map_fragment_update_map_markers") {
-            val items = viewModel.filteredMarkerables.value
             val clustersToUse = clusters ?: viewModel.markerClusters.value
+            val items = clustersToUse.flatten()
 
             updateUIWithFreshMarkers(googleMap, items, clustersToUse, adjustCamera)
         }

@@ -72,24 +72,24 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         if (_isSaving.value) return
         _isSaving.value = true
 
-        val snapshotMedia = selectedMedia.toList()
-        val snapshotFragments = fragments.toList()
-        val snapshotTitle = title!!
-        val snapshotDescription = description
-        val snapshotLat = lat!!
-        val snapshotLng = lng!!
-        val snapshotPlaceName = placeName
-        val snapshotAddress = address
-        val snapshotStart = startDateTime
-        val snapshotEnd = endDateTime
-        val snapshotIsAllDay = isAllDay
-        val snapshotHue = markerHue
-        val snapshotSat = markerSaturation
-        val snapshotBri = markerBrightness
-        val snapshotEditingId = editingMemoryId
-
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val snapshotMedia = selectedMedia.toList()
+                val snapshotFragments = fragments.toList()
+                val snapshotTitle = title!!
+                val snapshotDescription = description
+                val snapshotLat = lat!!
+                val snapshotLng = lng!!
+                val snapshotPlaceName = placeName
+                val snapshotAddress = address
+                val snapshotStart = startDateTime
+                val snapshotEnd = endDateTime
+                val snapshotIsAllDay = isAllDay
+                val snapshotHue = markerHue
+                val snapshotSat = markerSaturation
+                val snapshotBri = markerBrightness
+                val snapshotEditingId = editingMemoryId
+
                 val effectiveStart = calculateEffectiveStartTime(snapshotIsAllDay, snapshotStart)
                 val effectiveEnd = calculateEffectiveEndTime(snapshotIsAllDay, snapshotEnd)
                 val group = assembleMemoryGroup(
