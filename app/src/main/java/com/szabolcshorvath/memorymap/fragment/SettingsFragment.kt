@@ -111,6 +111,7 @@ class SettingsFragment : Fragment() {
         setupRecyclerViews()
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
+        setupClusterMarkersSwitch()
         setupDefaultFilterDropdown()
         updateColorPresetsUI()
 
@@ -223,6 +224,23 @@ class SettingsFragment : Fragment() {
             viewLifecycleOwner.lifecycleScope.launch {
                 requireContext().dataStore.edit { preferences ->
                     preferences[PreferencesKeys.SHOW_FRAGMENT_MARKERS] = isChecked
+                }
+            }
+        }
+    }
+
+    private fun setupClusterMarkersSwitch() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val clusterMarkers = requireContext().dataStore.data
+                .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
+                .firstOrNull() ?: true
+            _binding?.switchClusterMarkers?.isChecked = clusterMarkers
+        }
+
+        binding.switchClusterMarkers.setOnCheckedChangeListener { _, isChecked ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                requireContext().dataStore.edit { preferences ->
+                    preferences[PreferencesKeys.MARKER_CLUSTERING_ENABLED] = isChecked
                 }
             }
         }

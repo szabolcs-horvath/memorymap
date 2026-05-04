@@ -2,12 +2,14 @@ package com.szabolcshorvath.memorymap.data
 
 import android.location.Location
 import androidx.recyclerview.widget.DiffUtil
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.perf.metrics.AddTrace
+import com.google.maps.android.clustering.ClusterItem
 import java.time.ZonedDateTime
 
 interface Markerable {
     val groupId: Int
-    val title: String
+    val title: String?
     val latitude: Double
     val longitude: Double
     val placeName: String?
@@ -34,6 +36,19 @@ interface Markerable {
 
     private fun placeAndAddressPresentForBoth(other: Markerable): Boolean =
         placeName != null && address != null && other.placeName != null && other.address != null
+
+    data class MarkerableCluster(val items: List<Markerable>) : ClusterItem {
+        override fun getPosition(): LatLng {
+            val first = items.first()
+            return LatLng(first.latitude, first.longitude)
+        }
+
+        override fun getTitle(): String? = if (items.size == 1) items.first().title else "${items.size} Memories"
+
+        override fun getSnippet(): String? = null
+
+        override fun getZIndex(): Float? = null
+    }
 
     class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
         override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {

@@ -127,6 +127,9 @@ dependencies {
     implementation(libs.google.places)
     implementation(libs.play.services.location)
     implementation(libs.play.services.maps)
+    implementation(libs.android.maps.utils)
+    implementation(libs.maps.ktx)
+    implementation(libs.maps.utils.ktx)
 
     // Room
     implementation(libs.androidx.room.ktx)
