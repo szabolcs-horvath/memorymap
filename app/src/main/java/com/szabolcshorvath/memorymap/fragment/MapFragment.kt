@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -25,6 +26,8 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.AdvancedMarker
+import com.google.android.gms.maps.model.AdvancedMarkerOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MapColorScheme
@@ -32,6 +35,10 @@ import com.google.android.gms.maps.model.Marker
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.firebase.perf.metrics.AddTrace
 import com.google.firebase.perf.metrics.Trace
+import com.google.maps.android.clustering.Cluster
+import com.google.maps.android.clustering.ClusterManager
+import com.google.maps.android.clustering.view.DefaultAdvancedMarkersClusterRenderer
+import com.google.maps.android.collections.MarkerManager
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
@@ -64,6 +71,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var mMap: GoogleMap? = null
     private var selectedMarker: Marker? = null
     private val markerMap = mutableMapOf<String, Marker>()
+    private lateinit var clusterManager: ClusterManager<Markerable.MarkerableCluster>
     private var mapListener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
 
@@ -162,6 +170,18 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 viewModel.markerClusters.collectLatest { clusters ->
                     updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
                     shouldAdjustCameraOnUpdate = false
+                }
+            }
+        }
+
+        // Observe Cluster Markers Preference
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.clusterMarkers.collect {
+                    if (this@MapFragment::clusterManager.isInitialized) {
+                        clusterManager.clearItems()
+                        clusterManager.cluster()
+                    }
                 }
             }
         }
@@ -318,13 +338,27 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         enableMyLocation()
         setGoogleMapPadding()
 
-        googleMap.setOnCameraIdleListener {
-            viewModel.lastCameraPosition = googleMap.cameraPosition
+        val markerManager = MarkerManager(googleMap)
+        clusterManager = ClusterManager(requireContext(), googleMap, markerManager)
+        clusterManager.renderer = MarkerableClusterRenderer(requireContext(), googleMap, clusterManager)
+
+        clusterManager.setOnClusterItemClickListener { locationItem ->
+            showMemoryOverlay(locationItem.position.latitude, locationItem.position.longitude, locationItem.items)
+            true
         }
 
-        googleMap.setOnMarkerClickListener { marker ->
-            showMemoryOverlay(marker)
+        clusterManager.setOnClusterClickListener { cluster ->
+            hideMemoryOverlay()
+            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(cluster.position, googleMap.cameraPosition.zoom + 1f))
             true
+        }
+
+        @SuppressLint("PotentialBehaviorOverride")
+        googleMap.setOnMarkerClickListener(markerManager)
+
+        googleMap.setOnCameraIdleListener {
+            clusterManager.onCameraIdle()
+            viewModel.lastCameraPosition = googleMap.cameraPosition
         }
 
         googleMap.setOnMapClickListener {
@@ -442,63 +476,33 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun showMemoryOverlay(marker: Marker) {
-        selectedMarker = marker
-        viewModel.selectedMarkerPosition = marker.position
-        @Suppress("UNCHECKED_CAST")
-        val items = marker.tag as? List<Markerable>
-        if (items != null) {
-            viewModel.selectedMemoryId = items.firstOrNull()?.groupId
-            showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
-            mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.position, MAX_CAMERA_ZOOM))
-        }
-    }
-
-    private fun updateMapMarkers(clusters: Collection<List<Markerable>>? = null, adjustCamera: Boolean = false) {
+    private fun updateMapMarkers(clusters: List<Markerable.MarkerableCluster>? = null, adjustCamera: Boolean = false) {
         val googleMap = mMap ?: return
         trace("map_fragment_update_map_markers") {
             val clustersToUse = clusters ?: viewModel.markerClusters.value
-            val items = clustersToUse.flatten()
+            val items = clustersToUse.flatMap { it.items }
 
             updateUIWithFreshMarkers(googleMap, items, clustersToUse, adjustCamera)
         }
     }
 
-    private fun updateUIWithFreshMarkers(googleMap: GoogleMap, filteredItems: List<Markerable>, clusters: Collection<List<Markerable>>, adjustCamera: Boolean) {
+    private fun updateUIWithFreshMarkers(
+        googleMap: GoogleMap,
+        filteredItems: List<Markerable>,
+        clusters: List<Markerable.MarkerableCluster>,
+        adjustCamera: Boolean
+    ) {
         trace("map_fragment_update_ui_with_fresh_markers") {
-            googleMap.clear()
+            // 1. Clear ClusterManager instead of the whole map
+            clusterManager.clearItems()
             markerMap.clear()
             selectedMarker = null
 
             updatePieChart(filteredItems)
 
-            val boundsBuilder = LatLngBounds.Builder()
-            var markersCount = 0
-
-            clusters.forEach { items ->
-                val marker = getMarker(items, googleMap)
-                if (marker != null) {
-                    marker.tag = items
-                    items.forEach { item ->
-                        // Store marker for this specific item location
-                        val key = "${item.groupId}|${item.latitude}|${item.longitude}"
-                        markerMap[key] = marker
-
-                        // Store as default for groupId
-                        val idKey = item.groupId.toString()
-                        if (!markerMap.containsKey(idKey)) {
-                            markerMap[idKey] = marker
-                        }
-                        // Favor the main location for the default groupId marker
-                        val mainGroup = allGroups.find { it.id == item.groupId }
-                        if (mainGroup != null && mainGroup.latitude == item.latitude && mainGroup.longitude == item.longitude) {
-                            markerMap[idKey] = marker
-                        }
-                    }
-                    boundsBuilder.include(marker.position)
-                    markersCount++
-                }
-            }
+            // 2. Efficiently add new clusters and trigger the redraw
+            clusterManager.addItems(clusters)
+            clusterManager.cluster()
 
             // Handle pending selection if any
             viewModel.pendingSelectionId?.let { pId ->
@@ -506,11 +510,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     val pLat = viewModel.pendingSelectionLat ?: 0.0
                     val pLng = viewModel.pendingSelectionLng ?: 0.0
                     allGroups.find { it.id == pId }?.let { memory ->
-                        val key = "${memory.id}|$pLat|$pLng"
-                        val marker = markerMap[key] ?: markerMap[pId.toString()]
-                        if (marker != null) {
-                            moveToLocationAndSelectMarker(pLat, pLng, memory)
-                        }
+                        moveToLocationAndSelectMarker(pLat, pLng, memory)
                     }
                     viewModel.pendingSelectionId = null
                 }
@@ -518,22 +518,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
             // Handle existing selection after rotation
             if (selectedMarker == null && viewModel.selectedMemoryId != null) {
-                val sId = viewModel.selectedMemoryId!!
-                val sPos = viewModel.selectedMarkerPosition
-                val restoredMarker = allGroups.find { it.id == sId }?.let { memory ->
-                    val lat = sPos?.latitude ?: memory.latitude
-                    val lng = sPos?.longitude ?: memory.longitude
-                    val key = "${memory.id}|$lat|$lng"
-                    markerMap[key] ?: markerMap[sId.toString()]
+                val restoredCluster = clusters.find { cluster ->
+                    cluster.items.any { it.groupId == viewModel.selectedMemoryId }
                 }
 
-                if (restoredMarker != null) {
-                    selectedMarker = restoredMarker
-                    @Suppress("UNCHECKED_CAST")
-                    val items = restoredMarker.tag as? List<Markerable>
-                    if (items != null) {
-                        showMemoryOverlay(restoredMarker.position.latitude, restoredMarker.position.longitude, items)
-                    }
+                if (restoredCluster != null) {
+                    showMemoryOverlay(restoredCluster.position.latitude, restoredCluster.position.longitude, restoredCluster.items, false)
                 } else {
                     hideMemoryOverlay()
                 }
@@ -541,7 +531,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 hideMemoryOverlay()
             }
 
-            if (adjustCamera && markersCount > 0) {
+            if (adjustCamera && clusters.isNotEmpty()) {
+                val boundsBuilder = LatLngBounds.Builder()
+                clusters.forEach { boundsBuilder.include(it.position) }
                 val bounds = boundsBuilder.build()
                 googleMap.setMaxZoomPreference(MAX_CAMERA_ZOOM)
                 googleMap.animateCamera(
@@ -571,7 +563,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
                     it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                 )
-            }.mapValues { it.value.size }
+            }.mapValues { it.value.size }.toSortedMap()
 
             val sliceList = colorStats.map { (color, count) ->
                 Slice(count / totalCount, color, label = count.toString())
@@ -579,33 +571,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             binding.pieChart.slices = sliceList
         } else {
             binding.pieChart.slices = emptyList()
-        }
-    }
-
-    @AddTrace(name = "map_fragment_get_marker", enabled = true)
-    private fun getMarker(items: List<Markerable>, googleMap: GoogleMap): Marker? {
-        val representative = items.first()
-        val position = LatLng(representative.latitude, representative.longitude)
-        val markerTitle = if (items.size == 1) items[0].title else "${items.size} Memories"
-
-        return if (items.size > 1) {
-            val colors = items.map {
-                ColorUtil.hsvToColor(
-                    it.markerHue ?: DEFAULT_MARKER_HUE,
-                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
-            }.sorted()
-
-            googleMap.addMarker(MarkerGenerator.advancedMarkerOptions(position, markerTitle, colors, items.size, resources.displayMetrics.density))
-        } else {
-            val color = ColorUtil.hsvToColor(
-                representative.markerHue ?: DEFAULT_MARKER_HUE,
-                representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-            )
-
-            googleMap.addMarker(MarkerGenerator.advancedMarkerOptions(position, markerTitle, color))
         }
     }
 
@@ -624,20 +589,29 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             @Suppress("UNCHECKED_CAST")
             val items = marker.tag as? List<Markerable>
             if (items != null) {
-                showMemoryOverlay(marker.position.latitude, marker.position.longitude, items)
+                showMemoryOverlay(marker.position.latitude, marker.position.longitude, items, false)
             }
         }
     }
 
-    private fun showMemoryOverlay(lat: Double, lng: Double, items: List<Markerable>) {
+    private fun showMemoryOverlay(lat: Double, lng: Double, items: List<Markerable>, shouldAnimateCamera: Boolean = true) {
         val binding = _binding ?: return
+
+        viewModel.selectedMarkerPosition = LatLng(lat, lng)
+        if (viewModel.selectedMemoryId == null || items.none { it.groupId == viewModel.selectedMemoryId }) {
+            viewModel.selectedMemoryId = items.firstOrNull()?.groupId
+        }
+
+        if (shouldAnimateCamera) {
+            mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), MAX_CAMERA_ZOOM))
+        }
+
         val distinctItems = items.distinctBy { it.groupId }
         val locationName = distinctItems.firstOrNull {
             it.placeName != null
         }?.placeName ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
 
         if (binding.overlayCard.isVisible && binding.overlayLocationTitle.text != locationName) {
-            // Smoothly animate the title cross-fade if the card is already visible
             val titleTransition = TransitionSet().apply {
                 addTransition(Fade())
                 duration = ANIMATION_DURATION
@@ -672,6 +646,102 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         super.onDestroyView()
         mapLoadTrace = null
         _binding = null
+    }
+
+    private inner class MarkerableClusterRenderer(
+        context: Context,
+        map: GoogleMap,
+        clusterManager: ClusterManager<Markerable.MarkerableCluster>
+    ) : DefaultAdvancedMarkersClusterRenderer<Markerable.MarkerableCluster>(context, map, clusterManager) {
+
+        override fun shouldRenderAsCluster(cluster: Cluster<Markerable.MarkerableCluster>): Boolean =
+            if (viewModel.clusterMarkers.value) super.shouldRenderAsCluster(cluster) else false
+
+        override fun onBeforeClusterItemRendered(
+            cluster: Markerable.MarkerableCluster,
+            advancedMarkerOptions: AdvancedMarkerOptions
+        ) {
+            val representative = cluster.items.first()
+            if (cluster.items.size > 1) {
+                val colors = cluster.items.map {
+                    ColorUtil.hsvToColor(
+                        it.markerHue ?: DEFAULT_MARKER_HUE,
+                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                    )
+                }.sorted()
+                advancedMarkerOptions.icon(MarkerGenerator.multiColorBitmapPinIcon(colors, cluster.items.size, resources.displayMetrics.density))
+                advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
+            } else {
+                val color = ColorUtil.hsvToColor(
+                    representative.markerHue ?: DEFAULT_MARKER_HUE,
+                    representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                )
+                advancedMarkerOptions.icon(MarkerGenerator.singleColorPinConfigIcon(color))
+            }
+            advancedMarkerOptions.title(cluster.getTitle())
+        }
+
+        override fun onClusterItemUpdated(
+            cluster: Markerable.MarkerableCluster,
+            marker: Marker
+        ) {
+            val representative = cluster.items.first()
+            if (cluster.items.size > 1) {
+                val colors = cluster.items.map {
+                    ColorUtil.hsvToColor(
+                        it.markerHue ?: DEFAULT_MARKER_HUE,
+                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                    )
+                }.sorted()
+                marker.setIcon(MarkerGenerator.multiColorBitmapPinIcon(colors, cluster.items.size, resources.displayMetrics.density))
+                marker.setAnchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
+            } else {
+                val color = ColorUtil.hsvToColor(
+                    representative.markerHue ?: DEFAULT_MARKER_HUE,
+                    representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                )
+                marker.setIcon(MarkerGenerator.singleColorPinConfigIcon(color))
+            }
+            marker.title = cluster.getTitle()
+        }
+
+        override fun onBeforeClusterRendered(
+            cluster: Cluster<Markerable.MarkerableCluster>,
+            advancedMarkerOptions: AdvancedMarkerOptions
+        ) {
+            val allItems = cluster.items.flatMap { it.items }
+            val colors = allItems.map {
+                ColorUtil.hsvToColor(
+                    it.markerHue ?: DEFAULT_MARKER_HUE,
+                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                )
+            }.sorted()
+
+            advancedMarkerOptions.icon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
+            advancedMarkerOptions.anchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
+        }
+
+        override fun onClusterUpdated(
+            cluster: Cluster<Markerable.MarkerableCluster?>,
+            marker: AdvancedMarker
+        ) {
+            val allItems = cluster.items.flatMap { it?.items ?: emptyList() }
+            val colors = allItems.map {
+                ColorUtil.hsvToColor(
+                    it.markerHue ?: DEFAULT_MARKER_HUE,
+                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+                )
+            }.sorted()
+
+            marker.setIcon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
+            marker.setAnchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
+        }
     }
 
     companion object {

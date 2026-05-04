@@ -45,7 +45,7 @@ data class MemoryFragment(
     val order: Int? = null
 ) : Markerable {
     @Ignore
-    override var title: String = ""
+    override var title: String? = null
 
     override fun getFormattedDate(): String? {
         if (startDate == null || endDate == null) return null

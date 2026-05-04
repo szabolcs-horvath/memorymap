@@ -54,6 +54,10 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), false)
 
+    val clusterMarkers = dataStore.data
+        .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), true)
+
     init {
         viewModelScope.launch {
             val defaultOption = DateFilterOption.getFromDataStore(dataStore)
@@ -99,10 +103,8 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
 
-    val markerClusters: StateFlow<Collection<List<Markerable>>> = filteredMarkerables
-        .map { items ->
-            clusterMarkerables(items)
-        }
+    val markerClusters: StateFlow<List<Markerable.MarkerableCluster>> = filteredMarkerables
+        .map { clusterMarkerables(it) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
 
@@ -114,7 +116,7 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     @AddTrace(name = "map_fragment_view_model_cluster_markerables", enabled = true)
-    private fun clusterMarkerables(items: List<Markerable>): Collection<List<Markerable>> {
+    private fun clusterMarkerables(items: List<Markerable>): List<Markerable.MarkerableCluster> {
         val n = items.size
         val parent = IntArray(n) { it }
 
@@ -142,9 +144,8 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
 
-        return items.indices.groupBy { find(it) }.values.map { indices ->
-            indices.map { items[it] }
-        }
+        return items.indices.groupBy { find(it) }.values
+            .map { indices -> Markerable.MarkerableCluster(indices.map { items[it] }) }
     }
 
     companion object {

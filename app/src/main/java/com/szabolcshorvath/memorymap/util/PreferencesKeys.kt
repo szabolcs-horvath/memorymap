@@ -8,6 +8,7 @@ object PreferencesKeys {
     val IS_FIRST_RUN = booleanPreferencesKey("is_first_run")
     val LAST_APP_VERSION = longPreferencesKey("last_app_version")
     val SHOW_FRAGMENT_MARKERS = booleanPreferencesKey("show_fragment_markers")
+    val MARKER_CLUSTERING_ENABLED = booleanPreferencesKey("cluster_markers_enabled")
     val DEFAULT_DATE_FILTER = stringPreferencesKey("default_date_filter")
     val USER_EMAIL_KEY = stringPreferencesKey("user_email")
 }
