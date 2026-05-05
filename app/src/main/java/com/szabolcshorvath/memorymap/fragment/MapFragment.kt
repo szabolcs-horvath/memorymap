@@ -162,23 +162,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
         }
 
-        // Observe Filtered Data (Clusters)
+        // Observe Clusters and Clustering Preference
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.markerClusters.collectLatest { clusters ->
-                    updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
-                    shouldAdjustCameraOnUpdate = false
-                }
-            }
-        }
-
-        // Observe Cluster Markers Preference
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.markerClusteringEnabled.collect {
+                combine(
+                    viewModel.markerClusters,
+                    viewModel.markerClusteringEnabled
+                ) { clusters, _ -> clusters }.collectLatest { clusters ->
                     if (this@MapFragment::clusterManager.isInitialized) {
-                        clusterManager.clearItems()
-                        clusterManager.cluster()
+                        updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
+                        shouldAdjustCameraOnUpdate = false
                     }
                 }
             }
@@ -389,6 +382,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             setGoogleMapPadding()
         }
 
+        // Needed to reinitialize after rotation
         viewLifecycleOwner.lifecycleScope.launch {
             updateMapMarkers()
         }
@@ -502,14 +496,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         adjustCamera: Boolean
     ) {
         trace("map_fragment_update_ui_with_fresh_markers") {
-            // 1. Clear ClusterManager instead of the whole map
+            googleMap.clear()
             clusterManager.clearItems()
+            clusterManager.renderer = MarkerableClusterRenderer(requireContext(), googleMap, clusterManager)
 
-            updatePieChart(filteredItems)
-
-            // 2. Efficiently add new clusters and trigger the redraw
             clusterManager.addItems(clusters)
             clusterManager.cluster()
+
+            updatePieChart(filteredItems)
 
             val hasPendingSelection = viewModel.pendingSelectionId != null
             viewModel.pendingSelectionId?.let { pId ->
