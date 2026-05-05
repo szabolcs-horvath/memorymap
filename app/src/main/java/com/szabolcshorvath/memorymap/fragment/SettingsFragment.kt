@@ -217,13 +217,15 @@ class SettingsFragment : Fragment() {
             val showFragments = requireContext().dataStore.data
                 .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
                 .firstOrNull() ?: false
-            _binding?.switchShowFragments?.isChecked = showFragments
-        }
 
-        binding.switchShowFragments.setOnCheckedChangeListener { _, isChecked ->
-            viewLifecycleOwner.lifecycleScope.launch {
-                requireContext().dataStore.edit { preferences ->
-                    preferences[PreferencesKeys.SHOW_FRAGMENT_MARKERS] = isChecked
+            _binding?.switchShowFragments?.apply {
+                isChecked = showFragments
+                setOnCheckedChangeListener { _, isChecked ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        requireContext().dataStore.edit { preferences ->
+                            preferences[PreferencesKeys.SHOW_FRAGMENT_MARKERS] = isChecked
+                        }
+                    }
                 }
             }
         }
@@ -234,13 +236,15 @@ class SettingsFragment : Fragment() {
             val clusterMarkers = requireContext().dataStore.data
                 .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
                 .firstOrNull() ?: true
-            _binding?.switchClusterMarkers?.isChecked = clusterMarkers
-        }
 
-        binding.switchClusterMarkers.setOnCheckedChangeListener { _, isChecked ->
-            viewLifecycleOwner.lifecycleScope.launch {
-                requireContext().dataStore.edit { preferences ->
-                    preferences[PreferencesKeys.MARKER_CLUSTERING_ENABLED] = isChecked
+            _binding?.switchClusterMarkers?.apply {
+                isChecked = clusterMarkers
+                setOnCheckedChangeListener { _, isChecked ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        requireContext().dataStore.edit { preferences ->
+                            preferences[PreferencesKeys.MARKER_CLUSTERING_ENABLED] = isChecked
+                        }
+                    }
                 }
             }
         }
