@@ -75,7 +75,7 @@ object MarkerGenerator {
 
         val borderWidth = (MARKER_BORDER_WIDTH_DP * density)
         val essentials = Essentials.initPinEssentials(colors, count, density, borderWidth)
-        val bottomY = essentials.height.toFloat() - borderWidth
+        val bottomY = essentials.height.toFloat() - (borderWidth / 2.0f)
         val outlineWidth = (TEXT_OUTLINE_WIDTH_DP * density)
 
         definePinPath(essentials, bottomY)

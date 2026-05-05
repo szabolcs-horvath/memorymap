@@ -677,6 +677,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                 )
                 advancedMarkerOptions.icon(MarkerGenerator.singleColorPinConfigIcon(color))
+                advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             }
             advancedMarkerOptions.title(cluster.getTitle())
         }
@@ -703,6 +704,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
                 )
                 marker.setIcon(MarkerGenerator.singleColorPinConfigIcon(color))
+                marker.setAnchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             }
             marker.title = cluster.getTitle()
         }
