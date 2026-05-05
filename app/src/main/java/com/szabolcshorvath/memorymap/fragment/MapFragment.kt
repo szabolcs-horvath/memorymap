@@ -498,7 +498,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         trace("map_fragment_update_ui_with_fresh_markers") {
             googleMap.clear()
             clusterManager.clearItems()
-            clusterManager.renderer = MarkerableClusterRenderer(requireContext(), googleMap, clusterManager)
 
             clusterManager.addItems(clusters)
             clusterManager.cluster()
@@ -726,10 +725,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
 
         override fun onClusterUpdated(
-            cluster: Cluster<Markerable.MarkerableCluster?>,
+            cluster: Cluster<Markerable.MarkerableCluster>,
             marker: AdvancedMarker
         ) {
-            val allItems = cluster.items.flatMap { it?.items ?: emptyList() }
+            val allItems = cluster.items.flatMap { it.items }
             val colors = allItems.map {
                 ColorUtil.hsvToColor(
                     it.markerHue ?: DEFAULT_MARKER_HUE,

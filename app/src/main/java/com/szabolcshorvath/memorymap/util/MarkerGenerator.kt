@@ -191,7 +191,6 @@ object MarkerGenerator {
     private data class Essentials(
         val width: Int,
         val height: Int,
-        val density: Float,
         val centerX: Float,
         val centerY: Float,
         val radius: Float,
@@ -218,7 +217,6 @@ object MarkerGenerator {
                 return Essentials(
                     width = size,
                     height = size,
-                    density = density,
                     centerX = center,
                     centerY = center,
                     radius = radius,
@@ -248,7 +246,6 @@ object MarkerGenerator {
                 return Essentials(
                     width = width,
                     height = height,
-                    density = density,
                     centerX = centerX,
                     centerY = centerY,
                     radius = radius,
