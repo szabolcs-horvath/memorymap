@@ -213,6 +213,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupShowFragmentsSwitch() {
+        binding.switchShowFragments.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             val showFragments = requireContext().dataStore.data
                 .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
@@ -227,11 +228,13 @@ class SettingsFragment : Fragment() {
                         }
                     }
                 }
+                isEnabled = true
             }
         }
     }
 
     private fun setupClusterMarkersSwitch() {
+        binding.switchClusterMarkers.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             val clusterMarkers = requireContext().dataStore.data
                 .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
@@ -246,6 +249,7 @@ class SettingsFragment : Fragment() {
                         }
                     }
                 }
+                isEnabled = true
             }
         }
     }
