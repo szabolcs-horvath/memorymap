@@ -177,7 +177,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Observe Cluster Markers Preference
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.clusterMarkers.collect {
+                viewModel.markerClusteringEnabled.collect {
                     if (this@MapFragment::clusterManager.isInitialized) {
                         clusterManager.clearItems()
                         clusterManager.cluster()
@@ -655,7 +655,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     ) : DefaultAdvancedMarkersClusterRenderer<Markerable.MarkerableCluster>(context, map, clusterManager) {
 
         override fun shouldRenderAsCluster(cluster: Cluster<Markerable.MarkerableCluster>): Boolean =
-            if (viewModel.clusterMarkers.value) super.shouldRenderAsCluster(cluster) else false
+            if (viewModel.markerClusteringEnabled.value) super.shouldRenderAsCluster(cluster) else false
 
         override fun onBeforeClusterItemRendered(
             cluster: Markerable.MarkerableCluster,

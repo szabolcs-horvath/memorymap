@@ -22,14 +22,13 @@ object MarkerGenerator {
     const val CIRCLE_ANCHOR_V = 0.5f
     const val PIN_ANCHOR_U = 0.5f
     const val PIN_ANCHOR_V = 1.0f
-    private const val DEBUG_ANCHORS = false
 
     private const val CLUSTER_SIZE_DP = 35.0f
     private const val MARKER_SIZE_DP = 25.0f
     private const val CLUSTER_BORDER_WIDTH_DP = 1.0f
     private const val MARKER_BORDER_WIDTH_DP = 1.0f
     private const val CLUSTER_TEXT_SIZE_DP = 14.4f
-    private const val MARKER_TEXT_SIZE_SP = 12.0f
+    private const val MARKER_TEXT_SIZE_DP = 12.0f
     private const val TEXT_OUTLINE_WIDTH_DP = 1.5f
     private const val WIDTH_TO_HEIGHT_SCALING_FACTOR = 1.5f
     private const val DEGREES_360 = 360.0f
@@ -130,22 +129,6 @@ object MarkerGenerator {
         val textY = drawText(essentials)
         drawTextOutline(essentials, outlineWidth, textY)
         drawTextFill(essentials, textY)
-
-        // Add this debug block
-        if (DEBUG_ANCHORS) {
-            val debugPaint = Paint().apply {
-                color = Color.RED
-                style = Paint.Style.FILL
-            }
-            // Draw a tiny 2dp dot at the expected anchor points:
-            // For Pins: (0.5, 1.0) -> centerX, height
-            // For Circles: (0.5, 0.5) -> centerX, centerY
-
-            // Note: Use pinEssentials.height for Pins and pinEssentials.centerY for Circles
-            // depending on which icon type you are debugging.
-            essentials.canvas.drawCircle(essentials.centerX, essentials.height.toFloat(), 2f * essentials.density, debugPaint)
-//            pinEssentials.canvas.drawCircle(pinEssentials.centerX, pinEssentials.centerY, 2f * pinEssentials.density, debugPaint)
-        }
     }
 
     private fun drawSegments(essentials: Essentials) {
@@ -259,7 +242,7 @@ object MarkerGenerator {
                 val canvas = Canvas(bitmap)
                 val pinPath = Path()
                 val text = count.toString()
-                val textSize = (MARKER_TEXT_SIZE_SP * density)
+                val textSize = (MARKER_TEXT_SIZE_DP * density)
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
                 return Essentials(

@@ -50,11 +50,11 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     private val _isDateFilterLoaded = MutableStateFlow(false)
     val isDateFilterLoaded: StateFlow<Boolean> = _isDateFilterLoaded.asStateFlow()
 
-    val showFragments = dataStore.data
+    val showFragmentsEnabled = dataStore.data
         .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), false)
 
-    val clusterMarkers = dataStore.data
+    val markerClusteringEnabled = dataStore.data
         .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), true)
 
@@ -73,7 +73,7 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         commonRepository.allFragments,
         filterStartDate,
         filterEndDate,
-        showFragments
+        showFragmentsEnabled
     ) { groups, fragments, filterStart, filterEnd, showFrags ->
         val groupsMap = groups.associateBy { it.id }
         val candidateItems = mutableListOf<Markerable>()
