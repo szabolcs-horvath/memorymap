@@ -69,8 +69,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var _binding: FragmentMapsBinding? = null
     private val binding get() = _binding!!
     private var mMap: GoogleMap? = null
-    private var selectedMarker: Marker? = null
-    private val markerMap = mutableMapOf<String, Marker>()
     private lateinit var clusterManager: ClusterManager<Markerable.MarkerableCluster>
     private var mapListener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
@@ -275,6 +273,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
+        viewModel.isInitialZoomDone = true
         lifecycleScope.launch {
             // Wait for the first groups emission if the current snapshot is empty
             val groups = allGroups.ifEmpty {
@@ -295,9 +294,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
 
             if (oldStart == viewModel.filterStartDate.value && oldEnd == viewModel.filterEndDate.value) {
-                // Filter didn't change, we can try to select immediately
-                moveToLocationAndSelectMarker(lat, lng, memory)
-                viewModel.pendingSelectionId = null
+                // Filter didn't change, we can try to select immediately if the map and clusters are ready
+                val currentClusters = viewModel.markerClusters.value
+                if (mMap != null && currentClusters.isNotEmpty()) {
+                    moveToLocationAndSelectMarker(lat, lng, id, currentClusters)
+                }
             }
         }
     }
@@ -330,9 +331,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         googleMap.uiSettings.isMyLocationButtonEnabled = true
         googleMap.uiSettings.isZoomControlsEnabled = true
 
-        viewModel.lastCameraPosition?.let { position ->
-            viewModel.isInitialZoomDone = true
-            googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(position))
+        val pLat = viewModel.pendingSelectionLat
+        val pLng = viewModel.pendingSelectionLng
+        if (viewModel.pendingSelectionId != null && pLat != null && pLng != null) {
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(pLat, pLng), DEFAULT_ZOOM))
+        } else {
+            viewModel.lastCameraPosition?.let { position ->
+                viewModel.isInitialZoomDone = true
+                googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(position))
+            }
         }
 
         enableMyLocation()
@@ -396,7 +403,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             )
             binding.overlayCard.visibility = View.GONE
-            selectedMarker = null
             viewModel.selectedMemoryId = null
             viewModel.selectedMarkerPosition = null
             setGoogleMapPadding()
@@ -495,8 +501,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         trace("map_fragment_update_ui_with_fresh_markers") {
             // 1. Clear ClusterManager instead of the whole map
             clusterManager.clearItems()
-            markerMap.clear()
-            selectedMarker = null
 
             updatePieChart(filteredItems)
 
@@ -504,20 +508,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             clusterManager.addItems(clusters)
             clusterManager.cluster()
 
-            // Handle pending selection if any
+            val hasPendingSelection = viewModel.pendingSelectionId != null
             viewModel.pendingSelectionId?.let { pId ->
                 if (filteredItems.any { it.groupId == pId }) {
-                    val pLat = viewModel.pendingSelectionLat ?: 0.0
-                    val pLng = viewModel.pendingSelectionLng ?: 0.0
-                    allGroups.find { it.id == pId }?.let { memory ->
-                        moveToLocationAndSelectMarker(pLat, pLng, memory)
-                    }
+                    moveToLocationAndSelectMarker(viewModel.pendingSelectionLat, viewModel.pendingSelectionLng, pId, clusters)
                     viewModel.pendingSelectionId = null
                 }
             }
 
-            // Handle existing selection after rotation
-            if (selectedMarker == null && viewModel.selectedMemoryId != null) {
+            // Handle existing selection after rotation or data update
+            if (viewModel.selectedMemoryId != null) {
                 val restoredCluster = clusters.find { cluster ->
                     cluster.items.any { it.groupId == viewModel.selectedMemoryId }
                 }
@@ -527,11 +527,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 } else {
                     hideMemoryOverlay()
                 }
-            } else if (selectedMarker == null) {
+            } else {
                 hideMemoryOverlay()
             }
 
-            if (adjustCamera && clusters.isNotEmpty()) {
+            if (adjustCamera && !hasPendingSelection && clusters.isNotEmpty()) {
                 val boundsBuilder = LatLngBounds.Builder()
                 clusters.forEach { boundsBuilder.include(it.position) }
                 val bounds = boundsBuilder.build()
@@ -574,23 +574,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun moveToLocationAndSelectMarker(lat: Double, lng: Double, memory: MemoryGroup) {
+    private fun moveToLocationAndSelectMarker(lat: Double?, lng: Double?, groupId: Int, clusters: List<Markerable.MarkerableCluster>) {
+        if (lat == null || lng == null) return
         val googleMap = mMap ?: return
         val position = LatLng(lat, lng)
         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, MAX_CAMERA_ZOOM))
 
-        val key = "${memory.id}|$lat|$lng"
-        val marker = markerMap[key] ?: markerMap[memory.id.toString()]
+        // Find the cluster that contains this memory in the provided clusters
+        val cluster = clusters.find { c ->
+            c.items.any { it.groupId == groupId }
+        }
 
-        if (marker != null) {
-            selectedMarker = marker
-            viewModel.selectedMarkerPosition = marker.position
-            viewModel.selectedMemoryId = memory.id
-            @Suppress("UNCHECKED_CAST")
-            val items = marker.tag as? List<Markerable>
-            if (items != null) {
-                showMemoryOverlay(marker.position.latitude, marker.position.longitude, items, false)
-            }
+        if (cluster != null) {
+            viewModel.selectedMemoryId = groupId
+            showMemoryOverlay(cluster.position.latitude, cluster.position.longitude, cluster.items, false)
         }
     }
 
@@ -645,6 +642,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     override fun onDestroyView() {
         super.onDestroyView()
         mapLoadTrace = null
+        mMap = null
         _binding = null
     }
 
