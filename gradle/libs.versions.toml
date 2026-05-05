@@ -37,7 +37,7 @@ googleid = "1.2.0"
 playServicesAuth = "21.5.1"
 
 # Drive
-googleApiServicesDrive = "v3-rev20260405-2.0.0"
+googleApiServicesDrive = "v3-rev20260428-2.0.0"
 
 # JSON
 googleHttpClient = "2.1.0"
