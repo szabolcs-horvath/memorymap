@@ -298,6 +298,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 val currentClusters = viewModel.markerClusters.value
                 if (mMap != null && currentClusters.isNotEmpty()) {
                     moveToLocationAndSelectMarker(lat, lng, id, currentClusters)
+                    viewModel.pendingSelectionId = null
+                    viewModel.pendingSelectionLat = null
+                    viewModel.pendingSelectionLng = null
                 }
             }
         }
@@ -513,6 +516,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 if (filteredItems.any { it.groupId == pId }) {
                     moveToLocationAndSelectMarker(viewModel.pendingSelectionLat, viewModel.pendingSelectionLng, pId, clusters)
                     viewModel.pendingSelectionId = null
+                    viewModel.pendingSelectionLat = null
+                    viewModel.pendingSelectionLng = null
                 }
             }
 
