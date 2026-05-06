@@ -516,8 +516,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
             // Handle existing selection after rotation or data update
             if (viewModel.selectedMemoryId != null) {
-                val restoredCluster = clusters.find { cluster ->
-                    cluster.items.any { it.groupId == viewModel.selectedMemoryId }
+                val selectedId = viewModel.selectedMemoryId
+                val selectedPos = viewModel.selectedMarkerPosition
+
+                val restoredCluster = if (selectedPos != null) {
+                    clusters.filter { c -> c.items.any { it.groupId == selectedId } }
+                        .minByOrNull { c -> euclideanDistanceSquared(c, selectedPos) }
+                } else {
+                    clusters.find { cluster -> cluster.items.any { it.groupId == selectedId } }
                 }
 
                 if (restoredCluster != null) {
@@ -550,6 +556,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    private fun euclideanDistanceSquared(cluster: Markerable.MarkerableCluster, position: LatLng): Double {
+        val dLat = cluster.position.latitude - position.latitude
+        val dLng = cluster.position.longitude - position.longitude
+        return dLat * dLat + dLng * dLng
+    }
+
     @AddTrace(name = "map_fragment_update_pie_chart", enabled = true)
     private fun updatePieChart(filteredItems: List<Markerable>) {
         val binding = _binding ?: return
@@ -578,10 +590,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val position = LatLng(lat, lng)
         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, MAX_CAMERA_ZOOM))
 
-        // Find the cluster that contains this memory in the provided clusters
-        val cluster = clusters.find { c ->
-            c.items.any { it.groupId == groupId }
-        }
+        // Find the cluster that contains this memory in the provided clusters.
+        // If there are multiple clusters for the same groupId (e.g. fragments),
+        // prefer the one closest to the requested lat/lng.
+        val cluster = clusters.filter { c -> c.items.any { it.groupId == groupId } }
+            .minByOrNull { c -> euclideanDistanceSquared(c, LatLng(lat, lng)) }
 
         if (cluster != null) {
             viewModel.selectedMemoryId = groupId
