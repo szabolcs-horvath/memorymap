@@ -21,7 +21,7 @@ class MaxHeightCardView @JvmOverloads constructor(
     private var maxHeight: Int = -1
 
     init {
-        val a = context.obtainStyledAttributes(attrs, intArrayOf(android.R.attr.maxHeight))
+        val a = context.obtainStyledAttributes(attrs, intArrayOf(android.R.attr.maxHeight), defStyleAttr, 0)
         maxHeight = a.getDimensionPixelSize(0, -1)
         a.recycle()
     }
@@ -32,7 +32,7 @@ class MaxHeightCardView @JvmOverloads constructor(
             val hSize = MeasureSpec.getSize(heightMeasureSpec)
 
             // We force AT_MOST mode here to ensure the card wraps its content.
-            // This prevents the card from stretching to fill available space 
+            // This prevents the card from stretching to fill available space
             // provided by parent constraints.
             newHeightMeasureSpec = MeasureSpec.makeMeasureSpec(hSize.coerceAtMost(maxHeight), MeasureSpec.AT_MOST)
         }
