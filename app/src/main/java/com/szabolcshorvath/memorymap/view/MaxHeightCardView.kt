@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.view
 
 import android.content.Context
 import android.util.AttributeSet
+import androidx.core.content.withStyledAttributes
 import com.google.android.material.card.MaterialCardView
 
 /**
@@ -21,9 +22,9 @@ class MaxHeightCardView @JvmOverloads constructor(
     private var maxHeight: Int = -1
 
     init {
-        val a = context.obtainStyledAttributes(attrs, intArrayOf(android.R.attr.maxHeight), defStyleAttr, 0)
-        maxHeight = a.getDimensionPixelSize(0, -1)
-        a.recycle()
+        context.withStyledAttributes(attrs, intArrayOf(android.R.attr.maxHeight), defStyleAttr, 0) {
+            maxHeight = getDimensionPixelSize(0, -1)
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
