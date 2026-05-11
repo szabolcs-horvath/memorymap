@@ -107,14 +107,16 @@
             app:startAngle="-90" />
     </com.google.android.material.card.MaterialCardView>
 
-    <com.google.android.material.card.MaterialCardView
+    <com.szabolcshorvath.memorymap.view.MaxHeightCardView
         android:id="@+id/overlay_card"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
+        android:maxHeight="300dp"
         android:visibility="gone"
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp"
+        app:layout_constrainedHeight="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -135,7 +137,6 @@
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceTitleLarge"
                 android:textColor="?attr/colorOnSurface"
-                app:layout_constraintBottom_toTopOf="@id/rv_memories"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
@@ -144,21 +145,20 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_memories"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="0dp"
                 android:layout_marginTop="4dp"
+                android:overScrollMode="ifContentScrolls"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                app:layout_constrainedHeight="true"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHeight_max="240dp"
+                app:layout_constraintHeight_default="wrap"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/overlay_location_title"
-                app:layout_constraintVertical_bias="0.0"
                 tools:itemCount="6"
                 tools:listitem="@layout/item_memory_overlay" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-    </com.google.android.material.card.MaterialCardView>
+    </com.szabolcshorvath.memorymap.view.MaxHeightCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
