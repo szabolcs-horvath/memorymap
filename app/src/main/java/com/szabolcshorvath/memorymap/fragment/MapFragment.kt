@@ -619,19 +619,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             it.placeName != null
         }?.placeName ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
 
-        if (binding.overlayCard.isVisible && binding.overlayLocationTitle.text != locationName) {
-            val titleTransition = TransitionSet().apply {
-                addTransition(Fade())
-                duration = ANIMATION_DURATION
-            }
-            TransitionManager.beginDelayedTransition(binding.overlayCard, titleTransition)
-            binding.overlayLocationTitle.visibility = View.INVISIBLE
-            binding.overlayLocationTitle.text = locationName
-            binding.overlayLocationTitle.visibility = View.VISIBLE
-        } else {
-            binding.overlayLocationTitle.text = locationName
-        }
-
         overlayAdapter?.submitList(distinctItems) {
             val transition = TransitionSet().apply {
                 ordering = TransitionSet.ORDERING_TOGETHER
@@ -640,6 +627,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 duration = ANIMATION_DURATION
             }
             TransitionManager.beginDelayedTransition(binding.root, transition)
+
+            if (binding.overlayLocationTitle.text != locationName) {
+                binding.overlayLocationTitle.visibility = View.INVISIBLE
+                binding.overlayLocationTitle.text = locationName
+                binding.overlayLocationTitle.visibility = View.VISIBLE
+            }
 
             val index = distinctItems.indexOfFirst { it.groupId == viewModel.selectedMemoryId }
             if (index != -1) {
