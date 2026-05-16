@@ -15,18 +15,20 @@ import java.time.ZoneId
 class BackupAdapter(
     private val onRestoreClick: (File) -> Unit,
     private val onDeleteClick: (File) -> Unit
-) : ListAdapter<File, ListItemViewHolder>(BackupDiffCallback()) {
+) : ListAdapter<File, BackupAdapter.BackupViewHolder>(BackupDiffCallback()) {
 
     private var buttonsEnabled = true
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ListItemViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(com.szabolcshorvath.memorymap.R.layout.item_backup, parent, false)
-        return ListItemViewHolder(view)
+    class BackupViewHolder(val binding: ItemBackupBinding) : ListItemViewHolder(binding.root)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BackupViewHolder {
+        val binding = ItemBackupBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return BackupViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: ListItemViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: BackupViewHolder, position: Int) {
         holder.bind(position, itemCount)
-        val binding = ItemBackupBinding.bind(holder.itemView)
+        val binding = holder.binding
         val backup = getItem(position)
 
         val name = backup.name

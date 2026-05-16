@@ -13,16 +13,19 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 
-class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) : ListAdapter<Markerable, ListItemViewHolder>(Markerable.MarkerableDiffCallback()) {
+class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
+    ListAdapter<Markerable, MemoryOverlayAdapter.MemoryOverlayViewHolder>(Markerable.MarkerableDiffCallback()) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ListItemViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(com.szabolcshorvath.memorymap.R.layout.item_memory_overlay, parent, false)
-        return ListItemViewHolder(view)
+    class MemoryOverlayViewHolder(val binding: ItemMemoryOverlayBinding) : ListItemViewHolder(binding.root)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryOverlayViewHolder {
+        val binding = ItemMemoryOverlayBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return MemoryOverlayViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: ListItemViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: MemoryOverlayViewHolder, position: Int) {
         holder.bind(position, itemCount)
-        val binding = ItemMemoryOverlayBinding.bind(holder.itemView)
+        val binding = holder.binding
         binding.overlayCard.clipToOutline = true
         val item = getItem(position)
         bindTitle(binding, item)
@@ -34,12 +37,12 @@ class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) : ListAdap
         }
     }
 
-    override fun onBindViewHolder(holder: ListItemViewHolder, position: Int, payloads: MutableList<Any>) {
+    override fun onBindViewHolder(holder: MemoryOverlayViewHolder, position: Int, payloads: MutableList<Any>) {
         if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
         } else {
             holder.bind(position, itemCount)
-            val binding = ItemMemoryOverlayBinding.bind(holder.itemView)
+            val binding = holder.binding
             val item = getItem(position)
 
             @Suppress("UNCHECKED_CAST")
