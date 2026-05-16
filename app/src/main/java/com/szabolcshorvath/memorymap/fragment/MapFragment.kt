@@ -209,7 +209,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun showDateRangePicker() {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
-        builder.setTitleText("Select dates")
+            .setTitleText("Select dates")
+            .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
 
         val currentStart = viewModel.filterStartDate.value
         val currentEnd = viewModel.filterEndDate.value

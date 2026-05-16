@@ -1,8 +1,6 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.animation.ValueAnimator
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -30,6 +28,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
@@ -50,7 +50,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -669,6 +668,7 @@ class AddMemoryGroupFragment : Fragment() {
     private fun pickDateRange() {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
             .setTitleText("Select Date Range")
+            .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
         val selection = androidx.core.util.Pair(
             viewModel.startDateTime.toInstant().toEpochMilli(),
             viewModel.endDateTime.toInstant().toEpochMilli()
@@ -683,13 +683,18 @@ class AddMemoryGroupFragment : Fragment() {
                 updateDateTimeButtons()
             }
         }
-        picker.show(childFragmentManager, "DATE_RANGE_PICKER")
+        picker.show(childFragmentManager, DATE_RANGE_PICKER_TAG)
     }
 
     private fun pickDate(isStart: Boolean) {
         val current = if (isStart) viewModel.startDateTime else viewModel.endDateTime
-        DatePickerDialog(requireContext(), { _, year, month, dayOfMonth ->
-            val newDate = LocalDate.of(year, month + 1, dayOfMonth)
+        val builder = MaterialDatePicker.Builder.datePicker()
+            .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
+            .setSelection(current.toInstant().toEpochMilli())
+
+        val picker = builder.build()
+        picker.addOnPositiveButtonClickListener { selection ->
+            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneId.systemDefault()).toLocalDate()
             if (isStart) {
                 viewModel.startDateTime = newDate.atTime(viewModel.startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
                 if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.endDateTime = viewModel.startDateTime.plusHours(1)
@@ -698,13 +703,22 @@ class AddMemoryGroupFragment : Fragment() {
                 if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.startDateTime = viewModel.endDateTime.minusHours(1)
             }
             updateDateTimeButtons()
-        }, current.year, current.monthValue - 1, current.dayOfMonth).show()
+        }
+        picker.show(childFragmentManager, DATE_PICKER_TAG)
     }
 
     private fun pickTime(isStart: Boolean) {
         val current = if (isStart) viewModel.startDateTime else viewModel.endDateTime
-        TimePickerDialog(requireContext(), { _, hourOfDay, minute ->
-            val newTime = LocalTime.of(hourOfDay, minute)
+        val picker = MaterialTimePicker.Builder()
+            .setTimeFormat(TimeFormat.CLOCK_24H)
+            .setHour(current.hour)
+            .setMinute(current.minute)
+            .setTitleText(if (isStart) "Select Start Time" else "Select End Time")
+            .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
+            .build()
+
+        picker.addOnPositiveButtonClickListener {
+            val newTime = LocalTime.of(picker.hour, picker.minute)
             if (isStart) {
                 viewModel.startDateTime = viewModel.startDateTime.with(newTime)
                 if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.endDateTime = viewModel.startDateTime.plusHours(1)
@@ -713,7 +727,8 @@ class AddMemoryGroupFragment : Fragment() {
                 if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.startDateTime = viewModel.endDateTime.minusHours(1)
             }
             updateDateTimeButtons()
-        }, current.hour, current.minute, true).show()
+        }
+        picker.show(childFragmentManager, TIME_PICKER_TAG)
     }
 
     override fun onDestroyView() {
@@ -723,6 +738,9 @@ class AddMemoryGroupFragment : Fragment() {
 
     companion object {
         const val TAG = "AddMemoryGroupFragment"
+        private const val DATE_RANGE_PICKER_TAG = "DATE_RANGE_PICKER"
+        private const val DATE_PICKER_TAG = "DATE_PICKER"
+        private const val TIME_PICKER_TAG = "TIME_PICKER"
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
         private const val COLOR_CHANGE_ANIMATION_DURATION = 300L
