@@ -65,7 +65,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_restore"
-                style="@style/Widget.Material3.Button.IconButton"
+                style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:contentDescription="Restore"
@@ -76,7 +76,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_delete"
-                style="@style/Widget.Material3.Button.IconButton"
+                style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:contentDescription="Delete"

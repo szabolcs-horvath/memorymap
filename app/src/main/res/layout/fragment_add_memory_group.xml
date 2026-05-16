@@ -74,7 +74,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/selectLocationButton"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/Widget.Material3Expressive.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Select on Map" />
@@ -161,7 +161,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/dateRangeButton"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
@@ -189,7 +189,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/startDateButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
@@ -201,7 +201,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/startTimeButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="0.8"
@@ -228,7 +228,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/endDateButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
@@ -240,7 +240,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/endTimeButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="0.8"
@@ -512,7 +512,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/addFragmentButtonInline"
-                                style="@style/Widget.Material3.Button.TextButton"
+                                style="@style/Widget.Material3Expressive.Button.TextButton"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:gravity="start|center_vertical"
@@ -537,7 +537,7 @@
             <!-- Media Section -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/pickMediaButton"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/Widget.Material3Expressive.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
@@ -570,7 +570,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/clearButton"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
@@ -579,7 +579,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/saveButton"
-                    style="@style/Widget.Material3.Button"
+                    style="@style/Widget.Material3Expressive.Button"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"

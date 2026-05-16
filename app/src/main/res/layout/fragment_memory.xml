@@ -37,7 +37,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/editButton"
-                    style="@style/Widget.Material3.Button.IconButton"
+                    style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:contentDescription="Edit Memory"
@@ -48,7 +48,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/deleteButton"
-                    style="@style/Widget.Material3.Button.IconButton"
+                    style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:contentDescription="Delete Memory"
@@ -93,7 +93,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/showOnTimelineButton"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Material3Expressive.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:insetTop="0dp"
@@ -130,7 +130,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/showOnMapButton"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Material3Expressive.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:insetTop="0dp"

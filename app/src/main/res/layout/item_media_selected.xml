@@ -9,8 +9,8 @@
         android:id="@+id/thumbnailImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:background="#EEEEEE" />
+        android:background="#EEEEEE"
+        android:scaleType="centerCrop" />
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/videoIcon"
@@ -32,11 +32,12 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/removeButton"
-        style="@style/Widget.Material3.Button.IconButton"
+        style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:layout_gravity="top|end"
         app:icon="@android:drawable/ic_menu_close_clear_cancel"
+        app:iconGravity="textStart"
         app:iconTint="@android:color/holo_red_light" />
 
 </FrameLayout>
