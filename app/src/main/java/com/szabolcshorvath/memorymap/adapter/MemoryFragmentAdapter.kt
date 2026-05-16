@@ -7,23 +7,22 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.listitem.ListItemViewHolder
 import com.szabolcshorvath.memorymap.data.MemoryFragment
-import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
 
     private val items = mutableListOf<MemoryFragment>()
+    var showMarkers: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyItemRangeChanged(0, items.size)
+            }
+        }
 
     init {
         setHasStableIds(true)
@@ -68,15 +67,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
             onShowOnMapClick(fragment)
         }
 
-        // Check if fragment markers are enabled to show/hide the button
-        CoroutineScope(Dispatchers.IO).launch {
-            val showMarkers = binding.root.context.dataStore.data
-                .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
-                .first()
-            withContext(Dispatchers.Main) {
-                binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
-            }
-        }
+        binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
     }
 
     override fun getItemCount(): Int = items.size
