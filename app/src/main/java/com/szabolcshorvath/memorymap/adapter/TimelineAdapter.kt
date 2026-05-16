@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.listitem.ListItemViewHolder
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBinding
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
@@ -64,8 +65,10 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
     }
 
     inner class TimelineViewHolder(private val binding: ItemTimelineMemoryBinding) :
-        RecyclerView.ViewHolder(binding.root) {
-        fun bind(memoryGroup: MemoryGroup) {
+        ListItemViewHolder(binding.root) {
+        fun bind(memoryGroup: MemoryGroup, position: Int, itemCount: Int) {
+            bind(position, itemCount)
+            binding.timelineCard.clipToOutline = true
             binding.memoryTitle.text = memoryGroup.title
 
             if (!memoryGroup.placeName.isNullOrEmpty()) {
@@ -99,13 +102,13 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
         }
 
         fun flash() {
-            val originalColor = binding.root.cardBackgroundColor.defaultColor
+            val originalColor = binding.timelineCard.cardBackgroundColor.defaultColor
             val flashColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondaryContainer)
 
             val colorAnim = ValueAnimator.ofObject(ArgbEvaluator(), originalColor, flashColor, originalColor)
             colorAnim.duration = FLASH_ANIMATION_DURATION_MILLIS
             colorAnim.addUpdateListener { animator ->
-                binding.root.setCardBackgroundColor(animator.animatedValue as Int)
+                binding.timelineCard.setCardBackgroundColor(animator.animatedValue as Int)
             }
 
             colorAnim.start()
@@ -144,7 +147,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = getItem(position)) {
-            is TimelineItem.Memory -> (holder as TimelineViewHolder).bind(item.memoryGroup)
+            is TimelineItem.Memory -> (holder as TimelineViewHolder).bind(item.memoryGroup, position, itemCount)
             is TimelineItem.DateSeparator -> (holder as DateSeparatorViewHolder).bind(item.date)
         }
     }

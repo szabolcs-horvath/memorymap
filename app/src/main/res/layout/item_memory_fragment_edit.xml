@@ -1,435 +1,452 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.listitem.ListItemLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginVertical="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp"
-    app:strokeWidth="0dp">
+    android:layout_height="wrap_content">
 
-    <LinearLayout
+    <com.google.android.material.listitem.ListItemCardView
+        android:id="@+id/fragmentEditCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+        app:cardBackgroundColor="?attr/colorSurfaceBright"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:strokeWidth="1dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Location:"
+                    android:textAppearance="?attr/textAppearanceLabelLarge" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/removeButton"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="Remove fragment"
+                    app:icon="@android:drawable/ic_menu_delete"
+                    app:iconGravity="textStart"
+                    app:iconSize="24dp"
+                    app:iconTint="?attr/colorError" />
+            </LinearLayout>
 
             <com.google.android.material.textview.MaterialTextView
-                android:layout_width="0dp"
+                android:id="@+id/locationText"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Location:"
-                android:textAppearance="?attr/textAppearanceLabelLarge" />
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                tools:text="No location selected" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/removeButton"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="Remove fragment"
-                app:icon="@android:drawable/ic_menu_delete"
-                app:iconTint="?attr/colorError" />
-        </LinearLayout>
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/locationText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            tools:text="0.0, 0.0" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/selectLocationButton"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Select on Map" />
-
-        <!-- Date/Time Section -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/dateSectionCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/colorOutlineVariant"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+                android:id="@+id/selectLocationButton"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:text="Select on Map" />
+
+            <!-- Date/Time Section -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/dateSectionCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="4dp"
+                android:clipToOutline="true"
+                app:cardCornerRadius="8dp"
+                app:cardPreventCornerOverlap="false"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
-                    android:id="@+id/dateHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp">
+                    android:orientation="vertical">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:id="@+id/dateHeader"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="8dp">
 
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Date &amp; Time"
-                            android:textAppearance="?attr/textAppearanceTitleSmall" />
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
-                        <com.google.android.material.textview.MaterialTextView
-                            android:id="@+id/dateSummaryText"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textAppearance="?attr/textAppearanceLabelSmall"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            tools:text="Inherited from group" />
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Date &amp; Time"
+                                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/dateSummaryText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceLabelSmall"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                tools:text="Inherited from group" />
+                        </LinearLayout>
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/dateChevron"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:rotation="90"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="?attr/colorOnSurfaceVariant" />
                     </LinearLayout>
 
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/dateChevron"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:rotation="90"
-                        android:src="@drawable/ic_chevron_right"
-                        app:tint="?attr/colorOnSurfaceVariant" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/dateExpandedContent"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingBottom="12dp"
-                    android:visibility="gone"
-                    tools:visibility="visible">
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/useSpecificTimeSwitch"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="Use specific time for this fragment"
-                        android:textAppearance="?attr/textAppearanceLabelMedium" />
-
                     <LinearLayout
-                        android:id="@+id/timePickersLayout"
+                        android:id="@+id/dateExpandedContent"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        tools:visibility="visible">
 
                         <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/allDayCheckbox"
+                            android:id="@+id/useSpecificTimeSwitch"
                             android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:text="All Day?"
+                            android:layout_height="36dp"
+                            android:layout_marginHorizontal="12dp"
+                            android:layout_marginVertical="4dp"
+                            android:text="Use specific time for this fragment"
                             android:textAppearance="?attr/textAppearanceLabelMedium" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/dateRangeButton"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="Select Date Range"
-                            android:visibility="gone"
-                            tools:visibility="visible" />
-
                         <LinearLayout
-                            android:id="@+id/startDateTimeLayout"
+                            android:id="@+id/timePickersLayout"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                            android:layout_marginVertical="4dp"
+                            android:orientation="vertical">
 
-                            <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/startDateLabel"
-                                android:layout_width="50dp"
-                                android:layout_height="wrap_content"
-                                android:gravity="end"
-                                android:paddingEnd="8dp"
-                                android:text="Start:"
-                                android:textAppearance="?attr/textAppearanceLabelMedium"
-                                android:textColor="?attr/colorOnSurface" />
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/allDayCheckbox"
+                                android:layout_width="match_parent"
+                                android:layout_height="36dp"
+                                android:layout_marginHorizontal="12dp"
+                                android:text="All Day?"
+                                android:textAppearance="?attr/textAppearanceLabelMedium" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/startDateButton"
+                                android:id="@+id/dateRangeButton"
                                 style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="0dp"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="Date" />
+                                android:layout_marginHorizontal="12dp"
+                                android:text="Select Date Range"
+                                android:visibility="gone"
+                                tools:visibility="visible" />
 
-                            <Space
-                                android:layout_width="4dp"
-                                android:layout_height="wrap_content" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/startTimeButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="0dp"
+                            <LinearLayout
+                                android:id="@+id/startDateTimeLayout"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_weight="0.8"
-                                android:text="Time" />
-                        </LinearLayout>
+                                android:layout_marginHorizontal="12dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
 
-                        <LinearLayout
-                            android:id="@+id/endDateTimeLayout"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/startDateLabel"
+                                    android:layout_width="30dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="end"
+                                    android:text="Start"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorOnSurface" />
 
-                            <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/endDateLabel"
-                                android:layout_width="50dp"
+                                <Space
+                                    android:layout_width="4dp"
+                                    android:layout_height="wrap_content" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/startDateButton"
+                                    style="@style/Widget.Material3.Button.OutlinedButton"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="Date" />
+
+                                <Space
+                                    android:layout_width="4dp"
+                                    android:layout_height="wrap_content" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/startTimeButton"
+                                    style="@style/Widget.Material3.Button.OutlinedButton"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="0.8"
+                                    android:text="Time" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/endDateTimeLayout"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:gravity="end"
-                                android:paddingEnd="8dp"
-                                android:text="End:"
-                                android:textAppearance="?attr/textAppearanceLabelMedium"
-                                android:textColor="?attr/colorOnSurface" />
+                                android:layout_marginHorizontal="12dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/endDateButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="Date" />
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/endDateLabel"
+                                    android:layout_width="30dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="end"
+                                    android:text="End"
+                                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                                    android:textColor="?attr/colorOnSurface" />
 
-                            <Space
-                                android:layout_width="4dp"
-                                android:layout_height="wrap_content" />
+                                <Space
+                                    android:layout_width="4dp"
+                                    android:layout_height="wrap_content" />
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/endTimeButton"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="0.8"
-                                android:text="Time" />
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/endDateButton"
+                                    style="@style/Widget.Material3.Button.OutlinedButton"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="Date" />
+
+                                <Space
+                                    android:layout_width="4dp"
+                                    android:layout_height="wrap_content" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/endTimeButton"
+                                    style="@style/Widget.Material3.Button.OutlinedButton"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="0.8"
+                                    android:text="Time" />
+                            </LinearLayout>
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            </com.google.android.material.card.MaterialCardView>
 
-        <!-- Appearance Section -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/colorSectionCard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/colorOutlineVariant"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+            <!-- Appearance Section -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/colorSectionCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <View
-                    android:id="@+id/colorIndicator"
-                    android:layout_width="match_parent"
-                    android:layout_height="8dp"
-                    android:background="@android:color/darker_gray" />
-
-                <LinearLayout
-                    android:id="@+id/colorHeader"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Marker Color"
-                        android:textAppearance="?attr/textAppearanceTitleSmall" />
-
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/colorChevron"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:rotation="90"
-                        android:src="@drawable/ic_chevron_right"
-                        app:tint="?attr/colorOnSurfaceVariant" />
-                </LinearLayout>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/presetColorsRecyclerView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:clipToPadding="false"
-                    android:orientation="horizontal"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:listitem="@layout/item_color_preset" />
+                android:layout_marginVertical="4dp"
+                android:clipToOutline="true"
+                app:cardCornerRadius="8dp"
+                app:cardPreventCornerOverlap="false"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
-                    android:id="@+id/colorExpandedContent"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingBottom="12dp"
-                    android:visibility="gone"
-                    tools:visibility="visible">
+                    android:orientation="vertical">
 
-                    <!-- Hue Slider -->
+                    <View
+                        android:id="@+id/colorIndicator"
+                        android:layout_width="match_parent"
+                        android:layout_height="8dp"
+                        android:background="@android:color/darker_gray" />
+
                     <LinearLayout
+                        android:id="@+id/colorHeader"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="8dp">
 
                         <com.google.android.material.textview.MaterialTextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Hue"
-                            android:textAppearance="?attr/textAppearanceLabelMedium" />
+                            android:text="Marker Color"
+                            android:textAppearance="?attr/textAppearanceTitleSmall" />
 
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            app:cardBackgroundColor="?attr/colorSurfaceVariant"
-                            app:cardCornerRadius="4dp"
-                            app:cardElevation="0dp">
-
-                            <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/tvHueValue"
-                                android:layout_width="36dp"
-                                android:layout_height="wrap_content"
-                                android:gravity="center"
-                                android:paddingVertical="1dp"
-                                android:textAppearance="?attr/textAppearanceLabelSmall"
-                                android:textStyle="bold"
-                                tools:text="180" />
-                        </com.google.android.material.card.MaterialCardView>
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/colorChevron"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:rotation="90"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="?attr/colorOnSurfaceVariant" />
                     </LinearLayout>
 
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/hueSlider"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/presetColorsRecyclerView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:stepSize="5.0"
-                        android:valueFrom="0.0"
-                        android:valueTo="360.0" />
+                        android:clipToPadding="false"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="8dp"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:listitem="@layout/item_color_preset" />
 
-                    <!-- Saturation Slider -->
                     <LinearLayout
+                        android:id="@+id/colorExpandedContent"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:orientation="vertical"
+                        android:paddingHorizontal="12dp"
+                        android:paddingBottom="12dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
 
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="0dp"
+                        <!-- Hue Slider -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Saturation"
-                            android:textAppearance="?attr/textAppearanceLabelMedium" />
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            app:cardBackgroundColor="?attr/colorSurfaceVariant"
-                            app:cardCornerRadius="4dp"
-                            app:cardElevation="0dp">
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
 
                             <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/tvSaturationValue"
-                                android:layout_width="36dp"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:gravity="center"
-                                android:paddingVertical="1dp"
-                                android:textAppearance="?attr/textAppearanceLabelSmall"
-                                android:textStyle="bold"
-                                tools:text="0.50" />
-                        </com.google.android.material.card.MaterialCardView>
-                    </LinearLayout>
+                                android:layout_weight="1"
+                                android:text="Hue"
+                                android:textAppearance="?attr/textAppearanceLabelMedium" />
 
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/saturationSlider"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:stepSize="0.05"
-                        android:valueFrom="0.0"
-                        android:valueTo="1.0" />
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                                app:cardCornerRadius="4dp"
+                                app:cardElevation="0dp">
 
-                    <!-- Brightness Slider -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/tvHueValue"
+                                    android:layout_width="36dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center"
+                                    android:paddingVertical="1dp"
+                                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                                    android:textStyle="bold"
+                                    tools:text="180" />
+                            </com.google.android.material.card.MaterialCardView>
+                        </LinearLayout>
 
-                        <com.google.android.material.textview.MaterialTextView
-                            android:layout_width="0dp"
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/hueSlider"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Brightness"
-                            android:textAppearance="?attr/textAppearanceLabelMedium" />
+                            android:stepSize="5.0"
+                            android:valueFrom="0.0"
+                            android:valueTo="360.0" />
 
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="wrap_content"
+                        <!-- Saturation Slider -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            app:cardBackgroundColor="?attr/colorSurfaceVariant"
-                            app:cardCornerRadius="4dp"
-                            app:cardElevation="0dp">
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
 
                             <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/tvBrightnessValue"
-                                android:layout_width="36dp"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:gravity="center"
-                                android:paddingVertical="1dp"
-                                android:textAppearance="?attr/textAppearanceLabelSmall"
-                                android:textStyle="bold"
-                                tools:text="0.80" />
-                        </com.google.android.material.card.MaterialCardView>
-                    </LinearLayout>
+                                android:layout_weight="1"
+                                android:text="Saturation"
+                                android:textAppearance="?attr/textAppearanceLabelMedium" />
 
-                    <com.google.android.material.slider.Slider
-                        android:id="@+id/brightnessSlider"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:stepSize="0.05"
-                        android:valueFrom="0.0"
-                        android:valueTo="1.0" />
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                                app:cardCornerRadius="4dp"
+                                app:cardElevation="0dp">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/tvSaturationValue"
+                                    android:layout_width="36dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center"
+                                    android:paddingVertical="1dp"
+                                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                                    android:textStyle="bold"
+                                    tools:text="0.50" />
+                            </com.google.android.material.card.MaterialCardView>
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/saturationSlider"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:stepSize="0.05"
+                            android:valueFrom="0.0"
+                            android:valueTo="1.0" />
+
+                        <!-- Brightness Slider -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Brightness"
+                                android:textAppearance="?attr/textAppearanceLabelMedium" />
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                                app:cardCornerRadius="4dp"
+                                app:cardElevation="0dp">
+
+                                <com.google.android.material.textview.MaterialTextView
+                                    android:id="@+id/tvBrightnessValue"
+                                    android:layout_width="36dp"
+                                    android:layout_height="wrap_content"
+                                    android:gravity="center"
+                                    android:paddingVertical="1dp"
+                                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                                    android:textStyle="bold"
+                                    tools:text="0.80" />
+                            </com.google.android.material.card.MaterialCardView>
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/brightnessSlider"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:stepSize="0.05"
+                            android:valueFrom="0.0"
+                            android:valueTo="1.0" />
+                    </LinearLayout>
                 </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            </com.google.android.material.card.MaterialCardView>
 
-    </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </com.google.android.material.listitem.ListItemCardView>
+</com.google.android.material.listitem.ListItemLayout>

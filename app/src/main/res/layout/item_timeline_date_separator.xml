@@ -5,7 +5,6 @@
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingHorizontal="16dp"
     android:paddingVertical="8dp">
 
     <com.google.android.material.divider.MaterialDivider

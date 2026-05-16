@@ -42,7 +42,8 @@
                     android:layout_height="48dp"
                     android:contentDescription="Edit Memory"
                     app:icon="@android:drawable/ic_menu_edit"
-                    app:iconSize="28dp"
+                    app:iconGravity="textStart"
+                    app:iconSize="24dp"
                     app:iconTint="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.button.MaterialButton
@@ -52,8 +53,9 @@
                     android:layout_height="48dp"
                     android:contentDescription="Delete Memory"
                     app:icon="@android:drawable/ic_menu_delete"
-                    app:iconSize="28dp"
-                    app:iconTint="?attr/colorOnSurfaceVariant" />
+                    app:iconGravity="textStart"
+                    app:iconSize="24dp"
+                    app:iconTint="?attr/colorError" />
             </LinearLayout>
 
             <com.google.android.material.textview.MaterialTextView
