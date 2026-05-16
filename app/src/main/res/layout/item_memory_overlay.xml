@@ -58,7 +58,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_details"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                style="@style/Widget.Material3Expressive.Button.IconButton.Tonal"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 app:icon="@drawable/ic_chevron_right"
