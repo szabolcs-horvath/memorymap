@@ -186,6 +186,8 @@ class MemoryFragmentEditAdapter(
         binding.dateHeader.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
+                // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure
+                // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
                 val current = fragments[pos]
                 fragments[pos] = current.copy(isDateExpanded = !current.isDateExpanded)
                 updateFragmentsUI()
@@ -195,6 +197,8 @@ class MemoryFragmentEditAdapter(
         binding.colorHeader.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
+                // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure
+                // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
                 val current = fragments[pos]
                 fragments[pos] = current.copy(isColorExpanded = !current.isColorExpanded)
                 updateFragmentsUI()
@@ -213,6 +217,8 @@ class MemoryFragmentEditAdapter(
         binding.useSpecificTimeSwitch.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnCheckedChangeListener
+            // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure
+            // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
             val current = fragments[pos]
             val newStart = if (isChecked && current.startDate == null) ZonedDateTime.now() else current.startDate
             val newEnd = if (isChecked && current.endDate == null) {
@@ -234,6 +240,8 @@ class MemoryFragmentEditAdapter(
         binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
+                // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure
+                // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
                 val current = fragments[pos]
                 fragments[pos] = current.copy(isAllDay = isChecked)
                 updateFragmentsUI()
@@ -389,7 +397,9 @@ class MemoryFragmentEditAdapter(
             if (pos != RecyclerView.NO_POSITION) {
                 animateFragmentColorToTargets(holder, preset)
 
-                // Still update the underlying data so it's persisted/ready for save
+                // Still update the underlying data so it's persisted/ready for save.
+                // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure
+                // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
                 val current = fragments[pos]
                 fragments[pos] = current.copy(
                     markerHue = preset.hue,
@@ -448,6 +458,8 @@ class MemoryFragmentEditAdapter(
 
     private fun pickFragmentDateRange(index: Int) {
         if (index == RecyclerView.NO_POSITION) return
+        // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
+        // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
         val item = fragments[index]
         val builder = MaterialDatePicker.Builder.dateRangePicker()
             .setTitleText("Select Date Range")
@@ -459,6 +471,8 @@ class MemoryFragmentEditAdapter(
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { range ->
             if (range.first != null && range.second != null) {
+                // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
+                // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
                 val current = fragments[index]
                 fragments[index] = current.copy(
                     startDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneId.systemDefault()),
@@ -472,6 +486,8 @@ class MemoryFragmentEditAdapter(
 
     private fun pickFragmentDate(index: Int, isStart: Boolean) {
         if (index == RecyclerView.NO_POSITION) return
+        // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
+        // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
         val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
 
@@ -482,6 +498,8 @@ class MemoryFragmentEditAdapter(
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { selection ->
             val newDate = Instant.ofEpochMilli(selection).atZone(ZoneId.systemDefault()).toLocalDate()
+            // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
+            // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
             val currentItem = fragments[index]
             if (isStart) {
                 val newStart = newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
@@ -503,6 +521,8 @@ class MemoryFragmentEditAdapter(
 
     private fun pickFragmentTime(index: Int, isStart: Boolean) {
         if (index == RecyclerView.NO_POSITION) return
+        // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
+        // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
         val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
 
@@ -516,6 +536,8 @@ class MemoryFragmentEditAdapter(
 
         picker.addOnPositiveButtonClickListener {
             val newTime = LocalTime.of(picker.hour, picker.minute)
+            // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
+            // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
             val currentItem = fragments[index]
             if (isStart) {
                 val newStart = current.with(newTime)
