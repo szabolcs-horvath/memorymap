@@ -1,9 +1,6 @@
 package com.szabolcshorvath.memorymap.adapter
 
 import android.animation.ValueAnimator
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
-import android.content.Context
 import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +11,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryGroupListener
@@ -21,7 +20,6 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -236,16 +234,16 @@ class MemoryFragmentEditAdapter(
             }
         }
         binding.startDateButton.setOnClickListener {
-            pickFragmentDate(holder.itemView.context, holder.bindingAdapterPosition, true)
+            pickFragmentDate(holder.bindingAdapterPosition, true)
         }
         binding.startTimeButton.setOnClickListener {
-            pickFragmentTime(holder.itemView.context, holder.bindingAdapterPosition, true)
+            pickFragmentTime(holder.bindingAdapterPosition, true)
         }
         binding.endDateButton.setOnClickListener {
-            pickFragmentDate(holder.itemView.context, holder.bindingAdapterPosition, false)
+            pickFragmentDate(holder.bindingAdapterPosition, false)
         }
         binding.endTimeButton.setOnClickListener {
-            pickFragmentTime(holder.itemView.context, holder.bindingAdapterPosition, false)
+            pickFragmentTime(holder.bindingAdapterPosition, false)
         }
         binding.dateRangeButton.setOnClickListener {
             pickFragmentDateRange(holder.bindingAdapterPosition)
@@ -445,7 +443,9 @@ class MemoryFragmentEditAdapter(
     private fun pickFragmentDateRange(index: Int) {
         if (index == RecyclerView.NO_POSITION) return
         val item = fragments[index]
-        val builder = MaterialDatePicker.Builder.dateRangePicker().setTitleText("Select Date Range")
+        val builder = MaterialDatePicker.Builder.dateRangePicker()
+            .setTitleText("Select Date Range")
+            .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
         val start = item.startDate ?: ZonedDateTime.now()
         val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
         val selection = androidx.core.util.Pair(start.toInstant().toEpochMilli(), end.toInstant().toEpochMilli())
@@ -461,15 +461,21 @@ class MemoryFragmentEditAdapter(
                 updateFragmentsUI()
             }
         }
-        picker.show(getChildFragmentManager(), "DATE_RANGE_PICKER")
+        picker.show(getChildFragmentManager(), DATE_RANGE_PICKER_TAG)
     }
 
-    private fun pickFragmentDate(context: Context, index: Int, isStart: Boolean) {
+    private fun pickFragmentDate(index: Int, isStart: Boolean) {
         if (index == RecyclerView.NO_POSITION) return
         val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
-        DatePickerDialog(context, { _, year, month, dayOfMonth ->
-            val newDate = LocalDate.of(year, month + 1, dayOfMonth)
+
+        val builder = MaterialDatePicker.Builder.datePicker()
+            .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
+            .setSelection(current.toInstant().toEpochMilli())
+
+        val picker = builder.build()
+        picker.addOnPositiveButtonClickListener { selection ->
+            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneId.systemDefault()).toLocalDate()
             val currentItem = fragments[index]
             if (isStart) {
                 val newStart = newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
@@ -485,15 +491,25 @@ class MemoryFragmentEditAdapter(
                 fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
             }
             updateFragmentsUI()
-        }, current.year, current.monthValue - 1, current.dayOfMonth).show()
+        }
+        picker.show(getChildFragmentManager(), DATE_PICKER_TAG)
     }
 
-    private fun pickFragmentTime(context: Context, index: Int, isStart: Boolean) {
+    private fun pickFragmentTime(index: Int, isStart: Boolean) {
         if (index == RecyclerView.NO_POSITION) return
         val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
-        TimePickerDialog(context, { _, hourOfDay, minute ->
-            val newTime = LocalTime.of(hourOfDay, minute)
+
+        val picker = MaterialTimePicker.Builder()
+            .setTimeFormat(TimeFormat.CLOCK_24H)
+            .setHour(current.hour)
+            .setMinute(current.minute)
+            .setTitleText(if (isStart) "Select Start Time" else "Select End Time")
+            .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
+            .build()
+
+        picker.addOnPositiveButtonClickListener {
+            val newTime = LocalTime.of(picker.hour, picker.minute)
             val currentItem = fragments[index]
             if (isStart) {
                 val newStart = current.with(newTime)
@@ -509,10 +525,14 @@ class MemoryFragmentEditAdapter(
                 fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
             }
             updateFragmentsUI()
-        }, current.hour, current.minute, true).show()
+        }
+        picker.show(getChildFragmentManager(), TIME_PICKER_TAG)
     }
 
     companion object {
+        private const val DATE_RANGE_PICKER_TAG = "DATE_RANGE_PICKER"
+        private const val DATE_PICKER_TAG = "DATE_PICKER"
+        private const val TIME_PICKER_TAG = "TIME_PICKER"
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
         private const val COLOR_CHANGE_ANIMATION_DURATION = 300L
