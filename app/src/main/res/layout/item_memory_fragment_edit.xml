@@ -122,10 +122,10 @@
                     android:visibility="gone"
                     tools:visibility="visible">
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
+                    <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/useSpecificTimeSwitch"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="48dp"
                         android:text="Use specific time for this fragment"
                         android:textAppearance="?attr/textAppearanceLabelMedium" />
 
@@ -135,10 +135,10 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
 
-                        <com.google.android.material.switchmaterial.SwitchMaterial
+                        <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/allDayCheckbox"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="48dp"
                             android:text="All Day?"
                             android:textAppearance="?attr/textAppearanceLabelMedium" />
 

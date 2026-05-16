@@ -29,18 +29,18 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_show_fragments"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="48dp"
                 android:checked="false"
                 android:text="Show Memory Fragment Markers"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_cluster_markers"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="48dp"
                 android:checked="true"
                 android:text="Enable Marker Clustering"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
