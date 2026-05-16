@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<ListItemViewHolder>() {
+class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
 
     private val items = mutableListOf<MemoryFragment>()
 
@@ -29,14 +29,16 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         setHasStableIds(true)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ListItemViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(com.szabolcshorvath.memorymap.R.layout.item_memory_fragment, parent, false)
-        return ListItemViewHolder(view)
+    class MemoryFragmentViewHolder(val binding: ItemMemoryFragmentBinding) : ListItemViewHolder(binding.root)
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentViewHolder {
+        val binding = ItemMemoryFragmentBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return MemoryFragmentViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: ListItemViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: MemoryFragmentViewHolder, position: Int) {
         holder.bind(position, itemCount)
-        val binding = ItemMemoryFragmentBinding.bind(holder.itemView)
+        val binding = holder.binding
         binding.fragmentCard.clipToOutline = true
         val fragment = items[position]
 
