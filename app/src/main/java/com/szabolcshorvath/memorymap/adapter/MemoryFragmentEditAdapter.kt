@@ -186,7 +186,7 @@ class MemoryFragmentEditAdapter(
         binding.dateHeader.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
-                val current = getItem(pos)
+                val current = fragments[pos]
                 fragments[pos] = current.copy(isDateExpanded = !current.isDateExpanded)
                 updateFragmentsUI()
             }
@@ -195,7 +195,7 @@ class MemoryFragmentEditAdapter(
         binding.colorHeader.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
-                val current = getItem(pos)
+                val current = fragments[pos]
                 fragments[pos] = current.copy(isColorExpanded = !current.isColorExpanded)
                 updateFragmentsUI()
             }
@@ -213,7 +213,7 @@ class MemoryFragmentEditAdapter(
         binding.useSpecificTimeSwitch.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnCheckedChangeListener
-            val current = getItem(pos)
+            val current = fragments[pos]
             val newStart = if (isChecked && current.startDate == null) ZonedDateTime.now() else current.startDate
             val newEnd = if (isChecked && current.endDate == null) {
                 ZonedDateTime.now().plusHours(1)
@@ -234,7 +234,7 @@ class MemoryFragmentEditAdapter(
         binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
-                val current = getItem(pos)
+                val current = fragments[pos]
                 fragments[pos] = current.copy(isAllDay = isChecked)
                 updateFragmentsUI()
             }
@@ -390,7 +390,7 @@ class MemoryFragmentEditAdapter(
                 animateFragmentColorToTargets(holder, preset)
 
                 // Still update the underlying data so it's persisted/ready for save
-                val current = getItem(pos)
+                val current = fragments[pos]
                 fragments[pos] = current.copy(
                     markerHue = preset.hue,
                     markerSaturation = preset.saturation,
@@ -448,7 +448,7 @@ class MemoryFragmentEditAdapter(
 
     private fun pickFragmentDateRange(index: Int) {
         if (index == RecyclerView.NO_POSITION) return
-        val item = getItem(index)
+        val item = fragments[index]
         val builder = MaterialDatePicker.Builder.dateRangePicker()
             .setTitleText("Select Date Range")
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
@@ -459,7 +459,7 @@ class MemoryFragmentEditAdapter(
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { range ->
             if (range.first != null && range.second != null) {
-                val current = getItem(index)
+                val current = fragments[index]
                 fragments[index] = current.copy(
                     startDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneId.systemDefault()),
                     endDate = Instant.ofEpochMilli(range.second!!).atZone(ZoneId.systemDefault())
@@ -472,7 +472,7 @@ class MemoryFragmentEditAdapter(
 
     private fun pickFragmentDate(index: Int, isStart: Boolean) {
         if (index == RecyclerView.NO_POSITION) return
-        val item = getItem(index)
+        val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
 
         val builder = MaterialDatePicker.Builder.datePicker()
@@ -482,7 +482,7 @@ class MemoryFragmentEditAdapter(
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { selection ->
             val newDate = Instant.ofEpochMilli(selection).atZone(ZoneId.systemDefault()).toLocalDate()
-            val currentItem = getItem(index)
+            val currentItem = fragments[index]
             if (isStart) {
                 val newStart = newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
                 var newEnd = currentItem.endDate
@@ -503,7 +503,7 @@ class MemoryFragmentEditAdapter(
 
     private fun pickFragmentTime(index: Int, isStart: Boolean) {
         if (index == RecyclerView.NO_POSITION) return
-        val item = getItem(index)
+        val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
 
         val picker = MaterialTimePicker.Builder()
@@ -516,7 +516,7 @@ class MemoryFragmentEditAdapter(
 
         picker.addOnPositiveButtonClickListener {
             val newTime = LocalTime.of(picker.hour, picker.minute)
-            val currentItem = getItem(index)
+            val currentItem = fragments[index]
             if (isStart) {
                 val newStart = current.with(newTime)
                 var newEnd = currentItem.endDate
