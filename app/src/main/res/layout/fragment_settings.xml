@@ -62,8 +62,9 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_default_filter"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense.ExposedDropdownMenu"
-                    android:layout_width="150dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:minWidth="150dp"
                     app:hintEnabled="false">
 
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView

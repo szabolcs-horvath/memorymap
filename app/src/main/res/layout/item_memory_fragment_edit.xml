@@ -9,7 +9,9 @@
         android:id="@+id/fragmentEditCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:clipToOutline="true"
         app:cardBackgroundColor="?attr/colorSurfaceBright"
+        app:cardPreventCornerOverlap="false"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp">
 
