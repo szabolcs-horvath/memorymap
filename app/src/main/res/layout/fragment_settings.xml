@@ -191,6 +191,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/hueSlider"
+                            style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
@@ -234,6 +235,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/saturationSlider"
+                            style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
@@ -277,6 +279,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/brightnessSlider"
+                            style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="8dp"
