@@ -256,7 +256,7 @@ class SettingsFragment : Fragment() {
 
     private fun setupDefaultFilterDropdown() {
         val options = DateFilterOption.allLabels()
-        val adapter = ArrayAdapter(requireContext(), R.layout.dropdown_item, options)
+        val adapter = ArrayAdapter(requireContext(), R.layout.item_dropdown, options)
         binding.spinnerDefaultFilter.setAdapter(adapter)
 
         viewLifecycleOwner.lifecycleScope.launch {
