@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.listitem.ListItemViewHolder
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentBinding
@@ -20,7 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
+class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<ListItemViewHolder>() {
 
     private val items = mutableListOf<MemoryFragment>()
 
@@ -28,56 +29,52 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         setHasStableIds(true)
     }
 
-    inner class MemoryFragmentViewHolder(private val binding: ItemMemoryFragmentBinding) : RecyclerView.ViewHolder(
-        binding.root
-    ) {
-        fun bind(fragment: MemoryFragment) {
-            binding.locationText.text = if (!fragment.placeName.isNullOrEmpty()) {
-                fragment.placeName
-            } else {
-                "${fragment.latitude}, ${fragment.longitude}"
-            }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ListItemViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(com.szabolcshorvath.memorymap.R.layout.item_memory_fragment, parent, false)
+        return ListItemViewHolder(view)
+    }
 
-            val dateText = fragment.getFormattedDate()
-            if (dateText != null) {
-                binding.timeText.text = dateText
-                binding.timeText.visibility = View.VISIBLE
-            } else {
-                binding.timeText.visibility = View.GONE
-            }
+    override fun onBindViewHolder(holder: ListItemViewHolder, position: Int) {
+        holder.bind(position, itemCount)
+        val binding = ItemMemoryFragmentBinding.bind(holder.itemView)
+        binding.fragmentCard.clipToOutline = true
+        val fragment = items[position]
 
-            binding.colorIndicator.setBackgroundColor(
-                ColorUtil.hsvToColor(
-                    fragment.markerHue ?: DEFAULT_MARKER_HUE,
-                    fragment.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    fragment.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
+        binding.locationText.text = if (!fragment.placeName.isNullOrEmpty()) {
+            fragment.placeName
+        } else {
+            "${fragment.latitude}, ${fragment.longitude}"
+        }
+
+        val dateText = fragment.getFormattedDate()
+        if (dateText != null) {
+            binding.timeText.text = dateText
+            binding.timeText.visibility = View.VISIBLE
+        } else {
+            binding.timeText.visibility = View.GONE
+        }
+
+        binding.colorIndicator.setBackgroundColor(
+            ColorUtil.hsvToColor(
+                fragment.markerHue ?: DEFAULT_MARKER_HUE,
+                fragment.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                fragment.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
             )
+        )
 
-            binding.btnShowOnMap.setOnClickListener {
-                onShowOnMapClick(fragment)
-            }
+        binding.btnShowOnMap.setOnClickListener {
+            onShowOnMapClick(fragment)
+        }
 
-            // Check if fragment markers are enabled to show/hide the button
-            CoroutineScope(Dispatchers.IO).launch {
-                val showMarkers = binding.root.context.dataStore.data
-                    .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
-                    .first()
-                withContext(Dispatchers.Main) {
-                    binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
-                }
+        // Check if fragment markers are enabled to show/hide the button
+        CoroutineScope(Dispatchers.IO).launch {
+            val showMarkers = binding.root.context.dataStore.data
+                .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
+                .first()
+            withContext(Dispatchers.Main) {
+                binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
             }
         }
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentViewHolder {
-        return MemoryFragmentViewHolder(
-            ItemMemoryFragmentBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        )
-    }
-
-    override fun onBindViewHolder(holder: MemoryFragmentViewHolder, position: Int) {
-        holder.bind(items[position])
     }
 
     override fun getItemCount(): Int = items.size
