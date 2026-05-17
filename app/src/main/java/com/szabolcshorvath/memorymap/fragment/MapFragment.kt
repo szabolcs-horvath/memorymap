@@ -81,6 +81,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var shouldAdjustCameraOnUpdate = false
     private var mapLoadTrace: Trace? = null
 
+    private var currentClusters: List<Markerable.MarkerableCluster> = emptyList()
+
     interface MapListener {
         fun onMemoryClicked(id: Int)
     }
@@ -165,10 +167,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Observe Clusters and Clustering Preference
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(
-                    viewModel.markerClusters,
-                    viewModel.markerClusteringEnabled
-                ) { clusters, _ -> clusters }.collectLatest { clusters ->
+                viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled).collectLatest { clusters ->
+                    currentClusters = clusters
                     if (this@MapFragment::clusterManager.isInitialized) {
                         updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
                         shouldAdjustCameraOnUpdate = false
@@ -289,7 +289,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
             if (oldStart == viewModel.filterStartDate.value && oldEnd == viewModel.filterEndDate.value) {
                 // Filter didn't change, we can try to select immediately if the map and clusters are ready
-                val currentClusters = viewModel.markerClusters.value
                 if (mMap != null && currentClusters.isNotEmpty()) {
                     moveToLocationAndSelectMarker(lat, lng, id, currentClusters)
                     viewModel.pendingSelectionId = null
@@ -385,7 +384,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         // Needed to reinitialize after rotation
         viewLifecycleOwner.lifecycleScope.launch {
-            updateMapMarkers()
+            if (currentClusters.isNotEmpty()) {
+                updateMapMarkers(currentClusters)
+            }
         }
     }
 
@@ -483,7 +484,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun updateMapMarkers(clusters: List<Markerable.MarkerableCluster>? = null, adjustCamera: Boolean = false) {
         val googleMap = mMap ?: return
         trace("map_fragment_update_map_markers") {
-            val clustersToUse = clusters ?: viewModel.markerClusters.value
+            val clustersToUse = clusters ?: currentClusters
             val items = clustersToUse.flatMap { it.items }
 
             updateUIWithFreshMarkers(googleMap, items, clustersToUse, adjustCamera)
@@ -658,7 +659,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     ) : DefaultAdvancedMarkersClusterRenderer<Markerable.MarkerableCluster>(context, map, clusterManager) {
 
         override fun shouldRenderAsCluster(cluster: Cluster<Markerable.MarkerableCluster>): Boolean =
-            if (viewModel.markerClusteringEnabled.value) super.shouldRenderAsCluster(cluster) else false
+            if (commonViewModel.markerClusteringEnabled.value) super.shouldRenderAsCluster(cluster) else false
 
         @AddTrace(name = "markerable_cluster_renderer_on_before_cluster_item_rendered", enabled = true)
         override fun onBeforeClusterItemRendered(

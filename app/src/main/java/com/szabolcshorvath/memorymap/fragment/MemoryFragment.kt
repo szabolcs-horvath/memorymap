@@ -23,7 +23,6 @@ import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -31,9 +30,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
@@ -108,9 +105,7 @@ class MemoryFragment : Fragment() {
                     viewModel.groupWithMedia.collect { it?.let { displayDetails(it) } }
                 }
                 launch {
-                    requireContext().dataStore.data
-                        .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
-                        .collect { fragmentsAdapter.showMarkers = it }
+                    commonViewModel.showFragmentsEnabled.collect { fragmentsAdapter.showMarkers = it }
                 }
             }
         }
@@ -144,6 +139,7 @@ class MemoryFragment : Fragment() {
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
         }
+        fragmentsAdapter.showMarkers = commonViewModel.showFragmentsEnabled.value
         binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
 
