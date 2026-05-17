@@ -121,9 +121,13 @@ class MemoryFragmentEditAdapter(
         currentList: MutableList<FragmentEditState>
     ) {
         super.onCurrentListChanged(previousList, currentList)
-        // Force a re-bind of all items to update rounding based on new itemCount/position
-        if (previousList.size != currentList.size) {
+        // Force a re-bind of affected items to update rounding based on itemCount/position.
+        val listSizeChanged = previousList.size != currentList.size
+        val firstItemChanged = previousList.firstOrNull() != currentList.firstOrNull()
+        val lastItemChanged = previousList.lastOrNull() != currentList.lastOrNull()
+        if (listSizeChanged || firstItemChanged || lastItemChanged) {
             notifyItemRangeChanged(0, itemCount, FragmentEditState.PAYLOAD_REBIND)
+            return
         }
     }
 
