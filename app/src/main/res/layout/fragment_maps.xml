@@ -17,7 +17,7 @@
         app:mapId="@string/map_id" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/date_filter_container"
+        android:id="@+id/dateFilterContainer"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -30,7 +30,7 @@
         app:layout_constraintWidth_max="500dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_quick_filter"
+            android:id="@+id/bt_quickFilter"
             style="@style/Widget.Material3Expressive.Button.TonalButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -41,12 +41,12 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/btn_date_range"
+            app:layout_constraintEnd_toStartOf="@+id/bt_dateRange"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_date_range"
+            android:id="@+id/bt_dateRange"
             style="@style/Widget.Material3Expressive.Button.TonalButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -55,12 +55,12 @@
             app:cornerRadius="8dp"
             app:icon="@android:drawable/ic_menu_my_calendar"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/btn_stats"
-            app:layout_constraintStart_toEndOf="@id/btn_quick_filter"
+            app:layout_constraintEnd_toStartOf="@+id/bt_stats"
+            app:layout_constraintStart_toEndOf="@id/bt_quickFilter"
             app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_stats"
+            android:id="@+id/bt_stats"
             style="@style/Widget.Material3Expressive.Button.TonalButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -75,20 +75,20 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/stats_overlay_card"
+        android:id="@+id/statsOverlayCard"
         android:layout_width="200dp"
         android:layout_height="200dp"
         android:layout_marginTop="8dp"
         android:visibility="gone"
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp"
-        app:layout_constraintEnd_toEndOf="@+id/date_filter_container"
-        app:layout_constraintTop_toBottomOf="@id/date_filter_container"
+        app:layout_constraintEnd_toEndOf="@+id/dateFilterContainer"
+        app:layout_constraintTop_toBottomOf="@id/dateFilterContainer"
         app:strokeWidth="0dp"
         tools:visibility="visible">
 
         <ir.mahozad.android.PieChart
-            android:id="@+id/pie_chart"
+            android:id="@+id/pieChart"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="16dp"
@@ -108,7 +108,7 @@
     </com.google.android.material.card.MaterialCardView>
 
     <com.szabolcshorvath.memorymap.view.MaxHeightCardView
-        android:id="@+id/overlay_card"
+        android:id="@+id/overlayCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
@@ -120,7 +120,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/date_filter_container"
+        app:layout_constraintTop_toBottomOf="@id/dateFilterContainer"
         app:layout_constraintVertical_bias="1.0"
         app:layout_constraintWidth_max="500dp"
         app:strokeWidth="0dp"
@@ -132,7 +132,7 @@
             android:padding="12dp">
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/overlay_location_title"
+                android:id="@+id/tv_overlayLocationTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceTitleLarge"
@@ -153,7 +153,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHeight_default="wrap"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/overlay_location_title"
+                app:layout_constraintTop_toBottomOf="@id/tv_overlayLocationTitle"
                 tools:itemCount="6"
                 tools:listitem="@layout/item_memory_overlay" />
 

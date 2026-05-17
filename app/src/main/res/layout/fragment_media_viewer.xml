@@ -10,7 +10,7 @@
         android:layout_height="match_parent" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/closeButton"
+        android:id="@+id/bt_close"
         style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
         android:layout_width="48dp"
         android:layout_height="48dp"

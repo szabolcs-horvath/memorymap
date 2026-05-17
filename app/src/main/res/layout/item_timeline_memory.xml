@@ -30,7 +30,7 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/memoryTitle"
+                android:id="@+id/tv_memoryTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
@@ -43,7 +43,7 @@
                 tools:text="Memory Title" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/memoryLocation"
+                android:id="@+id/tv_memoryLocation"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
@@ -53,11 +53,11 @@
                 android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/colorIndicator"
-                app:layout_constraintTop_toBottomOf="@id/memoryTitle"
+                app:layout_constraintTop_toBottomOf="@id/tv_memoryTitle"
                 tools:text="Wembley Stadium, London" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/memoryDescription"
+                android:id="@+id/tv_memoryDescription"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
@@ -68,11 +68,11 @@
                 android:textColor="?attr/colorOnSurface"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/colorIndicator"
-                app:layout_constraintTop_toBottomOf="@id/memoryLocation"
+                app:layout_constraintTop_toBottomOf="@id/tv_memoryLocation"
                 tools:text="This is a description of the memory..." />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/memoryDate"
+                android:id="@+id/tv_memoryDate"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
@@ -82,7 +82,7 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/colorIndicator"
-                app:layout_constraintTop_toBottomOf="@id/memoryDescription"
+                app:layout_constraintTop_toBottomOf="@id/tv_memoryDescription"
                 tools:text="2023-10-27" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>

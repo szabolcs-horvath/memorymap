@@ -42,7 +42,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         } else {
             payloads.forEach { payload ->
                 if (payload == PAYLOAD_SHOW_MARKERS) {
-                    holder.binding.btnShowOnMap.visibility = if (showFragmentsEnabled) View.VISIBLE else View.GONE
+                    holder.binding.btShowOnMap.visibility = if (showFragmentsEnabled) View.VISIBLE else View.GONE
                 }
             }
         }
@@ -54,7 +54,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         binding.fragmentCard.clipToOutline = true
         val fragment = items[position]
 
-        binding.locationText.text = if (!fragment.placeName.isNullOrEmpty()) {
+        binding.tvLocation.text = if (!fragment.placeName.isNullOrEmpty()) {
             fragment.placeName
         } else {
             "${fragment.latitude}, ${fragment.longitude}"
@@ -62,10 +62,10 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
 
         val dateText = fragment.getFormattedDate()
         if (dateText != null) {
-            binding.timeText.text = dateText
-            binding.timeText.visibility = View.VISIBLE
+            binding.tvTime.text = dateText
+            binding.tvTime.visibility = View.VISIBLE
         } else {
-            binding.timeText.visibility = View.GONE
+            binding.tvTime.visibility = View.GONE
         }
 
         binding.colorIndicator.setBackgroundColor(
@@ -76,11 +76,11 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
             )
         )
 
-        binding.btnShowOnMap.setOnClickListener {
+        binding.btShowOnMap.setOnClickListener {
             onShowOnMapClick(fragment)
         }
 
-        binding.btnShowOnMap.visibility = if (showFragmentsEnabled) View.VISIBLE else View.GONE
+        binding.btShowOnMap.visibility = if (showFragmentsEnabled) View.VISIBLE else View.GONE
     }
 
     override fun getItemCount(): Int = items.size

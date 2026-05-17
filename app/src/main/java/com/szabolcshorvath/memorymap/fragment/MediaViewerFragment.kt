@@ -41,7 +41,7 @@ class MediaViewerFragment : Fragment() {
             binding.mediaViewPager.setCurrentItem(startPosition, false)
         }
 
-        binding.closeButton.setOnClickListener {
+        binding.btClose.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
     }

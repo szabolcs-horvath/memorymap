@@ -30,7 +30,7 @@
                 android:textStyle="bold" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switch_show_fragments"
+                android:id="@+id/switch_showFragments"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:checked="false"
@@ -39,7 +39,7 @@
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switch_cluster_markers"
+                android:id="@+id/switch_clusterMarkers"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:checked="true"
@@ -62,7 +62,7 @@
                     android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/layout_default_filter"
+                    android:id="@+id/layout_defaultFilter"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense.ExposedDropdownMenu"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -70,7 +70,7 @@
                     app:hintEnabled="false">
 
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                        android:id="@+id/spinner_default_filter"
+                        android:id="@+id/spinner_defaultFilter"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="none"
@@ -131,7 +131,7 @@
                     </LinearLayout>
 
                     <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/presetColorsRecyclerView"
+                        android:id="@+id/rv_presetColors"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:clipToPadding="false"
@@ -152,7 +152,7 @@
                         tools:visibility="visible">
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_add_preset"
+                            android:id="@+id/bt_addPreset"
                             style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -181,7 +181,7 @@
                                 app:cardElevation="0dp">
 
                                 <com.google.android.material.textview.MaterialTextView
-                                    android:id="@+id/tvHueValue"
+                                    android:id="@+id/tv_HueValue"
                                     android:layout_width="44dp"
                                     android:layout_height="wrap_content"
                                     android:gravity="center"
@@ -193,7 +193,7 @@
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
-                            android:id="@+id/hueSlider"
+                            android:id="@+id/slider_hue"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -225,7 +225,7 @@
                                 app:cardElevation="0dp">
 
                                 <com.google.android.material.textview.MaterialTextView
-                                    android:id="@+id/tvSaturationValue"
+                                    android:id="@+id/tv_SaturationValue"
                                     android:layout_width="44dp"
                                     android:layout_height="wrap_content"
                                     android:gravity="center"
@@ -237,7 +237,7 @@
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
-                            android:id="@+id/saturationSlider"
+                            android:id="@+id/slider_saturation"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -269,7 +269,7 @@
                                 app:cardElevation="0dp">
 
                                 <com.google.android.material.textview.MaterialTextView
-                                    android:id="@+id/tvBrightnessValue"
+                                    android:id="@+id/tv_BrightnessValue"
                                     android:layout_width="44dp"
                                     android:layout_height="wrap_content"
                                     android:gravity="center"
@@ -281,7 +281,7 @@
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
-                            android:id="@+id/brightnessSlider"
+                            android:id="@+id/slider_brightness"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -299,7 +299,7 @@
                             android:orientation="horizontal">
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_delete_preset"
+                                android:id="@+id/bt_deletePreset"
                                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -314,7 +314,7 @@
                                 android:layout_weight="1" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_undo_presets"
+                                android:id="@+id/bt_undoPresets"
                                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -323,7 +323,7 @@
                                 android:text="Undo" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_save_presets"
+                                android:id="@+id/bt_savePresets"
                                 style="@style/Widget.Material3Expressive.Button.TonalButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -350,7 +350,7 @@
                 android:textStyle="bold" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tv_backup_description"
+                android:id="@+id/tv_backupDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
@@ -358,7 +358,7 @@
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_google_sign_in"
+                android:id="@+id/bt_googleSignIn"
                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -366,7 +366,7 @@
                 android:text="Connect to Google Drive" />
 
             <LinearLayout
-                android:id="@+id/backup_controls"
+                android:id="@+id/backupControls"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -374,7 +374,7 @@
                 tools:visibility="visible">
 
                 <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/tv_account_name"
+                    android:id="@+id/tv_accountName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
@@ -382,7 +382,7 @@
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_backup_now"
+                    android:id="@+id/bt_backupNow"
                     style="@style/Widget.Material3Expressive.Button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -398,7 +398,7 @@
                     android:textStyle="bold" />
 
                 <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-                    android:id="@+id/swipe_refresh"
+                    android:id="@+id/swipeRefresh"
                     android:layout_width="match_parent"
                     android:layout_height="300dp"
                     android:layout_marginBottom="16dp">
@@ -413,7 +413,7 @@
                 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_sign_out"
+                    android:id="@+id/bt_signOut"
                     style="@style/Widget.Material3Expressive.Button.TonalButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -427,7 +427,7 @@
     </androidx.core.widget.NestedScrollView>
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/loading_overlay"
+        android:id="@+id/loadingOverlay"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
@@ -446,7 +446,7 @@
             android:padding="16dp">
 
             <com.google.android.material.progressindicator.LinearProgressIndicator
-                android:id="@+id/progress_bar"
+                android:id="@+id/progressBar"
                 style="@style/Widget.Material3Expressive.LinearProgressIndicator.Wavy"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

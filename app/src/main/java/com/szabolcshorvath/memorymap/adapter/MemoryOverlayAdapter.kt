@@ -54,13 +54,13 @@ class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
     }
 
     private fun bindTitle(binding: ItemMemoryOverlayBinding, item: Markerable) {
-        binding.memoryTitle.text = item.title
+        binding.tvMemoryTitle.text = item.title
     }
 
     private fun bindDate(binding: ItemMemoryOverlayBinding, item: Markerable) {
         val dateText = item.getFormattedDate()
-        binding.memoryDate.text = dateText
-        binding.memoryDate.visibility = if (dateText.isNullOrEmpty()) View.GONE else View.VISIBLE
+        binding.tvMemoryDate.text = dateText
+        binding.tvMemoryDate.visibility = if (dateText.isNullOrEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun bindColor(binding: ItemMemoryOverlayBinding, item: Markerable) {

@@ -83,15 +83,15 @@ class MainActivity :
             settingsFragment = SettingsFragment()
 
             supportFragmentManager.beginTransaction()
-                .add(R.id.fragment_container, mapFragment, MapFragment.TAG)
+                .add(R.id.fragmentContainer, mapFragment, MapFragment.TAG)
                 .setMaxLifecycle(mapFragment, Lifecycle.State.RESUMED)
-                .add(R.id.fragment_container, timelineFragment, TimelineFragment.TAG).hide(timelineFragment)
+                .add(R.id.fragmentContainer, timelineFragment, TimelineFragment.TAG).hide(timelineFragment)
                 .setMaxLifecycle(timelineFragment, Lifecycle.State.CREATED)
-                .add(R.id.fragment_container, addMemoryFragment, AddMemoryGroupFragment.TAG).hide(addMemoryFragment)
+                .add(R.id.fragmentContainer, addMemoryFragment, AddMemoryGroupFragment.TAG).hide(addMemoryFragment)
                 .setMaxLifecycle(addMemoryFragment, Lifecycle.State.CREATED)
-                .add(R.id.fragment_container, pickLocationFragment, PickLocationFragment.TAG).hide(pickLocationFragment)
+                .add(R.id.fragmentContainer, pickLocationFragment, PickLocationFragment.TAG).hide(pickLocationFragment)
                 .setMaxLifecycle(pickLocationFragment, Lifecycle.State.CREATED)
-                .add(R.id.fragment_container, settingsFragment, SettingsFragment.TAG).hide(settingsFragment)
+                .add(R.id.fragmentContainer, settingsFragment, SettingsFragment.TAG).hide(settingsFragment)
                 .setMaxLifecycle(settingsFragment, Lifecycle.State.CREATED)
                 .commit()
         } else {
@@ -264,7 +264,7 @@ class MainActivity :
     override fun onMemoryClicked(id: Int) {
         val fragment = MemoryPagerFragment.newInstance(id)
         supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment, MemoryPagerFragment.TAG) // Replace the current tab
+            .replace(R.id.fragmentContainer, fragment, MemoryPagerFragment.TAG) // Replace the current tab
             .addToBackStack(null) // This is the ONLY place you use backstack
             .commit()
     }
@@ -274,7 +274,7 @@ class MainActivity :
         val memoryPagerFragment = supportFragmentManager.findFragmentByTag(MemoryPagerFragment.TAG)
 
         val transaction = supportFragmentManager.beginTransaction()
-            .add(R.id.fragment_container, fragment, MediaViewerFragment.TAG)
+            .add(R.id.fragmentContainer, fragment, MediaViewerFragment.TAG)
             .setMaxLifecycle(fragment, Lifecycle.State.RESUMED)
             .addToBackStack(MediaViewerFragment.TAG)
 
