@@ -20,7 +20,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         set(value) {
             if (field != value) {
                 field = value
-                notifyItemRangeChanged(0, items.size)
+                notifyItemRangeChanged(0, items.size, PAYLOAD_SHOW_MARKERS)
             }
         }
 
@@ -33,6 +33,18 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentViewHolder {
         val binding = ItemMemoryFragmentBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return MemoryFragmentViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: MemoryFragmentViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isEmpty()) {
+            onBindViewHolder(holder, position)
+        } else {
+            payloads.forEach { payload ->
+                if (payload == PAYLOAD_SHOW_MARKERS) {
+                    holder.binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
+                }
+            }
+        }
     }
 
     override fun onBindViewHolder(holder: MemoryFragmentViewHolder, position: Int) {
@@ -105,5 +117,9 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
             items.add(toPosition, item)
             notifyItemMoved(fromPosition, toPosition)
         }
+    }
+
+    companion object {
+        private const val PAYLOAD_SHOW_MARKERS = "PAYLOAD_SHOW_MARKERS"
     }
 }
