@@ -43,7 +43,6 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.Markerable
-import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -75,13 +74,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private val commonViewModel: CommonViewModel by activityViewModels()
     private val viewModel: MapFragmentViewModel by viewModels()
-    private var allGroups: List<MemoryGroup> = emptyList()
+
+    private val clustersFlow by lazy {
+        viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled)
+    }
 
     private var permissionDenied = false
     private var shouldAdjustCameraOnUpdate = false
     private var mapLoadTrace: Trace? = null
-
-    private var currentClusters: List<Markerable.MarkerableCluster> = emptyList()
 
     interface MapListener {
         fun onMemoryClicked(id: Int)
@@ -140,15 +140,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        // Observe Groups (needed for focusOnMemory lookup)
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                commonViewModel.allGroups.collect { groups ->
-                    this@MapFragment.allGroups = groups
-                }
-            }
-        }
-
         // Observe Filter State for UI updates
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -168,10 +159,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(
-                    viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled),
+                    clustersFlow,
                     commonViewModel.markerClusteringEnabled
                 ) { clusters, _ -> clusters }.collectLatest { clusters ->
-                    currentClusters = clusters
                     if (this@MapFragment::clusterManager.isInitialized) {
                         updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
                         shouldAdjustCameraOnUpdate = false
@@ -272,10 +262,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         viewModel.isInitialZoomDone = true
         lifecycleScope.launch {
-            // Wait for the first groups emission if the current snapshot is empty
-            val groups = allGroups.ifEmpty {
-                commonViewModel.allGroups.first()
-            }
+            // Wait for groups to be loaded
+            val groups = commonViewModel.allGroups.first { it.isNotEmpty() }
             val memory = groups.find { it.id == id } ?: return@launch
 
             // Wait for filter to be loaded from DataStore
@@ -292,8 +280,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
             if (oldStart == viewModel.filterStartDate.value && oldEnd == viewModel.filterEndDate.value) {
                 // Filter didn't change, we can try to select immediately if the map and clusters are ready
-                if (mMap != null && currentClusters.isNotEmpty()) {
-                    moveToLocationAndSelectMarker(lat, lng, id, currentClusters)
+                val clusters = clustersFlow.value
+                if (mMap != null && clusters.isNotEmpty()) {
+                    moveToLocationAndSelectMarker(lat, lng, id, clusters)
                     viewModel.pendingSelectionId = null
                     viewModel.pendingSelectionLat = null
                     viewModel.pendingSelectionLng = null
@@ -387,8 +376,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         // Needed to reinitialize after rotation
         viewLifecycleOwner.lifecycleScope.launch {
-            if (currentClusters.isNotEmpty()) {
-                updateMapMarkers(currentClusters)
+            val clusters = clustersFlow.value
+            if (clusters.isNotEmpty()) {
+                updateMapMarkers(clusters)
             }
         }
     }
@@ -484,13 +474,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun updateMapMarkers(clusters: List<Markerable.MarkerableCluster>? = null, adjustCamera: Boolean = false) {
+    private fun updateMapMarkers(clusters: List<Markerable.MarkerableCluster>, adjustCamera: Boolean = false) {
         val googleMap = mMap ?: return
         trace("map_fragment_update_map_markers") {
-            val clustersToUse = clusters ?: currentClusters
-            val items = clustersToUse.flatMap { it.items }
+            val items = clusters.flatMap { it.items }
 
-            updateUIWithFreshMarkers(googleMap, items, clustersToUse, adjustCamera)
+            updateUIWithFreshMarkers(googleMap, items, clusters, adjustCamera)
         }
     }
 
