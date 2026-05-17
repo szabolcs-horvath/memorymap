@@ -10,7 +10,6 @@ import com.szabolcshorvath.memorymap.data.CommonRepository
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateFilterOption
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,7 +24,6 @@ import java.time.LocalDate
 
 class MapFragmentViewModel(application: Application) : AndroidViewModel(application) {
     private val commonRepository = CommonRepository.getInstance(application)
-    private val dataStore = application.dataStore
 
     var selectedMemoryId: Int? = null
     var selectedMarkerPosition: LatLng? = null
@@ -50,17 +48,9 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     private val _isDateFilterLoaded = MutableStateFlow(false)
     val isDateFilterLoaded: StateFlow<Boolean> = _isDateFilterLoaded.asStateFlow()
 
-    val showFragmentsEnabled = dataStore.data
-        .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), false)
-
-    val markerClusteringEnabled = dataStore.data
-        .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), true)
-
     init {
         viewModelScope.launch {
-            val defaultOption = DateFilterOption.getFromDataStore(dataStore)
+            val defaultOption = DateFilterOption.getFromDataStore(application.dataStore)
             if (!_isDateFilterLoaded.value) {
                 val (start, end) = defaultOption.dateRangeProvider(LocalDate.now())
                 updateDateFilter(start, end, defaultOption.label)
@@ -68,51 +58,43 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    val filteredMarkerables: StateFlow<List<Markerable>> = combine(
-        commonRepository.allGroups,
-        commonRepository.allFragments,
-        filterStartDate,
-        filterEndDate,
-        showFragmentsEnabled
-    ) { groups, fragments, filterStart, filterEnd, showFrags ->
-        val groupsMap = groups.associateBy { it.id }
-        val candidateItems = mutableListOf<Markerable>()
-        candidateItems.addAll(groups)
-
-        if (showFrags) {
-            fragments.forEach { fragment ->
-                groupsMap[fragment.groupId]?.let { parent ->
-                    fragment.title = parent.title
-                    candidateItems.add(fragment)
-                }
-            }
-        }
-
-        val effectiveStart = filterStart ?: LocalDate.MIN
-        val effectiveEnd = filterEnd ?: LocalDate.MAX
-
-        candidateItems.filter { item ->
-            val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
-            val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
-
-            if (itemStart == null || itemEnd == null) return@filter true
-
-            !itemStart.isBefore(effectiveStart) && !itemEnd.isAfter(effectiveEnd)
-        }
-    }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
-
-    val markerClusters: StateFlow<List<Markerable.MarkerableCluster>> = filteredMarkerables
-        .map { clusterMarkerables(it) }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
-
     fun updateDateFilter(start: LocalDate?, end: LocalDate?, label: String? = null) {
         _filterStartDate.value = start
         _filterEndDate.value = end
         _appliedFilterLabel.value = label
         _isDateFilterLoaded.value = true
+    }
+
+    fun getMarkerClusters(showFragmentsEnabledFlow: StateFlow<Boolean>): StateFlow<List<Markerable.MarkerableCluster>> {
+        return combine(
+            commonRepository.allGroups,
+            commonRepository.allFragments,
+            filterStartDate,
+            filterEndDate,
+            showFragmentsEnabledFlow
+        ) { groups, fragments, start, end, showFrags ->
+            val groupsMap = groups.associateBy { it.id }
+            val candidateItems = mutableListOf<Markerable>()
+            candidateItems.addAll(groups)
+            if (showFrags) {
+                fragments.forEach { fragment ->
+                    groupsMap[fragment.groupId]?.let { parent ->
+                        fragment.title = parent.title
+                        candidateItems.add(fragment)
+                    }
+                }
+            }
+            val effStart = start ?: LocalDate.MIN
+            val effEnd = end ?: LocalDate.MAX
+            candidateItems.filter { item ->
+                val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
+                val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
+                if (itemStart == null || itemEnd == null) return@filter true
+                !itemStart.isBefore(effStart) && !itemEnd.isAfter(effEnd)
+            }
+        }.flowOn(Dispatchers.Default).map { filteredItems ->
+            clusterMarkerables(filteredItems)
+        }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
     }
 
     @AddTrace(name = "map_fragment_view_model_cluster_markerables", enabled = true)
