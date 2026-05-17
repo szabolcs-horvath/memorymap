@@ -139,7 +139,6 @@ class MemoryFragment : Fragment() {
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
         }
-        fragmentsAdapter.showFragmentsEnabled = commonViewModel.showFragmentsEnabled.value
         binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
 
