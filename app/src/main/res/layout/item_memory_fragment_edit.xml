@@ -129,9 +129,10 @@
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/useSpecificTimeSwitch"
                             android:layout_width="match_parent"
-                            android:layout_height="36dp"
+                            android:layout_height="wrap_content"
                             android:layout_marginHorizontal="12dp"
                             android:layout_marginVertical="4dp"
+                            android:minHeight="36dp"
                             android:text="Use specific time for this fragment"
                             android:textAppearance="?attr/textAppearanceLabelMedium" />
 
@@ -145,8 +146,9 @@
                             <com.google.android.material.materialswitch.MaterialSwitch
                                 android:id="@+id/allDayCheckbox"
                                 android:layout_width="match_parent"
-                                android:layout_height="36dp"
+                                android:layout_height="wrap_content"
                                 android:layout_marginHorizontal="12dp"
+                                android:minHeight="36dp"
                                 android:text="All Day?"
                                 android:textAppearance="?attr/textAppearanceLabelMedium" />
 

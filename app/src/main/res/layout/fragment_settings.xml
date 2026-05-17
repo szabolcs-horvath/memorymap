@@ -32,16 +32,18 @@
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_show_fragments"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
                 android:checked="false"
+                android:minHeight="48dp"
                 android:text="Show Memory Fragment Markers"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switch_cluster_markers"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
                 android:checked="true"
+                android:minHeight="48dp"
                 android:text="Enable Marker Clustering"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
