@@ -144,7 +144,7 @@
                             android:orientation="vertical">
 
                             <com.google.android.material.materialswitch.MaterialSwitch
-                                android:id="@+id/allDayCheckbox"
+                                android:id="@+id/switch_allDay"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginHorizontal="12dp"
