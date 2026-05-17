@@ -121,18 +121,23 @@ class MemoryFragmentEditAdapter(
         currentList: MutableList<FragmentEditState>
     ) {
         super.onCurrentListChanged(previousList, currentList)
-        // Only boundary items can gain/lose first/last rounding when the list shape changes.
-        val listSizeChanged = previousList.size != currentList.size
-        val firstItemChanged = previousList.firstOrNull() != currentList.firstOrNull()
-        val lastItemChanged = previousList.lastOrNull() != currentList.lastOrNull()
-        if (itemCount == 0 || (!listSizeChanged && !firstItemChanged && !lastItemChanged)) return
+        if (itemCount == 0) return
 
-        val affectedPositions = linkedSetOf(0, 1, itemCount - 2, itemCount - 1)
-        affectedPositions
-            .filter { it in 0 until itemCount }
-            .forEach { position ->
-                notifyItemChanged(position, FragmentEditState.PAYLOAD_REBIND)
-            }
+        // We only notify items that MIGHT have changed their rounding (first/last position)
+        // and were ALREADY in the list (so we don't cancel insertion animations).
+        val prevIds = previousList.map { it.localId }.toSet()
+        val affectedPositions = mutableListOf<Int>()
+
+        listOf(
+            0 to 0,
+            1 to 1,
+            itemCount - 1 to 1,
+            itemCount - 2 to 2
+        ).forEach { if (itemCount > it.second && prevIds.contains(currentList[it.first].localId)) affectedPositions.add(it.first) }
+
+        affectedPositions.distinct().forEach { position ->
+            notifyItemChanged(position, FragmentEditState.PAYLOAD_REBIND)
+        }
     }
 
     override fun onBindViewHolder(holder: MemoryFragmentEditViewHolder, position: Int) {
