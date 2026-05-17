@@ -32,7 +32,7 @@ class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
         bindDate(binding, item)
         bindColor(binding, item)
 
-        binding.btnDetails.setOnClickListener {
+        binding.btDetails.setOnClickListener {
             onDetailsClick(item.groupId)
         }
     }

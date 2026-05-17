@@ -121,14 +121,18 @@ class MemoryFragmentEditAdapter(
         currentList: MutableList<FragmentEditState>
     ) {
         super.onCurrentListChanged(previousList, currentList)
-        // Force a re-bind of affected items to update rounding based on itemCount/position.
+        // Only boundary items can gain/lose first/last rounding when the list shape changes.
         val listSizeChanged = previousList.size != currentList.size
         val firstItemChanged = previousList.firstOrNull() != currentList.firstOrNull()
         val lastItemChanged = previousList.lastOrNull() != currentList.lastOrNull()
-        if (listSizeChanged || firstItemChanged || lastItemChanged) {
-            notifyItemRangeChanged(0, itemCount, FragmentEditState.PAYLOAD_REBIND)
-            return
-        }
+        if (itemCount == 0 || (!listSizeChanged && !firstItemChanged && !lastItemChanged)) return
+
+        val affectedPositions = linkedSetOf(0, 1, itemCount - 2, itemCount - 1)
+        affectedPositions
+            .filter { it in 0 until itemCount }
+            .forEach { position ->
+                notifyItemChanged(position, FragmentEditState.PAYLOAD_REBIND)
+            }
     }
 
     override fun onBindViewHolder(holder: MemoryFragmentEditViewHolder, position: Int) {
