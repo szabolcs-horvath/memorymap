@@ -2,11 +2,11 @@
 <com.google.android.material.listitem.ListItemLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/overlayCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
     <com.google.android.material.listitem.ListItemCardView
-        android:id="@+id/overlayCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:clipToOutline="true"
@@ -59,8 +59,10 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_details"
                 style="@style/Widget.Material3Expressive.Button.IconButton.Tonal"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 app:icon="@drawable/ic_chevron_right"
                 app:iconGravity="textStart"
                 app:iconSize="24dp"
