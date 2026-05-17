@@ -24,7 +24,11 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
     ListAdapter<TimelineAdapter.TimelineItem, RecyclerView.ViewHolder>(TimelineItem.TimelineDiffCallback()) {
 
     sealed class TimelineItem {
-        data class Memory(val memoryGroup: MemoryGroup) : TimelineItem()
+        data class Memory(
+            val memoryGroup: MemoryGroup,
+            val sectionPosition: Int = 0,
+            val sectionCount: Int = 1
+        ) : TimelineItem()
         data class DateSeparator(val date: LocalDate) : TimelineItem()
 
         fun getItemId(): String {
@@ -51,23 +55,30 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
     private fun generateTimelineItems(groups: List<MemoryGroup>): List<TimelineItem> {
         val items = mutableListOf<TimelineItem>()
-        var lastDate: LocalDate? = null
+        if (groups.isEmpty()) return items
 
-        groups.forEach { group ->
-            val currentDate = group.startDate.toLocalDate()
-            if (lastDate == null || currentDate != lastDate) {
-                items.add(TimelineItem.DateSeparator(currentDate))
-                lastDate = currentDate
+        var i = 0
+        while (i < groups.size) {
+            val currentDate = groups[i].startDate.toLocalDate()
+            items.add(TimelineItem.DateSeparator(currentDate))
+
+            val section = mutableListOf<MemoryGroup>()
+            while (i < groups.size && groups[i].startDate.toLocalDate() == currentDate) {
+                section.add(groups[i])
+                i++
             }
-            items.add(TimelineItem.Memory(group))
+
+            section.forEachIndexed { index, memoryGroup ->
+                items.add(TimelineItem.Memory(memoryGroup, index, section.size))
+            }
         }
         return items
     }
 
     inner class TimelineViewHolder(private val binding: ItemTimelineMemoryBinding) :
         ListItemViewHolder(binding.root) {
-        fun bind(memoryGroup: MemoryGroup, position: Int, itemCount: Int) {
-            bind(position, itemCount)
+        fun bind(memoryGroup: MemoryGroup, sectionPosition: Int, sectionCount: Int) {
+            bind(sectionPosition, sectionCount)
             binding.timelineCard.clipToOutline = true
             binding.memoryTitle.text = memoryGroup.title
 
@@ -147,7 +158,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val item = getItem(position)) {
-            is TimelineItem.Memory -> (holder as TimelineViewHolder).bind(item.memoryGroup, position, itemCount)
+            is TimelineItem.Memory -> (holder as TimelineViewHolder).bind(item.memoryGroup, item.sectionPosition, item.sectionCount)
             is TimelineItem.DateSeparator -> (holder as DateSeparatorViewHolder).bind(item.date)
         }
     }
