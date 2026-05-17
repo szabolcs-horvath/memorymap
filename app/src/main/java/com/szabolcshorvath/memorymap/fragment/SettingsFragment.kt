@@ -192,7 +192,7 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        binding.btnBackupNow.setOnClickListener {
+        binding.btBackupNow.setOnClickListener {
             val email = binding.tvAccountName.tag as? String
             if (email != null) {
                 setLoadingState(true, "Starting backup...")
@@ -292,7 +292,7 @@ class SettingsFragment : Fragment() {
                                 selectPreset(presets[index], shouldUpdateList = false)
 
                                 // Post the scroll to ensure layout is complete
-                                _binding?.presetColorsRecyclerView?.post {
+                                _binding?.rvPresetColors?.post {
                                     smoothScrollToPresetIndex(index)
                                 }
                             }
@@ -308,7 +308,7 @@ class SettingsFragment : Fragment() {
         }
         updateVisualsFromSliders()
 
-        binding.hueSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderHue.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateVisualsFromSliders()
                 viewModel.editingPreset?.let { preset ->
@@ -320,7 +320,7 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderSaturation.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateVisualsFromSliders()
                 viewModel.editingPreset?.let { preset ->
@@ -332,7 +332,7 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderBrightness.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateVisualsFromSliders()
                 viewModel.editingPreset?.let { preset ->
@@ -344,7 +344,7 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        binding.btnSavePresets.setOnClickListener {
+        binding.btSavePresets.setOnClickListener {
             viewModel.editingPreset?.let { preset ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     commonViewModel.getHSVPresetDao().insertPresets(listOf(preset))
@@ -359,7 +359,7 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        binding.btnUndoPresets.setOnClickListener {
+        binding.btUndoPresets.setOnClickListener {
             viewModel.editingPreset = viewModel.originalPreset?.copy()
             viewModel.editingPreset?.let {
                 updateSliders(it)
@@ -368,8 +368,8 @@ class SettingsFragment : Fragment() {
             checkForChanges()
         }
 
-        binding.btnAddPreset.setOnClickListener { addNewPreset() }
-        binding.btnDeletePreset.setOnClickListener { showDeletePresetConfirmation() }
+        binding.btAddPreset.setOnClickListener { addNewPreset() }
+        binding.btDeletePreset.setOnClickListener { showDeletePresetConfirmation() }
     }
 
     private fun addNewPreset() {
@@ -378,9 +378,9 @@ class SettingsFragment : Fragment() {
             revertEditingPresetInList()
         }
 
-        val hue = binding.hueSlider.value
-        val saturation = binding.saturationSlider.value
-        val brightness = binding.brightnessSlider.value
+        val hue = binding.sliderHue.value
+        val saturation = binding.sliderSaturation.value
+        val brightness = binding.sliderBrightness.value
 
         val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
@@ -429,8 +429,8 @@ class SettingsFragment : Fragment() {
 
     private fun checkForChanges() {
         val binding = _binding ?: return
-        binding.btnSavePresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
-        binding.btnUndoPresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
+        binding.btSavePresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
+        binding.btUndoPresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
     }
 
     private fun updateColorPresetsUI() {
@@ -448,7 +448,7 @@ class SettingsFragment : Fragment() {
                 override fun getHorizontalSnapPreference(): Int = SNAP_TO_END
             }
         smoothScroller.targetPosition = index
-        binding.presetColorsRecyclerView.layoutManager?.startSmoothScroll(
+        binding.rvPresetColors.layoutManager?.startSmoothScroll(
             smoothScroller
         )
     }
@@ -457,7 +457,7 @@ class SettingsFragment : Fragment() {
         viewModel.editingPreset = null
         viewModel.originalPreset = null
         colorPresetAdapter.setSelectedPresetId(null)
-        _binding?.btnDeletePreset?.visibility = View.GONE
+        _binding?.btDeletePreset?.visibility = View.GONE
     }
 
     private fun revertEditingPresetInList() {
@@ -475,16 +475,16 @@ class SettingsFragment : Fragment() {
 
     private fun updateVisualsFromSliders() {
         val binding = _binding ?: return
-        val hue = binding.hueSlider.value
-        val saturation = binding.saturationSlider.value
-        val brightness = binding.brightnessSlider.value
+        val hue = binding.sliderHue.value
+        val saturation = binding.sliderSaturation.value
+        val brightness = binding.sliderBrightness.value
 
         val color = ColorUtil.hsvToColor(hue, saturation, brightness)
         binding.colorIndicator.setBackgroundColor(color)
         val colorStateList = ColorStateList.valueOf(color)
-        binding.hueSlider.thumbTintList = colorStateList
-        binding.saturationSlider.thumbTintList = colorStateList
-        binding.brightnessSlider.thumbTintList = colorStateList
+        binding.sliderHue.thumbTintList = colorStateList
+        binding.sliderSaturation.thumbTintList = colorStateList
+        binding.sliderBrightness.thumbTintList = colorStateList
 
         binding.tvHueValue.text = hue.toInt().toString()
         binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", saturation)
@@ -526,21 +526,21 @@ class SettingsFragment : Fragment() {
 
         updateSliders(targetPreset)
         updateSelectionVisuals(targetPreset, skipSubmitList = !shouldUpdateList)
-        binding.btnSavePresets.isEnabled = false
-        binding.btnUndoPresets.isEnabled = false
-        binding.btnDeletePreset.visibility = View.VISIBLE
+        binding.btSavePresets.isEnabled = false
+        binding.btUndoPresets.isEnabled = false
+        binding.btDeletePreset.visibility = View.VISIBLE
     }
 
     private fun updateSliders(preset: HSVPreset) {
         val binding = _binding ?: return
-        binding.hueSlider.value = preset.hue
-        binding.saturationSlider.value = preset.saturation
-        binding.brightnessSlider.value = preset.brightness
+        binding.sliderHue.value = preset.hue
+        binding.sliderSaturation.value = preset.saturation
+        binding.sliderBrightness.value = preset.brightness
         updateVisualsFromSliders()
     }
 
     private fun setupSignInAndOutButtons() {
-        binding.btnGoogleSignIn.setOnClickListener {
+        binding.btGoogleSignIn.setOnClickListener {
             setLoadingState(true, "Signing in...")
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
@@ -583,7 +583,7 @@ class SettingsFragment : Fragment() {
             }
         }
 
-        binding.btnSignOut.setOnClickListener {
+        binding.btSignOut.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 googleAuthManager.signOut()
                 viewModel.backupsLoadedForEmail = null
@@ -611,7 +611,7 @@ class SettingsFragment : Fragment() {
         colorPresetAdapter = ColorPresetAdapter { preset ->
             selectPreset(preset)
         }
-        _binding?.presetColorsRecyclerView?.adapter = colorPresetAdapter
+        _binding?.rvPresetColors?.adapter = colorPresetAdapter
         setupColorPresetsTouchHelper()
     }
 
@@ -660,7 +660,7 @@ class SettingsFragment : Fragment() {
                 initialOrder = null
             }
         })
-        itemTouchHelper.attachToRecyclerView(binding.presetColorsRecyclerView)
+        itemTouchHelper.attachToRecyclerView(binding.rvPresetColors)
     }
 
     private fun saveNewPresetsOrder() {
@@ -676,7 +676,7 @@ class SettingsFragment : Fragment() {
 
         with(binding) {
             if (email != null) {
-                btnGoogleSignIn.visibility = View.GONE
+                btGoogleSignIn.visibility = View.GONE
                 tvBackupDescription.visibility = View.GONE
                 backupControls.visibility = View.VISIBLE
                 tvAccountName.text = "Signed in as: $email"
@@ -689,7 +689,7 @@ class SettingsFragment : Fragment() {
                     }
                 }
             } else {
-                btnGoogleSignIn.visibility = View.VISIBLE
+                btGoogleSignIn.visibility = View.VISIBLE
                 tvBackupDescription.visibility = View.VISIBLE
                 backupControls.visibility = View.GONE
                 tvAccountName.tag = null
@@ -704,22 +704,22 @@ class SettingsFragment : Fragment() {
         val binding = _binding ?: return
         val enabled = !isLoading
         with(binding) {
-            btnGoogleSignIn.isEnabled = enabled
-            btnBackupNow.isEnabled = enabled
-            btnSignOut.isEnabled = enabled
+            btGoogleSignIn.isEnabled = enabled
+            btBackupNow.isEnabled = enabled
+            btSignOut.isEnabled = enabled
             backupAdapter.setButtonsEnabled(enabled)
 
-            btnAddPreset.isEnabled = enabled
-            btnDeletePreset.isEnabled = enabled
-            hueSlider.isEnabled = enabled
-            saturationSlider.isEnabled = enabled
-            brightnessSlider.isEnabled = enabled
+            btAddPreset.isEnabled = enabled
+            btDeletePreset.isEnabled = enabled
+            sliderHue.isEnabled = enabled
+            sliderSaturation.isEnabled = enabled
+            sliderBrightness.isEnabled = enabled
 
             if (enabled) {
                 checkForChanges()
             } else {
-                btnSavePresets.isEnabled = false
-                btnUndoPresets.isEnabled = false
+                btSavePresets.isEnabled = false
+                btUndoPresets.isEnabled = false
             }
 
             val showOverlay = isLoading && !swipeRefresh.isRefreshing

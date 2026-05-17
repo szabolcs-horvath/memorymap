@@ -107,7 +107,7 @@ class MemoryFragmentEditAdapter(
         var colorAnimator: ValueAnimator? = null
 
         init {
-            binding.presetColorsRecyclerView.adapter = colorPresetAdapter
+            binding.rvPresetColors.adapter = colorPresetAdapter
         }
     }
 
@@ -176,7 +176,7 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun bindLocation(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
-        binding.locationText.text = if (!item.placeName.isNullOrEmpty()) {
+        binding.tvLocation.text = if (!item.placeName.isNullOrEmpty()) {
             if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
         } else if (item.lat != null && item.lng != null) {
             "Coordinates: ${item.lat} ${item.lng}"
@@ -186,12 +186,12 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun setupClickListeners(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder, item: FragmentEditState) {
-        binding.selectLocationButton.setOnClickListener {
+        binding.btSelectLocation.setOnClickListener {
             setActivePickingIndex(holder.bindingAdapterPosition)
             getListener()?.onPickLocation(item.lat, item.lng, item.placeName, item.address)
         }
 
-        binding.removeButton.setOnClickListener {
+        binding.btRemove.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
                 fragments.removeAt(pos)
@@ -228,9 +228,9 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun setupDateTimeSelectors(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder, item: FragmentEditState) {
-        binding.useSpecificTimeSwitch.setOnCheckedChangeListener(null)
-        binding.useSpecificTimeSwitch.isChecked = item.isTimeVisible
-        binding.useSpecificTimeSwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.switchUseSpecificTime.setOnCheckedChangeListener(null)
+        binding.switchUseSpecificTime.isChecked = item.isTimeVisible
+        binding.switchUseSpecificTime.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnCheckedChangeListener
             // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure
@@ -263,40 +263,40 @@ class MemoryFragmentEditAdapter(
                 updateFragmentsUI()
             }
         }
-        binding.startDateButton.setOnClickListener {
+        binding.btStartDate.setOnClickListener {
             pickFragmentDate(holder.bindingAdapterPosition, true)
         }
-        binding.startTimeButton.setOnClickListener {
+        binding.btStartTime.setOnClickListener {
             pickFragmentTime(holder.bindingAdapterPosition, true)
         }
-        binding.endDateButton.setOnClickListener {
+        binding.btEndDate.setOnClickListener {
             pickFragmentDate(holder.bindingAdapterPosition, false)
         }
-        binding.endTimeButton.setOnClickListener {
+        binding.btEndTime.setOnClickListener {
             pickFragmentTime(holder.bindingAdapterPosition, false)
         }
-        binding.dateRangeButton.setOnClickListener {
+        binding.btDateRange.setOnClickListener {
             pickFragmentDateRange(holder.bindingAdapterPosition)
         }
     }
 
     private fun setupColorSection(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder) {
-        binding.hueSlider.clearOnSliderTouchListeners()
-        binding.hueSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderHue.clearOnSliderTouchListeners()
+        binding.sliderHue.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateFragmentColor(binding, holder.bindingAdapterPosition, h = value)
             }
         }
 
-        binding.saturationSlider.clearOnSliderTouchListeners()
-        binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderSaturation.clearOnSliderTouchListeners()
+        binding.sliderSaturation.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateFragmentColor(binding, holder.bindingAdapterPosition, s = value)
             }
         }
 
-        binding.brightnessSlider.clearOnSliderTouchListeners()
-        binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderBrightness.clearOnSliderTouchListeners()
+        binding.sliderBrightness.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateFragmentColor(binding, holder.bindingAdapterPosition, v = value)
             }
@@ -318,13 +318,13 @@ class MemoryFragmentEditAdapter(
 
         binding.colorIndicator.setBackgroundColor(color)
 
-        binding.hueSlider.value = item.markerHue
-        binding.saturationSlider.value = item.markerSaturation
-        binding.brightnessSlider.value = item.markerBrightness
+        binding.sliderHue.value = item.markerHue
+        binding.sliderSaturation.value = item.markerSaturation
+        binding.sliderBrightness.value = item.markerBrightness
 
-        binding.hueSlider.thumbTintList = colorStateList
-        binding.saturationSlider.thumbTintList = colorStateList
-        binding.brightnessSlider.thumbTintList = colorStateList
+        binding.sliderHue.thumbTintList = colorStateList
+        binding.sliderSaturation.thumbTintList = colorStateList
+        binding.sliderBrightness.thumbTintList = colorStateList
 
         updateValueTexts(binding, item.markerHue, item.markerSaturation, item.markerBrightness)
     }
@@ -351,9 +351,9 @@ class MemoryFragmentEditAdapter(
         val color = ColorUtil.hsvToColor(newH, newS, newV)
         binding.colorIndicator.setBackgroundColor(color)
         val colorStateList = ColorStateList.valueOf(color)
-        binding.hueSlider.thumbTintList = colorStateList
-        binding.saturationSlider.thumbTintList = colorStateList
-        binding.brightnessSlider.thumbTintList = colorStateList
+        binding.sliderHue.thumbTintList = colorStateList
+        binding.sliderSaturation.thumbTintList = colorStateList
+        binding.sliderBrightness.thumbTintList = colorStateList
         updateValueTexts(binding, newH, newS, newV)
     }
 
@@ -367,7 +367,7 @@ class MemoryFragmentEditAdapter(
         val timeFormatter = timeFormatter()
 
         if (!item.isTimeVisible) {
-            binding.dateSummaryText.text = "Inherited from group"
+            binding.tvDateSummary.text = "Inherited from group"
         } else {
             val start = item.startDate ?: ZonedDateTime.now()
             val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
@@ -375,29 +375,29 @@ class MemoryFragmentEditAdapter(
             if (item.isAllDay) {
                 binding.startDateTimeLayout.visibility = View.GONE
                 binding.endDateTimeLayout.visibility = View.GONE
-                binding.dateRangeButton.visibility = View.VISIBLE
+                binding.btDateRange.visibility = View.VISIBLE
 
                 val startStr = start.format(dateFormatter)
                 val endStr = end.format(dateFormatter)
                 val summary = if (startStr == endStr) startStr else "$startStr - $endStr"
-                binding.dateRangeButton.text = summary
-                binding.dateSummaryText.text = summary
+                binding.btDateRange.text = summary
+                binding.tvDateSummary.text = summary
             } else {
                 binding.startDateTimeLayout.visibility = View.VISIBLE
                 binding.endDateTimeLayout.visibility = View.VISIBLE
-                binding.dateRangeButton.visibility = View.GONE
+                binding.btDateRange.visibility = View.GONE
 
                 val startDStr = start.format(dateFormatter)
                 val startTStr = start.format(timeFormatter)
                 val endDStr = end.format(dateFormatter)
                 val endTStr = end.format(timeFormatter)
 
-                binding.startDateButton.text = startDStr
-                binding.startTimeButton.text = startTStr
-                binding.endDateButton.text = endDStr
-                binding.endTimeButton.text = endTStr
+                binding.btStartDate.text = startDStr
+                binding.btStartTime.text = startTStr
+                binding.btEndDate.text = endDStr
+                binding.btEndTime.text = endTStr
 
-                binding.dateSummaryText.text = if (startDStr == endDStr) {
+                binding.tvDateSummary.text = if (startDStr == endDStr) {
                     "$startDStr, $startTStr - $endTStr"
                 } else {
                     "$startDStr, $startTStr - $endDStr, $endTStr"
@@ -429,9 +429,9 @@ class MemoryFragmentEditAdapter(
 
     private fun animateFragmentColorToTargets(holder: MemoryFragmentEditViewHolder, targetPreset: HSVPreset) {
         val binding = holder.binding
-        val startH = binding.hueSlider.value
-        val startS = binding.saturationSlider.value
-        val startV = binding.brightnessSlider.value
+        val startH = binding.sliderHue.value
+        val startS = binding.sliderSaturation.value
+        val startV = binding.sliderBrightness.value
 
         holder.colorAnimator?.cancel()
         holder.colorAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -441,21 +441,21 @@ class MemoryFragmentEditAdapter(
             addUpdateListener { animator ->
                 val fraction = animator.animatedFraction
 
-                val currentH = lerpWithStep(startH, targetPreset.hue, fraction, binding.hueSlider.stepSize)
-                val currentS = lerpWithStep(startS, targetPreset.saturation, fraction, binding.saturationSlider.stepSize)
-                val currentV = lerpWithStep(startV, targetPreset.brightness, fraction, binding.brightnessSlider.stepSize)
+                val currentH = lerpWithStep(startH, targetPreset.hue, fraction, binding.sliderHue.stepSize)
+                val currentS = lerpWithStep(startS, targetPreset.saturation, fraction, binding.sliderSaturation.stepSize)
+                val currentV = lerpWithStep(startV, targetPreset.brightness, fraction, binding.sliderBrightness.stepSize)
 
-                binding.hueSlider.value = currentH
-                binding.saturationSlider.value = currentS
-                binding.brightnessSlider.value = currentV
+                binding.sliderHue.value = currentH
+                binding.sliderSaturation.value = currentS
+                binding.sliderBrightness.value = currentV
 
                 val currentColor = ColorUtil.hsvToColor(currentH, currentS, currentV)
                 binding.colorIndicator.setBackgroundColor(currentColor)
 
                 val currentStateList = ColorStateList.valueOf(currentColor)
-                binding.hueSlider.thumbTintList = currentStateList
-                binding.saturationSlider.thumbTintList = currentStateList
-                binding.brightnessSlider.thumbTintList = currentStateList
+                binding.sliderHue.thumbTintList = currentStateList
+                binding.sliderSaturation.thumbTintList = currentStateList
+                binding.sliderBrightness.thumbTintList = currentStateList
 
                 updateValueTexts(binding, currentH, currentS, currentV)
             }

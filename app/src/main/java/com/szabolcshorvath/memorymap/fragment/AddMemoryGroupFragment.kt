@@ -155,7 +155,7 @@ class AddMemoryGroupFragment : Fragment() {
             updateFragmentsUI()
 
             if (viewModel.editingMemoryId != null) {
-                binding.saveButton.text = "Update Memory"
+                binding.btSave.text = "Update Memory"
             }
 
             viewModel.isInitialized = true
@@ -170,7 +170,7 @@ class AddMemoryGroupFragment : Fragment() {
             }
         }
 
-        binding.selectLocationButton.setOnClickListener {
+        binding.btSelectLocation.setOnClickListener {
             viewModel.activePickingIndex = -1
             addMemoryGroupListener?.onPickLocation(viewModel.lat, viewModel.lng, viewModel.placeName, viewModel.address)
         }
@@ -182,29 +182,29 @@ class AddMemoryGroupFragment : Fragment() {
             updateDateTimeButtons()
         }
 
-        binding.startDateButton.setOnClickListener { pickDate(true) }
-        binding.startTimeButton.setOnClickListener { pickTime(true) }
-        binding.endDateButton.setOnClickListener { pickDate(false) }
-        binding.endTimeButton.setOnClickListener { pickTime(false) }
-        binding.dateRangeButton.setOnClickListener { pickDateRange() }
+        binding.btStartDate.setOnClickListener { pickDate(true) }
+        binding.btStartTime.setOnClickListener { pickTime(true) }
+        binding.btEndDate.setOnClickListener { pickDate(false) }
+        binding.btEndTime.setOnClickListener { pickTime(false) }
+        binding.btDateRange.setOnClickListener { pickDateRange() }
 
         binding.colorHeader.setOnClickListener { toggleColor() }
 
-        binding.hueSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderHue.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 viewModel.markerHue = value
                 updateColorUI()
             }
         }
 
-        binding.saturationSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderSaturation.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 viewModel.markerSaturation = value
                 updateColorUI()
             }
         }
 
-        binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
+        binding.sliderBrightness.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 viewModel.markerBrightness = value
                 updateColorUI()
@@ -212,15 +212,15 @@ class AddMemoryGroupFragment : Fragment() {
         }
 
         binding.fragmentsHeader.setOnClickListener { toggleFragments() }
-        binding.addFragmentButtonInline.setOnClickListener { addFragment() }
+        binding.btAddFragment.setOnClickListener { addFragment() }
 
-        binding.pickMediaButton.setOnClickListener {
+        binding.btPickMedia.setOnClickListener {
             pickMediaLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
         }
 
-        binding.clearButton.setOnClickListener { showClearConfirmationDialog() }
+        binding.btClear.setOnClickListener { showClearConfirmationDialog() }
 
-        binding.saveButton.setOnClickListener {
+        binding.btSave.setOnClickListener {
             try {
                 require(viewModel.title?.isNotBlank() ?: false) { "The title must not be blank!" }
                 require(viewModel.lat != null && viewModel.lng != null) { "The location must be specified!" }
@@ -236,7 +236,7 @@ class AddMemoryGroupFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.isSaving.collect { isSaving ->
-                        binding.saveButton.isEnabled = !isSaving
+                        binding.btSave.isEnabled = !isSaving
                     }
                 }
                 launch {
@@ -264,10 +264,10 @@ class AddMemoryGroupFragment : Fragment() {
         }
         mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                binding.selectedMediaRecyclerView.scrollToPosition(positionStart)
+                binding.rvSelectedMedia.scrollToPosition(positionStart)
             }
         })
-        binding.selectedMediaRecyclerView.adapter = mediaAdapter
+        binding.rvSelectedMedia.adapter = mediaAdapter
 
         fragmentsAdapter = MemoryFragmentEditAdapter(
             viewModel.fragments,
@@ -276,8 +276,8 @@ class AddMemoryGroupFragment : Fragment() {
             { viewModel.activePickingIndex = it },
             this::updateFragmentsUI
         )
-        binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(context)
-        binding.fragmentsRecyclerView.adapter = fragmentsAdapter
+        binding.rvFragments.layoutManager = LinearLayoutManager(context)
+        binding.rvFragments.adapter = fragmentsAdapter
 
         colorPresetAdapter = ColorPresetAdapter { preset ->
             viewModel.markerHue = preset.hue
@@ -285,13 +285,13 @@ class AddMemoryGroupFragment : Fragment() {
             viewModel.markerBrightness = preset.brightness
             updateColorUI(animate = true)
         }
-        binding.presetColorsRecyclerView.adapter = colorPresetAdapter
+        binding.rvPresetColors.adapter = colorPresetAdapter
     }
 
     private fun updateMediaUI() {
         // We pass a new list instance (toList()) to ensure it detects the change.
         mediaAdapter.submitList(viewModel.selectedMedia.toList())
-        binding.selectedMediaCount.text = "${viewModel.selectedMedia.size} items selected"
+        binding.tvSelectedMediaCount.text = "${viewModel.selectedMedia.size} items selected"
     }
 
     private fun toggleDateSection() {
@@ -325,13 +325,13 @@ class AddMemoryGroupFragment : Fragment() {
         if (animate) {
             animateSlidersToTargets()
         } else {
-            binding.hueSlider.value = viewModel.markerHue
-            binding.saturationSlider.value = viewModel.markerSaturation
-            binding.brightnessSlider.value = viewModel.markerBrightness
+            binding.sliderHue.value = viewModel.markerHue
+            binding.sliderSaturation.value = viewModel.markerSaturation
+            binding.sliderBrightness.value = viewModel.markerBrightness
 
-            binding.hueSlider.thumbTintList = colorStateList
-            binding.saturationSlider.thumbTintList = colorStateList
-            binding.brightnessSlider.thumbTintList = colorStateList
+            binding.sliderHue.thumbTintList = colorStateList
+            binding.sliderSaturation.thumbTintList = colorStateList
+            binding.sliderBrightness.thumbTintList = colorStateList
 
             binding.colorIndicator.setBackgroundColor(color)
             updateValueTexts(viewModel.markerHue, viewModel.markerSaturation, viewModel.markerBrightness)
@@ -347,9 +347,9 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun animateSlidersToTargets() {
         val binding = _binding ?: return
-        val startH = binding.hueSlider.value
-        val startS = binding.saturationSlider.value
-        val startV = binding.brightnessSlider.value
+        val startH = binding.sliderHue.value
+        val startS = binding.sliderSaturation.value
+        val startV = binding.sliderBrightness.value
 
         // Use a single animator from 0 to 1 (representing 0% to 100% of the transition)
         ValueAnimator.ofFloat(0f, 1f).apply {
@@ -361,21 +361,21 @@ class AddMemoryGroupFragment : Fragment() {
                 val currentBinding = _binding ?: return@addUpdateListener
 
                 // Calculate current values based on the animation progress
-                val currentH = lerpWithStep(startH, viewModel.markerHue, fraction, currentBinding.hueSlider.stepSize)
-                val currentS = lerpWithStep(startS, viewModel.markerSaturation, fraction, currentBinding.saturationSlider.stepSize)
-                val currentV = lerpWithStep(startV, viewModel.markerBrightness, fraction, currentBinding.brightnessSlider.stepSize)
+                val currentH = lerpWithStep(startH, viewModel.markerHue, fraction, currentBinding.sliderHue.stepSize)
+                val currentS = lerpWithStep(startS, viewModel.markerSaturation, fraction, currentBinding.sliderSaturation.stepSize)
+                val currentV = lerpWithStep(startV, viewModel.markerBrightness, fraction, currentBinding.sliderBrightness.stepSize)
 
-                currentBinding.hueSlider.value = currentH
-                currentBinding.saturationSlider.value = currentS
-                currentBinding.brightnessSlider.value = currentV
+                currentBinding.sliderHue.value = currentH
+                currentBinding.sliderSaturation.value = currentS
+                currentBinding.sliderBrightness.value = currentV
 
                 val currentColor = ColorUtil.hsvToColor(currentH, currentS, currentV)
                 currentBinding.colorIndicator.setBackgroundColor(currentColor)
 
                 val currentStateList = ColorStateList.valueOf(currentColor)
-                currentBinding.hueSlider.thumbTintList = currentStateList
-                currentBinding.saturationSlider.thumbTintList = currentStateList
-                currentBinding.brightnessSlider.thumbTintList = currentStateList
+                currentBinding.sliderHue.thumbTintList = currentStateList
+                currentBinding.sliderSaturation.thumbTintList = currentStateList
+                currentBinding.sliderBrightness.thumbTintList = currentStateList
 
                 updateValueTexts(currentH, currentS, currentV)
             }
@@ -469,7 +469,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.descriptionInput.text?.clear()
         updateLocationText()
         binding.switchAllDay.isChecked = false
-        binding.saveButton.text = "Save Memory"
+        binding.btSave.text = "Save Memory"
     }
 
     fun updateLocation(newLat: Double, newLng: Double, newPlaceName: String? = null, newAddress: String? = null) {
@@ -555,7 +555,7 @@ class AddMemoryGroupFragment : Fragment() {
                     viewModel.dateExpanded = true
                     updateDateTimeButtons()
                     updateColorUI()
-                    binding.saveButton.text = "Update Memory"
+                    binding.btSave.text = "Update Memory"
                 }
             }
         }
@@ -612,7 +612,7 @@ class AddMemoryGroupFragment : Fragment() {
                 locationString.append("No location selected")
             }
         }
-        binding.locationText.text = locationString.toString()
+        binding.tvLocation.text = locationString.toString()
     }
 
     private fun updateDateTimeButtons(animateExpansion: Boolean = false) {
@@ -629,35 +629,35 @@ class AddMemoryGroupFragment : Fragment() {
         if (viewModel.isAllDay) {
             binding.startDateTimeLayout.visibility = View.GONE
             binding.endDateTimeLayout.visibility = View.GONE
-            binding.startDateLabel.visibility = View.GONE
-            binding.endDateLabel.visibility = View.GONE
-            binding.dateRangeButton.visibility = View.VISIBLE
+            binding.tvStartDate.visibility = View.GONE
+            binding.tvEndDate.visibility = View.GONE
+            binding.btDateRange.visibility = View.VISIBLE
 
             val startStr = viewModel.startDateTime.format(dateFormatter())
             val endStr = viewModel.endDateTime.format(dateFormatter())
             val dateRangeStr = if (startStr == endStr) startStr else "$startStr - $endStr"
-            binding.dateRangeButton.text = dateRangeStr
-            binding.dateSummaryText.text = dateRangeStr
+            binding.btDateRange.text = dateRangeStr
+            binding.tvDateSummary.text = dateRangeStr
         } else {
             binding.startDateTimeLayout.visibility = View.VISIBLE
             binding.endDateTimeLayout.visibility = View.VISIBLE
-            binding.startDateLabel.visibility = View.VISIBLE
-            binding.endDateLabel.visibility = View.VISIBLE
-            binding.dateRangeButton.visibility = View.GONE
+            binding.tvStartDate.visibility = View.VISIBLE
+            binding.tvEndDate.visibility = View.VISIBLE
+            binding.btDateRange.visibility = View.GONE
 
             val startDStr = viewModel.startDateTime.format(dateFormatter())
             val startTStr = viewModel.startDateTime.format(timeFormatter())
             val endDStr = viewModel.endDateTime.format(dateFormatter())
             val endTStr = viewModel.endDateTime.format(timeFormatter())
 
-            binding.startDateButton.text = startDStr
-            binding.endDateButton.text = endDStr
-            binding.startTimeButton.text = startTStr
-            binding.endTimeButton.text = endTStr
+            binding.btStartDate.text = startDStr
+            binding.btEndDate.text = endDStr
+            binding.btStartTime.text = startTStr
+            binding.btEndTime.text = endTStr
 
             val startFull = "$startDStr, $startTStr"
             val endFull = "$endDStr, $endTStr"
-            binding.dateSummaryText.text = if (startDStr == endDStr) {
+            binding.tvDateSummary.text = if (startDStr == endDStr) {
                 "$startDStr, $startTStr - $endTStr"
             } else {
                 "$startFull - $endFull"

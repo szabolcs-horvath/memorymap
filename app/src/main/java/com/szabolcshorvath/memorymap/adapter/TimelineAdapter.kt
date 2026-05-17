@@ -29,6 +29,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
             val sectionPosition: Int = 0,
             val sectionCount: Int = 1
         ) : TimelineItem()
+
         data class DateSeparator(val date: LocalDate) : TimelineItem()
 
         fun getItemId(): String {
@@ -80,26 +81,26 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
         fun bind(memoryGroup: MemoryGroup, sectionPosition: Int, sectionCount: Int) {
             bind(sectionPosition, sectionCount)
             binding.timelineCard.clipToOutline = true
-            binding.memoryTitle.text = memoryGroup.title
+            binding.tvMemoryTitle.text = memoryGroup.title
 
             if (!memoryGroup.placeName.isNullOrEmpty()) {
-                binding.memoryLocation.text = memoryGroup.placeName
-                binding.memoryLocation.visibility = View.VISIBLE
+                binding.tvMemoryLocation.text = memoryGroup.placeName
+                binding.tvMemoryLocation.visibility = View.VISIBLE
             } else if (!memoryGroup.address.isNullOrEmpty()) {
-                binding.memoryLocation.text = memoryGroup.address
-                binding.memoryLocation.visibility = View.VISIBLE
+                binding.tvMemoryLocation.text = memoryGroup.address
+                binding.tvMemoryLocation.visibility = View.VISIBLE
             } else {
-                binding.memoryLocation.visibility = View.GONE
+                binding.tvMemoryLocation.visibility = View.GONE
             }
 
             if (!memoryGroup.description.isNullOrEmpty()) {
-                binding.memoryDescription.text = memoryGroup.description
-                binding.memoryDescription.visibility = View.VISIBLE
+                binding.tvMemoryDescription.text = memoryGroup.description
+                binding.tvMemoryDescription.visibility = View.VISIBLE
             } else {
-                binding.memoryDescription.visibility = View.GONE
+                binding.tvMemoryDescription.visibility = View.GONE
             }
 
-            binding.memoryDate.text = memoryGroup.getFormattedDate()
+            binding.tvMemoryDate.text = memoryGroup.getFormattedDate()
 
             binding.colorIndicator.setBackgroundColor(
                 ColorUtil.hsvToColor(
@@ -128,7 +129,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
     class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(date: LocalDate) {
-            binding.dateText.text = date.format(dateFormatter())
+            binding.tvDate.text = date.format(dateFormatter())
         }
     }
 

@@ -6,7 +6,7 @@
     android:layout_height="match_parent">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/timelineRecyclerView"
+        android:id="@+id/rv_timeline"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipToPadding="false"

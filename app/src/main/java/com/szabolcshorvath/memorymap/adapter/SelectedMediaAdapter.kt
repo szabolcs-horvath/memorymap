@@ -53,6 +53,6 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
             holder.binding.videoIcon.visibility = if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
         }
 
-        holder.binding.removeButton.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
+        holder.binding.btRemove.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
     }
 }

@@ -110,11 +110,11 @@ class MemoryFragment : Fragment() {
             }
         }
 
-        binding.editButton.setOnClickListener {
+        binding.btEdit.setOnClickListener {
             memoryFragmentListener?.onEditMemory(memoryId)
         }
 
-        binding.deleteButton.setOnClickListener {
+        binding.btDelete.setOnClickListener {
             showDeleteConfirmationDialog()
         }
 
@@ -130,17 +130,17 @@ class MemoryFragment : Fragment() {
         }
         mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                binding.mediaRecyclerView.scrollToPosition(positionStart)
+                binding.rvMedia.scrollToPosition(positionStart)
             }
         })
-        binding.mediaRecyclerView.layoutManager = GridLayoutManager(requireContext(), MEDIA_GRID_SPAN_COUNT)
-        binding.mediaRecyclerView.adapter = mediaAdapter
+        binding.rvMedia.layoutManager = GridLayoutManager(requireContext(), MEDIA_GRID_SPAN_COUNT)
+        binding.rvMedia.adapter = mediaAdapter
 
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
         }
-        binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-        binding.fragmentsRecyclerView.adapter = fragmentsAdapter
+        binding.rvFragments.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvFragments.adapter = fragmentsAdapter
 
         setupMediaTouchHelper()
         setupFragmentsTouchHelper()
@@ -192,7 +192,7 @@ class MemoryFragment : Fragment() {
                 initialOrder = null
             }
         })
-        itemTouchHelper.attachToRecyclerView(binding.mediaRecyclerView)
+        itemTouchHelper.attachToRecyclerView(binding.rvMedia)
     }
 
     private fun setupFragmentsTouchHelper() {
@@ -241,7 +241,7 @@ class MemoryFragment : Fragment() {
                 initialOrder = null
             }
         })
-        itemTouchHelper.attachToRecyclerView(binding.fragmentsRecyclerView)
+        itemTouchHelper.attachToRecyclerView(binding.rvFragments)
     }
 
     private fun toggleFragments() {
@@ -269,16 +269,16 @@ class MemoryFragment : Fragment() {
     private fun displayMemoryGroupDetails(data: MemoryGroupWithMedia) {
         val binding = _binding ?: return
         val group = data.group
-        binding.titleText.text = group.title
+        binding.tvTitle.text = group.title
 
         if (!group.description.isNullOrEmpty()) {
-            binding.descriptionText.text = group.description
-            binding.descriptionText.visibility = View.VISIBLE
+            binding.tvDescription.text = group.description
+            binding.tvDescription.visibility = View.VISIBLE
         } else {
-            binding.descriptionText.visibility = View.GONE
+            binding.tvDescription.visibility = View.GONE
         }
 
-        binding.dateText.text = group.getFormattedDate()
+        binding.tvDate.text = group.getFormattedDate()
 
         val locationString = if (!group.placeName.isNullOrEmpty()) {
             if (!group.address.isNullOrEmpty()) {
@@ -291,7 +291,7 @@ class MemoryFragment : Fragment() {
         } else {
             "${group.latitude}, ${group.longitude}"
         }
-        binding.locationText.text = locationString
+        binding.tvLocation.text = locationString
 
         binding.divider.setBackgroundColor(
             ColorUtil.hsvToColor(
@@ -301,11 +301,11 @@ class MemoryFragment : Fragment() {
             )
         )
 
-        binding.showOnTimelineButton.setOnClickListener {
+        binding.btShowOnTimeline.setOnClickListener {
             memoryFragmentListener?.onNavigateToTimeline(group.id)
         }
 
-        binding.showOnMapButton.setOnClickListener {
+        binding.btShowOnMap.setOnClickListener {
             memoryFragmentListener?.onNavigateToMap(group.latitude, group.longitude, group.id)
         }
     }
@@ -357,7 +357,7 @@ class MemoryFragment : Fragment() {
         val hasMissingMedia = withContext(Dispatchers.IO) {
             LocalMediaUtil.hasMissingMedia(context, viewModel.mediaItems)
         }
-        binding.mediaWarningText.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
+        binding.tvMediaWarning.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
         mediaAdapter.updateData(viewModel.mediaItems)
     }
 

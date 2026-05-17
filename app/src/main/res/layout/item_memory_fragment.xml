@@ -37,12 +37,12 @@
                 android:orientation="vertical"
                 android:paddingHorizontal="8dp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/btnShowOnMap"
+                app:layout_constraintEnd_toStartOf="@id/bt_showOnMap"
                 app:layout_constraintStart_toEndOf="@id/colorIndicator"
                 app:layout_constraintTop_toTopOf="parent">
 
                 <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/locationText"
+                    android:id="@+id/tv_location"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textAppearance="?attr/textAppearanceTitleSmall"
@@ -50,7 +50,7 @@
                     tools:text="Eiffel Tower, Paris" />
 
                 <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/timeText"
+                    android:id="@+id/tv_time"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textAppearance="?attr/textAppearanceBodySmall"
@@ -59,7 +59,7 @@
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnShowOnMap"
+                android:id="@+id/bt_showOnMap"
                 style="@style/Widget.Material3Expressive.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

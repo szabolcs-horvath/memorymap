@@ -31,7 +31,7 @@
         app:tint="@android:color/holo_red_dark" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/removeButton"
+        android:id="@+id/bt_remove"
         style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
         android:layout_width="32dp"
         android:layout_height="32dp"

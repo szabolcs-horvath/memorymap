@@ -123,9 +123,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         mapLoadTrace = PerfUtil.startTrace("map_full_load")
 
-        binding.btnDateRange.setOnClickListener { showDateRangePicker() }
-        binding.btnQuickFilter.setOnClickListener { showQuickFilterMenu() }
-        binding.btnStats.setOnClickListener { toggleStatsOverlay() }
+        binding.btDateRange.setOnClickListener { showDateRangePicker() }
+        binding.btQuickFilter.setOnClickListener { showQuickFilterMenu() }
+        binding.btStats.setOnClickListener { toggleStatsOverlay() }
 
         if (viewModel.isStatsVisible) {
             binding.statsOverlayCard.visibility = View.VISIBLE
@@ -183,7 +183,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun showQuickFilterMenu() {
         val binding = _binding ?: return
-        val popup = PopupMenu(requireContext(), binding.btnQuickFilter)
+        val popup = PopupMenu(requireContext(), binding.btQuickFilter)
         DateFilterOption.entries.forEach { option ->
             popup.menu.add(option.label)
         }
@@ -243,19 +243,19 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun updateDateRangeButtonText(start: LocalDate?, end: LocalDate?, label: String?) {
         val binding = _binding ?: return
         if (label != null) {
-            binding.btnDateRange.text = label
+            binding.btDateRange.text = label
             return
         }
 
         val dateFormatter = dateFormatter()
         if (start != null && end != null) {
             if (start != end) {
-                binding.btnDateRange.text = "${dateFormatter.format(start)} - ${dateFormatter.format(end)}"
+                binding.btDateRange.text = "${dateFormatter.format(start)} - ${dateFormatter.format(end)}"
             } else {
-                binding.btnDateRange.text = "${dateFormatter.format(start)}"
+                binding.btDateRange.text = "${dateFormatter.format(start)}"
             }
         } else {
-            binding.btnDateRange.text = DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label
+            binding.btDateRange.text = DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label
         }
     }
 
@@ -622,10 +622,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
             TransitionManager.beginDelayedTransition(binding.root, transition)
 
-            if (binding.overlayLocationTitle.text != locationName) {
-                binding.overlayLocationTitle.visibility = View.INVISIBLE
-                binding.overlayLocationTitle.text = locationName
-                binding.overlayLocationTitle.visibility = View.VISIBLE
+            if (binding.tvOverlayLocationTitle.text != locationName) {
+                binding.tvOverlayLocationTitle.visibility = View.INVISIBLE
+                binding.tvOverlayLocationTitle.text = locationName
+                binding.tvOverlayLocationTitle.visibility = View.VISIBLE
             }
 
             val index = distinctItems.indexOfFirst { it.groupId == viewModel.selectedMemoryId }

@@ -64,7 +64,7 @@
                 tools:ignore="UseCompoundDrawables">
 
                 <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/locationText"
+                    android:id="@+id/tv_location"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -73,7 +73,7 @@
                     android:textColor="?attr/colorOnSurface" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/selectLocationButton"
+                    android:id="@+id/bt_selectLocation"
                     style="@style/Widget.Material3Expressive.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -125,7 +125,7 @@
                                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                             <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/dateSummaryText"
+                                android:id="@+id/tv_dateSummary"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:textAppearance="?attr/textAppearanceBodySmall"
@@ -161,7 +161,7 @@
                             android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/dateRangeButton"
+                            android:id="@+id/bt_dateRange"
                             style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -179,7 +179,7 @@
                             android:orientation="horizontal">
 
                             <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/startDateLabel"
+                                android:id="@+id/tv_startDate"
                                 android:layout_width="50dp"
                                 android:layout_height="wrap_content"
                                 android:gravity="end"
@@ -189,7 +189,7 @@
                                 android:textColor="?attr/colorOnSurface" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/startDateButton"
+                                android:id="@+id/bt_startDate"
                                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -201,7 +201,7 @@
                                 android:layout_height="0dp" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/startTimeButton"
+                                android:id="@+id/bt_startTime"
                                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -218,7 +218,7 @@
                             android:orientation="horizontal">
 
                             <com.google.android.material.textview.MaterialTextView
-                                android:id="@+id/endDateLabel"
+                                android:id="@+id/tv_endDate"
                                 android:layout_width="50dp"
                                 android:layout_height="wrap_content"
                                 android:gravity="end"
@@ -228,7 +228,7 @@
                                 android:textColor="?attr/colorOnSurface" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/endDateButton"
+                                android:id="@+id/bt_endDate"
                                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -240,7 +240,7 @@
                                 android:layout_height="0dp" />
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/endTimeButton"
+                                android:id="@+id/bt_endTime"
                                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -306,7 +306,7 @@
                     </LinearLayout>
 
                     <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/presetColorsRecyclerView"
+                        android:id="@+id/rv_presetColors"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:clipToPadding="false"
@@ -348,7 +348,7 @@
                                 app:cardElevation="0dp">
 
                                 <com.google.android.material.textview.MaterialTextView
-                                    android:id="@+id/tvHueValue"
+                                    android:id="@+id/tv_HueValue"
                                     android:layout_width="44dp"
                                     android:layout_height="wrap_content"
                                     android:gravity="center"
@@ -360,7 +360,7 @@
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
-                            android:id="@+id/hueSlider"
+                            android:id="@+id/slider_hue"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -391,7 +391,7 @@
                                 app:cardElevation="0dp">
 
                                 <com.google.android.material.textview.MaterialTextView
-                                    android:id="@+id/tvSaturationValue"
+                                    android:id="@+id/tv_SaturationValue"
                                     android:layout_width="44dp"
                                     android:layout_height="wrap_content"
                                     android:gravity="center"
@@ -403,7 +403,7 @@
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
-                            android:id="@+id/saturationSlider"
+                            android:id="@+id/slider_saturation"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -434,7 +434,7 @@
                                 app:cardElevation="0dp">
 
                                 <com.google.android.material.textview.MaterialTextView
-                                    android:id="@+id/tvBrightnessValue"
+                                    android:id="@+id/tv_BrightnessValue"
                                     android:layout_width="44dp"
                                     android:layout_height="wrap_content"
                                     android:gravity="center"
@@ -446,7 +446,7 @@
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
-                            android:id="@+id/brightnessSlider"
+                            android:id="@+id/slider_brightness"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -515,7 +515,7 @@
                             android:orientation="vertical">
 
                             <com.google.android.material.button.MaterialButton
-                                android:id="@+id/addFragmentButtonInline"
+                                android:id="@+id/bt_addFragment"
                                 style="@style/Widget.Material3Expressive.Button.TextButton"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
@@ -525,7 +525,7 @@
                                 app:icon="@android:drawable/ic_input_add" />
 
                             <androidx.recyclerview.widget.RecyclerView
-                                android:id="@+id/fragmentsRecyclerView"
+                                android:id="@+id/rv_fragments"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:nestedScrollingEnabled="false"
@@ -540,7 +540,7 @@
 
             <!-- Media Section -->
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/pickMediaButton"
+                android:id="@+id/bt_pickMedia"
                 style="@style/Widget.Material3Expressive.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -548,7 +548,7 @@
                 android:text="Add Photos/Videos" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/selectedMediaCount"
+                android:id="@+id/tv_selectedMediaCount"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -557,7 +557,7 @@
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/selectedMediaRecyclerView"
+                android:id="@+id/rv_selectedMedia"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -573,7 +573,7 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/clearButton"
+                    android:id="@+id/bt_clear"
                     style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -582,7 +582,7 @@
                     android:text="Clear" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saveButton"
+                    android:id="@+id/bt_save"
                     style="@style/Widget.Material3Expressive.Button"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"

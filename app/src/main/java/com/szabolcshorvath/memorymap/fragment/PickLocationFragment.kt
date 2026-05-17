@@ -142,7 +142,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        binding.confirmButton.setOnClickListener {
+        binding.btConfirm.setOnClickListener {
             if (viewModel.selectedLat != null && viewModel.selectedLng != null) {
                 pickLocationListener?.onLocationConfirmed(
                     viewModel.selectedLat!!,
@@ -153,7 +153,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             }
         }
 
-        binding.searchButton.setOnClickListener { startAutocomplete() }
+        binding.btSearch.setOnClickListener { startAutocomplete() }
 
         binding.root.doOnLayout { setGoogleMapPadding() }
     }
@@ -348,8 +348,8 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun setConfirmButtonLoading(isLoading: Boolean) {
         val binding = _binding ?: return
-        binding.confirmButton.isEnabled = !isLoading
-        binding.confirmButton.text = if (isLoading) {
+        binding.btConfirm.isEnabled = !isLoading
+        binding.btConfirm.text = if (isLoading) {
             "Fetching location…"
         } else {
             "Confirm Location"
@@ -357,7 +357,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
         // Use solid colors to avoid transparency over the map when disabled
         val colorRes = if (isLoading) R.color.md_theme_surfaceVariant else R.color.md_theme_primary
-        binding.confirmButton.backgroundTintList = ColorStateList.valueOf(
+        binding.btConfirm.backgroundTintList = ColorStateList.valueOf(
             ContextCompat.getColor(requireContext(), colorRes)
         )
     }

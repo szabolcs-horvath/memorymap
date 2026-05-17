@@ -60,10 +60,10 @@ class TimelineFragment : Fragment() {
                     }
                     if (sortedGroups.isEmpty()) {
                         binding.emptyView.visibility = View.VISIBLE
-                        binding.timelineRecyclerView.visibility = View.GONE
+                        binding.rvTimeline.visibility = View.GONE
                     } else {
                         binding.emptyView.visibility = View.GONE
-                        binding.timelineRecyclerView.visibility = View.VISIBLE
+                        binding.rvTimeline.visibility = View.VISIBLE
                     }
                 }
             }
@@ -74,8 +74,8 @@ class TimelineFragment : Fragment() {
         adapter = TimelineAdapter { memoryGroup ->
             timelineListener?.onMemoryClicked(memoryGroup.id)
         }
-        binding.timelineRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-        binding.timelineRecyclerView.adapter = adapter
+        binding.rvTimeline.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvTimeline.adapter = adapter
     }
 
     fun scrollToAndFlash(memoryId: Int) {
@@ -91,18 +91,18 @@ class TimelineFragment : Fragment() {
         val binding = _binding ?: return
         val position = adapter.getPositionForId(memoryId)
         if (position != -1) {
-            (binding.timelineRecyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, SCROLL_TO_POSITION_OFFSET)
+            (binding.rvTimeline.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, SCROLL_TO_POSITION_OFFSET)
 
-            binding.timelineRecyclerView.post {
+            binding.rvTimeline.post {
                 val postBinding = _binding ?: return@post
-                val viewHolder = postBinding.timelineRecyclerView.findViewHolderForAdapterPosition(position)
+                val viewHolder = postBinding.rvTimeline.findViewHolderForAdapterPosition(position)
                 if (viewHolder is TimelineAdapter.TimelineViewHolder) {
                     viewHolder.flash()
                 } else {
-                    postBinding.timelineRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    postBinding.rvTimeline.addOnScrollListener(object : RecyclerView.OnScrollListener() {
                         override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                             if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                                val vh = _binding?.timelineRecyclerView?.findViewHolderForAdapterPosition(position)
+                                val vh = _binding?.rvTimeline?.findViewHolderForAdapterPosition(position)
                                 if (vh is TimelineAdapter.TimelineViewHolder) {
                                     vh.flash()
                                 }
