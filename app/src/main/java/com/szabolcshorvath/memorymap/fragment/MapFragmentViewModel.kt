@@ -48,6 +48,8 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     private val _isDateFilterLoaded = MutableStateFlow(false)
     val isDateFilterLoaded: StateFlow<Boolean> = _isDateFilterLoaded.asStateFlow()
 
+    private var cachedMarkerClusters: StateFlow<List<Markerable.MarkerableCluster>>? = null
+
     init {
         viewModelScope.launch {
             val defaultOption = DateFilterOption.getFromDataStore(application.dataStore)
@@ -66,7 +68,7 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun getMarkerClusters(showFragmentsEnabledFlow: StateFlow<Boolean>): StateFlow<List<Markerable.MarkerableCluster>> {
-        return combine(
+        return cachedMarkerClusters ?: combine(
             commonRepository.allGroups,
             commonRepository.allFragments,
             filterStartDate,
@@ -94,7 +96,11 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
             }
         }.flowOn(Dispatchers.Default).map { filteredItems ->
             clusterMarkerables(filteredItems)
-        }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
+        }.flowOn(Dispatchers.Default).stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS),
+            emptyList()
+        ).also { cachedMarkerClusters = it }
     }
 
     @AddTrace(name = "map_fragment_view_model_cluster_markerables", enabled = true)
