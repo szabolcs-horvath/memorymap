@@ -235,9 +235,9 @@ class MemoryFragmentEditAdapter(
             updateFragmentsUI()
         }
 
-        binding.allDayCheckbox.setOnCheckedChangeListener(null)
-        binding.allDayCheckbox.isChecked = item.isAllDay
-        binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
+        binding.switchAllDay.setOnCheckedChangeListener(null)
+        binding.switchAllDay.isChecked = item.isAllDay
+        binding.switchAllDay.setOnCheckedChangeListener { _, isChecked ->
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
                 // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure

@@ -177,7 +177,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         binding.dateHeader.setOnClickListener { toggleDateSection() }
 
-        binding.allDayCheckbox.setOnCheckedChangeListener { _, isChecked ->
+        binding.switchAllDay.setOnCheckedChangeListener { _, isChecked ->
             viewModel.isAllDay = isChecked
             updateDateTimeButtons()
         }
@@ -468,7 +468,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.titleInput.text?.clear()
         binding.descriptionInput.text?.clear()
         updateLocationText()
-        binding.allDayCheckbox.isChecked = false
+        binding.switchAllDay.isChecked = false
         binding.saveButton.text = "Save Memory"
     }
 
@@ -514,7 +514,7 @@ class AddMemoryGroupFragment : Fragment() {
 
                     binding.titleInput.setText(viewModel.title)
                     binding.descriptionInput.setText(viewModel.description)
-                    binding.allDayCheckbox.isChecked = viewModel.isAllDay
+                    binding.switchAllDay.isChecked = viewModel.isAllDay
 
                     val sortedItems = data.mediaItems.sortedWith(MediaItemComparator())
                     viewModel.selectedMedia.clear()
