@@ -16,10 +16,11 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
 
     private val items = mutableListOf<MemoryFragment>()
-    var showMarkers: Boolean = false
+    var showFragmentsEnabled: Boolean = false
         set(value) {
-            if (field != value) {
-                field = value
+            if (field == value) return
+            field = value
+            if (items.isNotEmpty()) {
                 notifyItemRangeChanged(0, items.size, PAYLOAD_SHOW_MARKERS)
             }
         }
@@ -41,7 +42,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         } else {
             payloads.forEach { payload ->
                 if (payload == PAYLOAD_SHOW_MARKERS) {
-                    holder.binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
+                    holder.binding.btnShowOnMap.visibility = if (showFragmentsEnabled) View.VISIBLE else View.GONE
                 }
             }
         }
@@ -79,7 +80,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
             onShowOnMapClick(fragment)
         }
 
-        binding.btnShowOnMap.visibility = if (showMarkers) View.VISIBLE else View.GONE
+        binding.btnShowOnMap.visibility = if (showFragmentsEnabled) View.VISIBLE else View.GONE
     }
 
     override fun getItemCount(): Int = items.size
