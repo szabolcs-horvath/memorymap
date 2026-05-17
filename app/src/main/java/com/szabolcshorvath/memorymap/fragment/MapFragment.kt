@@ -167,7 +167,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // Observe Clusters and Clustering Preference
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled).collectLatest { clusters ->
+                combine(
+                    viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled),
+                    commonViewModel.markerClusteringEnabled
+                ) { clusters, _ -> clusters }.collectLatest { clusters ->
                     currentClusters = clusters
                     if (this@MapFragment::clusterManager.isInitialized) {
                         updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
