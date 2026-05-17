@@ -262,8 +262,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         viewModel.isInitialZoomDone = true
         lifecycleScope.launch {
-            // Wait for groups to be loaded
-            val groups = commonViewModel.allGroups.first { it.isNotEmpty() }
+            // Wait for the first groups emission, even if it is empty
+            val groups = commonViewModel.allGroups.first()
             val memory = groups.find { it.id == id } ?: return@launch
 
             // Wait for filter to be loaded from DataStore

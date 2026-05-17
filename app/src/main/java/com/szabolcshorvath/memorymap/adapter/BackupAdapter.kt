@@ -50,14 +50,14 @@ class BackupAdapter(
         val size = backup.getSize() ?: 0L
         binding.tvBackupSize.text = Formatter.formatFileSize(binding.root.context, size)
 
-        binding.btnRestore.isEnabled = buttonsEnabled
-        binding.btnDelete.isEnabled = buttonsEnabled
+        binding.btRestore.isEnabled = buttonsEnabled
+        binding.btDelete.isEnabled = buttonsEnabled
 
-        binding.btnRestore.setOnClickListener { onRestoreClick(backup) }
-        binding.btnDelete.setOnClickListener { onDeleteClick(backup) }
+        binding.btRestore.setOnClickListener { onRestoreClick(backup) }
+        binding.btDelete.setOnClickListener { onDeleteClick(backup) }
 
-        binding.btnRestore.alpha = if (buttonsEnabled) FULL_OPAQUE else HALF_TRANSPARENT
-        binding.btnDelete.alpha = if (buttonsEnabled) FULL_OPAQUE else HALF_TRANSPARENT
+        binding.btRestore.alpha = if (buttonsEnabled) FULL_OPAQUE else HALF_TRANSPARENT
+        binding.btDelete.alpha = if (buttonsEnabled) FULL_OPAQUE else HALF_TRANSPARENT
     }
 
     fun setButtonsEnabled(enabled: Boolean) {
