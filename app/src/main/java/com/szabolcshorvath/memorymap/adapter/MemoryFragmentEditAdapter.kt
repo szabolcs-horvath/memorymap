@@ -96,6 +96,7 @@ class MemoryFragmentEditAdapter(
             const val PAYLOAD_DATE_TIME = "PAYLOAD_DATE_TIME"
             const val PAYLOAD_COLOR = "PAYLOAD_COLOR"
             const val PAYLOAD_COLOR_EXPANDED = "PAYLOAD_COLOR_EXPANDED"
+            const val PAYLOAD_REBIND = "PAYLOAD_REBIND"
         }
     }
 
@@ -113,6 +114,17 @@ class MemoryFragmentEditAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemoryFragmentEditViewHolder {
         val binding = ItemMemoryFragmentEditBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return MemoryFragmentEditViewHolder(binding)
+    }
+
+    override fun onCurrentListChanged(
+        previousList: MutableList<FragmentEditState>,
+        currentList: MutableList<FragmentEditState>
+    ) {
+        super.onCurrentListChanged(previousList, currentList)
+        // Force a re-bind of all items to update rounding based on new itemCount/position
+        if (previousList.size != currentList.size) {
+            notifyItemRangeChanged(0, itemCount, FragmentEditState.PAYLOAD_REBIND)
+        }
     }
 
     override fun onBindViewHolder(holder: MemoryFragmentEditViewHolder, position: Int) {
