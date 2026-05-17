@@ -105,7 +105,7 @@ class MemoryFragment : Fragment() {
                     viewModel.groupWithMedia.collect { it?.let { displayDetails(it) } }
                 }
                 launch {
-                    commonViewModel.showFragmentsEnabled.collect { fragmentsAdapter.showMarkers = it }
+                    commonViewModel.showFragmentsEnabled.collect { fragmentsAdapter.showFragmentsEnabled = it }
                 }
             }
         }
@@ -139,7 +139,7 @@ class MemoryFragment : Fragment() {
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
         }
-        fragmentsAdapter.showMarkers = commonViewModel.showFragmentsEnabled.value
+        fragmentsAdapter.showFragmentsEnabled = commonViewModel.showFragmentsEnabled.value
         binding.fragmentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.fragmentsRecyclerView.adapter = fragmentsAdapter
 
