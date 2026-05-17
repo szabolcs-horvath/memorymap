@@ -137,7 +137,7 @@ class MemoryFragmentEditAdapter(
         payloads: MutableList<Any>
     ) {
         if (payloads.isEmpty()) {
-            onBindViewHolder(holder, position)
+            onBindViewHolder(holder, position, payloads)
         } else {
             holder.bind(position, itemCount)
             val item = getItem(position)
