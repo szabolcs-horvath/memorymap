@@ -149,7 +149,7 @@ class MemoryFragmentEditAdapter(
         binding.colorSectionCard.clipToOutline = true
 
         bindLocation(binding, item)
-        setupClickListeners(binding, holder, item)
+        setupClickListeners(binding, holder)
         setupDateTimeSelectors(binding, holder, item)
         updateDateTimeSelectors(binding, item)
         setupColorSection(binding, holder)
@@ -194,10 +194,14 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun setupClickListeners(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder, item: FragmentEditState) {
+    private fun setupClickListeners(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder) {
         binding.btSelectLocation.setOnClickListener {
-            setActivePickingIndex(holder.bindingAdapterPosition)
-            getListener()?.onPickLocation(item.lat, item.lng, item.placeName, item.address)
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                val current = fragments[pos]
+                setActivePickingIndex(pos)
+                getListener()?.onPickLocation(current.lat, current.lng, current.placeName, current.address)
+            }
         }
 
         binding.btRemove.setOnClickListener {
