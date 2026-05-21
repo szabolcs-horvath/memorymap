@@ -263,8 +263,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         viewModel.isInitialZoomDone = true
         lifecycleScope.launch {
             // Wait until groups are loaded and the requested memory is present
-            val groups = commonViewModel.allGroups.first { it.any() }
-            val memory = groups.first { it.id == id }
+            val groups = commonViewModel.allGroups.first { list -> list.any { it.id == id } }
+            val memory = groups.find { it.id == id } ?: return@launch
 
             // Wait for filter to be loaded from DataStore
             viewModel.isDateFilterLoaded.first { it }
