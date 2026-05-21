@@ -52,6 +52,7 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -669,17 +670,24 @@ class AddMemoryGroupFragment : Fragment() {
         val builder = MaterialDatePicker.Builder.dateRangePicker()
             .setTitleText("Select Date Range")
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
-        val selection = androidx.core.util.Pair(
-            viewModel.startDateTime.toInstant().toEpochMilli(),
-            viewModel.endDateTime.toInstant().toEpochMilli()
-        )
+
+        // MaterialDatePicker expects UTC midnight millis
+        val startMillis = viewModel.startDateTime.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val endMillis = viewModel.endDateTime.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val selection = androidx.core.util.Pair(startMillis, endMillis)
+
         builder.setSelection(selection)
 
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { range ->
             if (range.first != null && range.second != null) {
-                viewModel.startDateTime = Instant.ofEpochMilli(range.first!!).atZone(ZoneId.systemDefault())
-                viewModel.endDateTime = Instant.ofEpochMilli(range.second!!).atZone(ZoneId.systemDefault())
+                // MaterialDatePicker returns UTC midnight millis.
+                // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
+                val newStartDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneOffset.UTC).toLocalDate()
+                val newEndDate = Instant.ofEpochMilli(range.second!!).atZone(ZoneOffset.UTC).toLocalDate()
+
+                viewModel.startDateTime = newStartDate.atStartOfDay(ZoneId.systemDefault())
+                viewModel.endDateTime = newEndDate.atStartOfDay(ZoneId.systemDefault())
                 updateDateTimeButtons()
             }
         }
@@ -690,11 +698,13 @@ class AddMemoryGroupFragment : Fragment() {
         val current = if (isStart) viewModel.startDateTime else viewModel.endDateTime
         val builder = MaterialDatePicker.Builder.datePicker()
             .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
-            .setSelection(current.toInstant().toEpochMilli())
+            .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
 
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { selection ->
-            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneId.systemDefault()).toLocalDate()
+            // MaterialDatePicker returns UTC midnight millis.
+            // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
+            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneOffset.UTC).toLocalDate()
             if (isStart) {
                 viewModel.startDateTime = newDate.atTime(viewModel.startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
                 if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.endDateTime = viewModel.startDateTime.plusHours(1)
