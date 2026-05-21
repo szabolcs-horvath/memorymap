@@ -23,6 +23,7 @@ import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.Locale
 import java.util.UUID
@@ -495,17 +496,27 @@ class MemoryFragmentEditAdapter(
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
         val start = item.startDate ?: ZonedDateTime.now()
         val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
-        val selection = androidx.core.util.Pair(start.toInstant().toEpochMilli(), end.toInstant().toEpochMilli())
+
+        // MaterialDatePicker expects UTC midnight millis
+        val startMillis = start.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val endMillis = end.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val selection = androidx.core.util.Pair(startMillis, endMillis)
+
         builder.setSelection(selection)
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { range ->
             if (range.first != null && range.second != null) {
+                // MaterialDatePicker returns UTC midnight millis.
+                // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
+                val newStartDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneOffset.UTC).toLocalDate()
+                val newEndDate = Instant.ofEpochMilli(range.second!!).atZone(ZoneOffset.UTC).toLocalDate()
+
                 // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
                 // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
                 val current = fragments[index]
                 fragments[index] = current.copy(
-                    startDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneId.systemDefault()),
-                    endDate = Instant.ofEpochMilli(range.second!!).atZone(ZoneId.systemDefault())
+                    startDate = newStartDate.atStartOfDay(ZoneId.systemDefault()),
+                    endDate = newEndDate.atStartOfDay(ZoneId.systemDefault())
                 )
                 updateFragmentsUI()
             }
@@ -522,11 +533,14 @@ class MemoryFragmentEditAdapter(
 
         val builder = MaterialDatePicker.Builder.datePicker()
             .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
-            .setSelection(current.toInstant().toEpochMilli())
+            .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
 
         val picker = builder.build()
         picker.addOnPositiveButtonClickListener { selection ->
-            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneId.systemDefault()).toLocalDate()
+            // MaterialDatePicker returns UTC midnight millis.
+            // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
+            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneOffset.UTC).toLocalDate()
+
             // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
             // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
             val currentItem = fragments[index]
