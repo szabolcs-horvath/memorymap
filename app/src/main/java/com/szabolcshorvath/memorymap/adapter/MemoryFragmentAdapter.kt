@@ -51,6 +51,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
     override fun onBindViewHolder(holder: MemoryFragmentViewHolder, position: Int) {
         holder.bind(position, itemCount)
         val binding = holder.binding
+        binding.fragmentCard.setPreventCornerOverlap(false)
         binding.fragmentCard.clipToOutline = true
         val fragment = items[position]
 

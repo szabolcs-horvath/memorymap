@@ -2,75 +2,90 @@
 <com.google.android.material.listitem.ListItemLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/overlayCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp">
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp">
 
     <com.google.android.material.listitem.ListItemCardView
+        android:id="@+id/overlayCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:clipToOutline="true"
+        android:padding="0dp"
         app:cardBackgroundColor="?attr/colorSurfaceBright"
-        app:cardElevation="0dp"
         app:cardPreventCornerOverlap="false"
+        app:contentPadding="0dp"
+        app:contentPaddingBottom="0dp"
+        app:contentPaddingLeft="0dp"
+        app:contentPaddingRight="0dp"
+        app:contentPaddingTop="0dp"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/itemBackground"
-            android:minHeight="40dp">
+            android:layout_height="wrap_content">
 
             <View
                 android:id="@+id/colorIndicator"
-                android:layout_width="4dp"
+                android:layout_width="8dp"
                 android:layout_height="0dp"
                 android:background="?attr/colorPrimary"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tv_memoryTitle"
-                android:layout_width="0dp"
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="8dp"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                app:layout_constraintBottom_toTopOf="@id/tv_memoryDate"
-                app:layout_constraintEnd_toStartOf="@id/bt_details"
-                app:layout_constraintStart_toEndOf="@id/colorIndicator"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintVertical_chainStyle="packed"
-                tools:text="Memory Name" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tv_memoryDate"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceLabelSmall"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="@id/tv_memoryTitle"
-                app:layout_constraintStart_toStartOf="@id/tv_memoryTitle"
-                app:layout_constraintTop_toBottomOf="@id/tv_memoryTitle"
-                tools:text="Jan 1, 2024" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/bt_details"
-                style="@style/Widget.Material3Expressive.Button.IconButton.Tonal"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                app:icon="@drawable/ic_chevron_right"
-                app:iconGravity="textStart"
-                app:iconSize="24dp"
+                android:minHeight="40dp"
+                android:paddingVertical="8dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="8dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintStart_toEndOf="@id/colorIndicator"
+                app:layout_constraintTop_toTopOf="parent">
 
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/tv_memoryTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    app:layout_constraintBottom_toTopOf="@id/tv_memoryDate"
+                    app:layout_constraintEnd_toStartOf="@id/bt_details"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintVertical_chainStyle="packed"
+                    tools:text="Memory Name" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/tv_memoryDate"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="@id/tv_memoryTitle"
+                    app:layout_constraintStart_toStartOf="@id/tv_memoryTitle"
+                    app:layout_constraintTop_toBottomOf="@id/tv_memoryTitle"
+                    tools:text="Jan 1, 2024" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/bt_details"
+                    style="@style/Widget.Material3Expressive.Button.IconButton.Tonal"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:minWidth="48dp"
+                    android:minHeight="48dp"
+                    app:icon="@drawable/ic_chevron_right"
+                    app:iconGravity="textStart"
+                    app:iconSize="24dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@+id/tv_memoryTitle"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </com.google.android.material.listitem.ListItemCardView>
 </com.google.android.material.listitem.ListItemLayout>
