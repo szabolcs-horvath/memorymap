@@ -117,10 +117,7 @@ class MemoryFragmentEditAdapter(
         return MemoryFragmentEditViewHolder(binding)
     }
 
-    override fun onCurrentListChanged(
-        previousList: MutableList<FragmentEditState>,
-        currentList: MutableList<FragmentEditState>
-    ) {
+    override fun onCurrentListChanged(previousList: List<FragmentEditState>, currentList: List<FragmentEditState>) {
         super.onCurrentListChanged(previousList, currentList)
         if (itemCount == 0) return
 
