@@ -80,6 +80,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
         ListItemViewHolder(binding.root) {
         fun bind(memoryGroup: MemoryGroup, sectionPosition: Int, sectionCount: Int) {
             bind(sectionPosition, sectionCount)
+            binding.timelineCard.setPreventCornerOverlap(false)
             binding.timelineCard.clipToOutline = true
             binding.tvMemoryTitle.text = memoryGroup.title
 
