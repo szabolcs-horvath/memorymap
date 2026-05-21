@@ -59,6 +59,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -263,11 +264,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         viewModel.isInitialZoomDone = true
         lifecycleScope.launch {
             // Wait until groups are loaded and the requested memory is present
-            val groups = commonViewModel.allGroups.first { list -> list.any { it.id == id } }
+            val groups = withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS) {
+                commonViewModel.allGroups.first { list -> list.any { it.id == id } }
+            } ?: return@launch
             val memory = groups.find { it.id == id } ?: return@launch
 
             // Wait for filter to be loaded from DataStore
-            viewModel.isDateFilterLoaded.first { it }
+            withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS) {
+                viewModel.isDateFilterLoaded.first { it }
+            } ?: return@launch
 
             viewModel.pendingSelectionId = id
             viewModel.pendingSelectionLat = lat
@@ -754,5 +759,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val ANIMATION_DURATION = 250L
         private const val MAP_CONTROLS_MARGIN_DP = 100
         private const val GOOGLE_LOGO_HEIGHT_DP = 25
+        private const val DATA_LOAD_TIMEOUT_MS = 1000L
     }
 }
