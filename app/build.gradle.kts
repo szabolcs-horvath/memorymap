@@ -160,6 +160,7 @@ dependencies {
     implementation(libs.firebase.perf)
 
     // Testing
+    testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
