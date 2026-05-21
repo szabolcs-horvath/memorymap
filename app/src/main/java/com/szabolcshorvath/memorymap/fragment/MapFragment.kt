@@ -759,6 +759,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val ANIMATION_DURATION = 250L
         private const val MAP_CONTROLS_MARGIN_DP = 100
         private const val GOOGLE_LOGO_HEIGHT_DP = 25
-        private const val DATA_LOAD_TIMEOUT_MS = 1000L
+        private const val DATA_LOAD_TIMEOUT_MS = 3000L
     }
 }
