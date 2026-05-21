@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.listitem.ListItemLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="4dp">
@@ -28,10 +29,10 @@
                     android:id="@+id/tv_backup_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Backup Name"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    tools:text="Backup Name" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -42,9 +43,9 @@
                         android:id="@+id/tv_backup_date"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="2023-10-27 10:00"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp" />
+                        android:textSize="12sp"
+                        tools:text="2023-10-27 10:00" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="wrap_content"
@@ -57,9 +58,9 @@
                         android:id="@+id/tv_backup_size"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="2.5 MB"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp" />
+                        android:textSize="12sp"
+                        tools:text="2.5 MB" />
 
                 </LinearLayout>
             </LinearLayout>
