@@ -581,16 +581,40 @@
                     android:layout_weight="1"
                     android:text="Clear" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/bt_save"
-                    style="@style/Widget.Material3Expressive.Button"
+                <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
                     android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:text="Save" />
-            </LinearLayout>
+                    android:layout_weight="1">
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/bt_save"
+                        style="@style/Widget.Material3Expressive.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Save"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <com.google.android.material.progressindicator.CircularProgressIndicator
+                        android:id="@+id/progress_save"
+                        style="@style/Widget.Material3Expressive.CircularProgressIndicator.Wavy"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:indeterminate="true"
+                        android:visibility="gone"
+                        app:indicatorColor="?attr/colorPrimary"
+                        app:indicatorSize="40dp"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>

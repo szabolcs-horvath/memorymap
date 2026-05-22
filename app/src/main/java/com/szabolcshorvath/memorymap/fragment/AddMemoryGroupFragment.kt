@@ -156,7 +156,7 @@ class AddMemoryGroupFragment : Fragment() {
             updateFragmentsUI()
 
             if (viewModel.editingMemoryId != null) {
-                binding.btSave.text = "Update Memory"
+                binding.btSave.text = "Update"
             }
 
             viewModel.isInitialized = true
@@ -237,7 +237,9 @@ class AddMemoryGroupFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.isSaving.collect { isSaving ->
-                        binding.btSave.isEnabled = !isSaving
+                        binding.btSave.visibility = if (isSaving) View.GONE else View.VISIBLE
+                        binding.btClear.isEnabled = !isSaving
+                        binding.progressSave.visibility = if (isSaving) View.VISIBLE else View.GONE
                     }
                 }
                 launch {
@@ -556,7 +558,7 @@ class AddMemoryGroupFragment : Fragment() {
                     viewModel.dateExpanded = true
                     updateDateTimeButtons()
                     updateColorUI()
-                    binding.btSave.text = "Update Memory"
+                    binding.btSave.text = "Update"
                 }
             }
         }
