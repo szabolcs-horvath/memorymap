@@ -25,7 +25,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/memory_map_icon"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/memory_map_icon_round"
+        android:roundIcon="@mipmap/memory_map_icon"
         android:supportsRtl="false"
         android:theme="@style/AppTheme">
 
