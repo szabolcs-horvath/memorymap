@@ -237,7 +237,7 @@ class AddMemoryGroupFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.isSaving.collect { isSaving ->
-                        binding.btSave.visibility = if (isSaving) View.GONE else View.VISIBLE
+                        binding.btSave.visibility = if (isSaving) View.INVISIBLE else View.VISIBLE
                         binding.btClear.isEnabled = !isSaving
                         binding.progressSave.visibility = if (isSaving) View.VISIBLE else View.GONE
                     }
