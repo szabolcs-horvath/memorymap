@@ -312,6 +312,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        googleMap.clear()
 
         googleMap.setOnMapLoadedCallback {
             mapLoadTrace?.stop()
@@ -495,9 +496,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         adjustCamera: Boolean
     ) {
         trace("map_fragment_update_ui_with_fresh_markers") {
-            googleMap.clear()
             clusterManager.clearItems()
-
             clusterManager.addItems(clusters)
             clusterManager.cluster()
 
