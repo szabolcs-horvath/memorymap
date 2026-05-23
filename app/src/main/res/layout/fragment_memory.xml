@@ -191,14 +191,15 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone">
+                        android:paddingBottom="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
 
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/rv_fragments"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:nestedScrollingEnabled="false"
-                            android:paddingBottom="8dp"
                             tools:itemCount="2"
                             tools:listitem="@layout/item_memory_fragment" />
                     </LinearLayout>
@@ -212,6 +213,14 @@
                 android:layout_marginVertical="16dp" />
 
             <com.google.android.material.textview.MaterialTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Media"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
+
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/tv_mediaWarning"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -222,14 +231,6 @@
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="#E65100"
                 android:visibility="gone" />
-
-            <com.google.android.material.textview.MaterialTextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="Media"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_media"

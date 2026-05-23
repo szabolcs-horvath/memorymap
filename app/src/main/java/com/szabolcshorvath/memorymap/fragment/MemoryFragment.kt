@@ -293,12 +293,10 @@ class MemoryFragment : Fragment() {
         }
         binding.tvLocation.text = locationString
 
-        binding.divider.setBackgroundColor(
-            ColorUtil.hsvToColor(
-                group.markerHue ?: DEFAULT_MARKER_HUE,
-                group.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-            )
+        binding.divider.dividerColor = ColorUtil.hsvToColor(
+            group.markerHue ?: DEFAULT_MARKER_HUE,
+            group.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+            group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
         )
 
         binding.btShowOnTimeline.setOnClickListener {
