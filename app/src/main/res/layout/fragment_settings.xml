@@ -77,7 +77,6 @@
                         android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                 </com.google.android.material.textfield.TextInputLayout>
-
             </LinearLayout>
 
             <!-- Color Presets Section -->
@@ -128,6 +127,7 @@
                             android:rotation="0"
                             android:src="@drawable/ic_chevron_right"
                             app:tint="?attr/colorOnSurfaceVariant" />
+
                     </LinearLayout>
 
                     <androidx.recyclerview.widget.RecyclerView
@@ -190,6 +190,7 @@
                                     android:textStyle="bold"
                                     tools:text="180" />
                             </com.google.android.material.card.MaterialCardView>
+
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
@@ -234,6 +235,7 @@
                                     android:textStyle="bold"
                                     tools:text="0.50" />
                             </com.google.android.material.card.MaterialCardView>
+
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
@@ -278,6 +280,7 @@
                                     android:textStyle="bold"
                                     tools:text="0.80" />
                             </com.google.android.material.card.MaterialCardView>
+
                         </LinearLayout>
 
                         <com.google.android.material.slider.Slider
@@ -329,21 +332,16 @@
                                 android:layout_height="wrap_content"
                                 android:enabled="false"
                                 android:text="Save" />
+
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.divider.MaterialDivider
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="8dp" />
-
             <com.google.android.material.textview.MaterialTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
+                android:layout_marginVertical="12dp"
                 android:text="Backup &amp; Restore (Google Drive)"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="20sp"
@@ -406,7 +404,7 @@
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/rv_backups"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         tools:itemCount="3"
                         tools:listitem="@layout/item_backup" />
 
@@ -422,7 +420,6 @@
                     app:backgroundTint="?attr/colorError" />
 
             </LinearLayout>
-
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
@@ -463,7 +460,7 @@
                 android:visibility="gone"
                 tools:text="Restoring database..."
                 tools:visibility="visible" />
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
-
 </androidx.constraintlayout.widget.ConstraintLayout>
