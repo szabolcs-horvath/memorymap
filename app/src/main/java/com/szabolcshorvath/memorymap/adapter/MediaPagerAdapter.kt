@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
 import coil3.request.crossfade
+import coil3.size.Size
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.databinding.ItemMediaFullBinding
@@ -29,14 +30,15 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
             if (isVideo) {
                 binding.fullImageView.visibility = View.VISIBLE
                 binding.fullImageView.isZoomable = false
-                binding.fullVideoView.visibility = View.VISIBLE
+                binding.fullVideoView.visibility = View.GONE
                 binding.playIcon.visibility = View.VISIBLE
 
                 binding.fullImageView.load(uri) {
+                    size(Size.ORIGINAL)
                     crossfade(true)
                     videoFrameMicros(0)
                     decoderFactory { result, options, _ ->
-                        VideoFrameDecoder(result.source, options)
+                        VideoFrameDecoder(result.source, options.copy(size = Size.ORIGINAL))
                     }
                 }
 
@@ -46,23 +48,24 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                     if (binding.fullVideoView.isPlaying) {
                         binding.fullVideoView.pause()
                         binding.playIcon.visibility = View.VISIBLE
-                        binding.fullImageView.visibility = View.VISIBLE
                     } else {
-                        binding.fullVideoView.start()
                         binding.playIcon.visibility = View.GONE
                         binding.fullImageView.visibility = View.GONE
+                        binding.fullVideoView.start()
                     }
                 }
 
                 binding.fullVideoView.setOnCompletionListener {
+                    binding.fullVideoView.visibility = View.GONE
                     binding.playIcon.visibility = View.VISIBLE
                     binding.fullImageView.visibility = View.VISIBLE
                 }
 
                 binding.playIcon.setOnClickListener {
-                    binding.fullVideoView.start()
                     binding.playIcon.visibility = View.GONE
                     binding.fullImageView.visibility = View.GONE
+                    binding.fullVideoView.visibility = View.VISIBLE
+                    binding.fullVideoView.start()
                 }
             } else {
                 binding.fullVideoView.visibility = View.GONE
@@ -80,6 +83,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
         fun resetState() {
             binding.fullImageView.setScale(1.0f, false)
             if (binding.fullVideoView.isVisible) {
+                binding.fullVideoView.visibility = View.GONE
                 binding.playIcon.visibility = View.VISIBLE
                 binding.fullImageView.visibility = View.VISIBLE
                 if (binding.fullVideoView.isPlaying) {
@@ -95,9 +99,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
-        val binding =
-            ItemMediaFullBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MediaViewHolder(binding)
+        return MediaViewHolder(ItemMediaFullBinding.inflate(LayoutInflater.from(parent.context), parent, false))
     }
 
     override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
@@ -105,10 +107,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
     }
 
     private class MediaPageDiffCallback : DiffUtil.ItemCallback<Pair<String, String>>() {
-        override fun areItemsTheSame(
-            oldItem: Pair<String, String>,
-            newItem: Pair<String, String>
-        ): Boolean = oldItem.first == newItem.first
+        override fun areItemsTheSame(oldItem: Pair<String, String>, newItem: Pair<String, String>): Boolean = oldItem.first == newItem.first
 
         override fun areContentsTheSame(oldItem: Pair<String, String>, newItem: Pair<String, String>): Boolean = oldItem == newItem
     }
