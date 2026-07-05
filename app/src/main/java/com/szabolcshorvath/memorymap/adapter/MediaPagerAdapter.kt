@@ -8,7 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.core.net.toUri
-import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -49,6 +48,8 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 binding.videoControlsContainer.visibility = View.VISIBLE
                 binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
 
+                binding.fullVideoView.setZOrderMediaOverlay(true)
+
                 binding.fullImageView.load(uri) {
                     size(Size.ORIGINAL)
                     crossfade(true)
@@ -66,6 +67,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
 
                 binding.fullVideoView.setOnInfoListener { _, what, _ ->
                     if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+                        binding.fullVideoView.alpha = 1f
                         binding.fullImageView.animate()
                             .alpha(0f)
                             .setDuration(THUMBNAIL_TO_VIDEO_TRANSITION_TIME)
@@ -99,9 +101,9 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                         binding.fullVideoView.pause()
                         binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
                     } else {
-                        if (binding.fullVideoView.isGone) {
+                        if (!binding.fullVideoView.isVisible) {
                             binding.fullVideoView.visibility = View.VISIBLE
-                            // Keep fullImageView VISIBLE as a curtain until rendering starts
+                            binding.fullVideoView.alpha = 0f
                             startProgressUpdates()
                         }
                         binding.fullVideoView.start()
@@ -132,8 +134,9 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
 
         fun resetState() {
             binding.fullImageView.setScale(1.0f, false)
-            if (binding.fullVideoView.isVisible || binding.videoControlsContainer.isVisible) {
+            if (binding.fullVideoView.visibility != View.GONE || binding.videoControlsContainer.isVisible) {
                 binding.fullVideoView.visibility = View.GONE
+                binding.fullVideoView.alpha = 1f
                 binding.fullImageView.visibility = View.VISIBLE
                 binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
                 if (binding.fullVideoView.isPlaying) {
