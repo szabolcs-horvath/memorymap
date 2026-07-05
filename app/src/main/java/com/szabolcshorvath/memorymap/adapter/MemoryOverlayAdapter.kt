@@ -26,7 +26,7 @@ class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
     override fun onBindViewHolder(holder: MemoryOverlayViewHolder, position: Int) {
         holder.bind(position, itemCount)
         val binding = holder.binding
-        binding.overlayCard.setPreventCornerOverlap(false)
+        binding.overlayCard.preventCornerOverlap = false
         binding.overlayCard.clipToOutline = true
         val item = getItem(position)
         bindTitle(binding, item)
