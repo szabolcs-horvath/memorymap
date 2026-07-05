@@ -40,10 +40,6 @@ class MediaViewerFragment : Fragment() {
             adapter.submitList(items)
             binding.mediaViewPager.setCurrentItem(startPosition, false)
         }
-
-        binding.btClose.setOnClickListener {
-            parentFragmentManager.popBackStack()
-        }
     }
 
     override fun onDestroyView() {
