@@ -63,6 +63,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.time.Duration.Companion.milliseconds
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -264,13 +265,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         viewModel.isInitialZoomDone = true
         lifecycleScope.launch {
             // Wait until groups are loaded and the requested memory is present
-            val groups = withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS) {
+            val groups = withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
                 commonViewModel.allGroups.first { list -> list.any { it.id == id } }
             } ?: return@launch
             val memory = groups.find { it.id == id } ?: return@launch
 
             // Wait for filter to be loaded from DataStore
-            withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS) {
+            withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
                 viewModel.isDateFilterLoaded.first { it }
             } ?: return@launch
 
