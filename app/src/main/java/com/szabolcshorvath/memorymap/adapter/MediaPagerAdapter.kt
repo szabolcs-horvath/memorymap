@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.adapter
 
+import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
@@ -63,6 +64,20 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                     binding.videoScrubber.max = mp.duration
                 }
 
+                binding.fullVideoView.setOnInfoListener { _, what, _ ->
+                    if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+                        binding.fullImageView.animate()
+                            .alpha(0f)
+                            .setDuration(THUMBNAIL_TO_VIDEO_TRANSITION_TIME)
+                            .withEndAction {
+                                binding.fullImageView.visibility = View.GONE
+                                binding.fullImageView.alpha = 1f
+                            }
+                            .start()
+                    }
+                    false
+                }
+
                 binding.videoScrubber.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                         if (fromUser) {
@@ -85,8 +100,8 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                         binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
                     } else {
                         if (binding.fullVideoView.isGone) {
-                            binding.fullImageView.visibility = View.GONE
                             binding.fullVideoView.visibility = View.VISIBLE
+                            // Keep fullImageView VISIBLE as a curtain until rendering starts
                             startProgressUpdates()
                         }
                         binding.fullVideoView.start()
@@ -164,5 +179,6 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
 
     companion object {
         private const val SEEKBAR_UPDATE_DELAY = 100L
+        private const val THUMBNAIL_TO_VIDEO_TRANSITION_TIME = 200L
     }
 }
