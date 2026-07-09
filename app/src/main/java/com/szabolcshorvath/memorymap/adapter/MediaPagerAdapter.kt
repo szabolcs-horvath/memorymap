@@ -39,10 +39,9 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
         }
 
         fun bind(item: Pair<String, String>) {
+            resetState()
             val uri = item.first.toUri()
             val isVideo = item.second == "VIDEO"
-
-            binding.fullImageView.setScale(1.0f, false)
 
             if (isVideo) {
                 binding.fullImageView.visibility = View.VISIBLE
@@ -175,7 +174,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
 
     override fun onViewDetachedFromWindow(holder: MediaViewHolder) {
         super.onViewDetachedFromWindow(holder)
-        holder.stopProgressUpdates()
+        holder.resetState()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
