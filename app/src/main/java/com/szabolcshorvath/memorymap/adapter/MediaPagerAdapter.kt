@@ -62,8 +62,6 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                     }
                 }
 
-                binding.fullVideoView.setVideoURI(uri)
-
                 binding.fullVideoView.setOnPreparedListener { mp ->
                     binding.videoScrubber.max = maxOf(mp.duration, 0)
                     binding.videoScrubber.progress = 0
@@ -83,6 +81,8 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                     }
                     false
                 }
+
+                binding.fullVideoView.setVideoURI(uri)
 
                 binding.videoScrubber.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -141,6 +141,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
 
         fun resetState() {
             binding.fullImageView.setScale(1.0f, false)
+            binding.videoScrubber.progress = 0
             if (binding.fullVideoView.visibility != View.GONE || binding.videoControlsContainer.isVisible) {
                 binding.fullVideoView.visibility = View.GONE
                 binding.fullVideoView.alpha = 1f
@@ -149,6 +150,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 if (binding.fullVideoView.isPlaying) {
                     binding.fullVideoView.pause()
                 }
+                binding.fullVideoView.seekTo(0)
             }
             stopProgressUpdates()
         }
