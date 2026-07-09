@@ -55,8 +55,8 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
 
                 binding.fullImageView.load(uri) {
                     size(Size.ORIGINAL)
-                    crossfade(true)
                     scale(Scale.FIT)
+                    crossfade(true)
                     videoFrameMicros(0)
                     decoderFactory { result, options, _ ->
                         VideoFrameDecoder(result.source, options)
