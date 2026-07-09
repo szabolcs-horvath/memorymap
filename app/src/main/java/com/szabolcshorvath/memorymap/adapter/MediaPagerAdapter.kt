@@ -140,6 +140,8 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
         }
 
         fun resetState() {
+            binding.fullImageView.animate().cancel()
+            binding.fullImageView.alpha = 1f
             binding.fullImageView.setScale(1.0f, false)
             binding.videoScrubber.progress = 0
             if (binding.fullVideoView.visibility != View.GONE || binding.videoControlsContainer.isVisible) {
