@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
 import coil3.request.crossfade
+import coil3.size.Scale
 import coil3.size.Size
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
@@ -42,11 +43,13 @@ class MediaAdapter(
                 binding.videoIcon.visibility = View.GONE
             } else {
                 binding.thumbnailImage.load(mediaItem.uri) {
+                    size(Size.ORIGINAL)
                     crossfade(true)
+                    scale(Scale.FILL)
                     if (mediaItem.type == MediaType.VIDEO) {
                         videoFrameMicros(0)
                         decoderFactory { result, options, _ ->
-                            VideoFrameDecoder(result.source, options.copy(size = Size.ORIGINAL))
+                            VideoFrameDecoder(result.source, options)
                         }
                     }
                     listener(
