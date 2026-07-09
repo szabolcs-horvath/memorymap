@@ -8,7 +8,6 @@ import androidx.recyclerview.widget.RecyclerView
 import coil3.load
 import coil3.request.crossfade
 import coil3.size.Scale
-import coil3.size.Size
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.data.MediaType
@@ -40,7 +39,6 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
             holder.binding.videoIcon.visibility = View.GONE
         } else {
             holder.binding.thumbnailImage.load(item.uri) {
-                size(Size.ORIGINAL)
                 crossfade(true)
                 scale(Scale.FILL)
                 if (item.type == MediaType.VIDEO) {
