@@ -99,7 +99,6 @@ class MemoryFragment : Fragment() {
         }
 
         // Each fragment instance observes its own specific ID through a private flow
-        val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch {
             if (viewModel.currentDeviceId == null) {
                 viewModel.currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())

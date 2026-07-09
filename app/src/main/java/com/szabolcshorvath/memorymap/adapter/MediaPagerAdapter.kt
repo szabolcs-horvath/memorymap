@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil3.load
 import coil3.request.crossfade
+import coil3.size.Scale
 import coil3.size.Size
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
@@ -26,8 +27,10 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
     class MediaViewHolder(private val binding: ItemMediaFullBinding) : RecyclerView.ViewHolder(binding.root) {
 
         private val handler = Handler(Looper.getMainLooper())
+        private var isUpdaterRunning = false
         private val updateProgressAction = object : Runnable {
             override fun run() {
+                if (!isUpdaterRunning) return
                 if (binding.fullVideoView.isPlaying) {
                     binding.videoScrubber.progress = binding.fullVideoView.currentPosition
                 }
@@ -53,16 +56,18 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 binding.fullImageView.load(uri) {
                     size(Size.ORIGINAL)
                     crossfade(true)
+                    scale(Scale.FIT)
                     videoFrameMicros(0)
                     decoderFactory { result, options, _ ->
-                        VideoFrameDecoder(result.source, options.copy(size = Size.ORIGINAL))
+                        VideoFrameDecoder(result.source, options)
                     }
                 }
 
                 binding.fullVideoView.setVideoURI(uri)
 
                 binding.fullVideoView.setOnPreparedListener { mp ->
-                    binding.videoScrubber.max = mp.duration
+                    binding.videoScrubber.max = maxOf(mp.duration, 0)
+                    binding.videoScrubber.progress = 0
                 }
 
                 binding.fullVideoView.setOnInfoListener { _, what, _ ->
@@ -100,14 +105,15 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                     if (binding.fullVideoView.isPlaying) {
                         binding.fullVideoView.pause()
                         binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
+                        stopProgressUpdates()
                     } else {
                         if (!binding.fullVideoView.isVisible) {
                             binding.fullVideoView.visibility = View.VISIBLE
                             binding.fullVideoView.alpha = 0f
-                            startProgressUpdates()
                         }
                         binding.fullVideoView.start()
                         binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_pause)
+                        startProgressUpdates()
                     }
                 }
 
@@ -117,6 +123,8 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                     binding.fullVideoView.visibility = View.GONE
                     binding.fullImageView.visibility = View.VISIBLE
                     binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
+                    binding.videoScrubber.progress = 0
+                    binding.fullVideoView.seekTo(0)
                     stopProgressUpdates()
                 }
             } else {
@@ -147,11 +155,15 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
         }
 
         fun startProgressUpdates() {
-            handler.removeCallbacks(updateProgressAction)
-            handler.post(updateProgressAction)
+            if (!isUpdaterRunning) {
+                isUpdaterRunning = true
+                handler.removeCallbacks(updateProgressAction)
+                handler.post(updateProgressAction)
+            }
         }
 
         fun stopProgressUpdates() {
+            isUpdaterRunning = false
             handler.removeCallbacks(updateProgressAction)
         }
     }
