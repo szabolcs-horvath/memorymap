@@ -8,6 +8,12 @@ plugins {
     alias(libs.plugins.detekt) apply false
 }
 
+buildscript {
+    dependencies {
+        classpath(libs.kotlin.gradle.plugin)
+    }
+}
+
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
 

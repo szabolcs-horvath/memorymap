@@ -683,7 +683,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 advancedMarkerOptions.icon(MarkerGenerator.singleColorPinConfigIcon(color))
                 advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             }
-            advancedMarkerOptions.title(cluster.getTitle())
+            advancedMarkerOptions.title(cluster.title)
         }
 
         @AddTrace(name = "markerable_cluster_renderer_on_cluster_item_updated", enabled = true)
@@ -711,7 +711,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 marker.setIcon(MarkerGenerator.singleColorPinConfigIcon(color))
                 marker.setAnchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             }
-            marker.title = cluster.getTitle()
+            marker.title = cluster.title
         }
 
         @AddTrace(name = "markerable_cluster_renderer_on_before_cluster_rendered", enabled = true)

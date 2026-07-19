@@ -38,16 +38,18 @@ interface Markerable {
         placeName != null && address != null && other.placeName != null && other.address != null
 
     data class MarkerableCluster(val items: List<Markerable>) : ClusterItem {
-        override fun getPosition(): LatLng {
-            val first = items.first()
-            return LatLng(first.latitude, first.longitude)
-        }
+        override val position: LatLng
+            get() {
+                val first = items.first()
+                return LatLng(first.latitude, first.longitude)
+            }
 
-        override fun getTitle(): String? = if (items.size == 1) items.first().title else "${items.size} Memories"
+        override val title: String?
+            get() = if (items.size == 1) items.first().title else "${items.size} Memories"
 
-        override fun getSnippet(): String? = null
+        override val snippet: String? = null
 
-        override fun getZIndex(): Float? = null
+        override val zIndex: Float? = null
     }
 
     class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
