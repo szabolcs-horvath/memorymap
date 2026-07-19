@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class TimelineFragment : Fragment() {
@@ -47,11 +49,15 @@ class TimelineFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
+        setupSearchBar()
+        setupScrollBehavior()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                commonViewModel.allGroups.collect { groups ->
-                    val sortedGroups = groups.sortedByDescending { it.startDate }
+                combine(commonViewModel.allGroups, viewModel.searchQuery) { groups, query ->
+                    viewModel.filterGroups(groups, query)
+                }.collect { filteredGroups ->
+                    val sortedGroups = filteredGroups.sortedByDescending { it.startDate }
                     adapter.updateData(sortedGroups) {
                         viewModel.pendingScrollMemoryId?.let { id ->
                             performScrollAndFlash(id)
@@ -67,6 +73,33 @@ class TimelineFragment : Fragment() {
                     }
                 }
             }
+        }
+    }
+
+    private fun setupSearchBar() {
+        binding.etSearch.doOnTextChanged { text, _, _, _ ->
+            viewModel.updateSearchQuery(text?.toString() ?: "")
+        }
+    }
+
+    private fun setupScrollBehavior() {
+        binding.rvTimeline.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
+                if (firstVisibleItemPosition > 0) {
+                    binding.fabTop.show()
+                } else {
+                    binding.fabTop.hide()
+                }
+            }
+        })
+
+        binding.fabTop.setOnClickListener {
+            binding.rvTimeline.stopScroll()
+            binding.rvTimeline.smoothScrollToPosition(0)
+            binding.appBar.setExpanded(true, true)
         }
     }
 
