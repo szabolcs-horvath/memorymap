@@ -86,7 +86,7 @@ class TimelineFragment : Fragment() {
         binding.rvTimeline.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
                 val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
                 if (firstVisibleItemPosition > 0) {
                     binding.fabTop.show()
