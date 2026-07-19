@@ -17,11 +17,12 @@ class TimelineFragmentViewModel : ViewModel() {
 
     fun filterGroups(groups: List<MemoryGroup>, query: String): List<MemoryGroup> {
         if (query.isBlank()) return groups
+        val normalizedQuery = query.trim()
         return groups.filter { group ->
-            group.title.contains(query, ignoreCase = true) ||
-                (group.description?.contains(query, ignoreCase = true) == true) ||
-                (group.placeName?.contains(query, ignoreCase = true) == true) ||
-                (group.address?.contains(query, ignoreCase = true) == true)
+            group.title.contains(normalizedQuery, ignoreCase = true) ||
+                (group.description?.contains(normalizedQuery, ignoreCase = true) == true) ||
+                (group.placeName?.contains(normalizedQuery, ignoreCase = true) == true) ||
+                (group.address?.contains(normalizedQuery, ignoreCase = true) == true)
         }
     }
 }
