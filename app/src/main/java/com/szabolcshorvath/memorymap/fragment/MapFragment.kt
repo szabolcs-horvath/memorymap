@@ -92,6 +92,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
+        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         ) {
@@ -115,13 +116,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onResume() {
         super.onResume()
-        if (hasLocationPermission()) {
+        val context = context
+        if (context != null && hasLocationPermission(context)) {
             enableMyLocation()
         }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val viewLifecycleOwner = viewLifecycleOwner
 
         mapLoadTrace = PerfUtil.startTrace("map_full_load")
 
@@ -185,7 +188,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun showQuickFilterMenu() {
         val binding = _binding ?: return
-        val popup = PopupMenu(requireContext(), binding.btQuickFilter)
+        val context = context ?: return
+        val popup = PopupMenu(context, binding.btQuickFilter)
         DateFilterOption.entries.forEach { option ->
             popup.menu.add(option.label)
         }
@@ -263,7 +267,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     fun focusOnMemory(lat: Double, lng: Double, id: Int) {
         viewModel.isInitialZoomDone = true
-        lifecycleScope.launch {
+        val viewLifecycleOwner = viewLifecycleOwner
+        viewLifecycleOwner.lifecycleScope.launch {
             // Wait until groups are loaded and the requested memory is present
             val groups = withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
                 commonViewModel.allGroups.first { list -> list.any { it.id == id } }
@@ -313,6 +318,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
         googleMap.clear()
 
         googleMap.setOnMapLoadedCallback {
@@ -341,8 +347,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         setGoogleMapPadding()
 
         val markerManager = MarkerManager(googleMap)
-        clusterManager = ClusterManager(requireContext(), googleMap, markerManager)
-        clusterManager.renderer = MarkerableClusterRenderer(requireContext(), googleMap, clusterManager)
+        val context = context ?: return
+        clusterManager = ClusterManager(context, googleMap, markerManager)
+        clusterManager.renderer = MarkerableClusterRenderer(context, googleMap, clusterManager)
 
         clusterManager.setOnClusterItemClickListener { locationItem ->
             showMemoryOverlay(locationItem.position.latitude, locationItem.position.longitude, locationItem.items)
@@ -448,7 +455,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     @SuppressWarnings("MissingPermission")
     private fun enableMyLocation() {
         val googleMap = mMap ?: return
-        if (hasLocationPermission()) {
+        val context = context ?: return
+        if (hasLocationPermission(context)) {
             googleMap.isMyLocationEnabled = true
             permissionDenied = false
             zoomToUserLocationIfPossible()
@@ -462,15 +470,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun hasLocationPermission(): Boolean =
-        checkPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) ||
-            checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+    private fun hasLocationPermission(context: Context): Boolean =
+        checkPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ||
+            checkPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
-        if (hasLocationPermission() && !viewModel.isInitialZoomDone) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+        val context = context
+        if (context != null && hasLocationPermission(context) && !viewModel.isInitialZoomDone) {
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
                 val googleMap = mMap
                 if (location != null && googleMap != null && !viewModel.isInitialZoomDone) {
                     viewModel.isInitialZoomDone = true

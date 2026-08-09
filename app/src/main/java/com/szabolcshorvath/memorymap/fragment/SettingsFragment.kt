@@ -74,16 +74,19 @@ class SettingsFragment : Fragment() {
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
+        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
         val allGranted = permissions.entries.all { it.value }
         if (allGranted) {
             viewModel.pendingRestoreFile?.let { executeRestore(it) }
         } else {
-            Toast.makeText(
-                requireContext(),
-                "Permissions are needed to link media files after restore. " +
-                    "Please retry the restore, and grant permissions to all images and videos needed!",
-                Toast.LENGTH_LONG
-            ).show()
+            context?.let {
+                Toast.makeText(
+                    it,
+                    "Permissions are needed to link media files after restore. " +
+                        "Please retry the restore, and grant permissions to all images and videos needed!",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
             return@registerForActivityResult
         }
         viewModel.pendingRestoreFile = null
@@ -93,7 +96,9 @@ class SettingsFragment : Fragment() {
         startAuthorizationIntent =
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { activityResult ->
                 try {
-                    val authorizationResult = Identity.getAuthorizationClient(requireContext()).getAuthorizationResultFromIntent(activityResult.data)
+                    val context = context ?: return@registerForActivityResult
+                    if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
+                    val authorizationResult = Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(activityResult.data)
                     successfulAuthorization(authorizationResult.grantedScopes)
                 } catch (e: ApiException) {
                     Log.e(TAG, "Authorization failed", e)
@@ -108,8 +113,10 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        googleAuthManager = GoogleAuthManager(requireContext())
-        backupManager = BackupManager(requireContext())
+        val viewLifecycleOwner = viewLifecycleOwner
+        val context = context
+        googleAuthManager = context?.let { GoogleAuthManager(it) } ?: return
+        backupManager = BackupManager(context)
         setupRecyclerViews()
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
@@ -142,7 +149,9 @@ class SettingsFragment : Fragment() {
                             result.message?.let { showBackupStatus(it, false) }
                             commonViewModel.refreshDatabase()
                             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                                LocalMediaUtil.verifyAndFixMediaItems(requireContext(), commonViewModel.getMemoryGroupDao())
+                                if (context != null) {
+                                    LocalMediaUtil.verifyAndFixMediaItems(context, commonViewModel.getMemoryGroupDao())
+                                }
                             }
                             (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
                         }
@@ -204,7 +213,7 @@ class SettingsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                requireContext().dataStore.data
+                context.dataStore.data
                     .map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }
                     .distinctUntilChanged()
                     .collect { email ->
@@ -216,8 +225,10 @@ class SettingsFragment : Fragment() {
 
     private fun setupShowFragmentsSwitch() {
         binding.switchShowFragments.isEnabled = false
+        val viewLifecycleOwner = viewLifecycleOwner
+        val context = context ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            val showFragments = requireContext().dataStore.data
+            val showFragments = context.dataStore.data
                 .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
                 .firstOrNull() ?: false
 
@@ -225,7 +236,7 @@ class SettingsFragment : Fragment() {
                 isChecked = showFragments
                 setOnCheckedChangeListener { _, isChecked ->
                     viewLifecycleOwner.lifecycleScope.launch {
-                        requireContext().dataStore.edit { preferences ->
+                        context.dataStore.edit { preferences ->
                             preferences[PreferencesKeys.SHOW_FRAGMENT_MARKERS] = isChecked
                         }
                     }
@@ -237,8 +248,10 @@ class SettingsFragment : Fragment() {
 
     private fun setupClusterMarkersSwitch() {
         binding.switchClusterMarkers.isEnabled = false
+        val viewLifecycleOwner = viewLifecycleOwner
+        val context = context ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            val clusterMarkers = requireContext().dataStore.data
+            val clusterMarkers = context.dataStore.data
                 .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
                 .firstOrNull() ?: true
 
@@ -246,7 +259,7 @@ class SettingsFragment : Fragment() {
                 isChecked = clusterMarkers
                 setOnCheckedChangeListener { _, isChecked ->
                     viewLifecycleOwner.lifecycleScope.launch {
-                        requireContext().dataStore.edit { preferences ->
+                        context.dataStore.edit { preferences ->
                             preferences[PreferencesKeys.MARKER_CLUSTERING_ENABLED] = isChecked
                         }
                     }
@@ -258,18 +271,22 @@ class SettingsFragment : Fragment() {
 
     private fun setupDefaultFilterDropdown() {
         val options = DateFilterOption.allLabels()
-        val adapter = ArrayAdapter(requireContext(), R.layout.item_dropdown, options)
+        val adapter = context?.let { ArrayAdapter(it, R.layout.item_dropdown, options) } ?: return
         binding.spinnerDefaultFilter.setAdapter(adapter)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            val currentFilter = DateFilterOption.getFromDataStore(requireContext().dataStore)
-            _binding?.spinnerDefaultFilter?.setText(currentFilter.label, false)
+        val viewLifecycleOwner = viewLifecycleOwner
+        val context = context
+        if (context != null) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val currentFilter = DateFilterOption.getFromDataStore(context.dataStore)
+                _binding?.spinnerDefaultFilter?.setText(currentFilter.label, false)
+            }
         }
 
         binding.spinnerDefaultFilter.setOnItemClickListener { _, _, position, _ ->
             val selectedOption = options[position]
             viewLifecycleOwner.lifecycleScope.launch {
-                requireContext().dataStore.edit { preferences ->
+                context?.dataStore?.edit { preferences ->
                     preferences[PreferencesKeys.DEFAULT_DATE_FILTER] = DateFilterOption.ofLabel(selectedOption).name
                 }
             }
@@ -282,6 +299,7 @@ class SettingsFragment : Fragment() {
             updateColorPresetsUI()
         }
 
+        val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 commonViewModel.allPresets.collect { presets ->
@@ -347,6 +365,7 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btSavePresets.setOnClickListener {
+            val viewLifecycleOwner = viewLifecycleOwner
             viewModel.editingPreset?.let { preset ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     commonViewModel.getHSVPresetDao().insertPresets(listOf(preset))
@@ -354,7 +373,7 @@ class SettingsFragment : Fragment() {
                         viewModel.originalPreset = preset.copy()
                         viewModel.editingPreset = preset.copy()
                         checkForChanges()
-                        Toast.makeText(requireContext(), "Preset saved", Toast.LENGTH_SHORT).show()
+                        context?.let { Toast.makeText(it, "Preset saved", Toast.LENGTH_SHORT).show() }
                         backupManager.triggerAutomaticBackup(commonViewModel.getDb())
                     }
                 }
@@ -385,6 +404,7 @@ class SettingsFragment : Fragment() {
         val brightness = binding.sliderBrightness.value
 
         val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
+        val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val newPreset = HSVPreset(
                 hue = hue,
@@ -404,8 +424,9 @@ class SettingsFragment : Fragment() {
     }
 
     private fun showDeletePresetConfirmation() {
+        val context = context ?: return
         val presetToDelete = viewModel.editingPreset ?: return
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(context)
             .setTitle("Delete Preset")
             .setMessage("Are you sure you want to delete this color preset?")
             .setPositiveButton("Delete") { _, _ ->
@@ -416,6 +437,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun deletePreset(preset: HSVPreset) {
+        val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             commonViewModel.getHSVPresetDao().deletePreset(preset)
             withContext(Dispatchers.Main) {
@@ -423,7 +445,7 @@ class SettingsFragment : Fragment() {
                     clearPresetSelection()
                     updateVisualsFromSliders()
                 }
-                Toast.makeText(requireContext(), "Preset deleted", Toast.LENGTH_SHORT).show()
+                context?.let { Toast.makeText(it, "Preset deleted", Toast.LENGTH_SHORT).show() }
                 backupManager.triggerAutomaticBackup(commonViewModel.getDb())
             }
         }
@@ -445,8 +467,9 @@ class SettingsFragment : Fragment() {
 
     private fun smoothScrollToPresetIndex(index: Int) {
         val binding = _binding ?: return
+        val context = context ?: return
         val smoothScroller =
-            object : LinearSmoothScroller(requireContext()) {
+            object : LinearSmoothScroller(context) {
                 override fun getHorizontalSnapPreference(): Int = SNAP_TO_END
             }
         smoothScroller.targetPosition = index
@@ -542,20 +565,24 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupSignInAndOutButtons() {
+        val viewLifecycleOwner = viewLifecycleOwner
         binding.btGoogleSignIn.setOnClickListener {
             setLoadingState(true, "Signing in...")
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     googleAuthManager.signIn { email ->
                         viewLifecycleOwner.lifecycleScope.launch {
-                            requireContext().dataStore.updateData {
-                                it.toMutablePreferences().also { preferences ->
-                                    preferences[PreferencesKeys.USER_EMAIL_KEY] = email
+                            val context = context
+                            if (context != null) {
+                                context.dataStore.updateData {
+                                    it.toMutablePreferences().also { preferences ->
+                                        preferences[PreferencesKeys.USER_EMAIL_KEY] = email
+                                    }
                                 }
+                                updateUI(email)
+                                requestDriveAuthorization(false)
+                                setLoadingState(false)
                             }
-                            updateUI(email)
-                            requestDriveAuthorization(false)
-                            setLoadingState(false)
                         }
                     }
                 } catch (e: Exception) {
@@ -563,7 +590,9 @@ class SettingsFragment : Fragment() {
                         is NoCredentialException,
                         is GetCredentialException -> {
                             Log.w(TAG, "Sign in failed", e)
-                            Toast.makeText(requireContext(), "Sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
+                            context?.let {
+                                Toast.makeText(it, "Sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
                         }
 
                         is CancellationException -> {
@@ -573,11 +602,13 @@ class SettingsFragment : Fragment() {
 
                         else -> {
                             Log.e(TAG, "Unexpected sign in error", e)
-                            Toast.makeText(
-                                requireContext(),
-                                "Unexpected sign in error: ${e.message}",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            context?.let {
+                                Toast.makeText(
+                                    it,
+                                    "Unexpected sign in error: ${e.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                         }
                     }
                     setLoadingState(false)
@@ -590,7 +621,7 @@ class SettingsFragment : Fragment() {
                 googleAuthManager.signOut()
                 viewModel.backupsLoadedForEmail = null
                 updateUI(null)
-                requireContext().dataStore.edit { preferences ->
+                context?.dataStore?.edit { preferences ->
                     preferences.remove(PreferencesKeys.USER_EMAIL_KEY)
                 }
             }
@@ -606,7 +637,8 @@ class SettingsFragment : Fragment() {
         })
 
         _binding?.rvBackups?.apply {
-            layoutManager = LinearLayoutManager(requireContext())
+            val context = context ?: return@apply
+            layoutManager = LinearLayoutManager(context)
             adapter = backupAdapter
         }
 
@@ -791,6 +823,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun loadBackups(email: String) {
+        val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 setLoadingState(true, "Loading backups...", hideBackupStatus = false)
@@ -810,15 +843,17 @@ class SettingsFragment : Fragment() {
     }
 
     private fun requestDriveAuthorization(isBackup: Boolean) {
+        val context = context ?: return
         viewModel.isBackupRequested = isBackup
         val requestedScopes: List<Scope> = listOf(Scope(DriveScopes.DRIVE_FILE))
-        Identity.getAuthorizationClient(requireContext())
+        Identity.getAuthorizationClient(context)
             .authorize(
                 AuthorizationRequest.builder()
                     .setRequestedScopes(requestedScopes)
                     .build()
             )
             .addOnSuccessListener { authorizationResult ->
+                if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
                 if (authorizationResult.hasResolution()) {
                     val pendingIntent = authorizationResult.pendingIntent
                     startAuthorizationIntent.launch(
@@ -829,6 +864,7 @@ class SettingsFragment : Fragment() {
                 }
             }
             .addOnFailureListener { e ->
+                if (viewLifecycleOwnerLiveData.value == null) return@addOnFailureListener
                 Log.e(TAG, "Failed to authorize", e)
                 setLoadingState(false)
                 viewModel.isBackupRequested = false
@@ -836,8 +872,10 @@ class SettingsFragment : Fragment() {
     }
 
     private fun successfulAuthorization(scopes: List<String>) {
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        val context = context ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            val email = requireContext().dataStore.data.map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull()
+            val email = context.dataStore.data.map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull()
                 ?: (_binding?.tvAccountName?.tag as? String)
 
             if (email == null) {
@@ -857,7 +895,8 @@ class SettingsFragment : Fragment() {
     }
 
     private fun onRestoreBackup(file: DriveFile) {
-        MaterialAlertDialogBuilder(requireContext())
+        val context = context ?: return
+        MaterialAlertDialogBuilder(context)
             .setTitle("Restore Backup")
             .setMessage(
                 "Are you sure you want to restore from the backup '${file.name}'?\n\nThis action will overwrite all your current data and it cannot be undone!"
@@ -876,16 +915,18 @@ class SettingsFragment : Fragment() {
     }
 
     private fun hasMediaPermissions(): Boolean {
+        val context = context ?: return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            checkPermission(requireContext(), Manifest.permission.READ_MEDIA_IMAGES) &&
-                checkPermission(requireContext(), Manifest.permission.READ_MEDIA_VIDEO)
+            checkPermission(context, Manifest.permission.READ_MEDIA_IMAGES) &&
+                checkPermission(context, Manifest.permission.READ_MEDIA_VIDEO)
         } else {
-            checkPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
+            checkPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
 
     private fun showPermissionInfoDialog(file: DriveFile) {
-        MaterialAlertDialogBuilder(requireContext())
+        val context = context ?: return
+        MaterialAlertDialogBuilder(context)
             .setTitle("Media Access Required")
             .setMessage(
                 "To link your photos and videos correctly after the restore, the app needs access to your entire media library.\n\n" +
