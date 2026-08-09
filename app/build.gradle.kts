@@ -132,6 +132,7 @@ dependencies {
 
     // Room
     implementation(libs.androidx.room.ktx)
+    debugImplementation(libs.leakcanary)
     ksp(libs.androidx.room.compiler)
 
     // Media
