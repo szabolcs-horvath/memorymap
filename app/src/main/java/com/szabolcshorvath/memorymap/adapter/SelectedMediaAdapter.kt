@@ -39,8 +39,9 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
             holder.binding.videoIcon.visibility = View.GONE
         } else {
             holder.binding.thumbnailImage.load(item.uri) {
-                crossfade(true)
+                // Media thumbnails on AddMemoryGroupFragment
                 scale(Scale.FILL)
+                crossfade(true)
                 if (item.type == MediaType.VIDEO) {
                     videoFrameMicros(0)
                     decoderFactory { result, options, _ ->

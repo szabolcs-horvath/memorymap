@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.RecyclerView
 import coil3.load
 import coil3.request.crossfade
 import coil3.size.Scale
-import coil3.size.Size
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.databinding.ItemMediaFullBinding
@@ -52,8 +51,14 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
 
                 binding.fullVideoView.setZOrderMediaOverlay(true)
 
+                val displayMetrics = binding.root.context.resources.displayMetrics
+                val screenWidth = displayMetrics.widthPixels
+                val screenHeight = displayMetrics.heightPixels
+
                 binding.fullImageView.load(uri) {
-                    size(Size.ORIGINAL)
+                    // Full size video preview image
+                    memoryCacheKey("${uri}_full")
+                    size(screenWidth, screenHeight)
                     scale(Scale.FIT)
                     crossfade(true)
                     videoFrameMicros(0)
@@ -132,7 +137,15 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 binding.fullImageView.isZoomable = true
                 binding.videoControlsContainer.visibility = View.GONE
 
+                val displayMetrics = binding.root.context.resources.displayMetrics
+                val screenWidth = displayMetrics.widthPixels
+                val screenHeight = displayMetrics.heightPixels
+
                 binding.fullImageView.load(uri) {
+                    // Full size image view
+                    memoryCacheKey("${uri}_full")
+                    size(screenWidth, screenHeight)
+                    scale(Scale.FIT)
                     crossfade(true)
                 }
                 binding.root.setOnClickListener(null)
