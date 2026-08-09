@@ -132,7 +132,6 @@ dependencies {
 
     // Room
     implementation(libs.androidx.room.ktx)
-    debugImplementation(libs.leakcanary)
     ksp(libs.androidx.room.compiler)
 
     // Media
@@ -167,4 +166,7 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Debug tools
+    debugImplementation(libs.leakcanary)
 }
