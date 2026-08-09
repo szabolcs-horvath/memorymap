@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.Manifest
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -31,6 +32,7 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.api.services.drive.DriveScopes
 import com.szabolcshorvath.memorymap.R
@@ -119,9 +121,9 @@ class SettingsFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.operationStatus.collect { status ->
                     if (status != null) {
-                        setLoadingState(true, status)
+                        setLoadingState(true, status, hideBackupStatus = true)
                     } else {
-                        setLoadingState(false)
+                        setLoadingState(false, hideBackupStatus = false)
                     }
                 }
             }
@@ -132,12 +134,12 @@ class SettingsFragment : Fragment() {
                 viewModel.backupRestoreOperationResult.collect { result ->
                     when (result) {
                         is SettingsFragmentViewModel.BackupRestoreOperationResult.Success -> {
-                            result.message?.let { Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show() }
+                            result.message?.let { showBackupStatus(it, false) }
                             (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
                         }
 
                         is SettingsFragmentViewModel.BackupRestoreOperationResult.RestoreSuccess -> {
-                            result.message?.let { Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show() }
+                            result.message?.let { showBackupStatus(it, false) }
                             commonViewModel.refreshDatabase()
                             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                                 LocalMediaUtil.verifyAndFixMediaItems(requireContext(), commonViewModel.getMemoryGroupDao())
@@ -146,7 +148,7 @@ class SettingsFragment : Fragment() {
                         }
 
                         is SettingsFragmentViewModel.BackupRestoreOperationResult.Error -> {
-                            Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
+                            showBackupStatus(result.message, true)
                         }
                     }
                 }
@@ -169,7 +171,7 @@ class SettingsFragment : Fragment() {
                 BackupManager.backupEvents.collect { event ->
                     when (event) {
                         BackupManager.BackupEvent.STARTED -> {
-                            setLoadingState(true, "Automatic backup in progress...")
+                            setLoadingState(true, "Automatic backup in progress...", hideBackupStatus = false)
                         }
 
                         BackupManager.BackupEvent.FINISHED -> {
@@ -700,7 +702,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun setLoadingState(isLoading: Boolean, status: String? = null) {
+    private fun setLoadingState(isLoading: Boolean, status: String? = null, hideBackupStatus: Boolean = true) {
         val binding = _binding ?: return
         val enabled = !isLoading
         with(binding) {
@@ -722,6 +724,10 @@ class SettingsFragment : Fragment() {
                 btUndoPresets.isEnabled = false
             }
 
+            if (isLoading && hideBackupStatus) {
+                updateViewVisibilityWithAnimation(cardBackupStatus, false)
+            }
+
             val showOverlay = isLoading && !swipeRefresh.isRefreshing
 
             if (showOverlay) {
@@ -738,6 +744,20 @@ class SettingsFragment : Fragment() {
                     tvStatus.isVisible = false
                 }
             }
+        }
+    }
+
+    private fun showBackupStatus(message: String, isError: Boolean) {
+        val binding = _binding ?: return
+        with(binding) {
+            tvBackupStatusDetails.text = message
+            val color = MaterialColors.getColor(
+                binding.root,
+                if (isError) androidx.appcompat.R.attr.colorError else R.attr.colorSuccess,
+                if (isError) Color.RED else Color.GREEN
+            )
+            cardBackupStatus.setStrokeColor(ColorStateList.valueOf(color))
+            updateViewVisibilityWithAnimation(cardBackupStatus, true)
         }
     }
 
@@ -773,7 +793,7 @@ class SettingsFragment : Fragment() {
     private fun loadBackups(email: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                setLoadingState(true, "Loading backups...")
+                setLoadingState(true, "Loading backups...", hideBackupStatus = false)
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val backups = backupManager.listBackups(credential)
