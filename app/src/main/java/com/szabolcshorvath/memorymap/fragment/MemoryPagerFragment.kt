@@ -39,6 +39,7 @@ class MemoryPagerFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val viewLifecycleOwner = viewLifecycleOwner
 
         pagerAdapter = MemoryPagerAdapter(this)
         binding.memoryViewPager.adapter = pagerAdapter

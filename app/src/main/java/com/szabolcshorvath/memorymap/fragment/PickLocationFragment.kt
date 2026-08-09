@@ -51,6 +51,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
+        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         ) {
@@ -70,7 +71,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         val prediction = PlaceAutocomplete.getPredictionFromIntent(intent)!!
                         val requestedPlaceId = prediction.placeId
                         val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
-                        val placesClient = Places.createClient(requireContext())
+                        val context = context ?: return@registerForActivityResult
+                        val placesClient = Places.createClient(context)
+                        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
 
                         // Invalidate any ongoing map/POI selection or other autocomplete requests
                         viewModel.activeAutocompletePlaceId = requestedPlaceId
@@ -164,8 +167,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun startAutocomplete() {
+        val context = context ?: return
         val sessionToken = AutocompleteSessionToken.newInstance()
-        val intent = PlaceAutocomplete.createIntent(requireContext()) {
+        val intent = PlaceAutocomplete.createIntent(context) {
             setAutocompleteSessionToken(sessionToken)
         }
         autocompleteLauncher.launch(intent)
@@ -173,6 +177,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
 
         googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         googleMap.uiSettings.isRotateGesturesEnabled = false
@@ -197,23 +202,26 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             updateSelectedLocation(poiLatLng, isLoading = true)
             googleMap.animateCamera(CameraUpdateFactory.newLatLng(poiLatLng))
 
-            val placesClient = Places.createClient(requireContext())
-            viewLifecycleOwner.lifecycleScope.launch {
-                try {
-                    val response = placesClient.awaitFetchPlace(placeId, placeFields)
-                    val place = response.place
+            val context = context
+            if (context != null) {
+                val placesClient = Places.createClient(context)
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val response = placesClient.awaitFetchPlace(placeId, placeFields)
+                        val place = response.place
 
-                    // Race condition check: Only update if the user hasn't clicked elsewhere
-                    if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
-                        viewModel.selectedPlaceName = place.displayName
-                        viewModel.selectedAddress = place.formattedAddress
-                        updateSelectedLocation(poiLatLng, viewModel.selectedPlaceName)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error fetching place details for POI: ${e.message}", e)
-                    // Fallback to reverse geocoding for address if fetch fails
-                    if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
-                        reverseGeocode(poiLatLng)
+                        // Race condition check: Only update if the user hasn't clicked elsewhere
+                        if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
+                            viewModel.selectedPlaceName = place.displayName
+                            viewModel.selectedAddress = place.formattedAddress
+                            updateSelectedLocation(poiLatLng, viewModel.selectedPlaceName)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error fetching place details for POI: ${e.message}", e)
+                        // Fallback to reverse geocoding for address if fetch fails
+                        if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
+                            reverseGeocode(poiLatLng)
+                        }
                     }
                 }
             }
@@ -238,6 +246,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         // Keep a reference to the coordinates for this specific request
         val requestLatLng = latLng
         val context = context ?: return
+        val viewLifecycleOwner = viewLifecycleOwner
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -331,7 +340,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val map = mMap ?: return
         map.clear()
         val markerTitle = when {
-            isLoading -> "Loading details…"
+            isLoading -> "Loading details..."
             title != null -> title
             else -> "Selected Location"
         }
@@ -348,9 +357,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun setConfirmButtonLoading(isLoading: Boolean) {
         val binding = _binding ?: return
+        val context = context ?: return
         binding.btConfirm.isEnabled = !isLoading
         binding.btConfirm.text = if (isLoading) {
-            "Fetching location…"
+            "Fetching location..."
         } else {
             "Confirm Location"
         }
@@ -358,12 +368,13 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         // Use solid colors to avoid transparency over the map when disabled
         val colorRes = if (isLoading) R.color.md_theme_surfaceVariant else R.color.md_theme_primary
         binding.btConfirm.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(requireContext(), colorRes)
+            ContextCompat.getColor(context, colorRes)
         )
     }
 
     private fun requestLocationPermissionIfNeeded() {
-        if (!hasLocationPermission() && !viewModel.permissionDenied) {
+        val context = context
+        if (context != null && !hasLocationPermission(context) && !viewModel.permissionDenied) {
             locationPermissionRequest.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -373,14 +384,15 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    private fun hasLocationPermission(): Boolean =
-        checkPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) ||
-            checkPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+    private fun hasLocationPermission(context: Context): Boolean =
+        checkPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ||
+            checkPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressLint("MissingPermission")
     private fun enableMyLocation() {
         val map = mMap
-        if (hasLocationPermission() && map != null) {
+        val context = context
+        if (context != null && hasLocationPermission(context) && map != null) {
             map.isMyLocationEnabled = true
             viewModel.permissionDenied = false
         }
@@ -389,10 +401,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
         viewModel.activeAutocompletePlaceId = null
-        if (hasLocationPermission()) {
-            val context = context ?: return
+        val context = context
+        if (context != null && hasLocationPermission(context)) {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
                 val map = mMap
                 if (location != null && map != null) {
                     val latLng = LatLng(location.latitude, location.longitude)

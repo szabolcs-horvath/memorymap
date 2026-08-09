@@ -81,7 +81,9 @@ class MemoryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        backupManager = BackupManager(requireContext())
+        val viewLifecycleOwner = viewLifecycleOwner
+        val context = context ?: return
+        backupManager = BackupManager(context)
 
         setupRecyclerViews()
 
@@ -101,7 +103,7 @@ class MemoryFragment : Fragment() {
         // Each fragment instance observes its own specific ID through a private flow
         viewLifecycleOwner.lifecycleScope.launch {
             if (viewModel.currentDeviceId == null) {
-                viewModel.currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
+                viewModel.currentDeviceId = InstallationIdentifier.getInstallationIdentifier(context)
             }
             mediaAdapter.updateCurrentDeviceId(viewModel.currentDeviceId)
 
@@ -138,13 +140,13 @@ class MemoryFragment : Fragment() {
                 binding.rvMedia.scrollToPosition(positionStart)
             }
         })
-        binding.rvMedia.layoutManager = GridLayoutManager(requireContext(), MEDIA_GRID_SPAN_COUNT)
+        binding.rvMedia.layoutManager = GridLayoutManager(context, MEDIA_GRID_SPAN_COUNT)
         binding.rvMedia.adapter = mediaAdapter
 
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
         }
-        binding.rvFragments.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvFragments.layoutManager = LinearLayoutManager(context)
         binding.rvFragments.adapter = fragmentsAdapter
 
         setupMediaTouchHelper()
@@ -365,7 +367,8 @@ class MemoryFragment : Fragment() {
     }
 
     private fun showDeleteConfirmationDialog() {
-        AlertDialog.Builder(requireContext())
+        val context = context ?: return
+        AlertDialog.Builder(context)
             .setTitle("Delete Memory")
             .setMessage("Are you sure you want to delete this memory?")
             .setPositiveButton("Delete") { _, _ ->
@@ -376,6 +379,7 @@ class MemoryFragment : Fragment() {
     }
 
     private fun deleteMemory() {
+        val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val groupWithMedia = commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) ?: return@launch
             commonViewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)

@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
-import android.os.RemoteException
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -85,9 +84,11 @@ class AddMemoryGroupFragment : Fragment() {
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
             uris.let {
-                val contentResolver = requireContext().contentResolver
+                val context = context ?: return@registerForActivityResult
+                val contentResolver = context.contentResolver
+                val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
                 viewLifecycleOwner.lifecycleScope.launch {
-                    val deviceId = viewModel.currentDeviceId ?: InstallationIdentifier.getInstallationIdentifier(requireContext())
+                    val deviceId = viewModel.currentDeviceId ?: InstallationIdentifier.getInstallationIdentifier(context)
                     val newItems = it.mapNotNull { uri ->
                         if (viewModel.selectedMedia.any { m -> m.uri == uri }) {
                             null
@@ -104,7 +105,7 @@ class AddMemoryGroupFragment : Fragment() {
                 it.forEach { uri ->
                     try {
                         contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    } catch (e: RemoteException) {
+                    } catch (e: Exception) {
                         Log.e(TAG, "Error taking persistable permission for $uri", e)
                     }
                 }
@@ -134,7 +135,9 @@ class AddMemoryGroupFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        backupManager = BackupManager(requireContext())
+        val viewLifecycleOwner = viewLifecycleOwner
+        val context = context ?: return
+        backupManager = BackupManager(context)
 
         setupRecyclerViews()
 
@@ -143,7 +146,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             if (viewModel.currentDeviceId == null) {
-                viewModel.currentDeviceId = InstallationIdentifier.getInstallationIdentifier(requireContext())
+                viewModel.currentDeviceId = InstallationIdentifier.getInstallationIdentifier(context)
             }
             mediaAdapter.updateCurrentDeviceId(viewModel.currentDeviceId)
 
@@ -227,7 +230,7 @@ class AddMemoryGroupFragment : Fragment() {
                 require(viewModel.lat != null && viewModel.lng != null) { "The location must be specified!" }
                 require(viewModel.fragments.all { it.lat != null && it.lng != null }) { "The location must be specified for all fragments!" }
             } catch (e: IllegalArgumentException) {
-                Toast.makeText(requireContext(), e.message, Toast.LENGTH_SHORT).show()
+                context?.let { Toast.makeText(it, e.message, Toast.LENGTH_SHORT).show() }
                 return@setOnClickListener
             }
             viewModel.saveMemoryGroup(commonViewModel.getDb(), backupManager)
@@ -244,6 +247,7 @@ class AddMemoryGroupFragment : Fragment() {
                 }
                 launch {
                     viewModel.saveResult.collect { result ->
+                        val context = context
                         when (result) {
                             is AddMemoryGroupFragmentViewModel.SaveResult.Success -> {
                                 addMemoryGroupListener?.onMemorySaved(result.groupId)
@@ -251,7 +255,9 @@ class AddMemoryGroupFragment : Fragment() {
                             }
 
                             is AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
-                                Toast.makeText(requireContext(), "Failed to save: ${result.message}", Toast.LENGTH_LONG).show()
+                                context?.let {
+                                    Toast.makeText(it, "Failed to save: ${result.message}", Toast.LENGTH_LONG).show()
+                                }
                             }
                         }
                     }
@@ -431,7 +437,8 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun showClearConfirmationDialog() {
-        AlertDialog.Builder(requireContext())
+        val context = context ?: return
+        AlertDialog.Builder(context)
             .setTitle(if (viewModel.editingMemoryId != null) "Discard Changes" else "Clear Fields")
             .setMessage(
                 if (viewModel.editingMemoryId != null) {
@@ -496,6 +503,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     fun setEditMode(memoryId: Int) {
         viewModel.editingMemoryId = memoryId
+        val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val groupWithMedia = commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
             withContext(Dispatchers.Main) {
