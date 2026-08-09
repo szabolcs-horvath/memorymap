@@ -69,7 +69,12 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun performBackup(credential: GoogleAccountCredential, db: MemoryMapDatabase, isAutomatic: Boolean = false, onProgress: (String) -> Unit): Boolean {
+    suspend fun performBackup(
+        credential: GoogleAccountCredential,
+        db: MemoryMapDatabase,
+        isAutomatic: Boolean = false,
+        onProgress: (String) -> Unit
+    ): Result<Unit> {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_perform_backup") {
                 var tempDir: File? = null
@@ -95,10 +100,10 @@ class BackupManager(private val context: Context) {
                     onProgress("Uploading backup...")
                     uploadBackup(credential, isAutomatic, zipFile)
 
-                    return@withContext true
+                    Result.success(Unit)
                 } catch (e: Exception) {
                     Log.e(TAG, "Backup failed", e)
-                    return@withContext false
+                    Result.failure(e)
                 } finally {
                     tempDir?.deleteRecursively()
                     zipFile?.delete()
@@ -187,7 +192,7 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun restoreBackup(credential: GoogleAccountCredential, fileId: String, onProgress: (String) -> Unit): Boolean {
+    suspend fun restoreBackup(credential: GoogleAccountCredential, fileId: String, onProgress: (String) -> Unit): Result<Unit> {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_restore_backup") {
                 var tempZipFile: File? = null
@@ -208,10 +213,10 @@ class BackupManager(private val context: Context) {
                     onProgress("Restoring database...")
                     restoreDatabaseFromBackup(tempRestoreDir)
 
-                    return@withContext true
+                    Result.success(Unit)
                 } catch (e: Exception) {
                     Log.e(TAG, "Restore failed", e)
-                    return@withContext false
+                    Result.failure(e)
                 } finally {
                     tempZipFile?.delete()
                     tempRestoreDir?.deleteRecursively()
@@ -297,16 +302,16 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun deleteBackup(credential: GoogleAccountCredential, fileId: String): Boolean {
+    suspend fun deleteBackup(credential: GoogleAccountCredential, fileId: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_delete_backup") {
                 try {
                     val driveService = getDriveService(credential)
                     driveService.files().delete(fileId).execute()
-                    true
+                    Result.success(Unit)
                 } catch (e: IOException) {
                     Log.e(TAG, "Backup deletion failed", e)
-                    return@withContext false
+                    Result.failure(e)
                 }
             }
         }

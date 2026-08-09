@@ -53,43 +53,55 @@ class SettingsFragmentViewModel : ViewModel() {
     fun performBackup(credential: GoogleAccountCredential, database: MemoryMapDatabase, backupManager: BackupManager) {
         viewModelScope.launch {
             _operationStatus.value = "Starting backup..."
-            val success = backupManager.performBackup(credential, database, isAutomatic = false) { status ->
+            val result = backupManager.performBackup(credential, database, isAutomatic = false) { status ->
                 _operationStatus.value = status
             }
             _operationStatus.value = null
-            if (success) {
-                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup successful"))
-            } else {
-                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error("Backup failed"))
-            }
+            result.fold(
+                onSuccess = {
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup successful"))
+                },
+                onFailure = { e ->
+                    val errorMsg = "Backup failed: ${e.javaClass.simpleName}${e.message?.let { " - $it" } ?: ""}"
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg))
+                }
+            )
         }
     }
 
     fun restoreBackup(credential: GoogleAccountCredential, fileId: String, backupManager: BackupManager) {
         viewModelScope.launch {
             _operationStatus.value = "Starting restore..."
-            val success = backupManager.restoreBackup(credential, fileId) { status ->
+            val result = backupManager.restoreBackup(credential, fileId) { status ->
                 _operationStatus.value = status
             }
             _operationStatus.value = null
-            if (success) {
-                _backupRestoreOperationResult.send(BackupRestoreOperationResult.RestoreSuccess("Restore successful"))
-            } else {
-                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error("Restore failed"))
-            }
+            result.fold(
+                onSuccess = {
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.RestoreSuccess("Restore successful"))
+                },
+                onFailure = { e ->
+                    val errorMsg = "Restore failed: ${e.javaClass.simpleName}${e.message?.let { " - $it" } ?: ""}"
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg))
+                }
+            )
         }
     }
 
     fun deleteBackup(credential: GoogleAccountCredential, fileId: String, backupManager: BackupManager) {
         viewModelScope.launch {
             _operationStatus.value = "Deleting backup..."
-            val success = backupManager.deleteBackup(credential, fileId)
+            val result = backupManager.deleteBackup(credential, fileId)
             _operationStatus.value = null
-            if (success) {
-                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup deleted"))
-            } else {
-                _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error("Failed to delete backup"))
-            }
+            result.fold(
+                onSuccess = {
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup deleted"))
+                },
+                onFailure = { e ->
+                    val errorMsg = "Failed to delete backup: ${e.javaClass.simpleName}${e.message?.let { " - $it" } ?: ""}"
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg))
+                }
+            )
         }
     }
 }
