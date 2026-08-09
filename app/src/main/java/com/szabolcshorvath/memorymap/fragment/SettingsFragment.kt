@@ -46,7 +46,9 @@ import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateFilterOption
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateTimeFormatter
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.LogManager
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
@@ -56,6 +58,8 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Locale
 import com.google.api.services.drive.model.File as DriveFile
 
@@ -626,6 +630,25 @@ class SettingsFragment : Fragment() {
                 }
             }
         }
+
+        binding.btSendLogs.setOnClickListener {
+            val viewLifecycleOwner = viewLifecycleOwner
+            val context = context ?: return@setOnClickListener
+            viewLifecycleOwner.lifecycleScope.launch {
+                setLoadingState(true, "Preparing logs...")
+                try {
+                    val lastBackup = backupAdapter.currentList.firstOrNull()
+                    val lastBackupDate = lastBackup?.modifiedTime?.value?.let { millis ->
+                        val instant = Instant.ofEpochMilli(millis)
+                        val zonedDateTime = instant.atZone(ZoneId.systemDefault())
+                        dateTimeFormatter().format(zonedDateTime)
+                    }
+                    LogManager.sendDebugLogs(context, lastBackupDate)
+                } finally {
+                    setLoadingState(false)
+                }
+            }
+        }
     }
 
     private fun setupRecyclerViews() {
@@ -741,6 +764,7 @@ class SettingsFragment : Fragment() {
             btGoogleSignIn.isEnabled = enabled
             btBackupNow.isEnabled = enabled
             btSignOut.isEnabled = enabled
+            btSendLogs.isEnabled = enabled
             backupAdapter.setButtonsEnabled(enabled)
 
             btAddPreset.isEnabled = enabled

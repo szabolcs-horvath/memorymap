@@ -176,8 +176,8 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        mMap = googleMap
 
         googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         googleMap.uiSettings.isRotateGesturesEnabled = false

@@ -317,8 +317,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        mMap = googleMap
         googleMap.clear()
 
         googleMap.setOnMapLoadedCallback {
