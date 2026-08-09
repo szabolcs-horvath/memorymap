@@ -1,12 +1,16 @@
 package com.szabolcshorvath.memorymap
 
 import android.app.Application
+import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.memory.MemoryCache
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.libraries.places.api.Places
 
-class MemoryMapApplication : Application() {
+class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
@@ -37,7 +41,20 @@ class MemoryMapApplication : Application() {
         }
     }
 
+    override fun newImageLoader(context: Context): ImageLoader {
+        return ImageLoader.Builder(context)
+            .memoryCache {
+                MemoryCache.Builder()
+                    .maxSizePercent(context, IMAGE_LOADER_MEMORY_CACHE_MAX_SIZE_PERCENT)
+                    .strongReferencesEnabled(true)
+                    .weakReferencesEnabled(true)
+                    .build()
+            }
+            .build()
+    }
+
     companion object {
         const val TAG = "MemoryMapApplication"
+        private const val IMAGE_LOADER_MEMORY_CACHE_MAX_SIZE_PERCENT = 0.25 // 0.25 = 25%
     }
 }
