@@ -8,11 +8,11 @@ ksp = "2.3.11"
 detekt = "1.23.8"
 
 # Core & UI
-appcompat = "1.7.1"
+appcompat = "1.8.0"
 constraintlayout = "2.2.2"
 coreKtx = "1.19.0"
 datastorePreferences = "1.2.1"
-fragmentKtx = "1.8.9"
+fragmentKtx = "1.9.0"
 material = "1.14.0"
 swiperefreshlayout = "1.2.0"
 pieChart = "0.7.0"
@@ -21,7 +21,7 @@ pieChart = "0.7.0"
 places = "5.3.0"
 playServicesLocation = "21.4.0"
 playServicesMaps = "20.0.0"
-androidMapsUtils = "5.1.0"
+androidMapsUtils = "5.1.1"
 mapsKtx = "6.3.0"
 
 # Room
@@ -44,8 +44,8 @@ googleApiServicesDrive = "v3-rev20260720-2.0.0"
 googleHttpClient = "2.2.0"
 
 # Firebase
-firebaseBom = "34.17.0"
-firebaseCrashlytics = "3.0.7"
+firebaseBom = "34.18.0"
+firebaseCrashlytics = "3.0.8"
 firebasePerf = "2.0.2"
 
 # Testing
