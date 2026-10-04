@@ -29,13 +29,31 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
         SelectedMediaViewHolder(ItemMediaSelectedBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
+    private fun showError(binding: ItemMediaSelectedBinding, item: SelectedMedia) {
+        binding.errorContainer.visibility = View.VISIBLE
+        val context = binding.root.context
+        val typeStr = item.type.name
+        val sizeStr = if (item.fileSize > 0) android.text.format.Formatter.formatFileSize(context, item.fileSize) else "Unknown size"
+        val dateStr = if (item.dateTaken > 0) {
+            val zdt = java.time.Instant.ofEpochMilli(item.dateTaken).atZone(java.time.ZoneId.systemDefault())
+            zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd\nHH:mm", java.util.Locale.getDefault()))
+        } else {
+            "Unknown date"
+        }
+        binding.tvErrorDetails.text = "$typeStr\n$sizeStr\n$dateStr"
+    }
+
+    private fun hideError(binding: ItemMediaSelectedBinding) {
+        binding.errorContainer.visibility = View.GONE
+    }
+
     override fun onBindViewHolder(holder: SelectedMediaViewHolder, position: Int) {
         val item = getItem(position)
         val isFromOtherDevice = currentDeviceId != null && item.deviceId != currentDeviceId
 
         if (isFromOtherDevice) {
             holder.binding.thumbnailImage.setImageDrawable(null)
-            holder.binding.errorIcon.visibility = View.VISIBLE
+            showError(holder.binding, item)
             holder.binding.videoIcon.visibility = View.GONE
         } else {
             holder.binding.thumbnailImage.load(item.uri) {
@@ -49,8 +67,8 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
                     }
                 }
                 listener(
-                    onError = { _, _ -> holder.binding.errorIcon.visibility = View.VISIBLE },
-                    onSuccess = { _, _ -> holder.binding.errorIcon.visibility = View.GONE }
+                    onError = { _, _ -> showError(holder.binding, item) },
+                    onSuccess = { _, _ -> hideError(holder.binding) }
                 )
             }
             holder.binding.videoIcon.visibility = if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE

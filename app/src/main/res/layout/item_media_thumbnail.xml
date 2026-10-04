@@ -28,16 +28,35 @@
         app:layout_constraintTop_toTopOf="@+id/thumbnailImage"
         app:tint="@android:color/white" />
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/errorIcon"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:src="@android:drawable/ic_dialog_alert"
+    <LinearLayout
+        android:id="@+id/errorContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CC000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="2dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/thumbnailImage"
         app:layout_constraintEnd_toEndOf="@+id/thumbnailImage"
         app:layout_constraintStart_toStartOf="@+id/thumbnailImage"
-        app:layout_constraintTop_toTopOf="@+id/thumbnailImage"
-        app:tint="@android:color/holo_red_dark" />
+        app:layout_constraintTop_toTopOf="@+id/thumbnailImage">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/errorIcon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_dialog_alert"
+            app:tint="@android:color/holo_red_light" />
+
+        <TextView
+            android:id="@+id/tvErrorDetails"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="10sp" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

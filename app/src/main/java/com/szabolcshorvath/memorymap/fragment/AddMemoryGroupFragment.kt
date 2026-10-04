@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -66,7 +67,9 @@ class AddMemoryGroupFragment : Fragment() {
     data class SelectedMedia(
         val uri: Uri,
         val type: MediaType,
-        val deviceId: String
+        val deviceId: String,
+        val fileSize: Long = 0L,
+        val dateTaken: Long = 0L
     ) {
         class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
             override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) = oldItem.uri == newItem.uri
@@ -95,7 +98,22 @@ class AddMemoryGroupFragment : Fragment() {
                         } else {
                             val type = contentResolver.getType(uri)
                             val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-                            SelectedMedia(uri, mediaType, deviceId)
+                            var size = 0L
+                            var date = 0L
+                            try {
+                                contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN), null, null, null)
+                                    ?.use { cursor ->
+                                        if (cursor.moveToFirst()) {
+                                            val sizeCol = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                                            val dateCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+                                            if (sizeCol != -1) size = cursor.getLong(sizeCol)
+                                            if (dateCol != -1) date = cursor.getLong(dateCol)
+                                        }
+                                    }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error querying picked media info", e)
+                            }
+                            SelectedMedia(uri, mediaType, deviceId, size, date)
                         }
                     }
                     // New media items should be first in the list
@@ -230,7 +248,7 @@ class AddMemoryGroupFragment : Fragment() {
                 require(viewModel.lat != null && viewModel.lng != null) { "The location must be specified!" }
                 require(viewModel.fragments.all { it.lat != null && it.lng != null }) { "The location must be specified for all fragments!" }
             } catch (e: IllegalArgumentException) {
-                context?.let { Toast.makeText(it, e.message, Toast.LENGTH_SHORT).show() }
+                context.let { Toast.makeText(it, e.message, Toast.LENGTH_SHORT).show() }
                 return@setOnClickListener
             }
             viewModel.saveMemoryGroup(commonViewModel.getDb(), backupManager)
@@ -255,7 +273,7 @@ class AddMemoryGroupFragment : Fragment() {
                             }
 
                             is AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
-                                context?.let {
+                                context.let {
                                     Toast.makeText(it, "Failed to save: ${result.message}", Toast.LENGTH_LONG).show()
                                 }
                             }
@@ -531,7 +549,7 @@ class AddMemoryGroupFragment : Fragment() {
                     viewModel.selectedMedia.clear()
                     viewModel.selectedMedia.addAll(
                         sortedItems.map {
-                            SelectedMedia(it.uri.toUri(), it.type, it.deviceId)
+                            SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken)
                         }
                     )
                     updateMediaUI()

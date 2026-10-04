@@ -24,16 +24,32 @@
         tools:alpha="0.5"
         tools:visibility="visible" />
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/errorIcon"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_gravity="center"
-        android:src="@android:drawable/ic_dialog_alert"
-        android:visibility="gone"
-        app:tint="@android:color/holo_red_dark"
-        tools:alpha="0.5"
-        tools:visibility="visible" />
+    <LinearLayout
+        android:id="@+id/errorContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="2dp"
+        android:visibility="gone">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/errorIcon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@android:drawable/ic_dialog_alert"
+            app:tint="@android:color/holo_red_light" />
+
+        <TextView
+            android:id="@+id/tvErrorDetails"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="10sp" />
+    </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/bt_remove"

@@ -91,13 +91,24 @@ object LocalMediaUtil {
         trace("local_media_util_verify_and_fix_media_items") {
             val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
             val mediaItems = dao.getAllMediaItems()
+            Log.d(TAG, "DIAGNOSTIC START: verifyAndFixMediaItems - installationId=$installationIdentifier, totalMediaItems=${mediaItems.size}")
+
             val localMediaList = getLocalMediaForItems(context, mediaItems)
             val itemsToUpdate = mutableListOf<MediaItem>()
 
             for (item in mediaItems) {
                 if (item.deviceId != installationIdentifier || item.uri.contains("photopicker") || !isSignatureValid(context, item)) {
+                    Log.d(
+                        TAG,
+                        "DIAGNOSTIC CHECK ITEM: id=${item.id}, uri=${item.uri}, deviceId=${item.deviceId}, " +
+                            "fileSize=${item.fileSize}, dateTaken=${item.dateTaken}, signature=${item.mediaSignature}, type=${item.type}"
+                    )
+
+                    logDiagnosticCandidatesForItem(context, item)
+
                     val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
                     if (candidate != null) {
+                        Log.i(TAG, "DIAGNOSTIC RE-LINK SUCCESS: Item id=${item.id} matched candidate ${candidate.uri}")
                         itemsToUpdate.add(
                             item.copy(
                                 deviceId = installationIdentifier,
@@ -105,7 +116,11 @@ object LocalMediaUtil {
                             )
                         )
                     } else {
-                        Log.w(TAG, "No local media found with signature ${item.mediaSignature}")
+                        Log.w(
+                            TAG,
+                            "DIAGNOSTIC RE-LINK FAILED: No local media found matching signature ${item.mediaSignature} " +
+                                "for item id=${item.id}, uri=${item.uri}, fileSize=${item.fileSize}, dateTaken=${item.dateTaken}"
+                        )
                     }
                 }
             }
@@ -116,6 +131,96 @@ object LocalMediaUtil {
 
             // After fixing URIs, we can safely deduplicate based on (groupId, mediaSignature)
             deduplicateMediaItems(dao)
+        }
+    }
+
+    private fun logDiagnosticCandidatesForItem(context: Context, item: MediaItem) {
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_TAKEN
+        )
+
+        val contentUris = listOf(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        )
+
+        for (contentUri in contentUris) {
+            val mediaTypeLabel = if (contentUri == MediaStore.Images.Media.EXTERNAL_CONTENT_URI) "Image" else "Video"
+
+            if (item.dateTaken > 0) {
+                val minDate = item.dateTaken - 15_000
+                val maxDate = item.dateTaken + 15_000
+                val dateSelection = "${MediaStore.MediaColumns.DATE_TAKEN} BETWEEN $minDate AND $maxDate"
+
+                try {
+                    context.contentResolver.query(contentUri, projection, dateSelection, null, null)?.use { cursor ->
+                        val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                        val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                        val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                        val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+
+                        while (cursor.moveToNext()) {
+                            val id = cursor.getLong(idCol)
+                            val name = cursor.getString(nameCol)
+                            val size = cursor.getLong(sizeCol)
+                            val date = cursor.getLong(dateCol)
+                            val uri = ContentUris.withAppendedId(contentUri, id)
+                            val sizeDelta = size - item.fileSize
+                            val timeDelta = date - item.dateTaken
+
+                            val calcSig: String = try {
+                                MediaHasher.calculateMediaSignature(context, uri)
+                            } catch (e: Exception) {
+                                "ERROR: ${e.message}"
+                            }
+
+                            Log.d(
+                                TAG,
+                                "DIAGNOSTIC CANDIDATE (by dateTaken) [$mediaTypeLabel] item.id=${item.id}: " +
+                                    "MediaStore id=$id, name=$name, size=$size (delta=$sizeDelta), " +
+                                    "dateTaken=$date (deltaMs=$timeDelta), calculatedSig=$calcSig, targetSig=${item.mediaSignature}"
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Diagnostic date query failed for $mediaTypeLabel", e)
+                }
+            }
+
+            if (item.fileSize > 0) {
+                val sizeMargin = maxOf(50_000L, item.fileSize / 10)
+                val minSize = maxOf(0L, item.fileSize - sizeMargin)
+                val maxSize = item.fileSize + sizeMargin
+                val sizeSelection = "${MediaStore.MediaColumns.SIZE} BETWEEN $minSize AND $maxSize"
+
+                try {
+                    context.contentResolver.query(contentUri, projection, sizeSelection, null, null)?.use { cursor ->
+                        val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                        val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                        val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
+                        val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+
+                        while (cursor.moveToNext()) {
+                            val id = cursor.getLong(idCol)
+                            val name = cursor.getString(nameCol)
+                            val size = cursor.getLong(sizeCol)
+                            val date = cursor.getLong(dateCol)
+                            val sizeDelta = size - item.fileSize
+
+                            Log.d(
+                                TAG,
+                                "DIAGNOSTIC CANDIDATE (by sizeRange) [$mediaTypeLabel] item.id=${item.id}: " +
+                                    "MediaStore id=$id, name=$name, size=$size (delta=$sizeDelta), dateTaken=$date"
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Diagnostic size query failed for $mediaTypeLabel", e)
+                }
+            }
         }
     }
 
