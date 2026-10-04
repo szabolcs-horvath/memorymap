@@ -38,7 +38,7 @@ class MediaAdapter(
 
             if (isFromOtherDevice) {
                 binding.thumbnailImage.setImageDrawable(null)
-                binding.errorIcon.visibility = View.VISIBLE
+                showError(binding, mediaItem)
                 binding.videoIcon.visibility = View.GONE
             } else {
                 binding.thumbnailImage.load(mediaItem.uri) {
@@ -52,8 +52,8 @@ class MediaAdapter(
                         }
                     }
                     listener(
-                        onError = { _, _ -> binding.errorIcon.visibility = View.VISIBLE },
-                        onSuccess = { _, _ -> binding.errorIcon.visibility = View.GONE }
+                        onError = { _, _ -> showError(binding, mediaItem) },
+                        onSuccess = { _, _ -> hideError(binding) }
                     )
                 }
 
@@ -66,6 +66,24 @@ class MediaAdapter(
                     onMediaClick(pos)
                 }
             }
+        }
+
+        private fun showError(binding: ItemMediaThumbnailBinding, mediaItem: MediaItem) {
+            binding.errorContainer.visibility = View.VISIBLE
+            val context = binding.root.context
+            val typeStr = mediaItem.type.name
+            val sizeStr = if (mediaItem.fileSize > 0) android.text.format.Formatter.formatFileSize(context, mediaItem.fileSize) else "Unknown size"
+            val dateStr = if (mediaItem.dateTaken > 0) {
+                val zdt = java.time.Instant.ofEpochMilli(mediaItem.dateTaken).atZone(java.time.ZoneId.systemDefault())
+                zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd\nHH:mm", java.util.Locale.getDefault()))
+            } else {
+                "Unknown date"
+            }
+            binding.tvErrorDetails.text = "$typeStr\n$sizeStr\n$dateStr"
+        }
+
+        private fun hideError(binding: ItemMediaThumbnailBinding) {
+            binding.errorContainer.visibility = View.GONE
         }
     }
 

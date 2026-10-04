@@ -666,7 +666,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     ) : DefaultAdvancedMarkersClusterRenderer<Markerable.MarkerableCluster>(context, map, clusterManager) {
 
         override fun shouldRenderAsCluster(cluster: Cluster<Markerable.MarkerableCluster>): Boolean =
-            if (commonViewModel.markerClusteringEnabled.value) super.shouldRenderAsCluster(cluster) else false
+            if (commonViewModel.markerClusteringEnabled.value) {
+                super.shouldRenderAsCluster(cluster)
+            } else {
+                false
+            }
 
         @AddTrace(name = "markerable_cluster_renderer_on_before_cluster_item_rendered", enabled = true)
         override fun onBeforeClusterItemRendered(
