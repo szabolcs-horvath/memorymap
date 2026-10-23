@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.util
 
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
@@ -10,217 +11,250 @@ import com.google.firebase.perf.metrics.AddTrace
 import com.google.firebase.perf.trace
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
+import java.io.IOException
 
 object LocalMediaUtil {
     const val TAG = "LocalMediaUtil"
+    private const val SIZE_QUERY_CHUNK = 100
+    private val CANDIDATE_PROJECTION = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
+    private val METADATA_PROJECTION = arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN)
 
-    data class LocalMediaInfo(
+    data class LocalMediaCandidate(
         val uri: String,
-        val mediaSignature: String,
         val size: Long
+    )
+
+    /** Size and date reported by the provider for a URI the app can currently read. */
+    data class MediaMetadata(
+        val size: Long,
+        val dateTaken: Long
     )
 
     suspend fun hasMissingMedia(context: Context, mediaItems: List<MediaItem>): Boolean {
         trace("local_media_util_has_missing_media") {
             val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
-            return mediaItems.any { item ->
-                item.deviceId != installationIdentifier || !isMediaAvailable(context, item.uri)
-            }
+            return mediaItems.any { needsRelink(context, it, installationIdentifier) }
         }
     }
 
-    @AddTrace(name = "local_media_util_is_media_available", enabled = true)
-    fun isMediaAvailable(context: Context, uriString: String): Boolean {
-        return try {
-            context.contentResolver.openInputStream(uriString.toUri())?.use { true } ?: false
-        } catch (_: Exception) {
-            false
+    private fun needsRelink(context: Context, item: MediaItem, installationIdentifier: String): Boolean =
+        item.deviceId != installationIdentifier || !isMediaValid(context, item)
+
+    /**
+     * Checks that [MediaItem.uri] is readable and still points to the file it was saved with,
+     * using only a metadata query (the file itself is not opened).
+     *
+     * MediaStore ids are per device, so a `content://media/external/...` URI carried over to another
+     * phone can resolve to an unrelated photo. Comparing the stored size and date catches that.
+     */
+    @AddTrace(name = "local_media_util_is_media_valid", enabled = true)
+    fun isMediaValid(context: Context, item: MediaItem): Boolean {
+        val metadata = queryMetadata(context, item.uri.toUri()) ?: return false
+        return isSameFile(item.fileSize, item.dateTaken, metadata)
+    }
+
+    /**
+     * A file counts as the same one when its size matches, or its capture date matches (an in-place
+     * edit, e.g. Samsung Gallery "Save", changes the size but keeps the date). Unknown values (0) pass.
+     */
+    fun isSameFile(storedSize: Long, storedDateTaken: Long, actual: MediaMetadata): Boolean {
+        return storedSize <= 0 || actual.size <= 0 || storedSize == actual.size || storedDateTaken > 0 && storedDateTaken == actual.dateTaken
+    }
+
+    private fun queryMetadata(context: Context, uri: Uri): MediaMetadata? = try {
+        context.contentResolver.query(uri, METADATA_PROJECTION, null, null, null)?.use { c ->
+            if (!c.moveToFirst()) return@use null
+            val sizeCol = c.getColumnIndex(MediaStore.MediaColumns.SIZE)
+            val dateCol = c.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+            MediaMetadata(
+                size = if (sizeCol != -1 && !c.isNull(sizeCol)) c.getLong(sizeCol) else 0L,
+                dateTaken = if (dateCol != -1 && !c.isNull(dateCol)) c.getLong(dateCol) else 0L
+            )
         }
+    } catch (_: SecurityException) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
+    } catch (_: IllegalStateException) {
+        null
     }
 
-    @AddTrace(name = "local_media_util_is_signature_valid", enabled = true)
-    fun isSignatureValid(context: Context, item: MediaItem): Boolean {
-        val uri = item.uri.toUri()
-        return try {
-            val signatureOfMediaOfUri = MediaHasher.calculateMediaSignature(context, uri)
-            signatureOfMediaOfUri == item.mediaSignature
-        } catch (_: Exception) {
-            false
-        }
+    fun signatureOrNull(context: Context, uri: Uri): String? = try {
+        MediaHasher.calculateMediaSignature(context, uri).takeIf { it.isNotEmpty() }
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    } catch (_: IllegalStateException) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
     }
 
-    @AddTrace(name = "local_media_util_get_local_media_for_items", enabled = true)
-    fun getLocalMediaForItems(context: Context, mediaItems: List<MediaItem>): List<LocalMediaInfo> {
-        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
-        val uniqueSizes = mediaItems.map { it.fileSize }.distinct()
-        if (uniqueSizes.isEmpty()) return emptyList()
-        val sizeList = uniqueSizes.joinToString(", ")
-        val selection = "${MediaStore.MediaColumns.SIZE} IN ($sizeList)"
-
-        val mediaList = mutableListOf<LocalMediaInfo>()
-        mediaList.addAll(queryMediaStore(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection, selection))
-        mediaList.addAll(queryMediaStore(context, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, selection))
-        return mediaList
+    private class SignatureCache(private val compute: (Uri) -> String?) {
+        private val cache = HashMap<String, String?>()
+        fun of(uri: String): String? =
+            if (cache.containsKey(uri)) cache[uri] else compute(uri.toUri()).also { cache[uri] = it }
     }
 
-    @AddTrace(name = "local_media_util_query_media_store", enabled = true)
-    private fun queryMediaStore(context: Context, contentUri: Uri, projection: Array<String>, selection: String?): List<LocalMediaInfo> {
-        val mediaList = mutableListOf<LocalMediaInfo>()
-        try {
-            context.contentResolver.query(contentUri, projection, selection, null, null)
-                ?.use { cursor ->
-                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                    val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getLong(idCol)
-                        val size = cursor.getLong(sizeCol)
-                        val uri = ContentUris.withAppendedId(contentUri, id)
-
-                        mediaList.add(
-                            LocalMediaInfo(uri.toString(), MediaHasher.calculateMediaSignature(context, uri), size)
-                        )
-                    }
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error querying media store: ${e.message}")
-        }
-        return mediaList
-    }
-
-    suspend fun verifyAndFixMediaItems(context: Context, dao: MemoryGroupDao) {
+    /**
+     * Re-links media items that came from another installation or whose URI no longer resolves to
+     * their file. Readable photo picker URIs are left alone: their persisted grant survives reboots
+     * and, unlike MediaStore URIs, does not depend on the broad media permission.
+     */
+    suspend fun verifyAndFixMediaItems(
+        context: Context,
+        dao: MemoryGroupDao,
+        onProgress: ((String) -> Unit)? = null
+    ) {
         trace("local_media_util_verify_and_fix_media_items") {
             val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
             val mediaItems = dao.getAllMediaItems()
-            Log.d(TAG, "DIAGNOSTIC START: verifyAndFixMediaItems - installationId=$installationIdentifier, totalMediaItems=${mediaItems.size}")
+            val itemsNeedingFix = mediaItems.filter { needsRelink(context, it, installationIdentifier) }
 
-            val localMediaList = getLocalMediaForItems(context, mediaItems)
-            val itemsToUpdate = mutableListOf<MediaItem>()
+            when {
+                itemsNeedingFix.isEmpty() -> {
+                    Log.d(TAG, "All ${mediaItems.size} media items are valid on this device.")
+                    onProgress?.invoke("All media items are valid")
+                }
 
-            for (item in mediaItems) {
-                if (item.deviceId != installationIdentifier || item.uri.contains("photopicker") || !isSignatureValid(context, item)) {
-                    Log.d(
-                        TAG,
-                        "DIAGNOSTIC CHECK ITEM: id=${item.id}, uri=${item.uri}, deviceId=${item.deviceId}, " +
-                            "fileSize=${item.fileSize}, dateTaken=${item.dateTaken}, signature=${item.mediaSignature}, type=${item.type}"
-                    )
+                !PermissionUtil.hasAnyMediaPermission(context) -> {
+                    Log.w(TAG, "Storage permission not granted. Skipping MediaStore candidate re-linking.")
+                    onProgress?.invoke("Permission required to re-link media")
+                }
 
-                    logDiagnosticCandidatesForItem(context, item)
-
-                    val candidate = localMediaList.find { it.mediaSignature == item.mediaSignature }
-                    if (candidate != null) {
-                        Log.i(TAG, "DIAGNOSTIC RE-LINK SUCCESS: Item id=${item.id} matched candidate ${candidate.uri}")
-                        itemsToUpdate.add(
-                            item.copy(
-                                deviceId = installationIdentifier,
-                                uri = candidate.uri
-                            )
-                        )
-                    } else {
-                        Log.w(
-                            TAG,
-                            "DIAGNOSTIC RE-LINK FAILED: No local media found matching signature ${item.mediaSignature} " +
-                                "for item id=${item.id}, uri=${item.uri}, fileSize=${item.fileSize}, dateTaken=${item.dateTaken}"
-                        )
-                    }
+                else -> {
+                    relink(context, dao, itemsNeedingFix, mediaItems.size, installationIdentifier, onProgress)
                 }
             }
-
-            if (itemsToUpdate.isNotEmpty()) {
-                dao.updateMediaItems(itemsToUpdate)
-            }
-
-            // After fixing URIs, we can safely deduplicate based on (groupId, mediaSignature)
-            deduplicateMediaItems(dao)
         }
     }
 
-    private fun logDiagnosticCandidatesForItem(context: Context, item: MediaItem) {
-        val projection = arrayOf(
-            MediaStore.MediaColumns._ID,
-            MediaStore.MediaColumns.DISPLAY_NAME,
-            MediaStore.MediaColumns.SIZE,
-            MediaStore.MediaColumns.DATE_TAKEN
+    private suspend fun relink(
+        context: Context,
+        dao: MemoryGroupDao,
+        itemsNeedingFix: List<MediaItem>,
+        totalMediaCount: Int,
+        installationIdentifier: String,
+        onProgress: ((String) -> Unit)?
+    ) {
+        onProgress?.invoke("Scanning local media library...")
+        Log.d(
+            TAG,
+            "RE-LINK START: installationId=$installationIdentifier, " +
+                "itemsNeedingFix=${itemsNeedingFix.size}, totalItems=$totalMediaCount"
         )
 
-        val contentUris = listOf(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        )
+        val targetSizes = itemsNeedingFix.map { it.fileSize }.filter { it > 0 }.distinct()
+        val candidatePool = queryCandidatesForSizes(context, targetSizes)
+        val sigs = SignatureCache { signatureOrNull(context, it) }
+        var relinkedCount = 0
 
-        for (contentUri in contentUris) {
-            val mediaTypeLabel = if (contentUri == MediaStore.Images.Media.EXTERNAL_CONTENT_URI) "Image" else "Video"
+        for ((index, item) in itemsNeedingFix.withIndex()) {
+            onProgress?.invoke("Re-linking photo ${index + 1} of ${itemsNeedingFix.size}...")
 
-            if (item.dateTaken > 0) {
-                val minDate = item.dateTaken - 15_000
-                val maxDate = item.dateTaken + 15_000
-                val dateSelection = "${MediaStore.MediaColumns.DATE_TAKEN} BETWEEN $minDate AND $maxDate"
-
-                try {
-                    context.contentResolver.query(contentUri, projection, dateSelection, null, null)?.use { cursor ->
-                        val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                        val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                        val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                        val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
-
-                        while (cursor.moveToNext()) {
-                            val id = cursor.getLong(idCol)
-                            val name = cursor.getString(nameCol)
-                            val size = cursor.getLong(sizeCol)
-                            val date = cursor.getLong(dateCol)
-                            val uri = ContentUris.withAppendedId(contentUri, id)
-                            val sizeDelta = size - item.fileSize
-                            val timeDelta = date - item.dateTaken
-
-                            val calcSig: String = try {
-                                MediaHasher.calculateMediaSignature(context, uri)
-                            } catch (e: Exception) {
-                                "ERROR: ${e.message}"
-                            }
-
-                            Log.d(
-                                TAG,
-                                "DIAGNOSTIC CANDIDATE (by dateTaken) [$mediaTypeLabel] item.id=${item.id}: " +
-                                    "MediaStore id=$id, name=$name, size=$size (delta=$sizeDelta), " +
-                                    "dateTaken=$date (deltaMs=$timeDelta), calculatedSig=$calcSig, targetSig=${item.mediaSignature}"
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Diagnostic date query failed for $mediaTypeLabel", e)
-                }
+            val match = findBySignature(item, candidatePool, sigs)
+            if (match != null) {
+                Log.i(
+                    TAG,
+                    "RE-LINK SUCCESS [Exact Signature]: item id=${item.id} " +
+                        "(size=${item.fileSize}, sig=${item.mediaSignature}) -> matched MediaStore uri=${match.uri}"
+                )
+                // Update only the link columns so a concurrent edit (e.g. reordering) is not overwritten.
+                dao.updateMediaLink(item.id, match.uri, installationIdentifier)
+                relinkedCount++
+            } else {
+                Log.w(
+                    TAG,
+                    "RE-LINK SKIPPED [No Match]: item id=${item.id}, origUri=${item.uri}, " +
+                        "deviceId=${item.deviceId}, fileSize=${item.fileSize}, dateTaken=${item.dateTaken}, " +
+                        "targetSig=${item.mediaSignature}. No candidate matched exact criteria."
+                )
             }
+        }
 
-            if (item.fileSize > 0) {
-                val sizeMargin = maxOf(50_000L, item.fileSize / 10)
-                val minSize = maxOf(0L, item.fileSize - sizeMargin)
-                val maxSize = item.fileSize + sizeMargin
-                val sizeSelection = "${MediaStore.MediaColumns.SIZE} BETWEEN $minSize AND $maxSize"
+        if (relinkedCount > 0) {
+            Log.i(TAG, "RE-LINK COMPLETE: Successfully updated $relinkedCount media items in Room DB.")
+            onProgress?.invoke("Media re-linking complete. Re-linked $relinkedCount items.")
+        } else {
+            onProgress?.invoke("No matching photos found to re-link.")
+        }
 
-                try {
-                    context.contentResolver.query(contentUri, projection, sizeSelection, null, null)?.use { cursor ->
-                        val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-                        val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-                        val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-                        val dateCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+        deduplicateMediaItems(dao)
+    }
 
-                        while (cursor.moveToNext()) {
-                            val id = cursor.getLong(idCol)
-                            val name = cursor.getString(nameCol)
-                            val size = cursor.getLong(sizeCol)
-                            val date = cursor.getLong(dateCol)
-                            val sizeDelta = size - item.fileSize
+    private fun findBySignature(
+        item: MediaItem,
+        pool: List<LocalMediaCandidate>,
+        sigs: SignatureCache
+    ): LocalMediaCandidate? {
+        if (item.mediaSignature.isEmpty()) return null
+        return pool.firstOrNull { it.size == item.fileSize && sigs.of(it.uri) == item.mediaSignature }
+    }
 
-                            Log.d(
-                                TAG,
-                                "DIAGNOSTIC CANDIDATE (by sizeRange) [$mediaTypeLabel] item.id=${item.id}: " +
-                                    "MediaStore id=$id, name=$name, size=$size (delta=$sizeDelta), dateTaken=$date"
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Diagnostic size query failed for $mediaTypeLabel", e)
-                }
+    /**
+     * Releases the persisted grants of [uris] (media the user just removed from a memory) unless a saved
+     * media item still uses them. Android keeps at most 512 persisted grants per app and silently revokes
+     * the oldest beyond that, which would break older photo picker items.
+     *
+     * Deliberately not a sweep of every unreferenced grant: after restoring an older backup, grants used
+     * only by a newer backup must survive so that restoring the newer one keeps working.
+     */
+    suspend fun releaseUriGrantsIfUnused(context: Context, dao: MemoryGroupDao, uris: Collection<String>) {
+        if (uris.isEmpty()) return
+        val referenced = dao.getAllMediaItems().mapTo(HashSet()) { it.uri }
+        val candidates = uris.filterNotTo(HashSet()) { it in referenced }
+        val resolver = context.contentResolver
+        var released = 0
+        for (permission in resolver.persistedUriPermissions) {
+            if (permission.uri.toString() !in candidates) continue
+            try {
+                resolver.releasePersistableUriPermission(permission.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                released++
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Could not release grant for ${permission.uri}", e)
             }
+        }
+        if (released > 0) Log.d(TAG, "Released $released unused persisted URI grants.")
+    }
+
+    private fun getReadableContentUris(context: Context): List<Uri> {
+        val contentUris = mutableListOf<Uri>()
+        if (PermissionUtil.hasImagePermission(context)) {
+            contentUris.add(MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        }
+        if (PermissionUtil.hasVideoPermission(context)) {
+            contentUris.add(MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+        }
+        return contentUris
+    }
+
+    private fun queryCandidatesForSizes(context: Context, sizes: List<Long>): List<LocalMediaCandidate> =
+        getReadableContentUris(context).flatMap { contentUri ->
+            sizes.chunked(SIZE_QUERY_CHUNK).flatMap { queryChunk(context, contentUri, it) }
+        }
+
+    private fun queryChunk(context: Context, contentUri: Uri, sizes: List<Long>): List<LocalMediaCandidate> {
+        val selection = "${MediaStore.MediaColumns.SIZE} IN (${sizes.joinToString(",")})"
+        return try {
+            context.contentResolver.query(contentUri, CANDIDATE_PROJECTION, selection, null, null)?.use { c ->
+                buildList {
+                    while (c.moveToNext()) {
+                        add(
+                            LocalMediaCandidate(
+                                uri = ContentUris.withAppendedId(contentUri, c.getLong(0)).toString(),
+                                size = c.getLong(1)
+                            )
+                        )
+                    }
+                }
+            } ?: emptyList()
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Candidate query failed for $contentUri", e)
+            emptyList()
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Candidate query failed for $contentUri", e)
+            emptyList()
         }
     }
 
@@ -228,13 +262,13 @@ object LocalMediaUtil {
         trace("local_media_util_deduplicate_media_items") {
             val allMedia = dao.getAllMediaItems()
 
-            // Group items by groupId and signature. Any group with size > 1 has duplicates.
-            val duplicates = allMedia.groupBy { it.groupId to it.mediaSignature }
+            val duplicates = allMedia
+                .filter { it.mediaSignature.isNotEmpty() }
+                .groupBy { it.groupId to it.mediaSignature }
                 .filter { it.value.size > 1 }
 
             val itemsToDelete = mutableListOf<MediaItem>()
             for ((_, items) in duplicates) {
-                // Keep the one with the smallest ID (the oldest one)
                 val sorted = items.sortedBy { it.id }
                 itemsToDelete.addAll(sorted.drop(1))
             }

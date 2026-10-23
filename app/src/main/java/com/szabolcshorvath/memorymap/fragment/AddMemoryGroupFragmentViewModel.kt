@@ -16,7 +16,7 @@ import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.MediaHasher
+import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -99,6 +99,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                 )
                 val dao = database.memoryGroupDao()
 
+                var removedUris: Set<String> = emptySet()
                 val groupIdResult = database.withTransaction("save_memory_group") {
                     val groupId = if (snapshotEditingId != null) {
                         dao.updateGroup(group)
@@ -107,11 +108,12 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                         dao.insertGroup(group)
                     }
 
-                    saveMediaItems(dao, groupId, getApplication(), snapshotMedia, snapshotEditingId)
+                    removedUris = saveMediaItems(dao, groupId, getApplication(), snapshotMedia, snapshotEditingId)
                     saveMemoryFragments(dao, groupId, snapshotFragments)
                     groupId.toInt()
                 }
 
+                LocalMediaUtil.releaseUriGrantsIfUnused(getApplication(), dao, removedUris)
                 backupManager.triggerAutomaticBackup(database)
                 _saveResult.send(SaveResult.Success(groupIdResult))
             } catch (e: Exception) {
@@ -174,43 +176,70 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         context: Context,
         mediaToSave: List<AddMemoryGroupFragment.SelectedMedia>,
         editingId: Int?
-    ) {
+    ): Set<String> {
+        val previousUris = if (editingId != null) {
+            dao.getGroupWithMedia(groupId.toInt())?.mediaItems?.mapTo(HashSet()) { it.uri }.orEmpty()
+        } else {
+            emptySet()
+        }
         if (editingId != null) {
             dao.deleteMediaByGroupId(groupId.toInt())
         }
 
-        val mediaItems = mediaToSave.mapIndexed { index, (uri, type, itemDeviceId) ->
-            var size = 0L
-            var date = 0L
+        val mediaItems = mediaToSave.mapIndexed { index, selected ->
+            val uri = selected.uri
+            var size = selected.fileSize
+            var date = selected.dateTaken
 
-            context.contentResolver.query(
-                uri,
-                arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN),
-                null,
-                null,
-                null
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    size = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE))
-                    date = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN))
+            if (size == 0L) {
+                try {
+                    context.contentResolver.query(
+                        uri,
+                        arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN),
+                        null,
+                        null,
+                        null
+                    )?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val sizeCol = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                            val dateCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+                            if (sizeCol != -1) size = cursor.getLong(sizeCol)
+                            if (dateCol != -1) date = cursor.getLong(dateCol)
+                        }
+                    }
+                } catch (e: SecurityException) {
+                    Log.e("AddMemoryVM", "Error querying media store info for $uri", e)
+                } catch (e: java.io.IOException) {
+                    Log.e("AddMemoryVM", "Error querying media store info for $uri", e)
                 }
             }
 
+            // Keep a stored signature: it identifies the original file for re-linking, while the URI
+            // of an item from another device may now resolve to an unrelated file.
+            val signature = selected.mediaSignature.ifEmpty {
+                LocalMediaUtil.signatureOrNull(context, uri).orEmpty().also {
+                    if (it.isEmpty()) Log.w("AddMemoryVM", "Could not calculate signature for $uri (file missing or unreadable)")
+                }
+            }
+
+            // The picker URI is kept as is: its persisted grant survives reboots and does not depend on
+            // READ_MEDIA_* permissions, which the user can revoke and Android auto-resets for unused apps.
             MediaItem(
                 groupId = groupId.toInt(),
                 uri = uri.toString(),
-                deviceId = itemDeviceId,
-                type = type,
-                mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
+                deviceId = selected.deviceId,
+                type = selected.type,
+                mediaSignature = signature,
                 fileSize = size,
                 dateTaken = date,
                 order = index + 1
             )
         }
-            .distinctBy { it.mediaSignature }
+            .distinctBy { it.mediaSignature.ifEmpty { it.uri } }
             .mapIndexed { index, item -> item.copy(order = index + 1) }
 
         dao.insertMediaItems(mediaItems)
+        return previousUris - mediaItems.mapTo(HashSet()) { it.uri }
     }
 
     private suspend fun saveMemoryFragments(dao: MemoryGroupDao, groupId: Long, fragmentsToSave: List<MemoryFragmentEditAdapter.FragmentEditState>) {

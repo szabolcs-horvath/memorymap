@@ -1,65 +1,129 @@
-# Robust Media Re-linking and Stable Hashing Strategy
+# Media Re-Linking: Findings and Design
 
-This plan outlines the diagnosis, risk assessment, diagnostic build, and safe resolution strategy for media file re-linking issues in Memory Map.
-
-## Problem Context
-
-When media files are selected via Android's Photo Picker (`PickMultipleVisualMedia`), system-provided URIs are temporary (`content://media/picker/...`). Over time, after app restarts or reboots, read permissions on these picker URIs expire.
-
-When the app attempts to re-link missing media via `LocalMediaUtil.verifyAndFixMediaItems`, two issues prevent successful candidate matching:
-1. **Photo Picker EXIF Redaction:** Android redacts EXIF location metadata on-the-fly for picker URIs unless `ACCESS_MEDIA_LOCATION` is granted. This causes the recorded `fileSize` (from redacted stream) to be slightly smaller (by ~100–500 bytes) than the actual file size stored in `MediaStore.MediaColumns.SIZE` on disk.
-2. **Rigid Querying in `LocalMediaUtil`:** The current candidate lookup queries MediaStore with `WHERE SIZE IN (fileSize)`. Because the recorded `fileSize` reflects the redacted size, MediaStore returns 0 candidates, causing re-linking to fail with `"No local media found with signature..."`.
+This document records what the real-device logs and emulator tests showed about media re-linking,
+and the design that follows from it. It replaces earlier versions of this plan, whose root-cause
+theories (EXIF size shifts, expiring photo picker URIs) did not hold up.
 
 ---
 
-## Distribution Model & Permission Environment
+## 1. Evidence
 
-- **Manual APK Distribution:** The app is distributed directly as an APK to users (not via Google Play Store).
-- **Play Store Policies:** Google Play Store permission declaration restrictions do not apply.
-- **User System Experience:** Although Play Store policies are absent, standard Android OS runtime permission prompts (`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `ACCESS_MEDIA_LOCATION`) are presented to the user. Broad permission prompts should still be minimized where possible for a clean user experience.
+### Real device (Samsung SM-A336B, Android 14)
+* **Diagnostic build, 2026-10-06:** every logged item was a photo picker URI from this installation,
+  and all 86 re-linked by exact size + signature. Picker id `N` always matched MediaStore id `N`.
+  The logcat buffer had rolled over, so items before id 4990 are not in the log.
+* **No size shift:** all 64 MediaStore candidates taken within ±15 s of an item had size delta 0,
+  date delta 0 and an identical signature. No candidate was a few hundred bytes off.
+  The near-size entries in the log are unrelated photos from the ±10 % size window.
+* **No URI access errors:** neither log contains a permission denial, `SecurityException` or
+  load failure for any media URI.
+* **v35, 2026-08-20:** four re-link failures (`No local media found with signature ...`).
+  The log line only printed the signature, and none of them appear in the October log,
+  so they cannot be identified.
+
+### Emulator (API 36, two JPEGs with GPS EXIF)
+| Read path | Size | GPS bytes | Signature |
+|---|---|---|---|
+| Original file (unredacted) | 821,703 | intact | `821703_20d578…` |
+| App, MediaStore URI | 821,703 | zeroed | `821703_6e2708…` |
+| App, photo picker URI | 821,703 | zeroed | `821703_6e2708…` |
+
+* **EXIF redaction is zero-fill in place.** The size never changes. Picker and MediaStore reads are
+  redacted identically (the app does not hold `ACCESS_MEDIA_LOCATION`), so same-device signatures match.
+* **Picker grants survive a reboot.** `takePersistableUriPermission` has been called since the initial commit.
+* **MediaStore URIs need the broad permission; picker URIs do not.** With `READ_MEDIA_*` revoked,
+  picker URIs still opened and `content://media/external/...` URIs threw `SecurityException`.
+* **The picker reports a synthetic `DATE_TAKEN`.** For a photo without an EXIF date, the picker
+  returned the file time while MediaStore returned 0. Stored `dateTaken` values are not reliable
+  enough to match on.
+
+### Database snapshot
+* `content://media/external/images/media/38` was stored for two different photos (different
+  signatures, different installations). MediaStore ids are per device.
 
 ---
 
-## Critical Risks & Backup Compatibility Assessment
+## 2. What actually breaks re-linking or display
 
-### Potential Risks of Full Refactor & Signature V2 Scheme:
-1. **Non-deterministic Redacted Hash Simulation:** Attempting to "simulate" Android's internal Photo Picker EXIF redaction on MediaStore candidates is non-deterministic. Redaction logic varies across Android OS versions (13, 14, 15) and OEM systems (Samsung OneUI, Pixel, Xiaomi).
-2. **Existing Backup Restores:** Old backups generated on previous app versions or other devices contain legacy signatures and `mediaSignatureV2 = null`. If legacy signature matching fails due to EXIF size shifts, restoring old backups on new builds will fail to re-link media files.
-3. **Database Schema Migrations:** Adding `mediaSignatureV2` requires Room DB schema migrations. Schema mismatches during restore operations risk data corruption or failed restores.
-
----
-
-## Phase 1: Diagnostic Build & Root Cause Confirmation
-
-Before executing a permanent fix, a diagnostic build will be released to the active user to confirm the exact root cause on their device.
-
-### 1. Detailed Diagnostic Logging in `LocalMediaUtil`
-- Log full metadata for every missing `MediaItem` (`id`, `uri`, `deviceId`, `fileSize`, `dateTaken`, `mediaSignature`).
-- When querying MediaStore, log **all** candidate files matching `dateTaken` (exact or ±10s) or `fileSize` (within ±10%).
-- Log the exact `_ID`, `_display_name`, `SIZE`, `DATE_TAKEN`, and computed signature for each candidate, along with the size difference (`candidate.size - item.fileSize`).
-
-### 2. UI Diagnostics for Missing/Unloadable Media
-Update thumbnail previews (`item_media_thumbnail.xml` and `item_media_selected.xml`) when a file cannot be loaded or is from another device:
-- Display a smaller red warning alert icon at the top/center of the preview.
-- Display a text overlay beneath the warning icon containing:
-  - **Type:** `IMAGE` or `VIDEO`
-  - **File Size:** Formatted string (e.g. `2.8 MB`)
-  - **Date Taken:** Formatted date & time (e.g. `2026.08.20 21:43`)
-- This allows the user or developer to visually identify broken media items and cross-reference them with files in the device Gallery.
+1. **Another device.** URIs (picker or MediaStore) are meaningless on a new phone. Re-linking is only
+   possible if the same bytes exist there (see §4).
+2. **Installation id copied by backup.** The id used to live in the backed-up DataStore, so Auto Backup
+   and device transfer gave the new phone the old id. Its MediaStore URIs then looked local and could
+   show an unrelated photo.
+3. **Dependence on `READ_MEDIA_*`.** Converting picker URIs to MediaStore URIs made photos disappear
+   when the permission was revoked or auto-reset for an unused app.
+4. **Persisted-grant cap.** Android keeps at most 512 persisted grants per app and silently revokes
+   the oldest. The app never released grants.
+5. **Missing permission at re-link time** (fixed in 4ac20bd): MediaStore queries without permission return nothing.
+6. **One unreadable candidate aborted the search** (fixed in 4ac20bd).
+7. **Editing a memory with a missing file failed the save** (fixed in 4ac20bd).
 
 ---
 
-## Phase 2: Safe, Low-Risk Resolution Strategy
+## 3. Design
 
-Once diagnostic logcat output confirms candidate size/time deltas on the device:
+### URIs
+* **Keep the photo picker URI** at save time. Its persisted grant survives reboots and does not depend
+  on `READ_MEDIA_*`. Picker URIs are no longer converted to MediaStore URIs on save.
+* **Re-linking to a MediaStore URI is the fallback** for items that are from another installation
+  or no longer resolve. It needs media permission.
+* **Release the grants of removed media.** When a save removes media from a memory, its grants are
+  released unless another saved item still uses them (`LocalMediaUtil.releaseUriGrantsIfUnused`).
+  This keeps the app under the 512-grant cap. There is deliberately no sweep of every unreferenced
+  grant: after restoring an older backup, grants used only by a newer backup must survive.
+  Grants for photos picked but never saved are not released.
 
-### 1. Candidate Discovery via `dateTaken` + Size Tolerance
-- Query MediaStore primarily using `DATE_TAKEN` (exact or ±2s) and secondary size tolerance (e.g. `abs(candidate.size - item.fileSize) < 10KB`).
-- Photos and videos preserve their `DATE_TAKEN` timestamp across device restores, Google Drive backups, and Photo Picker selections.
+### When an item needs re-linking
+`deviceId != installationId` **or** `!isMediaValid(item)`.
 
-### 2. Canonical MediaStore Re-linking
-- Convert temporary Photo Picker URIs to permanent canonical MediaStore URIs (`content://media/external/images/media/<id>`) upon selection or during re-linking.
+`isMediaValid` runs a metadata query only (no file open, so cloud items are not downloaded).
+The URI must be readable, and the file must be the same one: same size, **or** same capture date
+(an in-place edit such as Samsung Gallery "Save" changes the size but keeps the date).
+This catches a MediaStore id that now points at an unrelated photo.
 
-### 3. 100% Backward Compatibility
-- Requires **no database schema changes** (`mediaSignatureV2` is avoided).
-- Guarantees **100% compatibility for old backups** created on previous app versions or other devices.
+### Matching rule
+A MediaStore candidate is linked only if `candidate.size == item.fileSize` **and**
+`signature(candidate) == item.mediaSignature`. There is no date-based rule:
+* With a "reject on hash mismatch" safeguard, a size + date rule could only ever match candidates
+  whose hash cannot be computed, which are files the app cannot read.
+* Stored `dateTaken` can be synthetic (§1).
+
+Re-linking updates only `uri` and `deviceId` (`MemoryGroupDao.updateMediaLink`), so a concurrent edit
+of the same item (for example reordering) is not overwritten.
+
+### Signatures
+* Format: `{statSize}_{md5(first 4 KB + last 4 KB)}` (`MediaHasher`), computed on the redacted stream.
+* Computed once, when media is first picked. Saving an existing item keeps its stored signature,
+  because after a transfer its URI may resolve to a different file.
+
+### Installation id
+* Stored in `noBackupFilesDir/installation_identifier`, which Auto Backup and device transfer skip.
+* Existing ids are migrated once from the DataStore key, which is then removed. Backups made by older
+  versions still carry the id, so one more transfer from such a backup can still copy it. The
+  `isMediaValid` size/date check covers that case.
+
+### Permissions
+* Re-linking runs with any media access, including Android 14+ "selected photos".
+* The re-link buttons request full access when it is missing. After the dialog, re-linking runs if
+  any access was granted.
+* The cold-start Snackbar appears only when the app has no media access at all and media is missing.
+
+---
+
+## 4. Known limits
+* **Different bytes on the new device are not re-linked.** Google Photos "Storage saver", re-encoding,
+  EXIF rewrites or edits make the signature differ. Only exact copies (for example device transfer)
+  can be matched.
+* **Signatures depend on redaction state.** If the app ever gains `ACCESS_MEDIA_LOCATION`, or the
+  photo picker's per-app "Include location info?" option is enabled, new reads would be unredacted
+  and no longer match signatures stored from redacted reads. Not tested.
+* **No backup schema changes.** Room stays at version 18; backups remain compatible.
+
+---
+
+## 5. Verification
+1. `LocalMediaUtilTest` (JVM): the same-file rule.
+2. Emulator: pick photos, save, confirm picker URIs are stored and grants persist; revoke
+   `READ_MEDIA_*` and confirm they still load; confirm cold start does not re-link valid picker items.
+3. Note: the Robolectric tests (`ColorUtilTest`) currently fail to start because Robolectric does not
+   support `targetSdk 37` yet. This is unrelated to media re-linking.

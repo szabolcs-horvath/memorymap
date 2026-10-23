@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.content.Intent
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
@@ -69,7 +68,8 @@ class AddMemoryGroupFragment : Fragment() {
         val type: MediaType,
         val deviceId: String,
         val fileSize: Long = 0L,
-        val dateTaken: Long = 0L
+        val dateTaken: Long = 0L,
+        val mediaSignature: String = ""
     ) {
         class SelectedMediaDiffCallback : DiffUtil.ItemCallback<SelectedMedia>() {
             override fun areItemsTheSame(oldItem: SelectedMedia, newItem: SelectedMedia) = oldItem.uri == newItem.uri
@@ -122,9 +122,9 @@ class AddMemoryGroupFragment : Fragment() {
                 }
                 it.forEach { uri ->
                     try {
-                        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error taking persistable permission for $uri", e)
+                        contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Could not persist access for $uri", e)
                     }
                 }
             }
@@ -549,7 +549,7 @@ class AddMemoryGroupFragment : Fragment() {
                     viewModel.selectedMedia.clear()
                     viewModel.selectedMedia.addAll(
                         sortedItems.map {
-                            SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken)
+                            SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
                         }
                     )
                     updateMediaUI()

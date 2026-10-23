@@ -23,6 +23,9 @@ interface MemoryGroupDao {
     @Update
     suspend fun updateMediaItems(mediaItems: List<MediaItem>)
 
+    @Query("UPDATE media_items SET uri = :uri, deviceId = :deviceId WHERE id = :id")
+    suspend fun updateMediaLink(id: Int, uri: String, deviceId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFragments(fragments: List<MemoryFragment>)
 

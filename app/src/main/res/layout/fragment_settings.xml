@@ -444,6 +444,30 @@
 
             </LinearLayout>
 
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="4dp"
+                android:text="Media Library Maintenance"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Re-scan local gallery storage to locate and re-link missing photo or video files."
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/bt_relinkMedia"
+                style="@style/Widget.Material3Expressive.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Re-link Gallery Photos" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/bt_sendLogs"
                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
