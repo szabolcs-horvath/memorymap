@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.Manifest
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Build
@@ -49,7 +48,7 @@ import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateTimeFormatter
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.LogManager
-import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
+import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +74,17 @@ class SettingsFragment : Fragment() {
     private lateinit var colorPresetAdapter: ColorPresetAdapter
     private var allPresets: List<HSVPreset> = emptyList()
 
+    private val relinkPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
+        // Partial ("selected photos") access is enough to re-link the photos the user selected.
+        val ctx = context ?: return@registerForActivityResult
+        if (PermissionUtil.hasAnyMediaPermission(ctx)) {
+            triggerBackgroundRelink()
+        }
+    }
+
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -94,6 +104,27 @@ class SettingsFragment : Fragment() {
             return@registerForActivityResult
         }
         viewModel.pendingRestoreFile = null
+    }
+
+    private fun triggerBackgroundRelink() {
+        val ctx = context ?: return
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            setLoadingState(true, "Scanning local media library...", hideBackupStatus = true)
+            try {
+                withContext(Dispatchers.IO) {
+                    LocalMediaUtil.verifyAndFixMediaItems(ctx, commonViewModel.getMemoryGroupDao()) { status ->
+                        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                            setLoadingState(true, status, hideBackupStatus = true)
+                        }
+                    }
+                }
+            } finally {
+                commonViewModel.refreshDatabase()
+                setLoadingState(false, hideBackupStatus = false)
+                Toast.makeText(ctx, "Media re-linking complete", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -128,6 +159,15 @@ class SettingsFragment : Fragment() {
         setupDefaultFilterDropdown()
         updateColorPresetsUI()
 
+        binding.btRelinkMedia.setOnClickListener {
+            val ctx = requireContext()
+            if (!PermissionUtil.hasAllMediaPermissions(ctx)) {
+                relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
+            } else {
+                triggerBackgroundRelink()
+            }
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.operationStatus.collect { status ->
@@ -151,10 +191,24 @@ class SettingsFragment : Fragment() {
 
                         is SettingsFragmentViewModel.BackupRestoreOperationResult.RestoreSuccess -> {
                             result.message?.let { showBackupStatus(it, false) }
+
+                            // 1. Refresh database FIRST so CommonRepository opens the restored SQLite file on disk
                             commonViewModel.refreshDatabase()
-                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                                if (context != null) {
-                                    LocalMediaUtil.verifyAndFixMediaItems(context, commonViewModel.getMemoryGroupDao())
+
+                            // 2. Perform media re-linking on the active restored database DAO
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                setLoadingState(true, "Scanning local media library...", hideBackupStatus = true)
+                                try {
+                                    withContext(Dispatchers.IO) {
+                                        LocalMediaUtil.verifyAndFixMediaItems(context, commonViewModel.getMemoryGroupDao()) { status ->
+                                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                                                setLoadingState(true, status, hideBackupStatus = true)
+                                            }
+                                        }
+                                    }
+                                } finally {
+                                    commonViewModel.refreshDatabase()
+                                    setLoadingState(false, hideBackupStatus = false)
                                 }
                             }
                             (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
@@ -765,6 +819,7 @@ class SettingsFragment : Fragment() {
             btBackupNow.isEnabled = enabled
             btSignOut.isEnabled = enabled
             btSendLogs.isEnabled = enabled
+            btRelinkMedia.isEnabled = enabled
             backupAdapter.setButtonsEnabled(enabled)
 
             btAddPreset.isEnabled = enabled
@@ -926,7 +981,7 @@ class SettingsFragment : Fragment() {
                 "Are you sure you want to restore from the backup '${file.name}'?\n\nThis action will overwrite all your current data and it cannot be undone!"
             )
             .setPositiveButton("Restore") { _, _ ->
-                if (hasMediaPermissions()) {
+                if (PermissionUtil.hasAllMediaPermissions(context)) {
                     executeRestore(file)
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     showPermissionInfoDialog(file)
@@ -936,16 +991,6 @@ class SettingsFragment : Fragment() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
-
-    private fun hasMediaPermissions(): Boolean {
-        val context = context ?: return false
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            checkPermission(context, Manifest.permission.READ_MEDIA_IMAGES) &&
-                checkPermission(context, Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
-            checkPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
     }
 
     private fun showPermissionInfoDialog(file: DriveFile) {
@@ -965,15 +1010,7 @@ class SettingsFragment : Fragment() {
 
     private fun launchPermissionRequest(file: DriveFile) {
         viewModel.pendingRestoreFile = file
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(
-                Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VIDEO
-            )
-        } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-        restorePermissionLauncher.launch(permissions)
+        restorePermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
     }
 
     private fun executeRestore(file: DriveFile) {

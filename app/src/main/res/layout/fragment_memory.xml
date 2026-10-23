@@ -220,17 +220,66 @@
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorOnSurface" />
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tv_mediaWarning"
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_mediaWarning"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:background="#FFF3E0"
-                android:padding="8dp"
-                android:text="Some media items could not be loaded. They may have been deleted or are from a different device."
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="#E65100"
-                android:visibility="gone" />
+                android:visibility="gone"
+                app:cardBackgroundColor="#FFF3E0"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#FFE0B2"
+                app:strokeWidth="1dp"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/tv_mediaWarningText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Some media items could not be loaded. They may have been deleted or are from a different device."
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textColor="#E65100" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/bt_relinkMedia"
+                            style="@style/Widget.Material3Expressive.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Re-link Media Files"
+                            android:textColor="#E65100"
+                            app:strokeColor="#E65100" />
+
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/progressRelinkMedia"
+                            style="@style/Widget.Material3Expressive.CircularProgressIndicator.Wavy"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:indeterminate="true"
+                            android:visibility="gone"
+                            app:indicatorColor="#E65100"
+                            app:indicatorSize="24dp"
+                            app:trackThickness="3dp"
+                            tools:visibility="visible" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_media"

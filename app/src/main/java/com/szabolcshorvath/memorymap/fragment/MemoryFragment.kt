@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -30,6 +31,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.PermissionUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,6 +47,46 @@ class MemoryFragment : Fragment() {
     private var memoryId: Int = -1
     private var memoryFragmentListener: MemoryFragmentListener? = null
     private lateinit var backupManager: BackupManager
+
+    private val relinkPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Partial ("selected photos") access is enough to re-link the photos the user selected.
+        val ctx = context ?: return@registerForActivityResult
+        if (PermissionUtil.hasAnyMediaPermission(ctx)) {
+            triggerBackgroundRelink()
+        }
+    }
+
+    private fun triggerBackgroundRelink() {
+        val ctx = context
+        val binding = _binding
+        // Captured once: the getter throws if the progress callback runs after the view is destroyed.
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value
+        if (ctx == null || binding == null || viewLifecycleOwner == null) return
+        binding.btRelinkMedia.isEnabled = false
+        binding.progressRelinkMedia.visibility = View.VISIBLE
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    LocalMediaUtil.verifyAndFixMediaItems(ctx, commonViewModel.getMemoryGroupDao()) { status ->
+                        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                            val currentBinding = _binding ?: return@launch
+                            currentBinding.tvMediaWarningText.text = status
+                        }
+                    }
+                }
+            } finally {
+                val currentBinding = _binding
+                if (currentBinding != null) {
+                    currentBinding.progressRelinkMedia.visibility = View.GONE
+                    currentBinding.btRelinkMedia.isEnabled = true
+                }
+                commonViewModel.refreshDatabase()
+            }
+        }
+    }
 
     interface MemoryFragmentListener {
         fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int)
@@ -142,6 +184,15 @@ class MemoryFragment : Fragment() {
         })
         binding.rvMedia.layoutManager = GridLayoutManager(context, MEDIA_GRID_SPAN_COUNT)
         binding.rvMedia.adapter = mediaAdapter
+
+        binding.btRelinkMedia.setOnClickListener {
+            val ctx = context ?: return@setOnClickListener
+            if (!PermissionUtil.hasAllMediaPermissions(ctx)) {
+                relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
+            } else {
+                triggerBackgroundRelink()
+            }
+        }
 
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
@@ -362,7 +413,11 @@ class MemoryFragment : Fragment() {
         val hasMissingMedia = withContext(Dispatchers.IO) {
             LocalMediaUtil.hasMissingMedia(context, viewModel.mediaItems)
         }
-        binding.tvMediaWarning.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
+        binding.cardMediaWarning.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
+        if (hasMissingMedia) {
+            binding.tvMediaWarningText.text =
+                "Some media items could not be loaded. They may have been deleted or are from a different device."
+        }
         mediaAdapter.updateData(viewModel.mediaItems)
     }
 

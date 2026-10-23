@@ -38,6 +38,7 @@ import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
+import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -65,6 +66,19 @@ class MainActivity :
 
     private var fragmentNavigationTrace: Trace? = null
     private var pendingTraceTag: String? = null
+
+    private val mediaPermissionLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+            // Partial ("selected photos") access is enough to re-link the photos the user selected.
+            if (PermissionUtil.hasAnyMediaPermission(applicationContext)) {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
+                    withContext(Dispatchers.Main) {
+                        commonViewModel.refreshDatabase()
+                    }
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -232,9 +246,6 @@ class MainActivity :
                 val lastVersion = prefs[PreferencesKeys.LAST_APP_VERSION] ?: 0L
 
                 if (currentVersion > lastVersion) {
-                    withContext(Dispatchers.IO) {
-                        LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
-                    }
                     dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
                 }
 
@@ -243,8 +254,29 @@ class MainActivity :
                     dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
                     dataStore.edit { it[PreferencesKeys.IS_FIRST_RUN] = false }
                 }
-                withContext(Dispatchers.IO) {
+
+                val needsPermissionForRelink = withContext(Dispatchers.IO) {
                     initializeHSVPresetsIfEmpty()
+                    LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
+                    val freshMedia = commonViewModel.getMemoryGroupDao().getAllMediaItems()
+                    // Only prompt when there is no media access at all, so users who chose
+                    // "selected photos" are not asked again on every launch.
+                    !PermissionUtil.hasAnyMediaPermission(applicationContext) && LocalMediaUtil.hasMissingMedia(applicationContext, freshMedia)
+                }
+
+                if (needsPermissionForRelink) {
+                    withContext(Dispatchers.Main) {
+                        val snackbar = Snackbar.make(
+                            binding.root,
+                            "Some photos need permission to re-link to your gallery",
+                            Snackbar.LENGTH_LONG
+                        )
+                        snackbar.anchorView = binding.bottomNavigation
+                        snackbar.setAction("Grant") {
+                            mediaPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
+                        }
+                        snackbar.show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to check app status", e)
