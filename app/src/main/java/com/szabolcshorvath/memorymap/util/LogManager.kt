@@ -18,6 +18,7 @@ import java.util.zip.ZipOutputStream
 
 object LogManager {
     private const val TAG = "LogManager"
+    private const val LOGS_DIR = "logs"
     private const val LOG_FILENAME = "logcat.txt"
     private const val INFO_FILENAME = "app_info.txt"
     private const val ZIP_FILENAME = "debug_logs.zip"
@@ -26,10 +27,12 @@ object LogManager {
     suspend fun sendDebugLogs(context: Context, lastBackupDate: String?) {
         withContext(Dispatchers.IO) {
             try {
-                val cacheDir = context.cacheDir
-                val logFile = File(cacheDir, LOG_FILENAME)
-                val infoFile = File(cacheDir, INFO_FILENAME)
-                val zipFile = File(cacheDir, ZIP_FILENAME)
+                // Must match the folder shared in res/xml/file_paths.xml.
+                val logsDir = File(context.cacheDir, LOGS_DIR).apply { mkdirs() }
+                deleteLegacyFiles(context.cacheDir)
+                val logFile = File(logsDir, LOG_FILENAME)
+                val infoFile = File(logsDir, INFO_FILENAME)
+                val zipFile = File(logsDir, ZIP_FILENAME)
 
                 captureLogcat(logFile)
                 captureAppInfo(context, infoFile, lastBackupDate)
@@ -58,6 +61,11 @@ object LogManager {
                 }
             }
         }
+    }
+
+    /** Older versions wrote the log files straight into the cache directory. */
+    private fun deleteLegacyFiles(cacheDir: File) {
+        listOf(LOG_FILENAME, INFO_FILENAME, ZIP_FILENAME).forEach { File(cacheDir, it).delete() }
     }
 
     private fun captureLogcat(outputFile: File) {

@@ -175,12 +175,11 @@ object LocalMediaUtil {
 
         if (relinkedCount > 0) {
             Log.i(TAG, "RE-LINK COMPLETE: Successfully updated $relinkedCount media items in Room DB.")
-            onProgress?.invoke("Media re-linking complete. Re-linked $relinkedCount items.")
-        } else {
-            onProgress?.invoke("No matching photos found to re-link.")
         }
+        val removedDuplicates = deduplicateMediaItems(context, dao)
 
-        deduplicateMediaItems(dao)
+        val summary = if (relinkedCount > 0) "Media re-linking complete. Re-linked $relinkedCount items." else "No matching photos found to re-link."
+        onProgress?.invoke(if (removedDuplicates > 0) "$summary Removed $removedDuplicates duplicate photos." else summary)
     }
 
     private fun findBySignature(
@@ -258,25 +257,47 @@ object LocalMediaUtil {
         }
     }
 
-    suspend fun deduplicateMediaItems(dao: MemoryGroupDao) {
+    /**
+     * After re-linking, two items of one memory can point to the same photo (same signature). Keeps the
+     * oldest of each, deletes the rest, closes the gaps they leave in `order` and releases grants no other
+     * item uses. Returns how many items were removed.
+     */
+    suspend fun deduplicateMediaItems(context: Context, dao: MemoryGroupDao): Int =
         trace("local_media_util_deduplicate_media_items") {
             val allMedia = dao.getAllMediaItems()
+            val duplicates = findDuplicateMedia(allMedia)
+            if (duplicates.isNotEmpty()) {
+                val removedIds = duplicates.mapTo(HashSet()) { it.id }
+                val affectedGroups = duplicates.mapTo(HashSet()) { it.groupId }
+                val newOrders = allMedia
+                    .filter { it.groupId in affectedGroups && it.id !in removedIds }
+                    .groupBy { it.groupId }
+                    .values
+                    .fold(emptyMap<Int, Int>()) { acc, groupItems -> acc + closeOrderGaps(groupItems) }
 
-            val duplicates = allMedia
-                .filter { it.mediaSignature.isNotEmpty() }
-                .groupBy { it.groupId to it.mediaSignature }
-                .filter { it.value.size > 1 }
-
-            val itemsToDelete = mutableListOf<MediaItem>()
-            for ((_, items) in duplicates) {
-                val sorted = items.sortedBy { it.id }
-                itemsToDelete.addAll(sorted.drop(1))
+                Log.i(TAG, "Removing ${duplicates.size} duplicate media items: ids=${duplicates.map { it.id }}")
+                dao.deleteDuplicateMedia(duplicates, newOrders)
+                releaseUriGrantsIfUnused(context, dao, duplicates.map { it.uri })
             }
-
-            if (itemsToDelete.isNotEmpty()) {
-                Log.d(TAG, "Deleting ${itemsToDelete.size} duplicate media items")
-                dao.deleteMediaItems(itemsToDelete)
-            }
+            duplicates.size
         }
+
+    /** Items of the same memory with the same signature, except the oldest (lowest id) of each set. */
+    internal fun findDuplicateMedia(media: List<MediaItem>): List<MediaItem> = media
+        .filter { it.mediaSignature.isNotEmpty() }
+        .groupBy { it.groupId to it.mediaSignature }
+        .values
+        .flatMap { items -> items.sortedBy { it.id }.drop(1) }
+
+    /**
+     * New `order` values (id to order) that number one memory's remaining [items] 1..n in their current
+     * order, for the items whose value changes. Leaves the memory alone if any item has no `order`, so
+     * the displayed order (which then falls back to dates) can't change.
+     */
+    internal fun closeOrderGaps(items: List<MediaItem>): Map<Int, Int> {
+        if (items.any { it.order == null }) return emptyMap()
+        return items.sortedWith(compareBy<MediaItem>({ it.order }, { it.id }))
+            .mapIndexedNotNull { index, item -> (item.id to index + 1).takeIf { item.order != index + 1 } }
+            .toMap()
     }
 }

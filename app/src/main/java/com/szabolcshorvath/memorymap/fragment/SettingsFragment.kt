@@ -1016,6 +1016,16 @@ class SettingsFragment : Fragment() {
     }
 
     private fun onDeleteBackup(file: DriveFile) {
+        val context = context ?: return
+        MaterialAlertDialogBuilder(context)
+            .setTitle(R.string.delete_backup_title)
+            .setMessage(getString(R.string.delete_backup_message, file.name))
+            .setPositiveButton(R.string.delete_backup_confirm) { _, _ -> executeDeleteBackup(file) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun executeDeleteBackup(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
         val scopes = listOf(DriveScopes.DRIVE_FILE)
         val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)

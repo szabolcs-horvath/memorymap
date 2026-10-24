@@ -70,6 +70,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `res/xml/file_paths.xml:3`
 - **What:** `<cache-path path=".">` makes everything in `cacheDir` grantable, including backup and restore temp zips and the Coil cache. Only `debug_logs.zip` needs to be shared.
 - **Fix:** Write the logs to `cacheDir/logs/` and expose only `path="logs/"`.
+- **Status:** Fixed. `LogManager` writes to `cacheDir/logs/` (and deletes the old files in the cache root), and `file_paths.xml` exposes only `logs/`.
 
 ### SEC-7 · Low · Auto Backup enabled with empty rules
 - **Where:** `AndroidManifest.xml:23-25`, `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`
@@ -125,12 +126,13 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `MemoryFragment.kt:436-447`
 - **What:** Editing releases unused persisted grants (`releaseUriGrantsIfUnused`), but delete does not, so grants leak toward Android's 512 cap and older picker items start to lose access. A delete also does not call `triggerAutomaticBackup`, so the newest Drive backup still contains the deleted memory.
 - **Fix:** When the undo window ends, release the grants and trigger a backup.
-- **Status:** Fixed. When the undo Snackbar is dismissed for any reason other than "Undo" (timeout, swipe, another Snackbar, activity destroyed), `MainActivity` releases the deleted media's grants (if no other memory uses them) and triggers an automatic backup. The undo and this clean-up run in the new `MemoryMapApplication.applicationScope`, so they finish even if the activity goes away. Grants still leak if the process dies while the Snackbar is showing; a startup sweep of unreferenced persisted grants would close that gap.
+- **Status:** Fixed. When the undo Snackbar is dismissed for any reason other than "Undo" (timeout, swipe, another Snackbar, activity destroyed), `MainActivity` releases the deleted media's grants (if no other memory uses them) and triggers an automatic backup. The undo and this clean-up run in the new `MemoryMapApplication.applicationScope`, so they finish even if the activity goes away. Grants still leak if the process dies while the Snackbar is showing. A startup sweep of unreferenced grants must not be used to close that gap: after restoring an older backup it would release grants that a newer backup still needs (see `releaseUriGrantsIfUnused`).
 
 ### DATA-8 · Low · `deduplicateMediaItems` silently deletes rows
 - **Where:** `util/LocalMediaUtil.kt:261-281`
 - **What:** After every relink, items in the same group with the same signature are deleted without telling the user. Their grants are not released and `order` is left with gaps.
 - **Fix:** Log or report the count, release the grants, and renumber `order`.
+- **Status:** Fixed. `deduplicateMediaItems` logs the removed ids, reports the count in the re-link progress message, deletes the duplicates and closes the `order` gaps in one transaction (`MemoryGroupDao.deleteDuplicateMedia`, which writes only the `order` column), then releases grants no other item uses. A memory with any unordered item is not renumbered, so its displayed order can't change. Covered by `LocalMediaUtilTest` and `MemoryGroupDaoTest`.
 
 ### DATA-9 · Low · Early migrations cannot run below Android 14
 - **Where:** `MemoryMapDatabase.kt:54-80`
@@ -292,6 +294,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `adapter/BackupAdapter.kt:57`, `SettingsFragment.kt:1023-1028`
 - **What:** One tap permanently deletes the backup. Restore asks for confirmation; delete does not.
 - **Fix:** Add a confirmation dialog.
+- **Status:** Fixed. Deleting a backup asks first, naming the backup and saying it cannot be undone.
 
 ### UX-4 · Medium · Restore requires "Allow all" media access
 - **Where:** `SettingsFragment.kt:984-991, 88-107`
