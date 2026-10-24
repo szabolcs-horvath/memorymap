@@ -73,7 +73,7 @@ Local setup needs files that are **not** in git:
 - Deleting a group cascades to fragments and media. The undo (`MainActivity.onMemoryDeleted`) calls `MemoryGroupDao.restoreDeletedGroup`, which re-inserts all three in one transaction. Media URI grants are released, and an automatic backup runs, only when the undo Snackbar is dismissed without "Undo": a released grant can't be taken back, so undo would lose the photos. If the process dies while the Snackbar is showing, those grants stay (harmless, but they count toward the 512 cap).
 - `MemoryMapApplication.applicationScope` is for short background work that must outlive the screen that started it (the undo and post-delete clean-up). It logs failures instead of crashing.
 - Never call the private backup or restore steps outside `performBackup` / `restoreBackup`: those hold the backup lock. The lock is not reentrant, so don't call one from inside the other.
-- `Slider.clearOnSliderTouchListeners()` does not remove change listeners (`BUG-1`).
+- `Slider.clearOnSliderTouchListeners()` does not remove change listeners; use `clearOnChangeListeners()` before re-adding one in `onBindViewHolder`.
 - Debug builds use the default debug keystore, not the release key. For Google sign-in (and a Maps key restricted to Android apps) to work in debug builds, the debug SHA-1 (`./gradlew signingReport`) must be registered for `com.szabolcshorvath.memorymap` in Google Cloud Console. A debug build can't be installed over a release install: uninstall it first.
 
 ## Tests

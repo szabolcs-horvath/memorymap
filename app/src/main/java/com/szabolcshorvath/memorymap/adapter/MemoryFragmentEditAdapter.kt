@@ -292,21 +292,21 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun setupColorSection(binding: ItemMemoryFragmentEditBinding, holder: MemoryFragmentEditViewHolder) {
-        binding.sliderHue.clearOnSliderTouchListeners()
+        binding.sliderHue.clearOnChangeListeners()
         binding.sliderHue.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateFragmentColor(binding, holder.bindingAdapterPosition, h = value)
             }
         }
 
-        binding.sliderSaturation.clearOnSliderTouchListeners()
+        binding.sliderSaturation.clearOnChangeListeners()
         binding.sliderSaturation.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateFragmentColor(binding, holder.bindingAdapterPosition, s = value)
             }
         }
 
-        binding.sliderBrightness.clearOnSliderTouchListeners()
+        binding.sliderBrightness.clearOnChangeListeners()
         binding.sliderBrightness.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 updateFragmentColor(binding, holder.bindingAdapterPosition, v = value)
