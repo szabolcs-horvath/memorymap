@@ -33,9 +33,8 @@ internal object BackupZip {
         require(files.keys.all { it in ENTRY_NAMES }) { "Unknown backup entries: ${files.keys - ENTRY_NAMES}" }
         ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { out ->
             files.forEach { (name, file) ->
-                out.putNextEntry(ZipEntry(name))
+                out.putNextEntry(ZipEntry(name)) // also closes the previous entry
                 BufferedInputStream(FileInputStream(file)).use { it.copyTo(out) }
-                out.closeEntry()
             }
         }
     }
@@ -48,18 +47,26 @@ internal object BackupZip {
     fun extract(zipFile: File, targetDir: File, maxBytes: Long = MAX_EXTRACTED_BYTES): Set<String> {
         val extracted = mutableSetOf<String>()
         var remaining = maxBytes
+        val targetRoot = targetDir.canonicalPath + File.separator
         ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
             generateSequence { zis.nextEntry }
-                .filter { !it.isDirectory && it.name in ENTRY_NAMES }
-                .forEach { entry ->
-                    FileOutputStream(File(targetDir, entry.name)).use { out ->
+                .filter { !it.isDirectory }
+                .mapNotNull { entry -> knownName(entry.name) }
+                .forEach { name ->
+                    // The path is built from our own constant, never from the archive, and checked again.
+                    val target = File(targetDir, name)
+                    if (!target.canonicalPath.startsWith(targetRoot)) throw IOException("Invalid backup entry: $name")
+                    FileOutputStream(target).use { out ->
                         remaining -= copyAtMost(zis, out, remaining)
                     }
-                    extracted += entry.name
+                    extracted += name
                 }
         }
         return extracted
     }
+
+    /** Our own constant for [entryName] if it is one of the backup entries, otherwise null. */
+    private fun knownName(entryName: String): String? = ENTRY_NAMES.firstOrNull { it == entryName }
 
     /** Copies [input] to [output]; throws if it is longer than [limit] bytes. Returns the bytes copied. */
     private fun copyAtMost(input: InputStream, output: FileOutputStream, limit: Long): Long {
