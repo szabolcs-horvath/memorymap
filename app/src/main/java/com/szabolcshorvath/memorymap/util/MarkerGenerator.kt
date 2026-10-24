@@ -14,7 +14,6 @@ import androidx.core.graphics.withClip
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.PinConfig
-import com.google.firebase.perf.metrics.AddTrace
 
 object MarkerGenerator {
     private const val TARGET_CONTRAST_FOR_MARKER_COLORS = 2.0
@@ -40,7 +39,6 @@ object MarkerGenerator {
     private const val CACHE_MAX_SIZE = 50
     private val cache = LruCache<String, BitmapDescriptor>(CACHE_MAX_SIZE)
 
-    @AddTrace(name = "marker_generator_multi_color_bitmap_circle_icon", enabled = true)
     fun multiColorBitmapCircleIcon(colors: List<Int>, count: Int, density: Float): BitmapDescriptor {
         val cacheKey = "circle_${colors.hashCode()}_${count}_$density"
         cache.get(cacheKey)?.let { return it }
@@ -56,7 +54,6 @@ object MarkerGenerator {
         return bitmapDescriptor
     }
 
-    @AddTrace(name = "marker_generator_single_color_pin_config_icon", enabled = true)
     fun singleColorPinConfigIcon(@ColorInt color: Int): BitmapDescriptor {
         val contrastColor = ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
         return BitmapDescriptorFactory.fromPinConfig(
@@ -68,7 +65,6 @@ object MarkerGenerator {
         )
     }
 
-    @AddTrace(name = "marker_generator_multi_color_bitmap_pin_icon", enabled = true)
     fun multiColorBitmapPinIcon(colors: List<Int>, count: Int, density: Float): BitmapDescriptor {
         val cacheKey = "pin_${colors.hashCode()}_${count}_$density"
         cache.get(cacheKey)?.let { return it }

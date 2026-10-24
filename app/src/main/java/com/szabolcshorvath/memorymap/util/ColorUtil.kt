@@ -4,7 +4,6 @@ import android.graphics.Color
 import androidx.annotation.ColorInt
 import androidx.core.graphics.ColorUtils
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.firebase.perf.metrics.AddTrace
 import kotlin.math.abs
 
 object ColorUtil {
@@ -55,7 +54,6 @@ object ColorUtil {
         return Color.HSVToColor(floatArrayOf(normalizeHue(hue), saturation, brightness))
     }
 
-    @AddTrace(name = "color_util_generate_color_with_target_contrast", enabled = true)
     @ColorInt
     fun generateColorWithTargetContrast(@ColorInt inputColor: Int, targetContrast: Double): Int {
         require(targetContrast in MIN_TARGET_CONTRAST..MAX_TARGET_CONTRAST) {
