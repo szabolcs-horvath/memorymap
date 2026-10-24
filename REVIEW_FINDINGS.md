@@ -125,6 +125,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `MemoryFragment.kt:436-447`
 - **What:** Editing releases unused persisted grants (`releaseUriGrantsIfUnused`), but delete does not, so grants leak toward Android's 512 cap and older picker items start to lose access. A delete also does not call `triggerAutomaticBackup`, so the newest Drive backup still contains the deleted memory.
 - **Fix:** When the undo window ends, release the grants and trigger a backup.
+- **Status:** Fixed. When the undo Snackbar is dismissed for any reason other than "Undo" (timeout, swipe, another Snackbar, activity destroyed), `MainActivity` releases the deleted media's grants (if no other memory uses them) and triggers an automatic backup. The undo and this clean-up run in the new `MemoryMapApplication.applicationScope`, so they finish even if the activity goes away. Grants still leak if the process dies while the Snackbar is showing; a startup sweep of unreferenced persisted grants would close that gap.
 
 ### DATA-8 · Low · `deduplicateMediaItems` silently deletes rows
 - **Where:** `util/LocalMediaUtil.kt:261-281`

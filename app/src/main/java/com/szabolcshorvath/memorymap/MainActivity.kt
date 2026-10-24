@@ -356,16 +356,28 @@ class MainActivity :
     }
 
     override fun onMemoryDeleted(deleted: MemoryGroupWithMedia) {
+        // Application scope: this work must finish even if the activity is destroyed meanwhile
+        // (which also dismisses the Snackbar).
+        val app = application as MemoryMapApplication
+        val db = commonViewModel.getDb()
         val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
         snackbar.anchorView = binding.bottomNavigation
         snackbar.setAction("Undo") {
-            lifecycleScope.launch(Dispatchers.IO) {
-                commonViewModel.getMemoryGroupDao().restoreDeletedGroup(deleted)
-
-                // Trigger automatic backup after undo
-                BackupManager(applicationContext).triggerAutomaticBackup(commonViewModel.getDb())
+            app.applicationScope.launch {
+                db.memoryGroupDao().restoreDeletedGroup(deleted)
+                BackupManager(app).triggerAutomaticBackup(db)
             }
         }
+        snackbar.addCallback(object : Snackbar.Callback() {
+            override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
+                if (event == DISMISS_EVENT_ACTION) return // Undone; the undo above backs up.
+                // The delete is final now: the media grants can't be needed for an undo any more.
+                app.applicationScope.launch {
+                    LocalMediaUtil.releaseUriGrantsIfUnused(app, db.memoryGroupDao(), deleted.mediaItems.map { it.uri })
+                    BackupManager(app).triggerAutomaticBackup(db)
+                }
+            }
+        })
         snackbar.show()
     }
 
