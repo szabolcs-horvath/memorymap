@@ -58,6 +58,22 @@ class MemoryGroupDaoTest {
     }
 
     @Test
+    fun `deleting duplicate media renumbers only the order of the remaining items`() = runBlocking {
+        val groupId = dao.insertGroup(group()).toInt()
+        dao.insertMediaItems((1..4).map { media(groupId, "content://media/$it", order = it) })
+        val inserted = dao.getAllMediaItems().sortedBy { it.order }
+        val duplicate = inserted[1] // order 2
+
+        dao.deleteDuplicateMedia(listOf(duplicate), mapOf(inserted[2].id to 2, inserted[3].id to 3))
+
+        val remaining = dao.getAllMediaItems().sortedBy { it.order }
+        assertEquals(listOf(inserted[0].id, inserted[2].id, inserted[3].id), remaining.map { it.id })
+        assertEquals(listOf(1, 2, 3), remaining.map { it.order })
+        // Nothing but `order` changed.
+        assertEquals(listOf(inserted[0], inserted[2], inserted[3]).map { it.copy(order = null) }, remaining.map { it.copy(order = null) })
+    }
+
+    @Test
     fun `undoing a delete of a memory without media or fragments restores the group`() = runBlocking {
         val groupId = dao.insertGroup(group()).toInt()
         val deleted = checkNotNull(dao.getGroupWithMedia(groupId))

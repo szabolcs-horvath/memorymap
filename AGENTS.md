@@ -42,7 +42,9 @@ Local setup needs files that are **not** in git:
 - Picked media keep their **photo picker URI**, with `takePersistableUriPermission` (survives reboots, no `READ_MEDIA_*` needed). Android caps persisted grants at 512, so call `LocalMediaUtil.releaseUriGrantsIfUnused` when media is removed.
 - Each `MediaItem` stores `deviceId` (the installation id), `fileSize`, `dateTaken` and `mediaSignature` = `"{size}_{md5(first 4 KB + last 4 KB)}"` (`MediaHasher`). The signature is computed once and kept on later saves.
 - `InstallationIdentifier` lives in `noBackupFilesDir` on purpose, so Auto Backup and device transfer don't copy it. Don't move it back into DataStore.
-- An item needs re-linking if `deviceId != installationId` or `!isMediaValid` (metadata-only check). `LocalMediaUtil.verifyAndFixMediaItems` matches MediaStore candidates by exact size + signature and updates only `uri` and `deviceId` (`updateMediaLink`). It runs on cold start, after a restore, and from the "Re-link" buttons.
+- An item needs re-linking if `deviceId != installationId` or `!isMediaValid` (metadata-only check). `LocalMediaUtil.verifyAndFixMediaItems` matches MediaStore candidates by exact size + signature and updates only `uri` and `deviceId` (`updateMediaLink`). It runs on cold start, after a restore, and from the "Re-link" buttons. Afterwards `deduplicateMediaItems` removes items of one memory that now point to the same photo (same signature), closes the `order` gaps and releases unused grants.
+- Never "sweep" all persisted grants that the current database doesn't reference: after restoring an older backup, a newer backup may still need them. Release only the grants of media you just removed (`releaseUriGrantsIfUnused`).
+- The "Send logs" zip is written to `cacheDir/logs/`, the only folder the `FileProvider` shares (`res/xml/file_paths.xml`). Keep anything else (backup temp files) out of it.
 - Media from another device is shown as an error tile (type, size, date) and is not loaded.
 
 ### Backup and restore (`backup/BackupManager.kt`, `SettingsFragment`)

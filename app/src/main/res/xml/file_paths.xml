@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <cache-path name="debug_logs" path="." />
+    <!-- Only the debug logs folder is shareable; the rest of the cache (backup and restore temp files) is not. -->
+    <cache-path name="debug_logs" path="logs/" />
 </paths>

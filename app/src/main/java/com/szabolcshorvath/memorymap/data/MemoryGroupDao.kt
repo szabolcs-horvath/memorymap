@@ -49,6 +49,19 @@ interface MemoryGroupDao {
     @Delete
     suspend fun deleteMediaItems(items: List<MediaItem>)
 
+    @Query("UPDATE media_items SET `order` = :order WHERE id = :id")
+    suspend fun updateMediaOrder(id: Int, order: Int)
+
+    /**
+     * Deletes [duplicates] and sets the new `order` of the remaining items ([newOrders], id to order)
+     * in one transaction. Only the `order` column is written, so a concurrent re-link isn't overwritten.
+     */
+    @Transaction
+    suspend fun deleteDuplicateMedia(duplicates: List<MediaItem>, newOrders: Map<Int, Int>) {
+        deleteMediaItems(duplicates)
+        newOrders.forEach { (id, order) -> updateMediaOrder(id, order) }
+    }
+
     @Query("DELETE FROM media_items WHERE groupId = :groupId")
     suspend fun deleteMediaByGroupId(groupId: Int)
 
