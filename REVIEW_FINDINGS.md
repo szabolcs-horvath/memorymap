@@ -27,7 +27,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 4. ~~**DATA-3** – Concurrent backups share the same temp files, so backups can corrupt each other.~~ Fixed.
 5. **UX-1** – Saving a memory waits for the full Google Drive upload to finish.
 6. ~~**BUG-1** – Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called).~~ Fixed.
-7. **BUG-2** – On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible).
+7. ~~**BUG-2** – On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible).~~ Fixed.
 8. **PERF-1** – A Firebase trace is started for every pair of markers in the O(N²) clustering loop.
 9. **ARCH-1** – Hidden tabs have their views destroyed on every tab switch (the map is rebuilt each time).
 10. **DATA-4** – Automatic backups are never pruned ~~and the backup list is capped at 100 entries~~ (list paging fixed; pruning postponed).
@@ -154,6 +154,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `fragment/PickLocationFragment.kt:255-283`
 - **What:** The `GeocodeListener` lambda implements only `onGeocode`. The default `onError` does nothing, so offline or on a service error `setConfirmButtonLoading(false)` is never called and the user cannot confirm a tapped location. A POI-fetch failure falls back to the same path.
 - **Fix:** Implement `onError`, and enable "Confirm" right away (coordinates are enough); fill in the name and address when they arrive.
+- **Status:** Fixed. Every outcome of the reverse geocode (an address, no result, an exception, or `GeocodeListener.onError` on Android 13+) goes through `showGeocodeResult`, which fills in the address if there is one and re-enables "Confirm". The marker shows "Selected Location" when no name was found. "Confirm" is still disabled while the lookup runs.
 
 ### BUG-3 · Medium · Date and time pickers stop working after rotation
 - **Where:** `MapFragment.kt:209-235`, `AddMemoryGroupFragment.kt:697-770`, `MemoryFragmentEditAdapter.kt:486-598`
