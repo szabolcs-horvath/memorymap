@@ -26,7 +26,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 3. ~~**DATA-2** – "Undo" after deleting a memory loses all of its fragments.~~ Fixed.
 4. ~~**DATA-3** – Concurrent backups share the same temp files, so backups can corrupt each other.~~ Fixed.
 5. **UX-1** – Saving a memory waits for the full Google Drive upload to finish.
-6. **BUG-1** – Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called).
+6. ~~**BUG-1** – Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called).~~ Fixed.
 7. **BUG-2** – On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible).
 8. **PERF-1** – A Firebase trace is started for every pair of markers in the O(N²) clustering loop.
 9. **ARCH-1** – Hidden tabs have their views destroyed on every tab switch (the map is rebuilt each time).
@@ -148,6 +148,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `adapter/MemoryFragmentEditAdapter.kt:294-317`
 - **What:** `clearOnSliderTouchListeners()` is called, but the code then adds an **OnChange** listener. Every rebind (and rebinds are frequent: payloads, preset changes, list changes) adds another listener, so one slider movement runs the update N times and can write to whichever position the holder now has.
 - **Fix:** Call `clearOnChangeListeners()`, or register the listeners once in the ViewHolder's `init`.
+- **Status:** Fixed. `setupColorSection` calls `clearOnChangeListeners()` before adding the change listener, so each slider has exactly one. The listener reads the holder's current position when it fires.
 
 ### BUG-2 · High · Location confirm stays disabled forever when geocoding fails (API 33+)
 - **Where:** `fragment/PickLocationFragment.kt:255-283`
