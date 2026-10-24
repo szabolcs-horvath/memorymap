@@ -2,6 +2,13 @@
     <string name="app_name">Memory Map</string>
     <string name="map_id">faa667fb8a498f042bacb4c5</string>
     <string name="restore_error_backup_too_new">This backup was made with a newer version of Memory Map. Update the app, then restore it again.</string>
+    <string name="restore_media_access_title">Access to your photos</string>
+    <string name="restore_media_access_message">After the restore, Memory Map links your memories to the photos and videos on this phone. Choose \"Allow all\" so it can find all of them.\n\nIf you select only some photos, or don\'t allow access, the restore still works, and you can allow more access afterwards to link the rest.</string>
+    <string name="restore_media_access_continue">Continue</string>
+    <string name="relink_more_title">Some photos aren\'t linked yet</string>
+    <string name="relink_more_message">With the current access, Memory Map couldn\'t find every photo and video of your memories. Allow access to all photos and videos to link the rest. You can also do this later with \"Re-link Gallery Photos\".</string>
+    <string name="relink_more_allow">Allow access</string>
+    <string name="relink_more_not_now">Not now</string>
     <string name="delete_backup_title">Delete backup?</string>
     <string name="delete_backup_message">The backup \'%1$s\' will be permanently deleted from Google Drive. This cannot be undone.</string>
     <string name="delete_backup_confirm">Delete</string>

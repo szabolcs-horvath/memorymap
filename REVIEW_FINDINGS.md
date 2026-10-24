@@ -76,6 +76,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `AndroidManifest.xml:23-25`, `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`
 - **What:** `allowBackup="true"` with template rule files. The live WAL-mode database, and the DataStore with the user's email, go to Google's Auto Backup and device transfer. This runs alongside the app's own Drive backup and can restore a database whose URIs belong to another phone.
 - **Fix:** Decide explicitly. Either exclude the database (the app has its own backup), or keep it and document the behaviour.
+- **Status:** Fixed (decision: exclude). `data_extraction_rules.xml` (cloud backup and device transfer) and `backup_rules.xml` (Android 11 and older) exclude the database and the DataStore. Memories come back only through the app's Drive backups. The DataStore is excluded too, so a new phone doesn't start automatic Drive backups of an empty database before the user restores one.
 
 ### SEC-8 · Low · Missing OAuth client ID becomes the string `"null"`
 - **Where:** `app/build.gradle.kts:41-42`
@@ -300,6 +301,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `SettingsFragment.kt:984-991, 88-107`
 - **What:** On Android 14+, choosing "Selected photos" blocks the restore entirely ("Please retry the restore…"), although the database restore needs no permission and re-linking works with partial access (as the rest of the app assumes).
 - **Fix:** Always restore, then re-link with whatever access exists and offer "Grant full access to re-link more".
+- **Status:** Fixed. The permission request before a restore (with its explanation on Android 14+) no longer blocks it: the restore runs whatever is granted. After re-linking, if access isn't full and photos are still unlinked, a dialog offers "Allow access", which re-links again once granted.
 
 ### UX-5 · Medium · Location permission asked immediately and repeatedly
 - **Where:** `MapFragment.kt:117-123, 455-471`, `PickLocationFragment.kt:164-167, 375-385`

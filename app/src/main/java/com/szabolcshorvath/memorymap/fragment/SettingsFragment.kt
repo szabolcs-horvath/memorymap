@@ -87,22 +87,11 @@ class SettingsFragment : Fragment() {
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
+    ) { _ ->
         if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
-        val allGranted = permissions.entries.all { it.value }
-        if (allGranted) {
-            viewModel.pendingRestoreFile?.let { executeRestore(it) }
-        } else {
-            context?.let {
-                Toast.makeText(
-                    it,
-                    "Permissions are needed to link media files after restore. " +
-                        "Please retry the restore, and grant permissions to all images and videos needed!",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-            return@registerForActivityResult
-        }
+        // Restoring the database needs no media access. Re-linking afterwards uses whatever was granted,
+        // and offers to grant more if photos are still missing (offerMoreMediaAccessIfNeeded).
+        viewModel.pendingRestoreFile?.let { executeRestore(it) }
         viewModel.pendingRestoreFile = null
     }
 
@@ -205,6 +194,7 @@ class SettingsFragment : Fragment() {
                                 } finally {
                                     setLoadingState(false, hideBackupStatus = false)
                                 }
+                                offerMoreMediaAccessIfNeeded()
                             }
                             (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
                         }
@@ -991,16 +981,36 @@ class SettingsFragment : Fragment() {
     private fun showPermissionInfoDialog(file: DriveFile) {
         val context = context ?: return
         MaterialAlertDialogBuilder(context)
-            .setTitle("Media Access Required")
-            .setMessage(
-                "To link your photos and videos correctly after the restore, the app needs access to your entire media library.\n\n" +
-                    "In the next step, please choose 'Allow all' (or 'All photos and videos') to ensure all your memories are restored correctly."
-            )
-            .setPositiveButton("Continue") { _, _ ->
+            .setTitle(R.string.restore_media_access_title)
+            .setMessage(R.string.restore_media_access_message)
+            .setPositiveButton(R.string.restore_media_access_continue) { _, _ ->
                 launchPermissionRequest(file)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    /**
+     * After a restore with partial or no media access, offers full access if some photos are still not
+     * linked. Granting it runs the re-link again.
+     */
+    private fun offerMoreMediaAccessIfNeeded() {
+        val ctx = context?.takeUnless { PermissionUtil.hasAllMediaPermissions(it) } ?: return
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val hasMissingMedia = withContext(Dispatchers.IO) {
+                LocalMediaUtil.hasMissingMedia(ctx, commonViewModel.getMemoryGroupDao().getAllMediaItems())
+            }
+            if (!hasMissingMedia || _binding == null) return@launch
+            MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.relink_more_title)
+                .setMessage(R.string.relink_more_message)
+                .setPositiveButton(R.string.relink_more_allow) { _, _ ->
+                    relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
+                }
+                .setNegativeButton(R.string.relink_more_not_now, null)
+                .show()
+        }
     }
 
     private fun launchPermissionRequest(file: DriveFile) {
