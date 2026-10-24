@@ -171,6 +171,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `adapter/SelectedMediaAdapter.kt:77`, `AddMemoryGroupFragment.kt:288-291`
 - **What:** `onRemove(holder.bindingAdapterPosition)` can pass `NO_POSITION` (-1), for example on a quick double tap during the remove animation, and `selectedMedia.removeAt(-1)` throws.
 - **Fix:** Ignore `NO_POSITION`, as the other adapters already do.
+- **Status:** Fixed. The remove button ignores `NO_POSITION` and passes the item, not its index; the Add screen removes it with `selectedMedia.remove(item)`, so a stale position can't remove a different photo and a second tap does nothing.
 
 ### BUG-6 · Medium · Results registered in `onCreateView` (Settings)
 - **Where:** `SettingsFragment.kt:131-143`

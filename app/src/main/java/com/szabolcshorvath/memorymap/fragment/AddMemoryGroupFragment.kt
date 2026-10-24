@@ -285,8 +285,8 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        mediaAdapter = SelectedMediaAdapter(viewModel.currentDeviceId) { position ->
-            viewModel.selectedMedia.removeAt(position)
+        mediaAdapter = SelectedMediaAdapter(viewModel.currentDeviceId) { item ->
+            viewModel.selectedMedia.remove(item)
             updateMediaUI()
         }
         mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
