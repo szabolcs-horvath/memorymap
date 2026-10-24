@@ -101,6 +101,8 @@ kotlin {
                 isIncludeAndroidResources = true
                 all {
                     it.useJUnitPlatform()
+                    // Robolectric's SDK 36+ images touch FileDescriptor internals.
+                    it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
                 }
             }
         }
