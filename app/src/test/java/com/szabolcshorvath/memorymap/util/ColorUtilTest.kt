@@ -6,6 +6,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.HSV_BLACK
 import com.szabolcshorvath.memorymap.util.ColorUtil.HSV_WHITE
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -38,25 +39,23 @@ class ColorUtilTest {
         )
 
         @JvmStatic
-        fun generateColorWithTargetContrastParameters(): List<Arguments> {
-            val arguments = mutableListOf(
-                Arguments.of(HSV_BLACK[0], HSV_BLACK[1], HSV_BLACK[2]),
-                Arguments.of(HSV_WHITE[0], HSV_WHITE[1], HSV_WHITE[2])
-            )
-            for (h in 0..360 step 5) {
-                for (s in 5..100 step 5) {
-                    for (v in 5..100 step 5) {
-                        arguments.add(
-                            Arguments.of(
-                                h.toFloat(),
-                                s.toFloat() / 100f,
-                                v.toFloat() / 100f
-                            )
-                        )
-                    }
+        fun blackAndWhiteParameters() = listOf(
+            Arguments.of(*HSV_BLACK.toTypedArray()),
+            Arguments.of(*HSV_WHITE.toTypedArray())
+        )
+
+        @JvmStatic
+        fun hueParameters() = (0..360 step 5).map { it.toFloat() }
+
+        // Robolectric adds ~10 ms of setup to every test case, so each hue is one case that
+        // checks all saturation/value combinations, instead of one case per color.
+        private val SATURATION_AND_VALUE_STEPS = (5..100 step 5).map { it / 100f } // 0.05, 0.10, ..., 1.0
+        private val SATURATION_VALUE_PAIRS = buildList {
+            for (saturation in SATURATION_AND_VALUE_STEPS) {
+                for (value in SATURATION_AND_VALUE_STEPS) {
+                    add(saturation to value)
                 }
             }
-            return arguments
         }
 
         private const val TARGET_CONTRAST = 2.0
@@ -69,9 +68,26 @@ class ColorUtilTest {
         assertEquals(expected, ColorUtil.normalizeHue(hue))
     }
 
-    @MethodSource("generateColorWithTargetContrastParameters")
+    @MethodSource("blackAndWhiteParameters")
     @ParameterizedTest(name = "generateColorWithTargetContrast: H:{0}, S:{1}, V:{2}")
-    fun generateColorWithTargetContrast(hue: Float, saturation: Float, value: Float) {
+    fun generateColorWithTargetContrastForBlackAndWhite(hue: Float, saturation: Float, value: Float) {
+        assertTargetContrast(hue, saturation, value)
+    }
+
+    @MethodSource("hueParameters")
+    @ParameterizedTest(name = "generateColorWithTargetContrast: H:{0}")
+    fun generateColorWithTargetContrast(hue: Float) {
+        assertAll(
+            "H:$hue",
+            SATURATION_VALUE_PAIRS.map { (saturation, value) ->
+                {
+                    assertTargetContrast(hue, saturation, value)
+                }
+            }
+        )
+    }
+
+    private fun assertTargetContrast(hue: Float, saturation: Float, value: Float) {
         val primaryColor = Color.HSVToColor(floatArrayOf(hue, saturation, value))
 
         val secondaryColor =
