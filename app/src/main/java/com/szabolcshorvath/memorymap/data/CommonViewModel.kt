@@ -36,10 +36,6 @@ class CommonViewModel(application: Application) : AndroidViewModel(application) 
     fun getMemoryGroupDao() = repository.getMemoryGroupDao()
     fun getHSVPresetDao() = repository.getHSVPresetDao()
 
-    fun refreshDatabase() {
-        repository.refreshDatabase(getApplication())
-    }
-
     companion object {
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
     }

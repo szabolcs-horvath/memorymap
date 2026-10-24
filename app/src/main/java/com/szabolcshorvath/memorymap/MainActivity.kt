@@ -71,9 +71,6 @@ class MainActivity :
             if (PermissionUtil.hasAnyMediaPermission(applicationContext)) {
                 lifecycleScope.launch(Dispatchers.IO) {
                     LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
-                    withContext(Dispatchers.Main) {
-                        commonViewModel.refreshDatabase()
-                    }
                 }
             }
         }
