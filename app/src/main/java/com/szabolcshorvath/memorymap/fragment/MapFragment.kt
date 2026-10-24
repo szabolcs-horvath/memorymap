@@ -672,7 +672,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 false
             }
 
-        @AddTrace(name = "markerable_cluster_renderer_on_before_cluster_item_rendered", enabled = true)
         override fun onBeforeClusterItemRendered(
             cluster: Markerable.MarkerableCluster,
             advancedMarkerOptions: AdvancedMarkerOptions
@@ -700,7 +699,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             advancedMarkerOptions.title(cluster.title)
         }
 
-        @AddTrace(name = "markerable_cluster_renderer_on_cluster_item_updated", enabled = true)
         override fun onClusterItemUpdated(
             cluster: Markerable.MarkerableCluster,
             marker: Marker
@@ -728,7 +726,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             marker.title = cluster.title
         }
 
-        @AddTrace(name = "markerable_cluster_renderer_on_before_cluster_rendered", enabled = true)
         override fun onBeforeClusterRendered(
             cluster: Cluster<Markerable.MarkerableCluster>,
             advancedMarkerOptions: AdvancedMarkerOptions
@@ -746,7 +743,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             advancedMarkerOptions.anchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
         }
 
-        @AddTrace(name = "markerable_cluster_renderer_on_cluster_updated", enabled = true)
         override fun onClusterUpdated(
             cluster: Cluster<Markerable.MarkerableCluster>,
             marker: AdvancedMarker

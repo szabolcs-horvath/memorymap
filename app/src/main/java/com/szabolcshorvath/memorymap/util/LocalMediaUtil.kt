@@ -7,7 +7,6 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
-import com.google.firebase.perf.metrics.AddTrace
 import com.google.firebase.perf.trace
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
@@ -47,7 +46,6 @@ object LocalMediaUtil {
      * MediaStore ids are per device, so a `content://media/external/...` URI carried over to another
      * phone can resolve to an unrelated photo. Comparing the stored size and date catches that.
      */
-    @AddTrace(name = "local_media_util_is_media_valid", enabled = true)
     fun isMediaValid(context: Context, item: MediaItem): Boolean {
         val metadata = queryMetadata(context, item.uri.toUri()) ?: return false
         return isSameFile(item.fileSize, item.dateTaken, metadata)

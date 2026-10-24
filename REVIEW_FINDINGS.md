@@ -28,7 +28,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 5. **UX-1** – Saving a memory waits for the full Google Drive upload to finish.
 6. ~~**BUG-1** – Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called).~~ Fixed.
 7. ~~**BUG-2** – On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible).~~ Fixed.
-8. **PERF-1** – A Firebase trace is started for every pair of markers in the O(N²) clustering loop.
+8. ~~**PERF-1** – A Firebase trace is started for every pair of markers in the O(N²) clustering loop.~~ Partly fixed: the traces are gone, the comparison is still O(N²).
 9. **ARCH-1** – Hidden tabs have their views destroyed on every tab switch (the map is rebuilt each time).
 10. **DATA-4** – Automatic backups are never pruned ~~and the backup list is capped at 100 entries~~ (list paging fixed; pruning postponed).
 
@@ -236,6 +236,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `data/Markerable.kt:26`, `fragment/MapFragmentViewModel.kt:114-144`
 - **What:** `isSameLocationAs` has `@AddTrace` and is called for every pair: 500 markers means about 125,000 trace start/stop calls on every recompute (each filter or data change). Each call also runs `Location.distanceBetween`.
 - **Fix:** Remove `@AddTrace` from hot helpers (also `isMediaValid`, `generateColorWithTargetContrast` and the per-marker renderer callbacks). Use a grid or geohash bucket so only neighbours are compared.
+- **Status:** Partly fixed. `@AddTrace` is removed from `isSameLocationAs`, `isMediaValid`, `generateColorWithTargetContrast`, the three `MarkerGenerator` icon functions and the four per-marker renderer callbacks. `clusterMarkerables` and `updatePieChart` keep theirs (one per recompute). The pairwise comparison is still O(N²); a grid or geohash bucket is not done (it would change which points cluster, see UX-10).
 
 ### PERF-2 · High · DAO reflection proxy plus a Firebase trace on every DB call
 - **Where:** `util/PerfUtil.kt:34-86`, `MemoryMapDatabase.kt:43-45`
