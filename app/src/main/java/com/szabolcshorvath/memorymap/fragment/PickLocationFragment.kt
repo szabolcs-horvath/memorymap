@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
+import android.location.Address
 import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
@@ -36,7 +37,6 @@ import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Locale
 
@@ -243,73 +243,35 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun reverseGeocode(latLng: LatLng) {
-        // Keep a reference to the coordinates for this specific request
-        val requestLatLng = latLng
         val context = context ?: return
-        val viewLifecycleOwner = viewLifecycleOwner
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        val showResult = { address: Address? ->
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) { showGeocodeResult(latLng, address) }
+        }
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val geocoder = Geocoder(context, Locale.getDefault())
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1) { addresses ->
-                        // RACE CONDITION CHECK:
-                        // Only process the result if the currently selected location hasn't changed
-                        // since this request was initiated.
-                        if (requestLatLng.latitude != viewModel.selectedLat || requestLatLng.longitude != viewModel.selectedLng) {
-                            return@getFromLocation
-                        }
+                    geocoder.getFromLocation(
+                        latLng.latitude,
+                        latLng.longitude,
+                        1,
+                        object : Geocoder.GeocodeListener {
+                            override fun onGeocode(addresses: MutableList<Address>) {
+                                showResult(addresses.firstOrNull())
+                            }
 
-                        if (addresses.isNotEmpty()) {
-                            val address = addresses.first()
-                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                                // Re-verify on the Main thread before updating UI
-                                if (requestLatLng.latitude != viewModel.selectedLat || requestLatLng.longitude != viewModel.selectedLng) {
-                                    return@launch
-                                }
-                                if (viewModel.selectedPlaceName == null) {
-                                    viewModel.selectedPlaceName = address.featureName ?: address.thoroughfare
-                                }
-                                viewModel.selectedAddress = address.getAddressLine(0)
-                                updateSelectedLocation(latLng, viewModel.selectedPlaceName)
-                            }
-                        } else {
-                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                                if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
-                                    setConfirmButtonLoading(false)
-                                }
+                            // Offline or on a service error only this is called, never onGeocode.
+                            override fun onError(errorMessage: String?) {
+                                Log.e(TAG, "Reverse geocoding failed for $latLng: $errorMessage")
+                                showResult(null)
                             }
                         }
-                    }
+                    )
                 } else {
                     @Suppress("DEPRECATION")
-                    val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
-
-                    // RACE CONDITION CHECK:
-                    // Only process the result if the currently selected location hasn't changed
-                    // since this request was initiated.
-                    if (requestLatLng.latitude != viewModel.selectedLat || requestLatLng.longitude != viewModel.selectedLng) {
-                        return@launch
-                    }
-
-                    if (!addresses.isNullOrEmpty()) {
-                        val address = addresses.first()
-                        withContext(Dispatchers.Main) {
-                            if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
-                                if (viewModel.selectedPlaceName == null) {
-                                    viewModel.selectedPlaceName = address.featureName ?: address.thoroughfare
-                                }
-                                viewModel.selectedAddress = address.getAddressLine(0)
-                                updateSelectedLocation(latLng, viewModel.selectedPlaceName)
-                            }
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
-                                setConfirmButtonLoading(false)
-                            }
-                        }
-                    }
+                    showResult(geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)?.firstOrNull())
                 }
             } catch (e: Exception) {
                 when (e) {
@@ -318,13 +280,25 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
                     else -> Log.e(TAG, "Reverse geocoding failed for $latLng", e)
                 }
-                withContext(Dispatchers.Main) {
-                    if (requestLatLng.latitude == viewModel.selectedLat && requestLatLng.longitude == viewModel.selectedLng) {
-                        setConfirmButtonLoading(false)
-                    }
-                }
+                showResult(null)
             }
         }
+    }
+
+    /**
+     * Shows the reverse-geocoded [address] of [latLng] (null if there is none or the lookup failed)
+     * and re-enables "Confirm": the coordinates alone are enough to save a location.
+     */
+    private fun showGeocodeResult(latLng: LatLng, address: Address?) {
+        // Ignore a late result for a location the user has since moved away from.
+        if (latLng.latitude != viewModel.selectedLat || latLng.longitude != viewModel.selectedLng) return
+        if (address != null) {
+            if (viewModel.selectedPlaceName == null) {
+                viewModel.selectedPlaceName = address.featureName ?: address.thoroughfare
+            }
+            viewModel.selectedAddress = address.getAddressLine(0)
+        }
+        updateSelectedLocation(latLng, viewModel.selectedPlaceName)
     }
 
     private fun setGoogleMapPadding() {
