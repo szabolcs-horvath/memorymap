@@ -60,7 +60,7 @@ Local setup needs files that are **not** in git:
 
 - Run `./gradlew detekt` before committing. `MagicNumber` is active, which is why numbers live in named `private const val`s in a `companion object`.
 - In async callbacks use `val binding = _binding ?: return`, and `viewLifecycleOwnerLiveData.value ?: return` instead of `viewLifecycleOwner` (that getter throws when there is no view).
-- Register activity result launchers as **property initializers**, never in `onCreateView` (`BUG-6`).
+- Register activity result launchers as **property initializers**, never in `onCreateView`: views are recreated on every tab switch, so callbacks would pile up.
 - Firebase Performance is used heavily: `@AddTrace` annotations, `PerfUtil.trace("name") { }`, `RoomDatabase.withTransaction("name") { }` (the traced overload in `PerfUtil`). Trace names are `snake_case` (`<class>_<method>`). Don't put `@AddTrace` on hot or per-item functions (`PERF-1`).
 - User-facing strings are currently hard-coded in Kotlin and XML (`I18N-1`). New code should prefer `strings.xml`.
 - Generated or local-only files to keep out of commits: `local.properties`, `app/google-services.json`, `app/build/`.
