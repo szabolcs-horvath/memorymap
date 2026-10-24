@@ -14,7 +14,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 
-class SelectedMediaAdapter(private var currentDeviceId: String?, private val onRemove: (Int) -> Unit) :
+class SelectedMediaAdapter(private var currentDeviceId: String?, private val onRemove: (SelectedMedia) -> Unit) :
     ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
         SelectedMedia.SelectedMediaDiffCallback()
     ) {
@@ -74,6 +74,10 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
             holder.binding.videoIcon.visibility = if (item.type == MediaType.VIDEO) View.VISIBLE else View.GONE
         }
 
-        holder.binding.btRemove.setOnClickListener { onRemove(holder.bindingAdapterPosition) }
+        holder.binding.btRemove.setOnClickListener {
+            // NO_POSITION during the remove animation, for example on a quick double tap.
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) onRemove(getItem(pos))
+        }
     }
 }
