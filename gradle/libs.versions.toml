@@ -2,7 +2,6 @@
 # Build
 kotlinGradlePlugin = "2.4.21"
 agp = "9.4.1"
-googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
 googleServices = "4.5.0"
 ksp = "2.3.12"
 detekt = "1.23.8"
@@ -63,7 +62,6 @@ leakcanary = "1.0.0"
 android-application = { id = "com.android.application", version.ref = "agp" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlytics" }
 firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerf" }
-google-android-libraries-mapsplatform-secrets-gradle-plugin = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "googleAndroidLibrariesMapsplatformSecretsGradlePlugin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

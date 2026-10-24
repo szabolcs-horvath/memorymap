@@ -21,7 +21,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 
 ## Top priorities
 
-1. **SEC-1** – Keystore passwords are compiled into `BuildConfig` and ship in debug APKs.
+1. ~~**SEC-1** – Keystore passwords are compiled into `BuildConfig` and ship in debug APKs.~~ Fixed.
 2. **DATA-1** – Destructive migration is *enabled*, so restoring a backup made by a newer app version silently wipes all data.
 3. **DATA-2** – "Undo" after deleting a memory loses all of its fragments.
 4. **DATA-3** – Concurrent backups share the same temp files, so backups can corrupt each other.
@@ -41,11 +41,13 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **What:** The Maps Secrets Gradle plugin turns *every* key in `local.properties` into a `BuildConfig` field. The generated `BuildConfig` contains `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_STORE_FILE`. In a local build, the field is present in `app-debug.apk`; R8 strips it from the release APK only because it is unused.
 - **Why it matters:** Anyone with a debug APK can read the signing passwords. Together with SEC-2, debug builds are a real distribution risk.
 - **Fix:** Move signing secrets out of `local.properties` (a separate `keystore.properties`, or env vars), or configure `secrets { ignoreList.add("RELEASE_.*") }`. Rotate the passwords if a debug APK has ever left the machine.
+- **Status:** Fixed. The secrets plugin was removed. `app/build.gradle.kts` now takes only `MAPS_API_KEY` (manifest placeholder) and `OAUTH_WEB_CLIENT_ID` (`BuildConfig`) from `local.properties`. Rotating the passwords is still up to the owner if an older debug APK was ever shared.
 
 ### SEC-2 · High · Debug builds are signed with the release key
 - **Where:** `app/build.gradle.kts:72-77`
 - **What:** `debug { signingConfig = release }`. A debuggable APK signed with the production key can be installed over the Play/production install, and `run-as` then exposes the user's database, DataStore and tokens.
 - **Fix:** Use the default debug keystore for debug builds. If a shared signature is needed (for example for OAuth client IDs), register the debug SHA-1 separately instead.
+- **Status:** Fixed. The debug build type no longer sets a signing config, so AGP uses the default debug keystore. The debug SHA-1 has to be registered as an Android OAuth client (and on the Maps key, if it is restricted) in Google Cloud Console.
 
 ### SEC-3 · Medium · Zip-slip check is a plain prefix match
 - **Where:** `backup/BackupManager.kt:256-267`

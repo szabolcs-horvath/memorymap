@@ -4,7 +4,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
@@ -36,7 +35,10 @@ kotlin {
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-            manifestPlaceholders["MAPS_API_KEY"] = System.getenv("MAPS_API_KEY") ?: ""
+            // Pass only the values the app needs. Never expose local.properties wholesale:
+            // it also holds the release signing passwords (SEC-1).
+            manifestPlaceholders["MAPS_API_KEY"] =
+                localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
 
             val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
             buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
@@ -70,9 +72,8 @@ kotlin {
             }
 
             debug {
-                if (localProperties.getProperty("RELEASE_STORE_FILE") != null) {
-                    signingConfig = signingConfigs.getByName("release")
-                }
+                // Uses the default debug keystore. Never sign debuggable builds with the
+                // release key (SEC-2).
                 isMinifyEnabled = false
             }
         }
