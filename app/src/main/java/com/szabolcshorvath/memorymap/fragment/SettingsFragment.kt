@@ -10,7 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
@@ -69,7 +68,20 @@ class SettingsFragment : Fragment() {
     private val viewModel: SettingsFragmentViewModel by viewModels()
     private lateinit var googleAuthManager: GoogleAuthManager
     private lateinit var backupManager: BackupManager
-    private lateinit var startAuthorizationIntent: ActivityResultLauncher<IntentSenderRequest>
+    private val startAuthorizationIntent = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        try {
+            val context = context ?: return@registerForActivityResult
+            if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
+            val authorizationResult = Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(activityResult.data)
+            successfulAuthorization(authorizationResult.grantedScopes)
+        } catch (e: ApiException) {
+            Log.e(TAG, "Authorization failed", e)
+            viewModel.isBackupRequested = false
+            setLoadingState(false)
+        }
+    }
     private lateinit var backupAdapter: BackupAdapter
     private lateinit var colorPresetAdapter: ColorPresetAdapter
     private var allPresets: List<HSVPreset> = emptyList()
@@ -116,20 +128,6 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        startAuthorizationIntent =
-            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { activityResult ->
-                try {
-                    val context = context ?: return@registerForActivityResult
-                    if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
-                    val authorizationResult = Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(activityResult.data)
-                    successfulAuthorization(authorizationResult.grantedScopes)
-                } catch (e: ApiException) {
-                    Log.e(TAG, "Authorization failed", e)
-                    viewModel.isBackupRequested = false
-                    setLoadingState(false)
-                }
-            }
-
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         return binding.root
     }

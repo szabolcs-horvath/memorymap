@@ -177,6 +177,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `SettingsFragment.kt:131-143`
 - **What:** `registerForActivityResult` for the authorization intent runs on every view creation, which happens on every tab switch (ARCH-1). Callbacks pile up, and after process death the result can be delivered to a stale registration and lost.
 - **Fix:** Register it once as a property initializer, like the other launchers.
+- **Status:** Fixed. `startAuthorizationIntent` is a property initializer.
 
 ### BUG-7 · Medium · Leaving the Add tab while saving causes a surprise navigation later
 - **Where:** `AddMemoryGroupFragment.kt:257-284`
