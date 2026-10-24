@@ -22,7 +22,7 @@ Local setup needs files that are **not** in git:
 
 > ⚠️ `local.properties` also holds the release signing passwords. `app/build.gradle.kts` reads only the keys it needs: `MAPS_API_KEY` goes to a manifest placeholder and `OAUTH_WEB_CLIENT_ID` to `BuildConfig`. To add a new value, wire it up explicitly in the same way. Never expose the whole file (for example with the Maps Secrets Gradle plugin), and never log `BuildConfig` fields.
 
-- Robolectric-based tests (`ColorUtilTest`) may not start because Robolectric does not support `targetSdk 37` yet (`BUILD-4`). Plain JVM tests run fine.
+- Robolectric-based tests (`ColorUtilTest`, `MemoryGroupDaoTest`) run locally with Robolectric 4.17; `BUILD-4` (they could not start with `targetSdk 37`) looks resolved.
 - CI does **not** run unit tests, and Detekt in CI never fails the build. Run both locally.
 
 ## Architecture
@@ -47,7 +47,9 @@ Local setup needs files that are **not** in git:
 
 ### Backup and restore (`backup/BackupManager.kt`, `SettingsFragment`)
 - Backup: `PRAGMA wal_checkpoint(TRUNCATE)`, then zip `database.sqlite` (+ `-wal`/`-shm` if present) + `metadata.json`, then upload to the Drive folder "Memory Map Backups" as `MemoryMap_{Automatic|Manual}_Backup_<yyyyMMdd_HHmmss>.zip`.
-- **Automatic backups** (`triggerAutomaticBackup`) run after almost every write (save, reorder, preset changes, undo) if a user email is stored, and emit `BackupManager.backupEvents` (STARTED/FINISHED) that Settings listens to. They are awaited inline by callers and are not debounced or pruned (`UX-1`, `DATA-3`, `DATA-4`, `PERF-6`).
+- **Automatic backups** (`triggerAutomaticBackup`) run after almost every write (save, reorder, preset changes, undo) if a user email is stored, and emit `BackupManager.backupEvents` (STARTED/FINISHED) that Settings listens to. They are awaited inline by callers and are not debounced or pruned (`UX-1`, `DATA-4`, `PERF-6`).
+- Backup and restore share one process-wide `Mutex` in `BackupManager`, so they run one at a time (callers wait for the running one). Each run uses its own temp directory in `cacheDir` (`BackupTempFiles`); leftovers from killed runs are deleted when the next run starts.
+- Old backups are never deleted by the app (pruning was deliberately postponed, `DATA-4`). `listBackups` pages through all of them.
 - Restore: download, unzip, check `metadata.json` exists, reject backups from a newer database version (`BackupCompatibility`), `MemoryMapDatabase.closeDatabase()`, overwrite the database files, then the UI calls `commonViewModel.refreshDatabase()` and re-links media.
 - Auth: sign-in stores the email in DataStore (`USER_EMAIL_KEY`); Drive consent goes through `AuthorizationClient`; API calls build a `GoogleAccountCredential` from the email.
 
@@ -67,7 +69,7 @@ Local setup needs files that are **not** in git:
 - `data.MemoryFragment` (entity) vs `fragment.MemoryFragment` (screen): the name clash is handled with `import … as MemoryFragmentEntity` in `MemoryFragmentViewModel`.
 - `MemoryFragment.title` (entity) is a mutable `@Ignore` field, filled from the parent group at runtime.
 - Deleting a group cascades to fragments and media. The undo (`MainActivity.onMemoryDeleted`) calls `MemoryGroupDao.restoreDeletedGroup`, which re-inserts all three in one transaction. Delete does not release media URI grants, which is what keeps undo working: if you add grant release on delete, do it only after the undo Snackbar is gone.
-- Backup and restore temp files use fixed paths in `cacheDir` (`backup_temp/`, `backup.zip`, `restore_temp*`), so don't run two at once (`DATA-3`).
+- Never call the private backup or restore steps outside `performBackup` / `restoreBackup`: those hold the backup lock. The lock is not reentrant, so don't call one from inside the other.
 - `Slider.clearOnSliderTouchListeners()` does not remove change listeners (`BUG-1`).
 - Debug builds use the default debug keystore, not the release key. For Google sign-in (and a Maps key restricted to Android apps) to work in debug builds, the debug SHA-1 (`./gradlew signingReport`) must be registered for `com.szabolcshorvath.memorymap` in Google Cloud Console. A debug build can't be installed over a release install: uninstall it first.
 
