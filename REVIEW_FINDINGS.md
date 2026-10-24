@@ -24,13 +24,13 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 1. ~~**SEC-1** – Keystore passwords are compiled into `BuildConfig` and ship in debug APKs.~~ Fixed.
 2. ~~**DATA-1** – Destructive migration is *enabled*, so restoring a backup made by a newer app version silently wipes all data.~~ Fixed.
 3. ~~**DATA-2** – "Undo" after deleting a memory loses all of its fragments.~~ Fixed.
-4. **DATA-3** – Concurrent backups share the same temp files, so backups can corrupt each other.
+4. ~~**DATA-3** – Concurrent backups share the same temp files, so backups can corrupt each other.~~ Fixed.
 5. **UX-1** – Saving a memory waits for the full Google Drive upload to finish.
 6. **BUG-1** – Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called).
 7. **BUG-2** – On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible).
 8. **PERF-1** – A Firebase trace is started for every pair of markers in the O(N²) clustering loop.
 9. **ARCH-1** – Hidden tabs have their views destroyed on every tab switch (the map is rebuilt each time).
-10. **DATA-4** – Automatic backups are never pruned and the backup list is capped at 100 entries.
+10. **DATA-4** – Automatic backups are never pruned ~~and the backup list is capped at 100 entries~~ (list paging fixed; pruning postponed).
 
 ---
 
@@ -99,11 +99,13 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `BackupManager.kt:86-98, 147`
 - **What:** Every backup uses `cacheDir/backup_temp` and `cacheDir/backup.zip`. Automatic backups are started from many places (save, reorder, presets, undo), and a manual backup can run at the same time. `MemoryFragmentViewModel` cancels the previous job, but the blocking Drive `execute()` keeps running. One run's `finally` deletes the zip the other is uploading, or overwrites it mid-upload.
 - **Fix:** Use a unique temp dir per run (`createTempFile`) and serialize backups with a `Mutex`, or move them to WorkManager unique work (ARCH-3).
+- **Status:** Fixed. Backup and restore share a process-wide `Mutex`, and every run uses its own temp directory (`BackupTempFiles`), with stale leftovers deleted at the start of the next run. Concurrent automatic backups now run one after another instead of in parallel, so a save can wait longer behind a running backup until UX-1 / PERF-6 make backups non-blocking and debounced.
 
 ### DATA-4 · Medium · Unbounded automatic backups; list truncated at 100
 - **Where:** `BackupManager.kt:160-193`
 - **What:** Every edit, reorder or preset change uploads a full new zip, and nothing is ever deleted. `files().list()` has no `pageSize` or paging, so after 100 files the oldest (including manual backups) stop showing up. Drive quota grows without limit.
 - **Fix:** Keep the last N automatic backups (delete older ones after a successful upload), and page through `nextPageToken`.
+- **Status:** Partly fixed. `listBackups` now pages through `nextPageToken` (1000 per page), so every backup is listed. Pruning is postponed by decision: the app still never deletes backups. If it is added later, never delete manual backups, and keep older ones too (for example one per day and one per month), so a bad change cannot quickly rotate out every good backup.
 
 ### DATA-5 · Medium · Backup copies a live database file; restore is not atomic
 - **Where:** `BackupManager.kt:115-157, 278-303`
@@ -427,6 +429,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** noted in `SIGNATURE_FIX_PLAN.md` §5
 - **What:** `ColorUtilTest` does not start, so the only colour tests are effectively off.
 - **Fix:** Pin `@Config(sdk = [36])` for Robolectric tests, or make `ColorUtil` pure-JVM (its maths does not need Android).
+- **Note (2026-10-24):** Could not reproduce. With Robolectric 4.17, `ColorUtilTest` (91 tests) and `MemoryGroupDaoTest` run and pass locally. Probably resolved by a dependency upgrade; close it after a CI run confirms.
 
 ---
 

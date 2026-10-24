@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -41,6 +43,8 @@ import com.google.api.services.drive.model.File as DriveFile
 class BackupManager(private val context: Context) {
 
     enum class BackupEvent { STARTED, FINISHED }
+
+    private val tempFiles = BackupTempFiles(context.cacheDir)
 
     fun getDriveService(credential: GoogleAccountCredential): Drive =
         Drive.Builder(
@@ -77,37 +81,38 @@ class BackupManager(private val context: Context) {
         onProgress: (String) -> Unit
     ): Result<Unit> {
         return withContext(Dispatchers.IO) {
-            trace("backup_manager_perform_backup") {
-                var tempDir: File? = null
-                var zipFile: File? = null
-                try {
-                    onProgress("Preparing database...")
-                    prepareDatabaseForBackup(db)
+            if (backupLock.isLocked) onProgress("Waiting for the running backup to finish...")
+            backupLock.withLock {
+                trace("backup_manager_perform_backup") {
+                    var tempDir: File? = null
+                    try {
+                        tempFiles.deleteStale()
 
-                    tempDir = File(context.cacheDir, "backup_temp")
-                    if (tempDir.exists()) tempDir.deleteRecursively()
-                    tempDir.mkdirs()
+                        onProgress("Preparing database...")
+                        prepareDatabaseForBackup(db)
 
-                    val dbFile = context.getDatabasePath("memory_map_database")
-                    if (!dbFile.exists()) {
-                        throw FileNotFoundException("Database not found")
+                        tempDir = tempFiles.newBackupDir()
+
+                        val dbFile = context.getDatabasePath("memory_map_database")
+                        if (!dbFile.exists()) {
+                            throw FileNotFoundException("Database not found")
+                        }
+
+                        val metadataFile = createMetadataFile(dbFile, isAutomatic, tempDir)
+
+                        onProgress("Compressing data...")
+                        val zipFile = zipBackup(dbFile, metadataFile, File(tempDir, "backup.zip"))
+
+                        onProgress("Uploading backup...")
+                        uploadBackup(credential, isAutomatic, zipFile)
+
+                        Result.success(Unit)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Backup failed", e)
+                        Result.failure(e)
+                    } finally {
+                        tempDir?.deleteRecursively()
                     }
-
-                    val metadataFile = createMetadataFile(dbFile, isAutomatic, tempDir)
-
-                    onProgress("Compressing data...")
-                    zipFile = zipBackup(dbFile, metadataFile)
-
-                    onProgress("Uploading backup...")
-                    uploadBackup(credential, isAutomatic, zipFile)
-
-                    Result.success(Unit)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Backup failed", e)
-                    Result.failure(e)
-                } finally {
-                    tempDir?.deleteRecursively()
-                    zipFile?.delete()
                 }
             }
         }
@@ -144,8 +149,7 @@ class BackupManager(private val context: Context) {
     }
 
     @AddTrace(name = "backup_manager_zip_backup", enabled = true)
-    private fun zipBackup(dbFile: File, metadataFile: File): File {
-        val zipFile = File(context.cacheDir, "backup.zip")
+    private fun zipBackup(dbFile: File, metadataFile: File, zipFile: File): File {
         ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { out ->
             addToZip(out, dbFile, "database.sqlite")
             addToZip(out, metadataFile, "metadata.json")
@@ -179,12 +183,16 @@ class BackupManager(private val context: Context) {
                     val driveService = getDriveService(credential)
                     val folderId = getOrCreateBackupFolder(driveService)
                     val query = "'$folderId' in parents and trashed = false"
-                    val result = driveService.files().list()
-                        .setQ(query)
-                        .setFields("files(id, name, modifiedTime, size)")
-                        .setOrderBy("modifiedTime desc")
-                        .execute()
-                    return@withContext result.files ?: emptyList()
+                    return@withContext collectAllPages { pageToken ->
+                        val result = driveService.files().list()
+                            .setQ(query)
+                            .setFields("nextPageToken, files(id, name, modifiedTime, size)")
+                            .setOrderBy("modifiedTime desc")
+                            .setPageSize(DRIVE_LIST_PAGE_SIZE)
+                            .setPageToken(pageToken)
+                            .execute()
+                        (result.files ?: emptyList()) to result.nextPageToken
+                    }
                 } catch (e: IOException) {
                     Log.e(TAG, "Failed to list backups", e)
                     return@withContext emptyList()
@@ -195,52 +203,46 @@ class BackupManager(private val context: Context) {
 
     suspend fun restoreBackup(credential: GoogleAccountCredential, fileId: String, onProgress: (String) -> Unit): Result<Unit> {
         return withContext(Dispatchers.IO) {
-            trace("backup_manager_restore_backup") {
-                var tempZipFile: File? = null
-                var tempRestoreDir: File? = null
-                try {
-                    val driveService = getDriveService(credential)
+            if (backupLock.isLocked) onProgress("Waiting for the running backup to finish...")
+            backupLock.withLock {
+                trace("backup_manager_restore_backup") {
+                    var tempDir: File? = null
+                    try {
+                        tempFiles.deleteStale()
+                        tempDir = tempFiles.newRestoreDir()
+                        val driveService = getDriveService(credential)
 
-                    onProgress("Downloading backup...")
-                    tempZipFile = downloadBackup(driveService, fileId)
-                    tempRestoreDir = setupTempRestoreDir()
+                        onProgress("Downloading backup...")
+                        val zipFile = downloadBackup(driveService, fileId, File(tempDir, "backup.zip"))
+                        val extractDir = File(tempDir, "files").apply { mkdirs() }
 
-                    onProgress("Uncompressing backup...")
-                    unzipBackup(tempZipFile, tempRestoreDir)
+                        onProgress("Uncompressing backup...")
+                        unzipBackup(zipFile, extractDir)
 
-                    onProgress("Verifying backup metadata...")
-                    verifyBackupMetadata(tempRestoreDir)
+                        onProgress("Verifying backup metadata...")
+                        verifyBackupMetadata(extractDir)
 
-                    onProgress("Restoring database...")
-                    restoreDatabaseFromBackup(tempRestoreDir)
+                        onProgress("Restoring database...")
+                        restoreDatabaseFromBackup(extractDir)
 
-                    Result.success(Unit)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Restore failed", e)
-                    Result.failure(e)
-                } finally {
-                    tempZipFile?.delete()
-                    tempRestoreDir?.deleteRecursively()
+                        Result.success(Unit)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Restore failed", e)
+                        Result.failure(e)
+                    } finally {
+                        tempDir?.deleteRecursively()
+                    }
                 }
             }
         }
     }
 
     @AddTrace(name = "backup_manager_download_backup", enabled = true)
-    private fun downloadBackup(driveService: Drive, fileId: String): File {
-        val tempZipFile = File(context.cacheDir, "restore_temp.zip")
-        FileOutputStream(tempZipFile).use { outputStream ->
+    private fun downloadBackup(driveService: Drive, fileId: String, zipFile: File): File {
+        FileOutputStream(zipFile).use { outputStream ->
             driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream)
         }
-        return tempZipFile
-    }
-
-    @AddTrace(name = "backup_manager_setup_temp_restore_dir", enabled = true)
-    private fun setupTempRestoreDir(): File {
-        val tempRestoreDir = File(context.cacheDir, "restore_temp_dir")
-        if (tempRestoreDir.exists()) tempRestoreDir.deleteRecursively()
-        tempRestoreDir.mkdirs()
-        return tempRestoreDir
+        return zipFile
     }
 
     @AddTrace(name = "backup_manager_unzip_backup", enabled = true)
@@ -359,7 +361,27 @@ class BackupManager(private val context: Context) {
         const val TAG = "BackupManager"
 
         private const val ZIP_READ_BUFFER_SIZE = 1024
+        private const val DRIVE_LIST_PAGE_SIZE = 1000 // Drive's maximum
+
+        /** Process-wide: BackupManager is created per caller, but only one backup or restore may run at a time. */
+        private val backupLock = Mutex()
+
         private val _backupEvents = MutableSharedFlow<BackupEvent>(extraBufferCapacity = 1)
         val backupEvents = _backupEvents.asSharedFlow()
+
+        /**
+         * Collects every page of a paged Drive list call. [fetchPage] gets the page token (null for the
+         * first page) and returns that page's items and the next token (null or blank on the last page).
+         */
+        internal inline fun <T> collectAllPages(fetchPage: (pageToken: String?) -> Pair<List<T>, String?>): List<T> {
+            val all = mutableListOf<T>()
+            var pageToken: String? = null
+            do {
+                val (items, nextPageToken) = fetchPage(pageToken)
+                all += items
+                pageToken = nextPageToken?.takeIf { it.isNotBlank() && it != pageToken }
+            } while (pageToken != null)
+            return all
+        }
     }
 }
