@@ -2,9 +2,7 @@ package com.szabolcshorvath.memorymap.auth
 
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import androidx.credentials.ClearCredentialStateRequest
-import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -18,48 +16,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class GoogleAuthManager(private val context: Context) {
-    lateinit var googleCredential: Credential
     private var credentialManager = CredentialManager.create(context)
 
-    suspend fun signIn(callback: (String) -> Unit) {
-        withContext(Dispatchers.Main) {
-            val googleIdOption = GetSignInWithGoogleOption.Builder(BuildConfig.OAUTH_WEB_CLIENT_ID).build()
-            val request = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
+    /** Signs in with Google and returns the account's email. Throws if sign-in fails or is cancelled. */
+    suspend fun signIn(): String = withContext(Dispatchers.Main) {
+        val googleIdOption = GetSignInWithGoogleOption.Builder(BuildConfig.OAUTH_WEB_CLIENT_ID).build()
+        val request = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
 
-            val result = credentialManager.getCredential(request = request, context = context)
+        val result = credentialManager.getCredential(request = request, context = context)
 
-            handleSignIn(result, callback)
-        }
+        emailFrom(result)
     }
 
-    private fun handleSignIn(result: GetCredentialResponse, callback: (String) -> Unit) {
-        when (val credential = result.credential) {
-//            is PublicKeyCredential -> {
-//                val responseJson = credential.authenticationResponseJson
-//                val userCredential = fidoAuthenticateWithServer(responseJson)
-//                loginWithPasskey(userCredential)
-//            }
-//            is PasswordCredential -> {
-//                val userName = credential.id
-//                val password = credential.password
-//                loginWithPassword(userName, password)
-//            }
-            is CustomCredential -> {
-                if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                    googleCredential = googleIdTokenCredential
-                    callback(googleIdTokenCredential.id)
-                } else {
-                    Log.e(TAG, "Unexpected credential type")
-                    Toast.makeText(context, "Unexpected credential type", Toast.LENGTH_SHORT).show()
-                }
-            }
-
-            else -> {
-                Log.e(TAG, "Unexpected credential type")
-                Toast.makeText(context, "Unexpected credential type", Toast.LENGTH_SHORT).show()
-            }
+    private fun emailFrom(result: GetCredentialResponse): String {
+        val credential = result.credential
+        // Throw rather than return quietly, so the caller always gets a result or an error.
+        if (credential !is CustomCredential || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            Log.e(TAG, "Unexpected credential type: ${credential.type}")
+            error("Unexpected credential type: ${credential.type}")
         }
+        return GoogleIdTokenCredential.createFrom(credential.data).id
     }
 
     suspend fun signOut() {
