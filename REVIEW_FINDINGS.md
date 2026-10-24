@@ -165,6 +165,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `auth/GoogleAuthManager.kt:35-63`, `SettingsFragment.kt:627-675`
 - **What:** For an unexpected credential type, `handleSignIn` shows a Toast but neither calls the callback nor throws, so `setLoadingState(false)` never runs and every button stays disabled.
 - **Fix:** Throw (or return a result) on the else branches. Also drop the unused `lateinit googleCredential`.
+- **Status:** Fixed. `GoogleAuthManager.signIn()` returns the email and throws on an unexpected credential type, so the Settings `catch` always shows the error and clears the loading state. The unused `googleCredential` field is gone.
 
 ### BUG-5 · Medium · Removing a selected photo can crash
 - **Where:** `adapter/SelectedMediaAdapter.kt:77`, `AddMemoryGroupFragment.kt:288-291`

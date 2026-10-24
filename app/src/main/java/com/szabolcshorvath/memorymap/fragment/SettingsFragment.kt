@@ -613,20 +613,17 @@ class SettingsFragment : Fragment() {
             setLoadingState(true, "Signing in...")
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
-                    googleAuthManager.signIn { email ->
-                        viewLifecycleOwner.lifecycleScope.launch {
-                            val context = context
-                            if (context != null) {
-                                context.dataStore.updateData {
-                                    it.toMutablePreferences().also { preferences ->
-                                        preferences[PreferencesKeys.USER_EMAIL_KEY] = email
-                                    }
-                                }
-                                updateUI(email)
-                                requestDriveAuthorization(false)
-                                setLoadingState(false)
+                    val email = googleAuthManager.signIn()
+                    val context = context
+                    if (context != null) {
+                        context.dataStore.updateData {
+                            it.toMutablePreferences().also { preferences ->
+                                preferences[PreferencesKeys.USER_EMAIL_KEY] = email
                             }
                         }
+                        updateUI(email)
+                        requestDriveAuthorization(false)
+                        setLoadingState(false)
                     }
                 } catch (e: Exception) {
                     when (e) {
