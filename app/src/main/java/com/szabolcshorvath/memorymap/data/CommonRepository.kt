@@ -1,34 +1,20 @@
 package com.szabolcshorvath.memorymap.data
 
 import android.content.Context
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
 
 class CommonRepository private constructor(context: Context) {
-    private val _dbFlow = MutableStateFlow(MemoryMapDatabase.getDatabase(context))
+    // One database instance for the whole process. A restore replaces its contents in place, so it is never swapped.
+    private val db = MemoryMapDatabase.getDatabase(context)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val allGroups = _dbFlow.flatMapLatest { it.memoryGroupDao().getAllGroupsFlow() }
+    val allGroups = db.memoryGroupDao().getAllGroupsFlow()
+    val allFragments = db.memoryGroupDao().getAllFragmentsFlow()
+    val allPresets = db.hsvPresetDao().getAllPresetsFlow()
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val allFragments = _dbFlow.flatMapLatest { it.memoryGroupDao().getAllFragmentsFlow() }
+    fun getDb() = db
+    fun getMemoryGroupDao() = db.memoryGroupDao()
+    fun getHSVPresetDao() = db.hsvPresetDao()
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val allPresets = _dbFlow.flatMapLatest { it.hsvPresetDao().getAllPresetsFlow() }
-
-    fun getDb() = _dbFlow.value
-    fun getMemoryGroupDao() = _dbFlow.value.memoryGroupDao()
-    fun getHSVPresetDao() = _dbFlow.value.hsvPresetDao()
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun getGroupWithMedia(id: Int) = _dbFlow.flatMapLatest {
-        it.memoryGroupDao().getGroupWithMediaFlow(id)
-    }
-
-    fun refreshDatabase(context: Context) {
-        _dbFlow.value = MemoryMapDatabase.getDatabase(context)
-    }
+    fun getGroupWithMedia(id: Int) = db.memoryGroupDao().getGroupWithMediaFlow(id)
 
     companion object {
         @Volatile

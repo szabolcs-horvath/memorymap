@@ -12,12 +12,15 @@ import com.google.api.services.drive.DriveScopes
 import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
+import com.szabolcshorvath.memorymap.data.DatabaseContents
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_FILE_NAME_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_METADATA_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
+import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -27,17 +30,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Date
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
 import com.google.api.services.drive.model.File as DriveFile
 
 class BackupManager(private val context: Context) {
@@ -92,16 +89,16 @@ class BackupManager(private val context: Context) {
                         prepareDatabaseForBackup(db)
 
                         tempDir = tempFiles.newBackupDir()
+                        val snapshotDir = File(tempDir, "snapshot").apply { mkdirs() }
+                        val snapshot = snapshotDatabase(db, snapshotDir)
 
-                        val dbFile = context.getDatabasePath("memory_map_database")
-                        if (!dbFile.exists()) {
-                            throw FileNotFoundException("Database not found")
-                        }
+                        onProgress("Checking backup...")
+                        verifyDatabaseCopy(snapshot)
 
-                        val metadataFile = createMetadataFile(dbFile, isAutomatic, tempDir)
+                        val metadataFile = createMetadataFile(snapshot, isAutomatic, tempDir)
 
                         onProgress("Compressing data...")
-                        val zipFile = zipBackup(dbFile, metadataFile, File(tempDir, "backup.zip"))
+                        val zipFile = zipBackup(snapshotDir, metadataFile, File(tempDir, "backup.zip"))
 
                         onProgress("Uploading backup...")
                         uploadBackup(credential, isAutomatic, zipFile)
@@ -133,6 +130,37 @@ class BackupManager(private val context: Context) {
         }
     }
 
+    /**
+     * Copies the live database files into [targetDir]. A write transaction is held during the copy:
+     * it blocks every other writer, and with it every checkpoint, so the main file and the WAL are
+     * copied in one consistent state. The shared-memory file is not needed; SQLite rebuilds it.
+     */
+    private suspend fun snapshotDatabase(db: MemoryMapDatabase, targetDir: File): File {
+        val dbFile = context.getDatabasePath(MemoryMapDatabase.DB_NAME)
+        if (!dbFile.exists()) {
+            throw FileNotFoundException("Database not found")
+        }
+        val walFile = context.getDatabasePath("${MemoryMapDatabase.DB_NAME}-wal")
+        val snapshot = File(targetDir, BackupZip.DATABASE)
+        db.withTransaction("backup_manager_snapshot_database") {
+            dbFile.copyTo(snapshot)
+            if (walFile.exists() && walFile.length() > 0) {
+                walFile.copyTo(File(targetDir, BackupZip.DATABASE_WAL))
+            }
+        }
+        return snapshot
+    }
+
+    /**
+     * Opens the snapshot the way a restore will (same migrations, schema and integrity checks), so a
+     * backup that couldn't be restored is never uploaded.
+     */
+    private suspend fun verifyDatabaseCopy(dbFile: File) {
+        trace("backup_manager_verify_database_copy") {
+            MemoryMapDatabase.withCheckedCopy(context, dbFile.absolutePath) { }
+        }
+    }
+
     @AddTrace(name = "backup_manager_create_metadata_file", enabled = true)
     private fun createMetadataFile(dbFile: File, isAutomatic: Boolean, tempDir: File): File {
         val metadata = JSONObject()
@@ -143,21 +171,18 @@ class BackupManager(private val context: Context) {
         metadata.put("dbVersion", MemoryMapDatabase.DB_VERSION)
         metadata.put("isAutomatic", isAutomatic)
 
-        val metadataFile = File(tempDir, "metadata.json")
+        val metadataFile = File(tempDir, BackupZip.METADATA)
         metadataFile.writeText(metadata.toString())
         return metadataFile
     }
 
     @AddTrace(name = "backup_manager_zip_backup", enabled = true)
-    private fun zipBackup(dbFile: File, metadataFile: File, zipFile: File): File {
-        ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { out ->
-            addToZip(out, dbFile, "database.sqlite")
-            addToZip(out, metadataFile, "metadata.json")
-            val walFile = context.getDatabasePath("memory_map_database-wal")
-            if (walFile.exists()) addToZip(out, walFile, "database.sqlite-wal")
-            val shmFile = context.getDatabasePath("memory_map_database-shm")
-            if (shmFile.exists()) addToZip(out, shmFile, "database.sqlite-shm")
-        }
+    private fun zipBackup(snapshotDir: File, metadataFile: File, zipFile: File): File {
+        // Closing the verified copy normally merges the WAL into the main file; include it if it is still there.
+        val entries = listOf(BackupZip.DATABASE, BackupZip.DATABASE_WAL)
+            .associateWith { File(snapshotDir, it) }
+            .filterValues { it.exists() } + (BackupZip.METADATA to metadataFile)
+        BackupZip.write(zipFile, entries)
         return zipFile
     }
 
@@ -201,7 +226,17 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    suspend fun restoreBackup(credential: GoogleAccountCredential, fileId: String, onProgress: (String) -> Unit): Result<Unit> {
+    /**
+     * Replaces the contents of [db] with the backup [fileId]. The backup is migrated and checked on
+     * a temp copy first, then its rows are copied into [db] in one transaction: if anything fails,
+     * the current data is left untouched, and [db] stays open throughout.
+     */
+    suspend fun restoreBackup(
+        credential: GoogleAccountCredential,
+        fileId: String,
+        db: MemoryMapDatabase,
+        onProgress: (String) -> Unit
+    ): Result<Unit> {
         return withContext(Dispatchers.IO) {
             if (backupLock.isLocked) onProgress("Waiting for the running backup to finish...")
             backupLock.withLock {
@@ -222,8 +257,13 @@ class BackupManager(private val context: Context) {
                         onProgress("Verifying backup metadata...")
                         verifyBackupMetadata(extractDir)
 
+                        onProgress("Checking backup...")
+                        val contents = readBackupContents(File(extractDir, BackupZip.DATABASE))
+
                         onProgress("Restoring database...")
-                        restoreDatabaseFromBackup(extractDir)
+                        trace("backup_manager_replace_database_contents") {
+                            contents.replaceAllIn(db.databaseContentsDao())
+                        }
 
                         Result.success(Unit)
                     } catch (e: Exception) {
@@ -246,42 +286,34 @@ class BackupManager(private val context: Context) {
     }
 
     @AddTrace(name = "backup_manager_unzip_backup", enabled = true)
-    private fun unzipBackup(tempZipFile: File, tempRestoreDir: File) {
-        ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zis ->
-            var entry = zis.nextEntry
-            while (entry != null) {
-                unzipFile(tempRestoreDir, entry, zis)
-                entry = zis.nextEntry
-            }
-        }
-    }
-
-    private fun unzipFile(tempRestoreDir: File, entry: ZipEntry, zis: ZipInputStream) {
-        val file = File(tempRestoreDir, entry.name)
-        if (file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)) {
-            FileOutputStream(file).use { fos ->
-                val buffer = ByteArray(ZIP_READ_BUFFER_SIZE)
-                var count: Int
-                while (zis.read(buffer).also { count = it } != -1) {
-                    fos.write(buffer, 0, count)
-                }
-            }
-        }
+    private fun unzipBackup(zipFile: File, extractDir: File) {
+        BackupZip.extract(zipFile, extractDir)
+        // A stale shared-memory file is never needed (SQLite rebuilds it from the WAL), so don't trust it.
+        File(extractDir, BackupZip.DATABASE_SHM).delete()
     }
 
     @AddTrace(name = "backup_manager_verify_backup_metadata", enabled = true)
-    private fun verifyBackupMetadata(tempRestoreDir: File) {
-        val metadataFile = File(tempRestoreDir, "metadata.json")
-        if (!metadataFile.exists()) {
-            throw FileNotFoundException("Invalid backup: missing metadata")
-        }
+    private fun verifyBackupMetadata(extractDir: File) {
+        requireBackupFiles(extractDir)
+        val metadataFile = File(extractDir, BackupZip.METADATA)
+        val dbFile = File(extractDir, BackupZip.DATABASE)
 
-        val headerVersion = BackupCompatibility.readUserVersion(File(tempRestoreDir, "database.sqlite"))
+        val headerVersion = BackupCompatibility.readUserVersion(dbFile)
         val metadataVersion = readMetadataDbVersion(metadataFile)
         Log.d(TAG, "Backup DB version: header=$headerVersion, metadata=$metadataVersion, app=${MemoryMapDatabase.DB_VERSION}")
         val newerVersion = BackupCompatibility.newerBackupVersion(headerVersion, metadataVersion, MemoryMapDatabase.DB_VERSION)
         if (newerVersion != null) {
             throw BackupTooNewException(newerVersion, context.getString(R.string.restore_error_backup_too_new))
+        }
+    }
+
+    private fun requireBackupFiles(extractDir: File) {
+        if (!File(extractDir, BackupZip.METADATA).exists()) {
+            throw FileNotFoundException("Invalid backup: missing metadata")
+        }
+        if (!File(extractDir, BackupZip.DATABASE).isFile) {
+            // Opening a missing file would create an empty database and wipe everything on restore.
+            throw FileNotFoundException("Invalid backup: missing database")
         }
     }
 
@@ -291,32 +323,23 @@ class BackupManager(private val context: Context) {
         if (metadata.has("dbVersion")) metadata.getInt("dbVersion") else null
     }.getOrNull()
 
-    @AddTrace(name = "backup_manager_restore_database_from_backup", enabled = true)
-    private fun restoreDatabaseFromBackup(tempRestoreDir: File) {
-        MemoryMapDatabase.closeDatabase()
-
-        val dbFile = context.getDatabasePath("memory_map_database")
-        val walFile = context.getDatabasePath("memory_map_database-wal")
-        val shmFile = context.getDatabasePath("memory_map_database-shm")
-
-        val restoredDb = File(tempRestoreDir, "database.sqlite")
-        if (restoredDb.exists()) {
-            restoredDb.copyTo(dbFile, overwrite = true)
+    /**
+     * Opens the extracted backup with the app's own database configuration, which runs the same
+     * migrations and schema checks as the app, checks its integrity and reads every row.
+     */
+    private suspend fun readBackupContents(dbFile: File): DatabaseContents {
+        val result = runCatching {
+            trace("backup_manager_read_backup_contents") {
+                MemoryMapDatabase.withCheckedCopy(context, dbFile.absolutePath) { copy ->
+                    DatabaseContents.readFrom(copy.databaseContentsDao())
+                }
+            }
         }
-
-        val restoredWal = File(tempRestoreDir, "database.sqlite-wal")
-        if (restoredWal.exists()) {
-            restoredWal.copyTo(walFile, overwrite = true)
-        } else if (walFile.exists()) {
-            walFile.delete()
+        result.exceptionOrNull()?.let { e ->
+            if (e is CancellationException) throw e
+            throw UnreadableBackupException(context.getString(R.string.restore_error_backup_unreadable), e)
         }
-
-        val restoredShm = File(tempRestoreDir, "database.sqlite-shm")
-        if (restoredShm.exists()) {
-            restoredShm.copyTo(shmFile, overwrite = true)
-        } else if (shmFile.exists()) {
-            shmFile.delete()
-        }
+        return result.getOrThrow()
     }
 
     suspend fun deleteBackup(credential: GoogleAccountCredential, fileId: String): Result<Unit> {
@@ -347,20 +370,9 @@ class BackupManager(private val context: Context) {
         return driveService.files().create(folderMetadata).setFields("id").execute().id
     }
 
-    private fun addToZip(out: ZipOutputStream, file: File, fileName: String) {
-        FileInputStream(file).use { fi ->
-            BufferedInputStream(fi).use { origin ->
-                val entry = ZipEntry(fileName)
-                out.putNextEntry(entry)
-                origin.copyTo(out)
-            }
-        }
-    }
-
     companion object {
         const val TAG = "BackupManager"
 
-        private const val ZIP_READ_BUFFER_SIZE = 1024
         private const val DRIVE_LIST_PAGE_SIZE = 1000 // Drive's maximum
 
         /** Process-wide: BackupManager is created per caller, but only one backup or restore may run at a time. */

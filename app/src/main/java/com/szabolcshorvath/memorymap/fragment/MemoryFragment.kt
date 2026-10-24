@@ -81,7 +81,6 @@ class MemoryFragment : Fragment() {
                     currentBinding.progressRelinkMedia.visibility = View.GONE
                     currentBinding.btRelinkMedia.isEnabled = true
                 }
-                commonViewModel.refreshDatabase()
             }
         }
     }

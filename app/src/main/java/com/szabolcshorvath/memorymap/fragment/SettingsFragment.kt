@@ -120,7 +120,6 @@ class SettingsFragment : Fragment() {
                     }
                 }
             } finally {
-                commonViewModel.refreshDatabase()
                 setLoadingState(false, hideBackupStatus = false)
                 Toast.makeText(ctx, "Media re-linking complete", Toast.LENGTH_SHORT).show()
             }
@@ -192,10 +191,7 @@ class SettingsFragment : Fragment() {
                         is SettingsFragmentViewModel.BackupRestoreOperationResult.RestoreSuccess -> {
                             result.message?.let { showBackupStatus(it, false) }
 
-                            // 1. Refresh database FIRST so CommonRepository opens the restored SQLite file on disk
-                            commonViewModel.refreshDatabase()
-
-                            // 2. Perform media re-linking on the active restored database DAO
+                            // The restore replaced the database contents in place; re-link its media to this device.
                             viewLifecycleOwner.lifecycleScope.launch {
                                 setLoadingState(true, "Scanning local media library...", hideBackupStatus = true)
                                 try {
@@ -207,7 +203,6 @@ class SettingsFragment : Fragment() {
                                         }
                                     }
                                 } finally {
-                                    commonViewModel.refreshDatabase()
                                     setLoadingState(false, hideBackupStatus = false)
                                 }
                             }
@@ -1017,7 +1012,7 @@ class SettingsFragment : Fragment() {
         val email = _binding?.tvAccountName?.tag as? String ?: return
         val scopes = listOf(DriveScopes.DRIVE_FILE)
         val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-        viewModel.restoreBackup(credential, file.id, backupManager)
+        viewModel.restoreBackup(credential, file.id, commonViewModel.getDb(), backupManager)
     }
 
     private fun onDeleteBackup(file: DriveFile) {

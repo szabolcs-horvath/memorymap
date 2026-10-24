@@ -46,11 +46,11 @@ Local setup needs files that are **not** in git:
 - Media from another device is shown as an error tile (type, size, date) and is not loaded.
 
 ### Backup and restore (`backup/BackupManager.kt`, `SettingsFragment`)
-- Backup: `PRAGMA wal_checkpoint(TRUNCATE)`, then zip `database.sqlite` (+ `-wal`/`-shm` if present) + `metadata.json`, then upload to the Drive folder "Memory Map Backups" as `MemoryMap_{Automatic|Manual}_Backup_<yyyyMMdd_HHmmss>.zip`.
+- Backup: `PRAGMA wal_checkpoint(TRUNCATE)`, copy the database file (and the WAL if not empty) while holding a write transaction (a consistent snapshot), check the copy with `MemoryMapDatabase.withCheckedCopy` (the same open, migration and integrity checks a restore runs), then zip `database.sqlite` (+ `-wal` if still present) + `metadata.json` (`BackupZip`) and upload to the Drive folder "Memory Map Backups" as `MemoryMap_{Automatic|Manual}_Backup_<yyyyMMdd_HHmmss>.zip`. Older backups also contain `-shm`; restore ignores it.
 - **Automatic backups** (`triggerAutomaticBackup`) run after almost every write (save, reorder, preset changes, undo) if a user email is stored, and emit `BackupManager.backupEvents` (STARTED/FINISHED) that Settings listens to. They are awaited inline by callers and are not debounced or pruned (`UX-1`, `DATA-4`, `PERF-6`).
 - Backup and restore share one process-wide `Mutex` in `BackupManager`, so they run one at a time (callers wait for the running one). Each run uses its own temp directory in `cacheDir` (`BackupTempFiles`); leftovers from killed runs are deleted when the next run starts.
 - Old backups are never deleted by the app (pruning was deliberately postponed, `DATA-4`). `listBackups` pages through all of them.
-- Restore: download, unzip, check `metadata.json` exists, reject backups from a newer database version (`BackupCompatibility`), `MemoryMapDatabase.closeDatabase()`, overwrite the database files, then the UI calls `commonViewModel.refreshDatabase()` and re-links media.
+- Restore: download, extract only the known entries (`BackupZip`), check `metadata.json` and `database.sqlite` exist, reject backups from a newer database version (`BackupCompatibility`), open the extracted copy with `MemoryMapDatabase.withCheckedCopy` (migrations, schema and integrity checks; rejects a file SQLite would have to create from scratch), read every row (`DatabaseContents`), then replace the live database's contents in one transaction (`DatabaseContentsDao.replaceAll`). The live database is never closed or swapped, Room's Flows pick up the new data, and any failure leaves the current data untouched. The UI then re-links media.
 - Auth: sign-in stores the email in DataStore (`USER_EMAIL_KEY`); Drive consent goes through `AuthorizationClient`; API calls build a `GoogleAccountCredential` from the email.
 
 ## Conventions
@@ -65,7 +65,6 @@ Local setup needs files that are **not** in git:
 ## Gotchas (quick list)
 
 - Hidden tabs have no view, so calling a method on a tab fragment from the activity before its view exists will crash (`BUG-8`).
-- `CommonRepository.refreshDatabase()` does nothing unless the database was closed (after a restore) (`BUG-10`).
 - `data.MemoryFragment` (entity) vs `fragment.MemoryFragment` (screen): the name clash is handled with `import … as MemoryFragmentEntity` in `MemoryFragmentViewModel`.
 - `MemoryFragment.title` (entity) is a mutable `@Ignore` field, filled from the parent group at runtime.
 - Deleting a group cascades to fragments and media. The undo (`MainActivity.onMemoryDeleted`) calls `MemoryGroupDao.restoreDeletedGroup`, which re-inserts all three in one transaction. Delete does not release media URI grants, which is what keeps undo working: if you add grant release on delete, do it only after the undo Snackbar is gone.
@@ -76,5 +75,6 @@ Local setup needs files that are **not** in git:
 ## Tests
 
 - Robolectric tests use `@ExtendWith(RobolectricExtension::class)` (JUnit 5).
-- DAO tests run on an in-memory Room database under Robolectric (`MemoryGroupDaoTest`). They get the DAO through `memoryGroupDaoInternal()` by reflection, because the traced `memoryGroupDao()` needs a configured FirebaseApp.
-- No Room migration, backup, hashing, clustering or UI tests yet (`TEST-1`, `TEST-2`, `TEST-3`). For migrations, use `MigrationTestHelper` with the schemas in `app/schemas`.
+- DAO tests run on Room under Robolectric (`MemoryGroupDaoTest`). They get DAOs through the `…Internal()` accessors by reflection (`groupDaoForTest()`, `contentsDaoForTest()` in `TestDatabases.kt`), because the traced accessors need a configured FirebaseApp.
+- `RestoreCompatibilityTest` builds a database for every schema version a backup can have (6 to `DB_VERSION`) from `app/schemas` (`SchemaDatabases`) and runs it through the restore steps. A new `DB_VERSION` is picked up automatically; it needs the exported schema JSON. Keep this test passing: it is what guarantees old backups stay restorable.
+- No dedicated per-migration, hashing, clustering or UI tests yet (`TEST-1`, `TEST-2`, `TEST-3`).

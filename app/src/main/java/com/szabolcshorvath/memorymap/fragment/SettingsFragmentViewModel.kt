@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.szabolcshorvath.memorymap.backup.BackupManager
-import com.szabolcshorvath.memorymap.backup.BackupTooNewException
+import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import kotlinx.coroutines.Dispatchers
@@ -70,10 +70,10 @@ class SettingsFragmentViewModel : ViewModel() {
         }
     }
 
-    fun restoreBackup(credential: GoogleAccountCredential, fileId: String, backupManager: BackupManager) {
+    fun restoreBackup(credential: GoogleAccountCredential, fileId: String, database: MemoryMapDatabase, backupManager: BackupManager) {
         viewModelScope.launch {
             _operationStatus.value = "Starting restore..."
-            val result = backupManager.restoreBackup(credential, fileId) { status ->
+            val result = backupManager.restoreBackup(credential, fileId, database) { status ->
                 _operationStatus.value = status
             }
             _operationStatus.value = null
@@ -82,7 +82,7 @@ class SettingsFragmentViewModel : ViewModel() {
                     _backupRestoreOperationResult.send(BackupRestoreOperationResult.RestoreSuccess("Restore successful"))
                 },
                 onFailure = { e ->
-                    val errorMsg = if (e is BackupTooNewException) {
+                    val errorMsg = if (e is RestoreRejectedException) {
                         "Restore failed: ${e.message}"
                     } else {
                         "Restore failed: ${e.javaClass.simpleName}${e.message?.let { " - $it" } ?: ""}"

@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.data
 
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RenameColumn
@@ -36,13 +37,17 @@ import com.szabolcshorvath.memorymap.util.PerfUtil.tracedDao
 abstract class MemoryMapDatabase : RoomDatabase() {
     protected abstract fun memoryGroupDaoInternal(): MemoryGroupDao
     protected abstract fun hsvPresetDaoInternal(): HSVPresetDao
+    protected abstract fun databaseContentsDaoInternal(): DatabaseContentsDao
 
     private var _memoryGroupDao: MemoryGroupDao? = null
     private var _hsvPresetDao: HSVPresetDao? = null
+    private var _databaseContentsDao: DatabaseContentsDao? = null
 
     fun memoryGroupDao(): MemoryGroupDao = _memoryGroupDao ?: tracedDao(memoryGroupDaoInternal()).also { _memoryGroupDao = it }
 
     fun hsvPresetDao(): HSVPresetDao = _hsvPresetDao ?: tracedDao(hsvPresetDaoInternal()).also { _hsvPresetDao = it }
+
+    fun databaseContentsDao(): DatabaseContentsDao = _databaseContentsDao ?: tracedDao(databaseContentsDaoInternal()).also { _databaseContentsDao = it }
 
     companion object {
         const val DB_VERSION = 18
@@ -91,31 +96,70 @@ abstract class MemoryMapDatabase : RoomDatabase() {
             }
         }
 
+        /** File name of the app's database in the databases directory. */
+        const val DB_NAME = "memory_map_database"
+
+        private const val MAX_REPORTED_PROBLEMS = 5
+
         fun getDatabase(context: Context): MemoryMapDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(context.applicationContext, MemoryMapDatabase::class.java, "memory_map_database")
-                    .addMigrations(
-                        MIGRATION_1_2,
-                        MIGRATION_2_3,
-                        MIGRATION_4_5,
-                        MIGRATION_17_18
-                    )
-                    // No destructive fallback: a missing migration must fail loudly instead of
-                    // silently dropping the user's data. Restores of newer backups are rejected
-                    // up front by BackupCompatibility.
-                    .build()
-                INSTANCE = instance
-                instance
+                INSTANCE ?: build(context, DB_NAME).also { INSTANCE = it }
             }
         }
 
-        fun closeDatabase() {
-            synchronized(this) {
-                if (INSTANCE?.isOpen == true) {
-                    INSTANCE?.close()
+        private fun build(context: Context, name: String, callback: Callback? = null): MemoryMapDatabase =
+            Room.databaseBuilder(context.applicationContext, MemoryMapDatabase::class.java, name)
+                .addMigrations(
+                    MIGRATION_1_2,
+                    MIGRATION_2_3,
+                    MIGRATION_4_5,
+                    MIGRATION_17_18
+                )
+                // No destructive fallback: a missing migration must fail loudly instead of
+                // silently dropping the user's data. Restores of newer backups are rejected
+                // up front by BackupCompatibility.
+                .apply { callback?.let { addCallback(it) } }
+                .build()
+
+        /**
+         * Opens a copy of the database (a backup) at [path] with the app's full configuration, so it
+         * is migrated and schema-checked exactly as the app would do it. Checks its integrity, runs
+         * [block] on it and closes it.
+         *
+         * Throws if SQLite reports corruption, or if the file wasn't an existing database: Android
+         * deletes a file it can't open and SQLite then creates an empty one, which must never be
+         * mistaken for a backup without memories.
+         */
+        suspend fun <T> withCheckedCopy(context: Context, path: String, block: suspend (MemoryMapDatabase) -> T): T {
+            var createdFromScratch = false
+            val copy = build(
+                context,
+                path,
+                object : Callback() {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        createdFromScratch = true
+                    }
                 }
-                INSTANCE = null
+            )
+            try {
+                copy.requireIntact()
+                if (createdFromScratch) throw SQLiteException("Not an existing database: $path")
+                return block(copy)
+            } finally {
+                copy.close()
             }
+        }
+    }
+
+    /**
+     * Opens the database (running any migrations) and throws if SQLite finds corruption.
+     */
+    fun requireIntact() {
+        val problems = openHelper.writableDatabase.query("PRAGMA integrity_check").use { cursor ->
+            buildList { while (cursor.moveToNext()) add(cursor.getString(0)) }
+        }
+        if (problems != listOf("ok")) {
+            throw SQLiteException("Database integrity check failed: ${problems.take(MAX_REPORTED_PROBLEMS)}")
         }
     }
 }

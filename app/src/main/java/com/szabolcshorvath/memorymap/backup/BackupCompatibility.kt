@@ -50,5 +50,11 @@ internal object BackupCompatibility {
     }
 }
 
+/** A backup was rejected before anything was changed. [message] is meant for the user. */
+open class RestoreRejectedException(message: String, cause: Throwable? = null) : IOException(message, cause)
+
 /** Thrown when a backup was made by a newer app version whose database this version can't open. */
-class BackupTooNewException(val backupVersion: Int, message: String) : IOException(message)
+class BackupTooNewException(val backupVersion: Int, message: String) : RestoreRejectedException(message)
+
+/** Thrown when the backup's database can't be opened, migrated, checked or read. */
+class UnreadableBackupException(message: String, cause: Throwable) : RestoreRejectedException(message, cause)

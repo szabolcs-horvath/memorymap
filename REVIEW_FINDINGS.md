@@ -53,11 +53,13 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `backup/BackupManager.kt:256-267`
 - **What:** `file.canonicalPath.startsWith(tempRestoreDir.canonicalPath)` also accepts a sibling such as `restore_temp_dir_evil/...`. Directory entries and nested paths are not handled (`FileOutputStream` on a directory throws, which aborts the restore). There are no size limits (zip bomb).
 - **Fix:** Compare against `tempRestoreDir.canonicalPath + File.separator`, extract only the three known entry names, and cap the total uncompressed size.
+- **Status:** Fixed. `BackupZip.extract` writes only the four known entry names (anything else, directories and `../` paths included, is skipped, so nothing can land outside the target directory) and stops at 1 GiB extracted. Covered by `BackupZipTest`.
 
 ### SEC-4 · Medium · Restored database is not validated
 - **Where:** `BackupManager.kt:269-303`
 - **What:** `verifyBackupMetadata` only checks that `metadata.json` exists. It does not check `dbVersion`, run `PRAGMA integrity_check`, or confirm that the file is SQLite before it overwrites the live database.
 - **Fix:** Open the extracted file read-only, check `user_version <= DB_VERSION` and `integrity_check == ok`, then swap it in. See also DATA-1 and DATA-5.
+- **Status:** Fixed. Restore requires `database.sqlite`, then opens the extracted copy with `MemoryMapDatabase.withCheckedCopy`: the app's own Room configuration (migrations, schema validation), `PRAGMA integrity_check`, and a guard that rejects the file if SQLite had to create it (Android deletes an unopenable file and SQLite then creates an empty one, which would otherwise have wiped the user's data on restore). Covered by `RestoreCompatibilityTest`.
 
 ### SEC-5 · Low · Unrestricted JitPack repository
 - **Where:** `settings.gradle.kts:25-27`
@@ -111,11 +113,13 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `BackupManager.kt:115-157, 278-303`
 - **What:** After `wal_checkpoint(TRUNCATE)` the `.sqlite`, `-wal` and `-shm` files are zipped while Room is still open, so a concurrent write can produce an inconsistent snapshot. Restore overwrites the live files in place with no local copy of the current database. A failure halfway through (disk full) leaves a corrupt database and no way back.
 - **Fix:** Back up with `VACUUM INTO '<tmp>'` (a single consistent file, no WAL or SHM). Restore by copying to a temp file, validating it (SEC-4), keeping the old database as `.bak`, and then renaming.
+- **Status:** Fixed differently. `VACUUM INTO` needs SQLite 3.27 (API 30) but `minSdk` is 27, so backup copies the database file and WAL while holding a write transaction (no write or checkpoint can happen during the copy), checks the copy like a restore would, and zips it. Restore no longer touches the database files at all: it reads every row from the checked copy and replaces the live contents in one transaction (`DatabaseContentsDao.replaceAll`), which rolls back on any failure, so no `.bak` is needed.
 
 ### DATA-6 · Medium · Restore closes the database under live users
 - **Where:** `BackupManager.kt:279`, `SettingsFragment.kt:192-196`, `data/CommonRepository.kt:29-31`
 - **What:** `closeDatabase()` runs on the IO thread while `CommonRepository._dbFlow` still holds the closed instance until the UI later calls `refreshDatabase()`. Any database access in that window (an automatic backup, a save, a relink, a Flow re-query) hits a closed pool and throws.
 - **Fix:** Put database swapping behind the repository: pause writers, close, swap, reopen and emit, all in one place under a lock.
+- **Status:** Fixed by removing the swap. Restore replaces the contents of the open database in a transaction (see DATA-5), so the instance is never closed and Room's Flows re-emit on their own. `closeDatabase()` is gone and `CommonRepository` holds the single instance directly.
 
 ### DATA-7 · Medium · Deleting a memory never releases URI grants and never backs up
 - **Where:** `MemoryFragment.kt:436-447`
@@ -185,6 +189,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `CommonRepository.kt:29-31`; call sites in `MainActivity.kt:77`, `MemoryFragment.kt:86`, `SettingsFragment.kt:123,210`
 - **What:** Except right after a restore, `getDatabase()` returns the same instance, the StateFlow does not emit, and the call does nothing. It suggests a refresh that never happens.
 - **Fix:** Remove these calls, and keep the restore swap in the repository (DATA-6).
+- **Status:** Fixed. `refreshDatabase()` and all its call sites are removed (there is no swap any more, see DATA-6).
 
 ### BUG-11 · Low · Thread-unsafe shared `SimpleDateFormat`
 - **Where:** `util/DateTimeFormatterUtil.kt:10-11`
@@ -387,6 +392,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `CommonRepository`, `MemoryMapDatabase`, `InstallationIdentifier`, `BackupManager(context)` created per fragment, `GoogleAuthManager` per call
 - **What:** `MemoryMapDatabase.getDatabase` has no second null check inside `synchronized`, so two threads can build two databases (`MemoryMapDatabase.kt:94-107`). The DAO cache fields are not volatile.
 - **Fix:** Hilt or Koin (or at least a small `AppContainer` in `Application`), and fix the double-checked locking.
+- **Status:** Partly fixed: `MemoryMapDatabase.getDatabase` now re-checks inside `synchronized`. No DI yet.
 
 ### ARCH-7 · Low · Stringly-typed data passing
 - **Where:** `MemoryFragmentListener.onMediaClick(ArrayList<Pair<String,String>>)`, `MediaPagerAdapter` (`item.second == "VIDEO"`), `MediaViewerFragment` (Serializable `Pair` list in arguments, which also risks `TransactionTooLargeException` for large memories)
@@ -437,6 +443,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 
 ### TEST-1 · High · No Room migration tests
 - **What:** 18 schema versions, 4 manual migrations (two of them broken below API 34, DATA-9) and the destructive fallback (DATA-1), with no `MigrationTestHelper` test. The exported schemas are already in `app/schemas`.
+- **Status:** Partly covered. `RestoreCompatibilityTest` builds a database of every version a backup can have (6 to `DB_VERSION`) from `app/schemas`, migrates it with the app's configuration and checks the data. Versions 1 to 5 (only very old installs, never backups) and per-migration edge cases are still untested.
 
 ### TEST-2 · Medium · Critical logic is untested
 - **What:** No tests for `MediaHasher` (BUG-9), backup zip/unzip/restore (SEC-3, SEC-4, DATA-5), the clustering and date filter in `MapFragmentViewModel` (UX-9, UX-10), `saveMediaItems` dedup and grant release, the DAO queries, or the undo flow (DATA-2).
