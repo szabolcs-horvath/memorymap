@@ -20,7 +20,7 @@ Local setup needs files that are **not** in git:
 - `local.properties` — copy `local.properties.template`.
 - `app/google-services.json` — the Firebase config (ignored by git).
 
-> ⚠️ The Maps Secrets Gradle plugin turns **every** `local.properties` key into a `BuildConfig` field, including the signing passwords (`SEC-1`). Don't add new secrets to `local.properties` until that is fixed, and never log `BuildConfig` fields.
+> ⚠️ `local.properties` also holds the release signing passwords. `app/build.gradle.kts` reads only the keys it needs: `MAPS_API_KEY` goes to a manifest placeholder and `OAUTH_WEB_CLIENT_ID` to `BuildConfig`. To add a new value, wire it up explicitly in the same way. Never expose the whole file (the Maps Secrets Gradle plugin did this and was removed, `SEC-1`), and never log `BuildConfig` fields.
 
 - Robolectric-based tests (`ColorUtilTest`) may not start because Robolectric does not support `targetSdk 37` yet (`BUILD-4`). Plain JVM tests run fine.
 - CI does **not** run unit tests, and Detekt in CI never fails the build. Run both locally.
@@ -70,7 +70,7 @@ Local setup needs files that are **not** in git:
 - Deleting a group cascades to fragments and media. The undo in `MainActivity.onMemoryDeleted` re-inserts only the group and media (`DATA-2`).
 - Backup and restore temp files use fixed paths in `cacheDir` (`backup_temp/`, `backup.zip`, `restore_temp*`), so don't run two at once (`DATA-3`).
 - `Slider.clearOnSliderTouchListeners()` does not remove change listeners (`BUG-1`).
-- Debug builds are signed with the release key when `RELEASE_STORE_FILE` is set (`SEC-2`).
+- Debug builds use the default debug keystore, not the release key (`SEC-2`). For Google sign-in (and a Maps key restricted to Android apps) to work in debug builds, the debug SHA-1 (`./gradlew signingReport`) must be registered for `com.szabolcshorvath.memorymap` in Google Cloud Console. A debug build can't be installed over a release install: uninstall it first.
 
 ## Tests
 
