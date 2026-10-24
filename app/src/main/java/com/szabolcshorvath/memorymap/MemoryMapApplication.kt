@@ -9,8 +9,20 @@ import coil3.SingletonImageLoader
 import coil3.memory.MemoryCache
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.libraries.places.api.Places
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
+
+    /**
+     * For short background work that must finish even if the screen that started it goes away
+     * (for example the clean-up after a delete's undo window). Failures are logged, not crashed on.
+     */
+    val applicationScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e -> Log.e(TAG, "Background task failed", e) }
+    )
 
     override fun onCreate() {
         super.onCreate()
