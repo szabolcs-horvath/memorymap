@@ -35,10 +35,8 @@ kotlin {
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-            // Pass only the values the app needs. Never expose local.properties wholesale:
-            // it also holds the release signing passwords (SEC-1).
-            manifestPlaceholders["MAPS_API_KEY"] =
-                localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
+            // Pass only the values the app needs: local.properties also holds the signing passwords.
+            manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
 
             val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
             buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
@@ -72,8 +70,7 @@ kotlin {
             }
 
             debug {
-                // Uses the default debug keystore. Never sign debuggable builds with the
-                // release key (SEC-2).
+                // Default debug keystore on purpose: never sign debuggable builds with the release key.
                 isMinifyEnabled = false
             }
         }
