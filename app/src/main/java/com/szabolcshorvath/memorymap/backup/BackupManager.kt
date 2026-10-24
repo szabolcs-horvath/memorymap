@@ -10,6 +10,7 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.firebase.perf.metrics.AddTrace
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
@@ -272,7 +273,21 @@ class BackupManager(private val context: Context) {
         if (!metadataFile.exists()) {
             throw FileNotFoundException("Invalid backup: missing metadata")
         }
+
+        val headerVersion = BackupCompatibility.readUserVersion(File(tempRestoreDir, "database.sqlite"))
+        val metadataVersion = readMetadataDbVersion(metadataFile)
+        Log.d(TAG, "Backup DB version: header=$headerVersion, metadata=$metadataVersion, app=${MemoryMapDatabase.DB_VERSION}")
+        val newerVersion = BackupCompatibility.newerBackupVersion(headerVersion, metadataVersion, MemoryMapDatabase.DB_VERSION)
+        if (newerVersion != null) {
+            throw BackupTooNewException(newerVersion, context.getString(R.string.restore_error_backup_too_new))
+        }
     }
+
+    /** `dbVersion` was added in metadata version 2; older backups don't have it. */
+    private fun readMetadataDbVersion(metadataFile: File): Int? = runCatching {
+        val metadata = JSONObject(metadataFile.readText())
+        if (metadata.has("dbVersion")) metadata.getInt("dbVersion") else null
+    }.getOrNull()
 
     @AddTrace(name = "backup_manager_restore_database_from_backup", enabled = true)
     private fun restoreDatabaseFromBackup(tempRestoreDir: File) {

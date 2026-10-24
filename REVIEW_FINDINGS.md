@@ -22,7 +22,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 ## Top priorities
 
 1. ~~**SEC-1** – Keystore passwords are compiled into `BuildConfig` and ship in debug APKs.~~ Fixed.
-2. **DATA-1** – Destructive migration is *enabled*, so restoring a backup made by a newer app version silently wipes all data.
+2. ~~**DATA-1** – Destructive migration is *enabled*, so restoring a backup made by a newer app version silently wipes all data.~~ Fixed.
 3. **DATA-2** – "Undo" after deleting a memory loses all of its fragments.
 4. **DATA-3** – Concurrent backups share the same temp files, so backups can corrupt each other.
 5. **UX-1** – Saving a memory waits for the full Google Drive upload to finish.
@@ -87,6 +87,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `data/MemoryMapDatabase.kt:103`, `BackupManager.kt:269-303`
 - **What:** `fallbackToDestructiveMigration(false)` does **not** disable destructive migration. The argument is `dropAllTables`, and the call turns the fallback *on*. Restoring a backup made with a higher `DB_VERSION` (phone A updated, phone B not) therefore downgrades, and Room silently recreates empty tables. The same happens if a future migration is forgotten.
 - **Fix:** Remove the call (the default is to throw on a missing migration). Before restoring, reject backups whose `dbVersion > DB_VERSION`.
+- **Status:** Fixed. The fallback call is removed. Restore reads the backup's version from the SQLite file header and from `metadata.json` (`dbVersion` is missing in metadata version 1), and rejects it before touching the live database only if either is newer than `DB_VERSION`. If neither can be read, the restore goes ahead as before. Covered by `BackupCompatibilityTest`.
 
 ### DATA-2 · High · Undo of a delete loses the memory's fragments
 - **Where:** `fragment/MemoryFragment.kt:436-447`, `MainActivity.kt:363-380`
@@ -125,7 +126,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 
 ### DATA-9 · Low · Early migrations cannot run below Android 14
 - **Where:** `MemoryMapDatabase.kt:54-80`
-- **What:** `ALTER TABLE … DROP COLUMN` needs SQLite 3.35+ (API 34+), but `minSdk = 27`. Migrations 1→2 and 4→5 would crash on older devices. This only matters for very old databases or backups.
+- **What:** `ALTER TABLE … DROP COLUMN` needs SQLite 3.35+ (API 34+), but `minSdk = 27`. Migrations 1→2 and 4→5 would crash on older devices. This only matters for very old installed databases: backups were introduced at schema version 6 (January 4, 2026), so no backup goes through these migrations.
 - **Fix:** Rewrite them as create-new-table, copy, drop, rename, or drop support for schema versions below 5.
 
 ---
@@ -416,6 +417,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `app/build.gradle.kts:39` vs the secrets plugin vs CI (`local.properties`)
 - **What:** The manifest placeholder is set from an env var (empty in CI and locally), while the secrets plugin also injects it from `local.properties`. Which one wins depends on plugin ordering.
 - **Fix:** Pick one source (the secrets plugin with an explicit `propertiesFileName` and an `ignoreList`), and remove the other.
+- **Status:** Fixed as part of SEC-1. The secrets plugin is gone; the placeholder comes from `local.properties`, falling back to the env var.
 
 ### BUILD-3 · Low · Supply-chain hygiene
 - **What:** GitHub Actions are pinned to tags (`@v4`) rather than SHAs; `gradle-wrapper.properties` has no `distributionSha256Sum`.

@@ -100,7 +100,9 @@ abstract class MemoryMapDatabase : RoomDatabase() {
                         MIGRATION_4_5,
                         MIGRATION_17_18
                     )
-                    .fallbackToDestructiveMigration(false)
+                    // No destructive fallback: a missing migration must fail loudly instead of
+                    // silently dropping the user's data. Restores of newer backups are rejected
+                    // up front by BackupCompatibility.
                     .build()
                 INSTANCE = instance
                 instance
