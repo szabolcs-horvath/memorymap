@@ -35,6 +35,17 @@ interface MemoryGroupDao {
     @Delete
     suspend fun deleteGroup(group: MemoryGroup)
 
+    /**
+     * Undoes [deleteGroup]: the delete cascades to media and fragments, so all three are
+     * re-inserted. The group keeps its id; media and fragments get new ids, as on every edit.
+     */
+    @Transaction
+    suspend fun restoreDeletedGroup(deleted: MemoryGroupWithMedia) {
+        val groupId = insertGroup(deleted.group).toInt()
+        insertMediaItems(deleted.mediaItems.map { it.copy(id = 0, groupId = groupId) })
+        insertFragments(deleted.fragments.map { it.copy(id = 0, groupId = groupId) })
+    }
+
     @Delete
     suspend fun deleteMediaItems(items: List<MediaItem>)
 

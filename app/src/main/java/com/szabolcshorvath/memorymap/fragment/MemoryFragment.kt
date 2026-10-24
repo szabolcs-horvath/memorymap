@@ -21,8 +21,6 @@ import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
@@ -93,7 +91,7 @@ class MemoryFragment : Fragment() {
         fun onBackFromMemory()
         fun onNavigateToTimeline(memoryId: Int)
         fun onNavigateToMap(lat: Double, lng: Double, id: Int)
-        fun onMemoryDeleted(memoryGroup: MemoryGroup, mediaItems: List<MediaItem>)
+        fun onMemoryDeleted(deleted: MemoryGroupWithMedia)
         fun onEditMemory(memoryId: Int)
     }
 
@@ -440,7 +438,7 @@ class MemoryFragment : Fragment() {
             commonViewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
 
             withContext(Dispatchers.Main) {
-                memoryFragmentListener?.onMemoryDeleted(groupWithMedia.group, groupWithMedia.mediaItems)
+                memoryFragmentListener?.onMemoryDeleted(groupWithMedia)
                 memoryFragmentListener?.onBackFromMemory()
             }
         }
