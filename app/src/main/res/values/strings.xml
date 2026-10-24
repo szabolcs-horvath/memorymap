@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Memory Map</string>
     <string name="map_id">faa667fb8a498f042bacb4c5</string>
+    <string name="restore_error_backup_too_new">This backup was made with a newer version of Memory Map. Update the app, then restore it again.</string>
 </resources>

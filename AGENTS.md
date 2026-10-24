@@ -48,7 +48,7 @@ Local setup needs files that are **not** in git:
 ### Backup and restore (`backup/BackupManager.kt`, `SettingsFragment`)
 - Backup: `PRAGMA wal_checkpoint(TRUNCATE)`, then zip `database.sqlite` (+ `-wal`/`-shm` if present) + `metadata.json`, then upload to the Drive folder "Memory Map Backups" as `MemoryMap_{Automatic|Manual}_Backup_<yyyyMMdd_HHmmss>.zip`.
 - **Automatic backups** (`triggerAutomaticBackup`) run after almost every write (save, reorder, preset changes, undo) if a user email is stored, and emit `BackupManager.backupEvents` (STARTED/FINISHED) that Settings listens to. They are awaited inline by callers and are not debounced or pruned (`UX-1`, `DATA-3`, `DATA-4`, `PERF-6`).
-- Restore: download, unzip, check `metadata.json` exists, `MemoryMapDatabase.closeDatabase()`, overwrite the database files, then the UI calls `commonViewModel.refreshDatabase()` and re-links media.
+- Restore: download, unzip, check `metadata.json` exists, reject backups from a newer database version (`BackupCompatibility`), `MemoryMapDatabase.closeDatabase()`, overwrite the database files, then the UI calls `commonViewModel.refreshDatabase()` and re-links media.
 - Auth: sign-in stores the email in DataStore (`USER_EMAIL_KEY`); Drive consent goes through `AuthorizationClient`; API calls build a `GoogleAccountCredential` from the email.
 
 ## Conventions
@@ -62,7 +62,6 @@ Local setup needs files that are **not** in git:
 
 ## Gotchas (quick list)
 
-- `fallbackToDestructiveMigration(false)` **enables** destructive migration (`DATA-1`).
 - Hidden tabs have no view, so calling a method on a tab fragment from the activity before its view exists will crash (`BUG-8`).
 - `CommonRepository.refreshDatabase()` does nothing unless the database was closed (after a restore) (`BUG-10`).
 - `data.MemoryFragment` (entity) vs `fragment.MemoryFragment` (screen): the name clash is handled with `import … as MemoryFragmentEntity` in `MemoryFragmentViewModel`.
