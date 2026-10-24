@@ -21,8 +21,7 @@ import com.google.firebase.perf.metrics.Trace
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.HSVPreset
-import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment
 import com.szabolcshorvath.memorymap.fragment.MapFragment
@@ -37,7 +36,6 @@ import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
-import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
@@ -360,17 +358,12 @@ class MainActivity :
         addMemoryFragment.updateLocation(lat, lng, placeName, address)
     }
 
-    override fun onMemoryDeleted(memoryGroup: MemoryGroup, mediaItems: List<MediaItem>) {
+    override fun onMemoryDeleted(deleted: MemoryGroupWithMedia) {
         val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
         snackbar.anchorView = binding.bottomNavigation
         snackbar.setAction("Undo") {
             lifecycleScope.launch(Dispatchers.IO) {
-                val dao = commonViewModel.getMemoryGroupDao()
-                commonViewModel.getDb().withTransaction("on_memory_delete") {
-                    val newGroupId = dao.insertGroup(memoryGroup)
-                    val restoredMediaItems = mediaItems.map { it.copy(id = 0, groupId = newGroupId.toInt()) }
-                    dao.insertMediaItems(restoredMediaItems)
-                }
+                commonViewModel.getMemoryGroupDao().restoreDeletedGroup(deleted)
 
                 // Trigger automatic backup after undo
                 BackupManager(applicationContext).triggerAutomaticBackup(commonViewModel.getDb())

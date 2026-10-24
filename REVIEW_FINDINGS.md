@@ -23,7 +23,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 
 1. ~~**SEC-1** – Keystore passwords are compiled into `BuildConfig` and ship in debug APKs.~~ Fixed.
 2. ~~**DATA-1** – Destructive migration is *enabled*, so restoring a backup made by a newer app version silently wipes all data.~~ Fixed.
-3. **DATA-2** – "Undo" after deleting a memory loses all of its fragments.
+3. ~~**DATA-2** – "Undo" after deleting a memory loses all of its fragments.~~ Fixed.
 4. **DATA-3** – Concurrent backups share the same temp files, so backups can corrupt each other.
 5. **UX-1** – Saving a memory waits for the full Google Drive upload to finish.
 6. **BUG-1** – Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called).
@@ -93,6 +93,7 @@ Severity: **Critical** › **High** › **Medium** › **Low**. Line numbers are
 - **Where:** `fragment/MemoryFragment.kt:436-447`, `MainActivity.kt:363-380`
 - **What:** `deleteGroup` cascades to `memory_fragments`, but `onMemoryDeleted(group, mediaItems)` only receives and re-inserts the group and media. Fragments are lost after "Undo".
 - **Fix:** Pass `MemoryGroupWithMedia` (including fragments) and re-insert the fragments in the same transaction. Better: a soft delete that only becomes permanent when the Snackbar is dismissed.
+- **Status:** Fixed. `onMemoryDeleted` receives the whole `MemoryGroupWithMedia`, and undo calls the new `MemoryGroupDao.restoreDeletedGroup` (`@Transaction`), which re-inserts the group, media and fragments. Covered by `MemoryGroupDaoTest`. Soft delete was not implemented.
 
 ### DATA-3 · High · Concurrent backups clobber each other's files
 - **Where:** `BackupManager.kt:86-98, 147`

@@ -66,7 +66,7 @@ Local setup needs files that are **not** in git:
 - `CommonRepository.refreshDatabase()` does nothing unless the database was closed (after a restore) (`BUG-10`).
 - `data.MemoryFragment` (entity) vs `fragment.MemoryFragment` (screen): the name clash is handled with `import … as MemoryFragmentEntity` in `MemoryFragmentViewModel`.
 - `MemoryFragment.title` (entity) is a mutable `@Ignore` field, filled from the parent group at runtime.
-- Deleting a group cascades to fragments and media. The undo in `MainActivity.onMemoryDeleted` re-inserts only the group and media (`DATA-2`).
+- Deleting a group cascades to fragments and media. The undo (`MainActivity.onMemoryDeleted`) calls `MemoryGroupDao.restoreDeletedGroup`, which re-inserts all three in one transaction. Delete does not release media URI grants, which is what keeps undo working: if you add grant release on delete, do it only after the undo Snackbar is gone.
 - Backup and restore temp files use fixed paths in `cacheDir` (`backup_temp/`, `backup.zip`, `restore_temp*`), so don't run two at once (`DATA-3`).
 - `Slider.clearOnSliderTouchListeners()` does not remove change listeners (`BUG-1`).
 - Debug builds use the default debug keystore, not the release key. For Google sign-in (and a Maps key restricted to Android apps) to work in debug builds, the debug SHA-1 (`./gradlew signingReport`) must be registered for `com.szabolcshorvath.memorymap` in Google Cloud Console. A debug build can't be installed over a release install: uninstall it first.
@@ -74,4 +74,5 @@ Local setup needs files that are **not** in git:
 ## Tests
 
 - Robolectric tests use `@ExtendWith(RobolectricExtension::class)` (JUnit 5).
+- DAO tests run on an in-memory Room database under Robolectric (`MemoryGroupDaoTest`). They get the DAO through `memoryGroupDaoInternal()` by reflection, because the traced `memoryGroupDao()` needs a configured FirebaseApp.
 - No Room migration, backup, hashing, clustering or UI tests yet (`TEST-1`, `TEST-2`, `TEST-3`). For migrations, use `MigrationTestHelper` with the schemas in `app/schemas`.
