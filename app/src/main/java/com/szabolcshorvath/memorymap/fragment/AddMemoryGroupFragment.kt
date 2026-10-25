@@ -177,7 +177,7 @@ class AddMemoryGroupFragment : Fragment() {
             updateFragmentsUI()
 
             if (viewModel.editingMemoryId != null) {
-                binding.btSave.text = "Update"
+                binding.btSave.setText(R.string.update_memory)
             }
 
             viewModel.isInitialized = true
@@ -486,7 +486,7 @@ class AddMemoryGroupFragment : Fragment() {
         binding.descriptionInput.text?.clear()
         updateLocationText()
         binding.switchAllDay.isChecked = false
-        binding.btSave.text = "Save Memory"
+        binding.btSave.setText(R.string.save_memory)
     }
 
     override fun onHiddenChanged(hidden: Boolean) {
@@ -586,7 +586,7 @@ class AddMemoryGroupFragment : Fragment() {
         updateLocationText()
         updateDateTimeButtons()
         updateColorUI()
-        binding.btSave.text = "Update"
+        binding.btSave.setText(R.string.update_memory)
         viewModel.markUnchanged() // Last, after the views have written back what they show.
     }
 

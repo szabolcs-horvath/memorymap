@@ -27,4 +27,6 @@
     <string name="discard_edit_message">Editing this memory replaces your unsaved changes to the memory you were editing.</string>
     <string name="discard">Discard</string>
     <string name="keep_editing">Keep editing</string>
+    <string name="save_memory">Save Memory</string>
+    <string name="update_memory">Update</string>
 </resources>
