@@ -384,9 +384,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             // Do nothing
         }
 
-        binding.overlayCard.viewTreeObserver.addOnGlobalLayoutListener {
-            setGoogleMapPadding()
+        // The padding depends only on these two views, so update it when one of them changes size or
+        // position, not on every layout pass of the whole screen.
+        val updatePaddingOnResize = View.OnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop || top != oldTop) {
+                setGoogleMapPadding()
+            }
         }
+        binding.overlayCard.addOnLayoutChangeListener(updatePaddingOnResize)
+        binding.dateFilterContainer.addOnLayoutChangeListener(updatePaddingOnResize)
 
         // Needed to reinitialize after rotation
         viewLifecycleOwner.lifecycleScope.launch {

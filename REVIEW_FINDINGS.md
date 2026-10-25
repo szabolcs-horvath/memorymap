@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 28 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 45 open
+✅ 29 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 44 open
 
 **SEC — Security / privacy** · 6 of 8 fixed
 
@@ -90,7 +90,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
-**PERF — Performance** · 1 of 10 fixed
+**PERF — Performance** · 2 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -103,7 +103,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-7](#perf-7) | Medium | Map rebuilt on every tab switch or detail open |
 | ⬜ | [PERF-8](#perf-8) | Low | Full marker reset on every emission |
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
-| ⬜ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
+| ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
 **UX — User experience** · 2 of 15 fixed
 
@@ -423,10 +423,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** `singleColorPinConfigIcon` runs a 20-step binary search and builds a new `BitmapDescriptor` per marker per render, uncached. The multi-colour cache key uses `colors.hashCode()` (collisions give wrong icons).
 - **Fix:** Cache by colour int, and use `colors.joinToString()` as the key.
 
-### <a id="perf-10"></a>⬜ PERF-10 · Low · Global layout listener on every layout pass
+### <a id="perf-10"></a>✅ PERF-10 · Low · Global layout listener on every layout pass
 - **Where:** `MapFragment.kt:387-389`
 - **What:** `addOnGlobalLayoutListener { setGoogleMapPadding() }` is never removed and runs `setPadding` on every layout pass of the whole tree.
 - **Fix:** Use `doOnLayout` or `addOnLayoutChangeListener` on `overlayCard` only.
+- **Status:** Fixed. The global layout listener is replaced by `OnLayoutChangeListener`s on `overlayCard` and `dateFilterContainer` that update the padding only when one of them changes size or position.
 
 [↑ Back to index](#index)
 
