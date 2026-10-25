@@ -54,6 +54,8 @@ import com.szabolcshorvath.memorymap.util.MarkerGenerator
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
+import com.szabolcshorvath.memorymap.util.findDatePicker
+import com.szabolcshorvath.memorymap.util.setOnPicked
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -129,6 +131,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         mapLoadTrace = PerfUtil.startTrace("map_full_load")
 
         binding.btDateRange.setOnClickListener { showDateRangePicker() }
+        childFragmentManager.findDatePicker<androidx.core.util.Pair<Long, Long>>(DATE_FILTER_PICKER_TAG)
+            ?.setOnPicked(::applyPickedDateFilter)
         binding.btQuickFilter.setOnClickListener { showQuickFilterMenu() }
         binding.btStats.setOnClickListener { toggleStatsOverlay() }
 
@@ -221,17 +225,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
 
         val picker = builder.build()
-        picker.addOnPositiveButtonClickListener { selection ->
-            val startMillis = selection.first
-            val endMillis = selection.second
+        picker.setOnPicked(::applyPickedDateFilter)
+        picker.show(childFragmentManager, DATE_FILTER_PICKER_TAG)
+    }
 
-            val newStart = Instant.ofEpochMilli(startMillis).atZone(ZoneId.of("UTC")).toLocalDate()
-            val newEnd = Instant.ofEpochMilli(endMillis).atZone(ZoneId.of("UTC")).toLocalDate()
+    private fun applyPickedDateFilter(selection: androidx.core.util.Pair<Long, Long>) {
+        val newStart = Instant.ofEpochMilli(selection.first).atZone(ZoneId.of("UTC")).toLocalDate()
+        val newEnd = Instant.ofEpochMilli(selection.second).atZone(ZoneId.of("UTC")).toLocalDate()
 
-            shouldAdjustCameraOnUpdate = true
-            viewModel.updateDateFilter(newStart, newEnd)
-        }
-        picker.show(childFragmentManager, picker.toString())
+        shouldAdjustCameraOnUpdate = true
+        viewModel.updateDateFilter(newStart, newEnd)
     }
 
     private fun toggleStatsOverlay() {
@@ -769,6 +772,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         const val TAG = "MapFragment"
+        private const val DATE_FILTER_PICKER_TAG = "DATE_FILTER_PICKER"
         private const val MAX_CAMERA_ZOOM = 15f
         private const val DEFAULT_ZOOM = 12f
         private const val ZOOM_PADDING = 100

@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 42 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 32 open
+✅ 43 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 31 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -69,13 +69,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 13 of 16 fixed
+**BUG — Functional bugs** · 14 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ✅ | [BUG-1](#bug-1) | High | Slider change listeners accumulate in the fragment editor |
 | ✅ | [BUG-2](#bug-2) | High | Location confirm stays disabled forever when geocoding fails (API 33+) |
-| ⬜ | [BUG-3](#bug-3) | Medium | Date and time pickers stop working after rotation |
+| ✅ | [BUG-3](#bug-3) | Medium | Date and time pickers stop working after rotation |
 | ✅ | [BUG-4](#bug-4) | Medium | Sign-in can leave the Settings screen stuck on "Signing in…" |
 | ✅ | [BUG-5](#bug-5) | Medium | Removing a selected photo can crash |
 | ✅ | [BUG-6](#bug-6) | Medium | Results registered in `onCreateView` (Settings) |
@@ -295,10 +295,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Implement `onError`, and enable "Confirm" right away (coordinates are enough); fill in the name and address when they arrive.
 - **Status:** Fixed. Every outcome of the reverse geocode (an address, no result, an exception, or `GeocodeListener.onError` on Android 13+) goes through `showGeocodeResult`, which fills in the address if there is one and re-enables "Confirm". The marker shows "Selected Location" when no name was found. "Confirm" is still disabled while the lookup runs.
 
-### <a id="bug-3"></a>⬜ BUG-3 · Medium · Date and time pickers stop working after rotation
+### <a id="bug-3"></a>✅ BUG-3 · Medium · Date and time pickers stop working after rotation
 - **Where:** `MapFragment.kt:209-235`, `AddMemoryGroupFragment.kt:697-770`, `MemoryFragmentEditAdapter.kt:486-598`
 - **What:** `MaterialDatePicker` and `MaterialTimePicker` are restored by the FragmentManager after a configuration change, but their `addOnPositiveButtonClickListener` lambdas are not. Picking a date after rotating does nothing. The fragment-editor pickers also capture `index`, which can point to a different fragment, or be out of range, if the list changes while the dialog is open.
 - **Fix:** Re-attach listeners in `onViewCreated` by finding the picker by tag, or use `setFragmentResultListener`. Identify fragments by `localId`, not index.
+- **Status:** Fixed. Each picker is shown under a tag that says what it is for, and its listener is attached again in `onViewCreated` to the picker found by that tag, replacing any earlier listener (`util/PickerListeners.kt`). The Add screen and fragment pickers have distinct tags (they share `childFragmentManager`). A fragment picker carries the fragment's `localId`, so the pick goes to that fragment, or nowhere if it was removed meanwhile. After process death the restored pickers apply to the reset form (`UX-7`).
 
 ### <a id="bug-4"></a>✅ BUG-4 · Medium · Sign-in can leave the Settings screen stuck on "Signing in…"
 - **Where:** `auth/GoogleAuthManager.kt:35-63`, `SettingsFragment.kt:627-675`
