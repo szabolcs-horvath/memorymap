@@ -100,6 +100,22 @@ class MemoryGroupDaoTest {
         markerHue = 120f
     )
 
+    @Test
+    fun `re-linking updates a row only while it holds the photo the run read`() = runBlocking {
+        val groupId = dao.insertGroup(group()).toInt()
+        dao.insertMediaItems(listOf(media(groupId, "content://old/1", order = 0)))
+        val seen = dao.getAllMediaItems().single()
+
+        // A restore during the run put another photo under the same id.
+        dao.updateMediaItems(listOf(seen.copy(uri = "content://restored/7", mediaSignature = "2048_def")))
+        assertEquals(0, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/42", "this-phone"))
+        assertEquals("content://restored/7", dao.getAllMediaItems().single().uri)
+
+        dao.updateMediaItems(listOf(seen))
+        assertEquals(1, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/42", "this-phone"))
+        assertEquals(seen.copy(uri = "content://media/42", deviceId = "this-phone"), dao.getAllMediaItems().single())
+    }
+
     private fun media(groupId: Int, uri: String, order: Int) = MediaItem(
         groupId = groupId,
         uri = uri,

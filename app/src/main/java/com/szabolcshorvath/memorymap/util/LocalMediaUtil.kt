@@ -189,24 +189,30 @@ object LocalMediaUtil {
             onProgress?.invoke("Re-linking photo ${index + 1} of ${itemsNeedingFix.size}...")
 
             val match = findBySignature(item, candidatePool, sigs)
-            if (match != null) {
-                Log.i(
-                    TAG,
-                    "RE-LINK SUCCESS [Exact Signature]: item id=${item.id} " +
-                        "(size=${item.fileSize}, sig=${item.mediaSignature}) -> matched MediaStore uri=${match.uri}"
-                )
-                // Update only the link columns so a concurrent edit (e.g. reordering) is not overwritten.
-                dao.updateMediaLink(item.id, match.uri, installationIdentifier)
-                relinkNeeded[item.copy(uri = match.uri, deviceId = installationIdentifier).linkKey] = false
-                relinkedCount++
-            } else {
-                stillMissing += item.id
-                Log.w(
-                    TAG,
-                    "RE-LINK SKIPPED [No Match]: item id=${item.id}, origUri=${item.uri}, " +
-                        "deviceId=${item.deviceId}, fileSize=${item.fileSize}, dateTaken=${item.dateTaken}, " +
-                        "targetSig=${item.mediaSignature}. No candidate matched exact criteria."
-                )
+            when {
+                match == null -> {
+                    stillMissing += item.id
+                    Log.w(
+                        TAG,
+                        "RE-LINK SKIPPED [No Match]: item id=${item.id}, origUri=${item.uri}, " +
+                            "deviceId=${item.deviceId}, fileSize=${item.fileSize}, dateTaken=${item.dateTaken}, " +
+                            "targetSig=${item.mediaSignature}. No candidate matched exact criteria."
+                    )
+                }
+
+                // Updates only the link columns, so a concurrent edit (e.g. reordering) is not overwritten, and only
+                // if the row still holds the photo this run read: a restore during the run can reuse its id.
+                dao.updateMediaLink(item.id, item.uri, item.mediaSignature, match.uri, installationIdentifier) == 1 -> {
+                    Log.i(
+                        TAG,
+                        "RE-LINK SUCCESS [Exact Signature]: item id=${item.id} " +
+                            "(size=${item.fileSize}, sig=${item.mediaSignature}) -> matched MediaStore uri=${match.uri}"
+                    )
+                    relinkNeeded[item.copy(uri = match.uri, deviceId = installationIdentifier).linkKey] = false
+                    relinkedCount++
+                }
+
+                else -> Log.w(TAG, "RE-LINK SKIPPED [Changed]: item id=${item.id} changed during the run (restore or edit).")
             }
         }
 

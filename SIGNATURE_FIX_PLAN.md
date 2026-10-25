@@ -89,7 +89,8 @@ A MediaStore candidate is linked only if `candidate.size == item.fileSize` **and
 * Stored `dateTaken` can be synthetic (§1).
 
 Re-linking updates only `uri` and `deviceId` (`MemoryGroupDao.updateMediaLink`), so a concurrent edit
-of the same item (for example reordering) is not overwritten.
+of the same item (for example reordering) is not overwritten. The update applies only while the row still has the URI and
+signature the run read, so a restore during the run (which can reuse ids) is not given another photo's link.
 
 ### Signatures
 * Format: `{statSize}_{md5(first 4 KB + last 4 KB)}` (`MediaHasher`), computed on the redacted stream.
