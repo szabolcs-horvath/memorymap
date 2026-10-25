@@ -34,6 +34,7 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil
@@ -69,9 +70,7 @@ class MainActivity :
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { _ ->
             // Partial ("selected photos") access is enough to re-link the photos the user selected.
             if (PermissionUtil.hasAnyMediaPermission(applicationContext)) {
-                lifecycleScope.launch(Dispatchers.IO) {
-                    LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
-                }
+                lifecycleScope.launch { MediaRelinker.relink(applicationContext) }
             }
         }
 
@@ -252,7 +251,7 @@ class MainActivity :
 
                 val needsPermissionForRelink = withContext(Dispatchers.IO) {
                     initializeHSVPresetsIfEmpty()
-                    val relinkResult = LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
+                    val relinkResult = MediaRelinker.relink(applicationContext)
                     // Only prompt when there is no media access at all, so users who chose
                     // "selected photos" are not asked again on every launch.
                     !PermissionUtil.hasAnyMediaPermission(applicationContext) && relinkResult.missingCount > 0
