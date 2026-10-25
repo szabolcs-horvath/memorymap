@@ -40,6 +40,12 @@ object InstallationIdentifier {
             }
         }
 
+    /**
+     * When the id file was written, or null if it doesn't exist. It is written once: when the id is generated or
+     * migrated, so a time close to an app update means that update gave this installation its id.
+     */
+    fun idFileWrittenAt(context: Context): Long? = File(context.noBackupFilesDir, ID_FILE_NAME).lastModified().takeIf { it > 0 }
+
     private suspend fun retrieveInstallationIdentifier(context: Context): String {
         val idFile = File(context.noBackupFilesDir, ID_FILE_NAME)
         readIdFile(idFile)?.let {

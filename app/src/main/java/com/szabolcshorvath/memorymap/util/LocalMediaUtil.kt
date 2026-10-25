@@ -10,6 +10,7 @@ import androidx.core.net.toUri
 import com.google.firebase.perf.trace
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
+import com.szabolcshorvath.memorymap.util.LocalMediaUtil.needsRelink
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
@@ -264,7 +265,8 @@ object LocalMediaUtil {
         if (released > 0) Log.d(TAG, "Released $released unused persisted URI grants.")
     }
 
-    private fun getReadableContentUris(context: Context): List<Uri> {
+    /** The MediaStore collections the app may query with its current media access. */
+    internal fun readableContentUris(context: Context): List<Uri> {
         val contentUris = mutableListOf<Uri>()
         if (PermissionUtil.hasImagePermission(context)) {
             contentUris.add(MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
@@ -276,7 +278,7 @@ object LocalMediaUtil {
     }
 
     private fun queryCandidatesForSizes(context: Context, sizes: List<Long>): List<LocalMediaCandidate> =
-        getReadableContentUris(context).flatMap { contentUri ->
+        readableContentUris(context).flatMap { contentUri ->
             sizes.chunked(SIZE_QUERY_CHUNK).flatMap { queryChunk(context, contentUri, it) }
         }
 
