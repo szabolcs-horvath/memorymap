@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 36 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 36 open
+✅ 37 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 35 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -139,11 +139,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ⬜ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
 
-**BUILD — Build, CI, tooling** · 1 of 4 fixed
+**BUILD — Build, CI, tooling** · 2 of 4 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
-| ⬜ | [BUILD-1](#build-1) | Medium | CI never runs the tests |
+| ✅ | [BUILD-1](#build-1) | Medium | CI never runs the tests |
 | ✅ | [BUILD-2](#build-2) | Medium | `MAPS_API_KEY` wiring is inconsistent |
 | ⬜ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
 | ❔ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
@@ -589,10 +589,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## BUILD — Build, CI, tooling
 
-### <a id="build-1"></a>⬜ BUILD-1 · Medium · CI never runs the tests
+### <a id="build-1"></a>✅ BUILD-1 · Medium · CI never runs the tests
 - **Where:** `.github/workflows/*.yml`
 - **What:** Only CodeQL (which builds debug) and Detekt run. Detekt has `continue-on-error: true`, so it never fails a PR. The `baseline.xml` referenced in `build.gradle.kts:25` does not exist.
 - **Fix:** Add a `./gradlew testDebugUnitTest lintDebug` job, make Detekt blocking (generate a baseline first).
+- **Status:** Fixed. The new "Tests" workflow (`tests.yml`) runs `testDebugUnitTest lintDebug` on JDK 21 for every push and PR to master, and uploads the reports when it fails. Detekt no longer has `continue-on-error`. The existing issues are in `config/detekt/baseline.xml`, so only new ones fail the check.
 
 ### <a id="build-2"></a>✅ BUILD-2 · Medium · `MAPS_API_KEY` wiring is inconsistent
 - **Where:** `app/build.gradle.kts:39` vs the secrets plugin vs CI (`local.properties`)

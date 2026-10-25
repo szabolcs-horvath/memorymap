@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:MemoryFragmentEditAdapter.kt$MemoryFragmentEditAdapter.FragmentEditState.FragmentDiffCallback$oldItem.lat != newItem.lat || oldItem.lng != newItem.lng || oldItem.placeName != newItem.placeName || oldItem.address != newItem.address</ID>
+    <ID>ComplexCondition:MemoryFragmentEditAdapter.kt$MemoryFragmentEditAdapter.FragmentEditState.FragmentDiffCallback$oldItem.startDate != newItem.startDate || oldItem.endDate != newItem.endDate || oldItem.isAllDay != newItem.isAllDay || oldItem.isTimeVisible != newItem.isTimeVisible || oldItem.isDateExpanded != newItem.isDateExpanded</ID>
+    <ID>CyclomaticComplexMethod:AddMemoryGroupFragment.kt$AddMemoryGroupFragment$override fun onViewCreated(view: View, savedInstanceState: Bundle?)</ID>
+    <ID>CyclomaticComplexMethod:MemoryFragment.kt$MemoryFragment$private fun displayMemoryFragments(data: MemoryGroupWithMedia)</ID>
+    <ID>CyclomaticComplexMethod:SettingsFragment.kt$SettingsFragment$override fun onViewCreated(view: View, savedInstanceState: Bundle?)</ID>
+    <ID>EmptyFunctionBlock:MemoryFragment.kt$MemoryFragment.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:SettingsFragment.kt$SettingsFragment.&lt;no name provided&gt;${}</ID>
+    <ID>LargeClass:SettingsFragment.kt$SettingsFragment : Fragment</ID>
+    <ID>LongMethod:AddMemoryGroupFragment.kt$AddMemoryGroupFragment$fun setEditMode(memoryId: Int)</ID>
+    <ID>LongMethod:AddMemoryGroupFragment.kt$AddMemoryGroupFragment$override fun onViewCreated(view: View, savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:MapFragment.kt$MapFragment$override fun onMapReady(googleMap: GoogleMap)</ID>
+    <ID>LongMethod:MediaPagerAdapter.kt$MediaPagerAdapter.MediaViewHolder$fun bind(item: Pair&lt;String, String&gt;)</ID>
+    <ID>LongMethod:SettingsFragment.kt$SettingsFragment$override fun onViewCreated(view: View, savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:SettingsFragment.kt$SettingsFragment$private fun setupColorPresetsSection()</ID>
+    <ID>LongMethod:SettingsFragment.kt$SettingsFragment$private fun setupSignInAndOutButtons()</ID>
+    <ID>LongParameterList:LocalMediaUtil.kt$LocalMediaUtil$( context: Context, dao: MemoryGroupDao, itemsNeedingFix: List&lt;MediaItem&gt;, totalMediaCount: Int, installationIdentifier: String, onProgress: ((String) -&gt; Unit)? )</ID>
+    <ID>NestedBlockDepth:LogManager.kt$LogManager$private fun createZip(zipFile: File, files: List&lt;File&gt;)</ID>
+    <ID>NestedBlockDepth:MemoryFragmentAdapter.kt$MemoryFragmentAdapter$override fun onBindViewHolder(holder: MemoryFragmentViewHolder, position: Int, payloads: MutableList&lt;Any&gt;)</ID>
+    <ID>NestedBlockDepth:SettingsFragment.kt$SettingsFragment$private fun updateUI(email: String?)</ID>
+    <ID>ReturnCount:MapFragment.kt$MapFragment$private fun setGoogleMapPadding()</ID>
+    <ID>SpreadOperator:PerfUtil.kt$PerfUtil$(dao, *(args ?: emptyArray()))</ID>
+    <ID>SpreadOperator:PerfUtil.kt$PerfUtil$(dao, *argsWithoutContinuation, tracingContinuation)</ID>
+    <ID>TooGenericExceptionCaught:AddMemoryGroupFragment.kt$AddMemoryGroupFragment$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AddMemoryGroupFragmentViewModel.kt$AddMemoryGroupFragmentViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:BackupManager.kt$BackupManager$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LogManager.kt$LogManager$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MainActivity.kt$MainActivity$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:PerfUtil.kt$PerfUtil$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:PickLocationFragment.kt$PickLocationFragment$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SettingsFragment.kt$SettingsFragment$e: Exception</ID>
+    <ID>TooManyFunctions:AddMemoryGroupFragment.kt$AddMemoryGroupFragment : Fragment</ID>
+    <ID>TooManyFunctions:SettingsFragment.kt$SettingsFragment : Fragment</ID>
+    <ID>UseRequire:DateFilterOption.kt$DateFilterOption.Companion$throw IllegalArgumentException("Multiple DefaultDateFilterOptions found for label: $label")</ID>
+    <ID>UseRequire:DateFilterOption.kt$DateFilterOption.Companion$throw IllegalArgumentException("No DefaultDateFilterOption found for label: $label")</ID>
+  </CurrentIssues>
+</SmellBaseline>
