@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 44 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 30 open
+✅ 45 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 29 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -90,12 +90,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
-**PERF — Performance** · 5 of 10 fixed
+**PERF — Performance** · 6 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | 🟡 | [PERF-1](#perf-1) | High | Firebase trace inside the O(N²) clustering loop |
-| ⬜ | [PERF-2](#perf-2) | High | DAO reflection proxy plus a Firebase trace on every DB call |
+| ✅ | [PERF-2](#perf-2) | High | DAO reflection proxy plus a Firebase trace on every DB call |
 | ✅ | [PERF-3](#perf-3) | Medium | Save holds a DB write transaction while reading files |
 | ✅ | [PERF-4](#perf-4) | Medium | Media picker work runs on the main thread |
 | ✅ | [PERF-5](#perf-5) | Medium | Cold start scans all media twice |
@@ -388,10 +388,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Remove `@AddTrace` from hot helpers (also `isMediaValid`, `generateColorWithTargetContrast` and the per-marker renderer callbacks). Use a grid or geohash bucket so only neighbours are compared.
 - **Status:** Partly fixed. `@AddTrace` is removed from `isSameLocationAs`, `isMediaValid`, `generateColorWithTargetContrast`, the three `MarkerGenerator` icon functions and the four per-marker renderer callbacks. `clusterMarkerables` and `updatePieChart` keep theirs (one per recompute). The pairwise comparison is still O(N²); a grid or geohash bucket is not done (it would change which points cluster, see UX-10).
 
-### <a id="perf-2"></a>⬜ PERF-2 · High · DAO reflection proxy plus a Firebase trace on every DB call
+### <a id="perf-2"></a>✅ PERF-2 · High · DAO reflection proxy plus a Firebase trace on every DB call
 - **Where:** `util/PerfUtil.kt:34-86`, `MemoryMapDatabase.kt:43-45`
 - **What:** Every DAO call goes through `java.lang.reflect.Proxy` and creates a Firebase trace. For Flow-returning methods the trace measures only Flow creation, so the data is meaningless. Firebase also rate-limits custom traces.
 - **Fix:** Drop the proxy. Firebase Perf already captures app start and screen rendering; trace a few high-level operations (save, backup, restore) by hand.
+- **Status:** Fixed. The proxy is gone: `memoryGroupDao()`, `hsvPresetDao()` and `databaseContentsDao()` are Room's own accessors, so DAO calls are plain calls with no trace each. A save is traced as a whole (`add_memory_group_view_model_save_memory_group`, around the existing transaction trace); backup and restore already trace each step. Tests use the DAOs directly instead of reaching the untraced ones by reflection.
 
 ### <a id="perf-3"></a>✅ PERF-3 · Medium · Save holds a DB write transaction while reading files
 - **Where:** `AddMemoryGroupFragmentViewModel.kt:103-114, 173-243`

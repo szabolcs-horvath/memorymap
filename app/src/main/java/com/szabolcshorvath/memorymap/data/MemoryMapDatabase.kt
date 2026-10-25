@@ -11,7 +11,6 @@ import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.szabolcshorvath.memorymap.util.PerfUtil.tracedDao
 
 @Database(
     entities = [MemoryGroup::class, MediaItem::class, MemoryFragment::class, HSVPreset::class],
@@ -35,19 +34,11 @@ import com.szabolcshorvath.memorymap.util.PerfUtil.tracedDao
 )
 @TypeConverters(Converters::class)
 abstract class MemoryMapDatabase : RoomDatabase() {
-    protected abstract fun memoryGroupDaoInternal(): MemoryGroupDao
-    protected abstract fun hsvPresetDaoInternal(): HSVPresetDao
-    protected abstract fun databaseContentsDaoInternal(): DatabaseContentsDao
+    abstract fun memoryGroupDao(): MemoryGroupDao
 
-    private var _memoryGroupDao: MemoryGroupDao? = null
-    private var _hsvPresetDao: HSVPresetDao? = null
-    private var _databaseContentsDao: DatabaseContentsDao? = null
+    abstract fun hsvPresetDao(): HSVPresetDao
 
-    fun memoryGroupDao(): MemoryGroupDao = _memoryGroupDao ?: tracedDao(memoryGroupDaoInternal()).also { _memoryGroupDao = it }
-
-    fun hsvPresetDao(): HSVPresetDao = _hsvPresetDao ?: tracedDao(hsvPresetDaoInternal()).also { _hsvPresetDao = it }
-
-    fun databaseContentsDao(): DatabaseContentsDao = _databaseContentsDao ?: tracedDao(databaseContentsDaoInternal()).also { _databaseContentsDao = it }
+    abstract fun databaseContentsDao(): DatabaseContentsDao
 
     companion object {
         const val DB_VERSION = 18

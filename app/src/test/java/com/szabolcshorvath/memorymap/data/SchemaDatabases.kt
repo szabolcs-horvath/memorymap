@@ -6,13 +6,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/** DAOs without the Firebase-traced proxy (which needs a configured FirebaseApp). */
-internal fun MemoryMapDatabase.groupDaoForTest(): MemoryGroupDao =
-    MemoryMapDatabase::class.java.getDeclaredMethod("memoryGroupDaoInternal").apply { isAccessible = true }.invoke(this) as MemoryGroupDao
-
-internal fun MemoryMapDatabase.contentsDaoForTest(): DatabaseContentsDao =
-    MemoryMapDatabase::class.java.getDeclaredMethod("databaseContentsDaoInternal").apply { isAccessible = true }.invoke(this) as DatabaseContentsDao
-
 /**
  * Builds database files exactly as an older app version created them, from the schemas Room exported
  * to `app/schemas`, and fills each table with one sample row.
