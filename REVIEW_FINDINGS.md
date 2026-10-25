@@ -32,7 +32,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | 5 | ✅ | [UX-1](#ux-1) | Saving a memory waits for the full Google Drive upload to finish. |
 | 6 | ✅ | [BUG-1](#bug-1) | Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called). |
 | 7 | ✅ | [BUG-2](#bug-2) | On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible). |
-| 8 | 🟡 | [PERF-1](#perf-1) | A Firebase trace is started for every pair of markers in the O(N²) clustering loop. Partly fixed: the traces are gone, the comparison is still O(N²). |
+| 8 | ✅ | [PERF-1](#perf-1) | A Firebase trace is started for every pair of markers in the O(N²) clustering loop. |
 | 9 | ⬜ | [ARCH-1](#arch-1) | Hidden tabs have their views destroyed on every tab switch (the map is rebuilt each time). |
 | 10 | 🟡 | [DATA-4](#data-4) | Automatic backups are never pruned ~~and the backup list is capped at 100 entries~~ (list paging fixed; pruning postponed). |
 
@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 46 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 28 open
+✅ 48 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 27 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -90,11 +90,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
-**PERF — Performance** · 6 of 10 fixed
+**PERF — Performance** · 7 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
-| 🟡 | [PERF-1](#perf-1) | High | Firebase trace inside the O(N²) clustering loop |
+| ✅ | [PERF-1](#perf-1) | High | Firebase trace inside the O(N²) clustering loop |
 | ✅ | [PERF-2](#perf-2) | High | DAO reflection proxy plus a Firebase trace on every DB call |
 | ✅ | [PERF-3](#perf-3) | Medium | Save holds a DB write transaction while reading files |
 | ✅ | [PERF-4](#perf-4) | Medium | Media picker work runs on the main thread |
@@ -105,7 +105,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 5 of 15 fixed
+**UX — User experience** · 6 of 15 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -118,7 +118,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-7](#ux-7) | Medium | Form state lost on process death |
 | ⬜ | [UX-8](#ux-8) | Medium | Full-screen images are decoded at screen size |
 | ✅ | [UX-9](#ux-9) | Medium | Map date filter excludes memories that overlap the range |
-| ⬜ | [UX-10](#ux-10) | Low | Transitive clustering merges distant points |
+| ✅ | [UX-10](#ux-10) | Low | Transitive clustering merges distant points |
 | ⬜ | [UX-11](#ux-11) | Low | Pickers ignore the locale |
 | ⬜ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
 | ⬜ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
@@ -383,11 +383,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## PERF — Performance
 
-### <a id="perf-1"></a>🟡 PERF-1 · High · Firebase trace inside the O(N²) clustering loop
+### <a id="perf-1"></a>✅ PERF-1 · High · Firebase trace inside the O(N²) clustering loop
 - **Where:** `data/Markerable.kt:26`, `fragment/MapFragmentViewModel.kt:114-144`
 - **What:** `isSameLocationAs` has `@AddTrace` and is called for every pair: 500 markers means about 125,000 trace start/stop calls on every recompute (each filter or data change). Each call also runs `Location.distanceBetween`.
 - **Fix:** Remove `@AddTrace` from hot helpers (also `isMediaValid`, `generateColorWithTargetContrast` and the per-marker renderer callbacks). Use a grid or geohash bucket so only neighbours are compared.
-- **Status:** Partly fixed. `@AddTrace` is removed from `isSameLocationAs`, `isMediaValid`, `generateColorWithTargetContrast`, the three `MarkerGenerator` icon functions and the four per-marker renderer callbacks. `clusterMarkerables` and `updatePieChart` keep theirs (one per recompute). The pairwise comparison is still O(N²); a grid or geohash bucket is not done (it would change which points cluster, see UX-10).
+- **Status:** Fixed. `@AddTrace` is removed from `isSameLocationAs`, `isMediaValid`, `generateColorWithTargetContrast`, the three `MarkerGenerator` icon functions and the four per-marker renderer callbacks. `clusterMarkerables` and `updatePieChart` keep theirs (one per recompute). The pairwise comparison is gone (with UX-10): `MarkerClustering` keeps each pin's anchor in a grid of 100 m cells, so a marker is compared only with the anchors in the cells around it, which is linear in the number of markers for real data. `isSameLocationAs` no longer exists.
 
 ### <a id="perf-2"></a>✅ PERF-2 · High · DAO reflection proxy plus a Firebase trace on every DB call
 - **Where:** `util/PerfUtil.kt:34-86`, `MemoryMapDatabase.kt:43-45`
@@ -496,10 +496,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Use overlap semantics: `start <= filterEnd && end >= filterStart`.
 - **Status:** Fixed. The map shows a memory or fragment if any part of it falls within the selected range (`MapFragmentViewModel.overlapsDateFilter`, covered by `MapFragmentViewModelTest`), so a Dec 28 – Jan 3 trip shows under "This Year". Showing a memory on the map widens the filter only when the memory lies entirely outside it.
 
-### <a id="ux-10"></a>⬜ UX-10 · Low · Transitive clustering merges distant points
+### <a id="ux-10"></a>✅ UX-10 · Low · Transitive clustering merges distant points
 - **Where:** `MapFragmentViewModel.kt:114-144`, `Markerable.kt:27-35`
 - **What:** Union-find chains points: A–B and B–C under 20 m makes A–C one pin even if they are 40 m+ apart, and the pin sits at the *first* item's location. Matching on name + address alone merges far-apart places with the same label.
 - **Fix:** Anchor the threshold to a centroid, and require distance as well as the name.
+- **Status:** Fixed. `MarkerClustering` gives each pin an anchor: the first marker, in list order, that fit no existing pin. A marker joins the nearest pin whose anchor is under 20 m away, or under 100 m when both have the same place name and address (same label alone no longer merges). Distances are measured to the anchor, never between members, so pins don't chain: two markers of one pin are under 40 m apart (200 m for the same place). The anchor stays fixed rather than following the centroid, which would let earlier members drift out of range; the pin is drawn at the centroid of its markers (across the 180th meridian too). Covered by `MarkerClusteringTest`, which also checks random markers against the rules one by one.
 
 ### <a id="ux-11"></a>⬜ UX-11 · Low · Pickers ignore the locale
 - **Where:** `AddMemoryGroupFragment.kt:750-751`, `MemoryFragmentEditAdapter.kt:569-570`, `DateFilterOption.kt:15`, `MediaAdapter.kt:78`

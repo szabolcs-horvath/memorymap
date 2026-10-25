@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap.data
 
-import android.location.Location
 import androidx.recyclerview.widget.DiffUtil
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
@@ -22,25 +21,13 @@ interface Markerable {
 
     fun getFormattedDate(): String?
 
-    fun isSameLocationAs(other: Markerable): Boolean {
-        if (placeAndAddressPresentForBoth(other)) {
-            if (placeName == other.placeName && address == other.address) return true
-        }
-
-        val results = FloatArray(1)
-        Location.distanceBetween(latitude, longitude, other.latitude, other.longitude, results)
-        return results[0] < SAME_LOCATION_METERS_THRESHOLD
-    }
-
-    private fun placeAndAddressPresentForBoth(other: Markerable): Boolean =
-        placeName != null && address != null && other.placeName != null && other.address != null
-
     data class MarkerableCluster(val items: List<Markerable>) : ClusterItem {
-        override val position: LatLng
-            get() {
-                val first = items.first()
-                return LatLng(first.latitude, first.longitude)
-            }
+        /** The middle of the items. Longitudes are taken relative to the first item, so a pin on the 180th meridian stays there. */
+        override val position: LatLng = run {
+            val first = items.first()
+            val longitudeOffset = items.sumOf { MarkerClustering.wrapLongitude(it.longitude - first.longitude) } / items.size
+            LatLng(items.sumOf { it.latitude } / items.size, first.longitude + longitudeOffset) // LatLng wraps the longitude
+        }
 
         override val title: String?
             get() = if (items.size == 1) items.first().title else "${items.size} Memories"
@@ -89,7 +76,6 @@ interface Markerable {
     }
 
     companion object {
-        const val SAME_LOCATION_METERS_THRESHOLD = 20.0f
         const val TITLE_DIFF_PAYLOAD = "TITLE"
         const val DATE_DIFF_PAYLOAD = "DATE"
         const val COLOR_DIFF_PAYLOAD = "COLOR"
