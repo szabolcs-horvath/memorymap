@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
@@ -168,6 +169,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun startAutocomplete() {
         val context = context ?: return
+        if (!Places.isInitialized()) {
+            // Places is not initialized without a Maps API key, and the search screen needs it.
+            Toast.makeText(context, R.string.place_search_unavailable, Toast.LENGTH_LONG).show()
+            return
+        }
         val sessionToken = AutocompleteSessionToken.newInstance()
         val intent = PlaceAutocomplete.createIntent(context) {
             setAutocompleteSessionToken(sessionToken)
@@ -203,7 +209,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             googleMap.animateCamera(CameraUpdateFactory.newLatLng(poiLatLng))
 
             val context = context
-            if (context != null) {
+            if (context != null && Places.isInitialized()) {
                 val placesClient = Places.createClient(context)
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
@@ -224,6 +230,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                         }
                     }
                 }
+            } else {
+                // Without the Places SDK (no API key) the address lookup still works.
+                reverseGeocode(poiLatLng)
             }
         }
 

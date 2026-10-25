@@ -43,10 +43,15 @@ class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
     private fun initializePlaces() {
         try {
             val appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
-            val apiKey = appInfo.metaData.getString("com.google.android.geo.API_KEY")
-            if (apiKey != null && !Places.isInitialized()) {
-                Places.initializeWithNewPlacesApiEnabled(applicationContext, apiKey)
-                Log.d(TAG, "Places SDK initialized.")
+            val apiKey = appInfo.metaData?.getString("com.google.android.geo.API_KEY")
+            when {
+                // The manifest placeholder is empty when MAPS_API_KEY is not set; every Places request would fail.
+                apiKey.isNullOrBlank() -> Log.w(TAG, "No Maps API key (MAPS_API_KEY), so the Places SDK is not initialized.")
+
+                !Places.isInitialized() -> {
+                    Places.initializeWithNewPlacesApiEnabled(applicationContext, apiKey)
+                    Log.d(TAG, "Places SDK initialized.")
+                }
             }
         } catch (e: PackageManager.NameNotFoundException) {
             Log.e(TAG, "Failed to initialize Places SDK", e)

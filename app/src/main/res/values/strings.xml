@@ -15,4 +15,5 @@
     <string name="delete_backup_message">The backup \'%1$s\' will be permanently deleted from Google Drive. This cannot be undone.</string>
     <string name="delete_backup_confirm">Delete</string>
     <string name="restore_error_backup_unreadable">This backup could not be read, so nothing was changed. Try another backup.</string>
+    <string name="place_search_unavailable">Place search isn\'t available in this build. Tap the map to pick a location.</string>
 </resources>
