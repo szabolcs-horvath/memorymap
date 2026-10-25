@@ -91,13 +91,11 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
                     }
                 }
             }
-            val effStart = start ?: LocalDate.MIN
-            val effEnd = end ?: LocalDate.MAX
             candidateItems.filter { item ->
                 val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
                 val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
                 if (itemStart == null || itemEnd == null) return@filter true
-                !itemStart.isBefore(effStart) && !itemEnd.isAfter(effEnd)
+                overlapsDateFilter(itemStart, itemEnd, start, end)
             }
         }.flowOn(Dispatchers.Default).map { filteredItems ->
             clusterMarkerables(filteredItems)
@@ -145,5 +143,17 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
 
     companion object {
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
+
+        /**
+         * Whether a memory from [itemStart] to [itemEnd] falls at least partly within the filter range.
+         * A null [filterStart] or [filterEnd] leaves that side open. Both ends are inclusive.
+         */
+        internal fun overlapsDateFilter(
+            itemStart: LocalDate,
+            itemEnd: LocalDate,
+            filterStart: LocalDate?,
+            filterEnd: LocalDate?
+        ): Boolean = (filterEnd == null || !itemStart.isAfter(filterEnd)) &&
+            (filterStart == null || !itemEnd.isBefore(filterStart))
     }
 }

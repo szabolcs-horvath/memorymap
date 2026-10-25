@@ -306,8 +306,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val currentStart = viewModel.filterStartDate.value
         val currentEnd = viewModel.filterEndDate.value
 
-        // If current is null, it means ALL_TIME (unbounded), so memory is already within range.
-        // If current is NOT null, and memory is outside, we expand to include it.
+        // A memory that overlaps the range is already shown. Otherwise widen the range to include all of it.
+        if (MapFragmentViewModel.overlapsDateFilter(memoryStart, memoryEnd, currentStart, currentEnd)) return
         val newStart = if (currentStart != null && memoryStart.isBefore(currentStart)) memoryStart else currentStart
         val newEnd = if (currentEnd != null && memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
 

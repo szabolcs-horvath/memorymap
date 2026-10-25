@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 41 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 33 open
+✅ 42 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 32 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -105,7 +105,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 4 of 15 fixed
+**UX — User experience** · 5 of 15 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -117,7 +117,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-6](#ux-6) | Medium | Edit mode overwrites an unsaved draft and stays active |
 | ⬜ | [UX-7](#ux-7) | Medium | Form state lost on process death |
 | ⬜ | [UX-8](#ux-8) | Medium | Full-screen images are decoded at screen size |
-| ⬜ | [UX-9](#ux-9) | Medium | Map date filter excludes memories that overlap the range |
+| ✅ | [UX-9](#ux-9) | Medium | Map date filter excludes memories that overlap the range |
 | ⬜ | [UX-10](#ux-10) | Low | Transitive clustering merges distant points |
 | ⬜ | [UX-11](#ux-11) | Low | Pickers ignore the locale |
 | ⬜ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
@@ -486,10 +486,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** `size(screenWidth, screenHeight)` limits resolution, so pinch-zoom in PhotoView only upscales a blurry bitmap.
 - **Fix:** Load at `Size.ORIGINAL` (or tile with subsampling) when zoomed.
 
-### <a id="ux-9"></a>⬜ UX-9 · Medium · Map date filter excludes memories that overlap the range
+### <a id="ux-9"></a>✅ UX-9 · Medium · Map date filter excludes memories that overlap the range
 - **Where:** `MapFragmentViewModel.kt:94-101`
 - **What:** A memory shows only if it is fully inside the range. A Dec 28–Jan 3 trip disappears under "This Year" and "Last 7 days".
 - **Fix:** Use overlap semantics: `start <= filterEnd && end >= filterStart`.
+- **Status:** Fixed. The map shows a memory or fragment if any part of it falls within the selected range (`MapFragmentViewModel.overlapsDateFilter`, covered by `MapFragmentViewModelTest`), so a Dec 28 – Jan 3 trip shows under "This Year". Showing a memory on the map widens the filter only when the memory lies entirely outside it.
 
 ### <a id="ux-10"></a>⬜ UX-10 · Low · Transitive clustering merges distant points
 - **Where:** `MapFragmentViewModel.kt:114-144`, `Markerable.kt:27-35`
