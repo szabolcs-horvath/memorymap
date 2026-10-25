@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
@@ -56,8 +57,8 @@ class TimelineFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(commonViewModel.allGroups, viewModel.searchQuery) { groups, query ->
-                    viewModel.filterGroups(groups, query)
-                }.collect { filteredGroups ->
+                    viewModel.filterGroups(groups, query) to query
+                }.collect { (filteredGroups, query) ->
                     val sortedGroups = filteredGroups.sortedByDescending { it.startDate }
                     adapter.updateData(sortedGroups) {
                         viewModel.pendingScrollMemoryId?.let { id ->
@@ -66,6 +67,11 @@ class TimelineFragment : Fragment() {
                         }
                     }
                     if (sortedGroups.isEmpty()) {
+                        binding.emptyView.text = if (query.isBlank()) {
+                            getString(R.string.timeline_empty)
+                        } else {
+                            getString(R.string.timeline_no_matches, query.trim())
+                        }
                         binding.emptyView.visibility = View.VISIBLE
                         binding.rvTimeline.visibility = View.GONE
                     } else {
