@@ -30,8 +30,8 @@ kotlin {
             applicationId = "com.szabolcshorvath.memorymap"
             minSdk = 34
             targetSdk = 37
-            versionCode = 37
-            versionName = "Media Re-linking"
+            versionCode = 38
+            versionName = "minSdk 34"
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
