@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.animation.ValueAnimator
+import android.content.ContentResolver
 import android.content.Context
 import android.content.res.ColorStateList
 import android.net.Uri
@@ -86,49 +87,48 @@ class AddMemoryGroupFragment : Fragment() {
 
     private val pickMediaLauncher =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-            uris.let {
-                val context = context ?: return@registerForActivityResult
-                val contentResolver = context.contentResolver
-                val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
-                viewLifecycleOwner.lifecycleScope.launch {
-                    val deviceId = viewModel.currentDeviceId ?: InstallationIdentifier.getInstallationIdentifier(context)
-                    val newItems = it.mapNotNull { uri ->
-                        if (viewModel.selectedMedia.any { m -> m.uri == uri }) {
-                            null
-                        } else {
-                            val type = contentResolver.getType(uri)
-                            val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-                            var size = 0L
-                            var date = 0L
-                            try {
-                                contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN), null, null, null)
-                                    ?.use { cursor ->
-                                        if (cursor.moveToFirst()) {
-                                            val sizeCol = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-                                            val dateCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
-                                            if (sizeCol != -1) size = cursor.getLong(sizeCol)
-                                            if (dateCol != -1) date = cursor.getLong(dateCol)
-                                        }
-                                    }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error querying picked media info", e)
-                            }
-                            SelectedMedia(uri, mediaType, deviceId, size, date)
+            val context = context ?: return@registerForActivityResult
+            val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
+            val knownDeviceId = viewModel.currentDeviceId
+            viewLifecycleOwner.lifecycleScope.launch {
+                // One content resolver call or more per picked item: keep them off the main thread.
+                val pickedItems = withContext(Dispatchers.IO) {
+                    val contentResolver = context.contentResolver
+                    uris.forEach { uri ->
+                        try {
+                            contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        } catch (e: SecurityException) {
+                            Log.w(TAG, "Could not persist access for $uri", e)
                         }
                     }
-                    // New media items should be first in the list
-                    viewModel.selectedMedia.addAll(0, newItems)
-                    updateMediaUI()
+                    val deviceId = knownDeviceId ?: InstallationIdentifier.getInstallationIdentifier(context)
+                    uris.map { uri -> readPickedMedia(contentResolver, uri, deviceId) }
                 }
-                it.forEach { uri ->
-                    try {
-                        contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Could not persist access for $uri", e)
-                    }
-                }
+                val newItems = pickedItems.filter { picked -> viewModel.selectedMedia.none { it.uri == picked.uri } }
+                // New media items should be first in the list
+                viewModel.selectedMedia.addAll(0, newItems)
+                updateMediaUI()
             }
         }
+
+    /** Reads the type, size and date taken of a picked item. Does content resolver calls: not on the main thread. */
+    private fun readPickedMedia(contentResolver: ContentResolver, uri: Uri, deviceId: String): SelectedMedia {
+        val type = contentResolver.getType(uri)
+        val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
+        val projection = arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN)
+        val (size, date) = try {
+            contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val sizeCol = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                val dateCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
+                (if (sizeCol != -1) cursor.getLong(sizeCol) else 0L) to (if (dateCol != -1) cursor.getLong(dateCol) else 0L)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying picked media info", e)
+            null
+        } ?: (0L to 0L)
+        return SelectedMedia(uri, mediaType, deviceId, size, date)
+    }
 
     interface AddMemoryGroupListener {
         fun onPickLocation(lat: Double?, lng: Double?, placeName: String?, address: String?)

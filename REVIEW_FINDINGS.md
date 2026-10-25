@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 27 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 46 open
+✅ 28 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 45 open
 
 **SEC — Security / privacy** · 6 of 8 fixed
 
@@ -90,14 +90,14 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
-**PERF — Performance** · 0 of 10 fixed
+**PERF — Performance** · 1 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | 🟡 | [PERF-1](#perf-1) | High | Firebase trace inside the O(N²) clustering loop |
 | ⬜ | [PERF-2](#perf-2) | High | DAO reflection proxy plus a Firebase trace on every DB call |
 | ⬜ | [PERF-3](#perf-3) | Medium | Save holds a DB write transaction while reading files |
-| ⬜ | [PERF-4](#perf-4) | Medium | Media picker work runs on the main thread |
+| ✅ | [PERF-4](#perf-4) | Medium | Media picker work runs on the main thread |
 | ⬜ | [PERF-5](#perf-5) | Medium | Cold start scans all media twice |
 | ⬜ | [PERF-6](#perf-6) | Medium | Every small change uploads the whole database |
 | ⬜ | [PERF-7](#perf-7) | Medium | Map rebuilt on every tab switch or detail open |
@@ -392,10 +392,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** `saveMediaItems` runs MediaStore queries and `MediaHasher` (file I/O, which can download cloud files) **inside** `withTransaction`, blocking every other writer for the whole time.
 - **Fix:** Compute metadata and signatures before opening the transaction, ideally right after picking.
 
-### <a id="perf-4"></a>⬜ PERF-4 · Medium · Media picker work runs on the main thread
+### <a id="perf-4"></a>✅ PERF-4 · Medium · Media picker work runs on the main thread
 - **Where:** `AddMemoryGroupFragment.kt:87-131`
 - **What:** `contentResolver.getType` and `query` for every picked URI run in `lifecycleScope.launch` on Main, and `takePersistableUriPermission` runs in the callback. Picking dozens of items causes jank or ANR risk.
 - **Fix:** `withContext(Dispatchers.IO)`.
+- **Status:** Fixed. Persisting the URI grants, reading the installation id and the per-item type, size and date queries run in one `Dispatchers.IO` block; only the list update runs on the main thread.
 
 ### <a id="perf-5"></a>⬜ PERF-5 · Medium · Cold start scans all media twice
 - **Where:** `MainActivity.kt:258-265`, `LocalMediaUtil.kt:33-41, 105-131`
