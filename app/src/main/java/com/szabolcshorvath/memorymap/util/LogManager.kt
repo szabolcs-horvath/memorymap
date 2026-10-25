@@ -21,6 +21,7 @@ object LogManager {
     private const val LOGS_DIR = "logs"
     private const val LOG_FILENAME = "logcat.txt"
     private const val INFO_FILENAME = "app_info.txt"
+    private const val RELINK_FILENAME = "relink_diagnostics.txt"
     private const val ZIP_FILENAME = "debug_logs.zip"
     private const val BYTE_IN_KILOBYTE = 1024
 
@@ -32,11 +33,14 @@ object LogManager {
                 deleteLegacyFiles(context.cacheDir)
                 val logFile = File(logsDir, LOG_FILENAME)
                 val infoFile = File(logsDir, INFO_FILENAME)
+                val relinkFile = File(logsDir, RELINK_FILENAME)
                 val zipFile = File(logsDir, ZIP_FILENAME)
 
+                // Before logcat, so anything the report logs is in the captured log too.
+                RelinkDiagnostics.writeReport(context, relinkFile)
                 captureLogcat(logFile)
                 captureAppInfo(context, infoFile, lastBackupDate)
-                createZip(zipFile, listOf(logFile, infoFile))
+                createZip(zipFile, listOf(logFile, infoFile, relinkFile))
 
                 val contentUri = FileProvider.getUriForFile(
                     context,

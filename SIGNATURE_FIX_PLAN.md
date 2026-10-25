@@ -20,6 +20,11 @@ theories (EXIF size shifts, expiring photo picker URIs) did not hold up.
 * **v35, 2026-08-20:** four re-link failures (`No local media found with signature ...`).
   The log line only printed the signature, and none of them appear in the October log,
   so they cannot be identified.
+* **Affected user, after the re-linking release (reported 2026-10-25):** same phone, full media access,
+  and no item re-linked. For one item found by date, the gallery reported about 4.6 MB while the app
+  had stored about 5.3 MB. Units can't explain a gap that size (MB vs MiB is under 5 %), so the file on
+  the phone is probably not the bytes that were picked. Re-linking only queries exact stored sizes, so
+  that file was never a candidate. The cause is not known yet; the diagnostics report (§3) is meant to find it.
 
 ### Emulator (API 36, two JPEGs with GPS EXIF)
 | Read path | Size | GPS bytes | Signature |
@@ -109,6 +114,22 @@ signature the run read, so a restore during the run (which can reuse ids) is not
   any access was granted.
 * The cold-start Snackbar appears only when the app has no media access at all and media is missing.
 
+### Diagnostics
+"Send logs" adds `relink_diagnostics.txt` (`RelinkDiagnostics`, rendered by `RelinkReportFormatter`).
+It is built when the user sends logs, not during re-link runs, so cold start pays nothing, and it only reads.
+* **Installation:** the id, when its file was written, and the app's install and update times.
+  An id file written at the last update, while items carry another device id, means that update gave
+  the installation a new id.
+* **Media access:** each media permission, the persisted grant count (cap 512) and how many photos and
+  videos MediaStore shows the app.
+* **Items:** counts by device id, and for every item that needs re-linking all of its reasons (another
+  installation, URI unreadable with the error, or a different file), whether it still has a grant, and
+  how many MediaStore files have its exact size and signature. This is what re-linking itself checks.
+* **Nearby files** (first 40 items): up to 10 MediaStore files taken or changed within 24 hours of the stored
+  date, trashed and pending ones included. Each shows its name, folder, type, dimensions, size and date
+  deltas, owner package (for example Google Photos re-downloading a file) and signature.
+* The report contains file names, folders and dates from the user's library.
+
 ---
 
 ## 4. Known limits
@@ -123,7 +144,8 @@ signature the run read, so a restore during the run (which can reuse ids) is not
 ---
 
 ## 5. Verification
-1. `LocalMediaUtilTest` (JVM): the same-file rule.
+1. `LocalMediaUtilTest` (JVM): the same-file rule. `RelinkReportTest` (JVM): the diagnostics reasons,
+   nearby-file ordering and report text.
 2. Emulator: pick photos, save, confirm picker URIs are stored and grants persist; revoke
    `READ_MEDIA_*` and confirm they still load; confirm cold start does not re-link valid picker items.
 3. Note: when this plan was written, the Robolectric tests (`ColorUtilTest`) failed to start with
