@@ -45,7 +45,10 @@ object MediaHasher {
             val headRead = readFully(input, buffer)
             digest.update(buffer, 0, headRead)
             moveTo(input, headRead.toLong(), size - BLOCK_SIZE)
-            digest.update(buffer, 0, readFully(input, buffer))
+            val tailRead = readFully(input, buffer)
+            // A seek past the end succeeds, so check here too that the file is as long as its size says.
+            if (tailRead < BLOCK_SIZE) throw EOFException("Stream ended ${BLOCK_SIZE - tailRead} bytes early")
+            digest.update(buffer, 0, tailRead)
         }
         val hash = digest.digest().joinToString("") { "%02x".format(it) }
         return "${size}_$hash"

@@ -73,4 +73,11 @@ class MediaHasherTest {
             MediaHasher.signatureOf(TrickleInputStream(bytes(10_000), maxRead = 100), 20_000)
         }
     }
+
+    @Test
+    fun `file shorter than its size fails`(@TempDir dir: File) {
+        val file = File(dir, "photo.jpg").apply { writeBytes(bytes(10_000)) }
+        // Seeking past the end succeeds, so this fails on the last block instead.
+        FileInputStream(file).use { assertThrows<IOException> { MediaHasher.signatureOf(it, 20_000) } }
+    }
 }
