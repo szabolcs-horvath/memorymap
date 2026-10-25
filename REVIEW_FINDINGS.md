@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 49 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 26 open
+✅ 50 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -105,7 +105,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 7 of 15 fixed
+**UX — User experience** · 8 of 15 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -113,7 +113,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-2](#ux-2) | Medium | Automatic backups block the whole Settings screen |
 | ✅ | [UX-3](#ux-3) | Medium | Deleting a Drive backup has no confirmation |
 | ✅ | [UX-4](#ux-4) | Medium | Restore requires "Allow all" media access |
-| ⬜ | [UX-5](#ux-5) | Medium | Location permission asked immediately and repeatedly |
+| ✅ | [UX-5](#ux-5) | Medium | Location permission asked immediately and repeatedly |
 | ✅ | [UX-6](#ux-6) | Medium | Edit mode overwrites an unsaved draft and stays active |
 | ⬜ | [UX-7](#ux-7) | Medium | Form state lost on process death |
 | ⬜ | [UX-8](#ux-8) | Medium | Full-screen images are decoded at screen size |
@@ -470,10 +470,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Always restore, then re-link with whatever access exists and offer "Grant full access to re-link more".
 - **Status:** Fixed. The permission request before a restore (with its explanation on Android 14+) no longer blocks it: the restore runs whatever is granted. After re-linking, if access isn't full and photos are still unlinked, a dialog offers "Allow access", which re-links again once granted.
 
-### <a id="ux-5"></a>⬜ UX-5 · Medium · Location permission asked immediately and repeatedly
+### <a id="ux-5"></a>✅ UX-5 · Medium · Location permission asked immediately and repeatedly
 - **Where:** `MapFragment.kt:117-123, 455-471`, `PickLocationFragment.kt:164-167, 375-385`
 - **What:** The system dialog appears on first launch with no explanation, and again each time the map or picker resumes in a new fragment instance (the "denied" flag lives only in the fragment or ViewModel).
 - **Fix:** Ask when the user taps "my location", show a rationale, and persist the denial.
+- **Status:** Fixed. Neither the map nor the location picker asks when it opens or resumes any more. Both have their own "my location" button (Google's only appears once access is granted), and `MyLocationAction` asks only when it is tapped: first a short explanation ("Use your location?"), then the system dialog. After a "no", the next tap explains and asks again while Android still allows it; once Android no longer shows its dialog, the button offers to open the app's settings. The denial is kept in DataStore (`LOCATION_PERMISSION_DENIED`), not in the screen, and is cleared once access is allowed. With access, the button moves the map to the user, or selects their location in the picker (a toast says so if the phone's location is off). The decision step is covered by `MyLocationActionTest`.
 
 ### <a id="ux-6"></a>✅ UX-6 · Medium · Edit mode overwrites an unsaved draft and stays active
 - **Where:** `AddMemoryGroupFragment.kt:522-591`, `MainActivity.kt:382-386`

@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
@@ -8,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -51,6 +49,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MarkerGenerator
+import com.szabolcshorvath.memorymap.util.MyLocationAction
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
@@ -83,7 +82,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled)
     }
 
-    private var permissionDenied = false
     private var shouldAdjustCameraOnUpdate = false
     private var mapLoadTrace: Trace? = null
 
@@ -91,17 +89,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         fun onMemoryClicked(id: Int)
     }
 
-    private val locationPermissionRequest = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        ) {
-            enableMyLocation()
-        } else {
-            permissionDenied = true
-        }
+    // The only place the map asks for location access: when the user taps the "my location" button.
+    private val myLocationAction = MyLocationAction(this) { latLng ->
+        enableMyLocation()
+        viewModel.isInitialZoomDone = true
+        mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM))
     }
 
     override fun onAttach(context: Context) {
@@ -135,6 +127,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             ?.setOnPicked(::applyPickedDateFilter)
         binding.btQuickFilter.setOnClickListener { showQuickFilterMenu() }
         binding.btStats.setOnClickListener { toggleStatsOverlay() }
+        binding.btMyLocation.setOnClickListener {
+            hideMemoryOverlay()
+            myLocationAction.start()
+        }
 
         if (viewModel.isStatsVisible) {
             binding.statsOverlayCard.visibility = View.VISIBLE
@@ -347,7 +343,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         googleMap.uiSettings.isRotateGesturesEnabled = false
         googleMap.uiSettings.isMapToolbarEnabled = false
-        googleMap.uiSettings.isMyLocationButtonEnabled = true
+        googleMap.uiSettings.isMyLocationButtonEnabled = false // Our own button: it can ask for access (bt_myLocation).
         googleMap.uiSettings.isZoomControlsEnabled = true
 
         val pLat = viewModel.pendingSelectionLat
@@ -391,11 +387,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         googleMap.setOnMapClickListener {
             hideMemoryOverlay()
             if (binding.statsOverlayCard.isVisible) toggleStatsOverlay()
-        }
-
-        googleMap.setOnMyLocationButtonClickListener {
-            hideMemoryOverlay()
-            false
         }
 
         googleMap.setOnPoiClickListener {
@@ -476,21 +467,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         googleMap.setPadding(0, topPadding, 0, bottomPadding)
     }
 
+    /** Shows the user's position on the map, if location access was granted. Never asks for it (see [myLocationAction]). */
     @SuppressWarnings("MissingPermission")
     private fun enableMyLocation() {
         val googleMap = mMap ?: return
         val context = context ?: return
         if (hasLocationPermission(context)) {
             googleMap.isMyLocationEnabled = true
-            permissionDenied = false
             zoomToUserLocationIfPossible()
-        } else if (!permissionDenied) {
-            locationPermissionRequest.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
         }
     }
 

@@ -8,5 +8,4 @@ class PickLocationFragmentViewModel : ViewModel() {
     var selectedPlaceName: String? = null
     var selectedAddress: String? = null
     var activeAutocompletePlaceId: String? = null
-    var permissionDenied = false
 }

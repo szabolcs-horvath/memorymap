@@ -29,4 +29,13 @@
     <string name="keep_editing">Keep editing</string>
     <string name="save_memory">Save Memory</string>
     <string name="update_memory">Update</string>
+    <string name="my_location">My location</string>
+    <string name="location_rationale_title">Use your location?</string>
+    <string name="location_rationale_message">Memory Map uses your location to show where you are on the map and to pick it for a memory. It\'s only used while the app is open.</string>
+    <string name="location_rationale_continue">Continue</string>
+    <string name="not_now">Not now</string>
+    <string name="location_settings_title">Location access is off</string>
+    <string name="location_settings_message">To show where you are, allow location access for Memory Map in Settings.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="location_unavailable">Your location isn\'t available right now. Check that location is turned on.</string>
 </resources>
