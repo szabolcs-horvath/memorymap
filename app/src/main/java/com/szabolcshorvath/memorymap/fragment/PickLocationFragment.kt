@@ -69,7 +69,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             if (intent != null) {
                 when (result.resultCode) {
                     PlaceAutocompleteActivity.RESULT_OK -> {
-                        val prediction = PlaceAutocomplete.getPredictionFromIntent(intent)!!
+                        val prediction = PlaceAutocomplete.getPredictionFromIntent(intent) ?: run {
+                            Log.e(TAG, "Autocomplete returned no place")
+                            return@registerForActivityResult
+                        }
                         val requestedPlaceId = prediction.placeId
                         val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
                         val context = context ?: return@registerForActivityResult

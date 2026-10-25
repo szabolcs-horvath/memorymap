@@ -6,6 +6,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.HSV_BLACK
 import com.szabolcshorvath.memorymap.util.ColorUtil.HSV_WHITE
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
@@ -85,6 +86,28 @@ class ColorUtilTest {
                 }
             }
         )
+    }
+
+    @Test
+    fun `out-of-range saturation and brightness are clamped`() {
+        assertEquals(ColorUtil.hsvToColor(120f, 1f, 0f), ColorUtil.hsvToColor(120f, 1.5f, -0.2f))
+        assertEquals(ColorUtil.hsvToColor(120f, 0f, 1f), ColorUtil.hsvToColor(120f, -3f, 7f))
+    }
+
+    @Test
+    fun `missing color values fall back to the defaults`() {
+        assertEquals(
+            ColorUtil.hsvToColor(ColorUtil.DEFAULT_MARKER_HUE, ColorUtil.DEFAULT_MARKER_SATURATION, ColorUtil.DEFAULT_MARKER_BRIGHTNESS),
+            ColorUtil.hsvToColor(Float.NaN, Float.NaN, Float.NaN)
+        )
+        assertEquals(ColorUtil.hsvToColor(ColorUtil.DEFAULT_MARKER_HUE, 0.5f, 0.5f), ColorUtil.hsvToColor(Float.POSITIVE_INFINITY, 0.5f, 0.5f))
+    }
+
+    @Test
+    fun `an unreachable contrast gives black or white, whichever contrasts more`() {
+        // No colour has a contrast of 21 with mid grey: only black and white come close.
+        assertEquals(Color.BLACK, ColorUtil.generateColorWithTargetContrast(Color.rgb(128, 128, 128), 21.0))
+        assertEquals(Color.WHITE, ColorUtil.generateColorWithTargetContrast(Color.rgb(60, 60, 60), 21.0))
     }
 
     private fun assertTargetContrast(hue: Float, saturation: Float, value: Float) {
