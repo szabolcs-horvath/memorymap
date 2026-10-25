@@ -1,78 +1,86 @@
 package com.szabolcshorvath.memorymap.util
 
-import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
-import android.util.Log
+import android.os.ParcelFileDescriptor
+import java.io.EOFException
+import java.io.FileInputStream
 import java.io.FileNotFoundException
+import java.io.IOException
 import java.io.InputStream
 import java.security.MessageDigest
 
 object MediaHasher {
     const val TAG = "MediaHasher"
     private const val ALGORITHM = "MD5"
-    private const val BUFFER_SIZE = 4096 // 4KB
+    private const val BLOCK_SIZE = 4096 // 4KB
 
+    /**
+     * Returns `"{size}_{md5}"`. The MD5 covers the first and the last 4 KB of the file, or the whole file
+     * if it is at most 8 KB or its size is unknown (-1). Signatures are stored in the database and in
+     * backups, so this format must never change.
+     */
     fun calculateMediaSignature(context: Context, uri: Uri): String {
-        val resolver = context.contentResolver
+        val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
+            ?: throw FileNotFoundException("File not found: $uri")
+        val size = descriptor.statSize
+        // Closing the stream also closes the descriptor.
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { signatureOf(it, size) }
+    }
 
-        // 1. Get the file size specifically from the FileDescriptor
-        val size = resolver.openFileDescriptor(uri, "r")?.use {
-            it.statSize
-        } ?: throw FileNotFoundException("File not found: $uri")
-
+    /**
+     * The signature of [input], whose length is [size]. Reads fill their buffer even when the stream
+     * returns fewer bytes per call (pipes, cloud providers), so the same file always gets the same signature.
+     */
+    internal fun signatureOf(input: InputStream, size: Long): String {
         val digest = MessageDigest.getInstance(ALGORITHM)
-
-        // 2. Open input stream using ContentResolver
-        readFileAndUpdateDigest(resolver, uri, digest, size)
-
-        // Combine Size + Hash for the final ID
-        val hashString = digest.digest().joinToString("") { "%02x".format(it) }
-        return "${size}_$hashString"
+        val buffer = ByteArray(BLOCK_SIZE)
+        if (size <= 2L * BLOCK_SIZE) {
+            while (true) {
+                val read = readFully(input, buffer)
+                if (read == 0) break
+                digest.update(buffer, 0, read)
+            }
+        } else {
+            val headRead = readFully(input, buffer)
+            digest.update(buffer, 0, headRead)
+            moveTo(input, headRead.toLong(), size - BLOCK_SIZE)
+            digest.update(buffer, 0, readFully(input, buffer))
+        }
+        val hash = digest.digest().joinToString("") { "%02x".format(it) }
+        return "${size}_$hash"
     }
 
-    private fun readFileAndUpdateDigest(resolver: ContentResolver, uri: Uri, digest: MessageDigest, size: Long) {
-        resolver.openInputStream(uri)?.use { fis ->
-            val buffer = ByteArray(BUFFER_SIZE)
-
-            // Read first 4KB
-            val bytesReadFirst = fis.read(buffer)
-            if (bytesReadFirst > 0) {
-                digest.update(buffer, 0, bytesReadFirst)
-            }
-
-            // If file is smaller than or equal to 8KB (2x BUFFER),
-            // we just read the rest sequentially to avoid skip logic errors on small files.
-            // Otherwise, we skip to the end.
-            if (size <= (BUFFER_SIZE * 2)) {
-                // Read whatever is left normally
-                var bytesRead: Int
-                while (fis.read(buffer).also { bytesRead = it } != -1) {
-                    digest.update(buffer, 0, bytesRead)
-                }
-            } else {
-                // Large file logic: Skip to the last 4KB
-                handleLargeFile(size, bytesReadFirst, fis, buffer, digest)
-            }
-        } ?: throw FileNotFoundException("File not found: $uri")
+    /** Reads until [buffer] is full or the stream ends. Returns the number of bytes read. */
+    private fun readFully(input: InputStream, buffer: ByteArray): Int {
+        var total = 0
+        while (total < buffer.size) {
+            val read = input.read(buffer, total, buffer.size - total)
+            if (read == -1) break
+            total += read
+        }
+        return total
     }
 
-    private fun handleLargeFile(size: Long, bytesReadFirst: Int, fis: InputStream, buffer: ByteArray, digest: MessageDigest) {
-        val remaining = size - bytesReadFirst
-        val skipAmount = remaining - BUFFER_SIZE
-
-        if (skipAmount > 0) {
-            val skipped = fis.skip(skipAmount)
-            // Verify skip success before reading final block
-            if (skipped == skipAmount) {
-                val bytesReadLast = fis.read(buffer)
-                if (bytesReadLast > 0) {
-                    digest.update(buffer, 0, bytesReadLast)
-                }
-            } else {
-                Log.e(TAG, "Error skipping bytes: $skipped != $skipAmount")
-                error("Error skipping bytes")
+    /** Moves the stream from [current] to [target]: a seek where possible, otherwise skipping or reading. */
+    private fun moveTo(input: InputStream, current: Long, target: Long) {
+        if (input is FileInputStream && trySeek(input, target)) return
+        var remaining = target - current
+        while (remaining > 0) {
+            val skipped = input.skip(remaining)
+            when {
+                skipped > 0 -> remaining -= skipped
+                input.read() != -1 -> remaining--
+                else -> throw EOFException("Stream ended $remaining bytes before the last block")
             }
         }
+    }
+
+    /** Pipes can't seek; the caller then skips instead. */
+    private fun trySeek(input: FileInputStream, target: Long): Boolean = try {
+        input.channel.position(target)
+        true
+    } catch (_: IOException) {
+        false
     }
 }

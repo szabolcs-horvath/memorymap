@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 38 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 35 open
+✅ 39 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 34 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 12 of 16 fixed
+**BUG — Functional bugs** · 13 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -81,7 +81,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-6](#bug-6) | Medium | Results registered in `onCreateView` (Settings) |
 | ✅ | [BUG-7](#bug-7) | Medium | Leaving the Add tab while saving causes a surprise navigation later |
 | ⬜ | [BUG-8](#bug-8) | Medium | Tab actions depend on `post()` ordering |
-| ⬜ | [BUG-9](#bug-9) | Medium | Media signature can differ between reads of the same file |
+| ✅ | [BUG-9](#bug-9) | Medium | Media signature can differ between reads of the same file |
 | ✅ | [BUG-10](#bug-10) | Low | Undo, then a stale `refreshDatabase()` |
 | ✅ | [BUG-11](#bug-11) | Low | Thread-unsafe shared `SimpleDateFormat` |
 | ⬜ | [BUG-12](#bug-12) | Low | Crash paths on unexpected data |
@@ -329,10 +329,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** `focusOnMemory`, `scrollToAndFlash` and `setEditMode` access `viewLifecycleOwner` or `lateinit adapter` of a fragment whose view only exists after the async tab transaction. It works because `commit()`'s runnable happens to be queued before `root.post`. If the activity is recreated, the fallback `?: MapFragment()` instances are unattached and these calls crash.
 - **Fix:** Pass the request as fragment arguments or ViewModel state that the fragment consumes in `onViewCreated`.
 
-### <a id="bug-9"></a>⬜ BUG-9 · Medium · Media signature can differ between reads of the same file
+### <a id="bug-9"></a>✅ BUG-9 · Medium · Media signature can differ between reads of the same file
 - **Where:** `util/MediaHasher.kt:39-41, 64-76`
 - **What:** A single `read(buffer)` is assumed to fill 4 KB, and `skip()` is assumed to skip everything. Neither is guaranteed for pipe-backed streams (cloud or remote providers, some picker or redaction paths). A short read gives a different hash, and a short skip throws, so re-linking misses exact matches.
 - **Fix:** Use `readNBytes` or loop until full, and `pread` / `FileChannel.position()` on the `ParcelFileDescriptor` instead of `skip`. Opening the file once also avoids the second open.
+- **Status:** Fixed. `MediaHasher` opens the file once, reads until each 4 KB block is full and moves to the last block with a seek (`FileChannel.position`), falling back to skipping or reading for pipes. Normal files get exactly the same signatures as before. `MediaHasherTest` pins the format and covers short reads, failed skips and unknown sizes.
 
 ### <a id="bug-10"></a>✅ BUG-10 · Low · Undo, then a stale `refreshDatabase()`
 - **Where:** `CommonRepository.kt:29-31`; call sites in `MainActivity.kt:77`, `MemoryFragment.kt:86`, `SettingsFragment.kt:123,210`
