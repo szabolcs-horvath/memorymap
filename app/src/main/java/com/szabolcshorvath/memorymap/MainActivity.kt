@@ -252,11 +252,10 @@ class MainActivity :
 
                 val needsPermissionForRelink = withContext(Dispatchers.IO) {
                     initializeHSVPresetsIfEmpty()
-                    LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
-                    val freshMedia = commonViewModel.getMemoryGroupDao().getAllMediaItems()
+                    val relinkResult = LocalMediaUtil.verifyAndFixMediaItems(applicationContext, commonViewModel.getMemoryGroupDao())
                     // Only prompt when there is no media access at all, so users who chose
                     // "selected photos" are not asked again on every launch.
-                    !PermissionUtil.hasAnyMediaPermission(applicationContext) && LocalMediaUtil.hasMissingMedia(applicationContext, freshMedia)
+                    !PermissionUtil.hasAnyMediaPermission(applicationContext) && relinkResult.missingCount > 0
                 }
 
                 if (needsPermissionForRelink) {
