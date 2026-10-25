@@ -575,7 +575,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Status:** Fixed. Automatic backups run in WorkManager (`AutomaticBackupWorker`), so they survive the screen and the process and are deduplicated. Media re-linking goes through `MediaRelinker.relink`: runs happen one at a time (a `Mutex`) in `MemoryMapApplication.applicationScope`, so they finish when the screen goes away, and requests made during a run share the next run (`SerialRunner`, covered by `SerialRunnerTest`). Screens only wait for the result and show its progress. A run killed with the process is not resumed; the next cold start runs it again.
 
 ### <a id="arch-4"></a>⬜ ARCH-4 · Medium · Two Google auth stacks
-- **Where:** `auth/GoogleAuthManager.kt`, `SettingsFragment.kt:924-974`, `BackupManager.kt:44-58`
+- **Where:** `auth/GoogleAccountService.kt`, `SettingsFragment.kt` (`requestDriveAuthorization`), `backup/DriveBackupStorage.kt`
 - **What:** Credential Manager is used for sign-in and `AuthorizationClient` for consent, but Drive calls use the legacy `GoogleAccountCredential.usingOAuth2` + account name (AccountManager-based). The access token from `AuthorizationResult` is thrown away. `UserRecoverableAuthIOException` from `listBackups` is swallowed as "no backups".
 - **Fix:** Use `AuthorizationClient` for tokens everywhere (silent `authorize()` for automatic backups) and surface recoverable auth errors.
 
@@ -594,10 +594,10 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Compose migration ([ARCH-10](#arch-10)):** the UI items (the HSV slider, preset and animation UI ×3, the date and time pickers ×2, `showError` ×2) become shared composables during the migration. A `ColorPickerView` or `DateRangeEditor` built as a View now would be thrown away, so build those as composables then. The non-UI items (comparators, `getFormattedDate`, `hsvToColor`, the media metadata query, the relink trigger logic) don't depend on the migration and can be done any time.
 
 ### <a id="arch-6"></a>🟡 ARCH-6 · Medium · Hand-rolled singletons, no DI
-- **Where:** `CommonRepository`, `MemoryMapDatabase`, `InstallationIdentifier`, `BackupManager(context)` created per fragment, `GoogleAuthManager` per call
+- **Where:** `CommonRepository`, `MemoryMapDatabase`, `InstallationIdentifier`, `BackupManager(context)` created per fragment
 - **What:** `MemoryMapDatabase.getDatabase` has no second null check inside `synchronized`, so two threads can build two databases (`MemoryMapDatabase.kt:94-107`). The DAO cache fields are not volatile.
 - **Fix:** Hilt or Koin (or at least a small `AppContainer` in `Application`), and fix the double-checked locking.
-- **Status:** Partly fixed: `MemoryMapDatabase.getDatabase` now re-checks inside `synchronized`. No DI yet.
+- **Status:** Partly fixed: `MemoryMapDatabase.getDatabase` now re-checks inside `synchronized`. `AppServices` holds the outside services behind interfaces (`accounts` for sign-in and Drive consent, `backupStorage` for Drive files), which UI tests replace with fakes. No DI framework yet: the database, repository and the rest are still singletons or created per caller.
 
 ### <a id="arch-7"></a>⬜ ARCH-7 · Low · Stringly-typed data passing
 - **Where:** `MemoryFragmentListener.onMediaClick(ArrayList<Pair<String,String>>)`, `MediaPagerAdapter` (`item.second == "VIDEO"`), `MediaViewerFragment` (Serializable `Pair` list in arguments, which also risks `TransactionTooLargeException` for large memories)

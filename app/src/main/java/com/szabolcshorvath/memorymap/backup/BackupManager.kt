@@ -3,15 +3,9 @@ package com.szabolcshorvath.memorymap.backup
 import android.content.Context
 import android.database.sqlite.SQLiteException
 import android.util.Log
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
-import com.google.api.client.http.FileContent
-import com.google.api.client.http.javanet.NetHttpTransport
-import com.google.api.client.json.gson.GsonFactory
-import com.google.api.services.drive.Drive
-import com.google.api.services.drive.DriveScopes
 import com.google.firebase.perf.metrics.AddTrace
+import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.data.DatabaseContents
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
@@ -30,7 +24,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.io.FileNotFoundException
-import java.io.FileOutputStream
 import java.io.IOException
 import java.time.LocalDateTime
 import com.google.api.services.drive.model.File as DriveFile
@@ -38,13 +31,6 @@ import com.google.api.services.drive.model.File as DriveFile
 class BackupManager(private val context: Context) {
 
     private val tempFiles = BackupTempFiles(context.cacheDir)
-
-    fun getDriveService(credential: GoogleAccountCredential): Drive =
-        Drive.Builder(
-            NetHttpTransport(),
-            GsonFactory.getDefaultInstance(),
-            credential
-        ).setApplicationName("Memory Map").build()
 
     /**
      * Backs up if a user is signed in. Only [AutomaticBackupWorker] calls this; everything else
@@ -54,8 +40,7 @@ class BackupManager(private val context: Context) {
         trace("backup_manager_run_automatic_backup") {
             val email = context.dataStore.data.map { it[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull()
                 ?: return@trace AutomaticBackupOutcome.NOT_SIGNED_IN
-            val credential = GoogleAuthManager(context).getGoogleAccountCredential(email, listOf(DriveScopes.DRIVE_FILE))
-            performBackup(credential, db, isAutomatic = true) { Log.d(TAG, "Automatic backup progress: $it") }.fold(
+            performBackup(email, db, isAutomatic = true) { Log.d(TAG, "Automatic backup progress: $it") }.fold(
                 onSuccess = { AutomaticBackupOutcome.SUCCEEDED },
                 onFailure = { e -> if (AutomaticBackups.isRetryable(e)) AutomaticBackupOutcome.RETRY else AutomaticBackupOutcome.FAILED }
             )
@@ -63,7 +48,7 @@ class BackupManager(private val context: Context) {
     }
 
     suspend fun performBackup(
-        credential: GoogleAccountCredential,
+        email: String,
         db: MemoryMapDatabase,
         isAutomatic: Boolean = false,
         onProgress: (String) -> Unit
@@ -92,7 +77,7 @@ class BackupManager(private val context: Context) {
                         val zipFile = zipBackup(snapshotDir, metadataFile, File(tempDir, "backup.zip"))
 
                         onProgress("Uploading backup...")
-                        uploadBackup(credential, isAutomatic, zipFile)
+                        uploadBackup(email, isAutomatic, zipFile)
 
                         Result.success(Unit)
                     } catch (e: Exception) {
@@ -178,37 +163,17 @@ class BackupManager(private val context: Context) {
     }
 
     @AddTrace(name = "backup_manager_upload_backup", enabled = true)
-    private fun uploadBackup(credential: GoogleAccountCredential, isAutomatic: Boolean, zipFile: File) {
-        val driveService = getDriveService(credential)
-        val folderId = getOrCreateBackupFolder(driveService)
-        val fileMetadata = DriveFile()
+    private fun uploadBackup(email: String, isAutomatic: Boolean, zipFile: File) {
         val prefix = if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
-        fileMetadata.name = "$prefix${LocalDateTime.now().format(BACKUP_FILE_NAME_DATE_FORMATTER)}.zip"
-        fileMetadata.parents = listOf(folderId)
-
-        val mediaContent = FileContent("application/zip", zipFile)
-        driveService.files().create(fileMetadata, mediaContent)
-            .setFields("id")
-            .execute()
+        val name = "$prefix${LocalDateTime.now().format(BACKUP_FILE_NAME_DATE_FORMATTER)}.zip"
+        AppServices.backupStorage.upload(context, email, name, zipFile)
     }
 
-    suspend fun listBackups(credential: GoogleAccountCredential): List<DriveFile> {
+    suspend fun listBackups(email: String): List<DriveFile> {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_list_backups") {
                 try {
-                    val driveService = getDriveService(credential)
-                    val folderId = getOrCreateBackupFolder(driveService)
-                    val query = "'$folderId' in parents and trashed = false"
-                    return@withContext collectAllPages { pageToken ->
-                        val result = driveService.files().list()
-                            .setQ(query)
-                            .setFields("nextPageToken, files(id, name, modifiedTime, size)")
-                            .setOrderBy("modifiedTime desc")
-                            .setPageSize(DRIVE_LIST_PAGE_SIZE)
-                            .setPageToken(pageToken)
-                            .execute()
-                        (result.files ?: emptyList()) to result.nextPageToken
-                    }
+                    return@withContext AppServices.backupStorage.list(context, email)
                 } catch (e: IOException) {
                     Log.e(TAG, "Failed to list backups", e)
                     return@withContext emptyList()
@@ -223,7 +188,7 @@ class BackupManager(private val context: Context) {
      * the current data is left untouched, and [db] stays open throughout.
      */
     suspend fun restoreBackup(
-        credential: GoogleAccountCredential,
+        email: String,
         fileId: String,
         db: MemoryMapDatabase,
         onProgress: (String) -> Unit
@@ -236,10 +201,9 @@ class BackupManager(private val context: Context) {
                     try {
                         tempFiles.deleteStale()
                         tempDir = tempFiles.newRestoreDir()
-                        val driveService = getDriveService(credential)
 
                         onProgress("Downloading backup...")
-                        val zipFile = downloadBackup(driveService, fileId, File(tempDir, "backup.zip"))
+                        val zipFile = downloadBackup(email, fileId, File(tempDir, "backup.zip"))
                         val extractDir = File(tempDir, "files").apply { mkdirs() }
 
                         onProgress("Uncompressing backup...")
@@ -269,10 +233,8 @@ class BackupManager(private val context: Context) {
     }
 
     @AddTrace(name = "backup_manager_download_backup", enabled = true)
-    private fun downloadBackup(driveService: Drive, fileId: String, zipFile: File): File {
-        FileOutputStream(zipFile).use { outputStream ->
-            driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream)
-        }
+    private fun downloadBackup(email: String, fileId: String, zipFile: File): File {
+        AppServices.backupStorage.download(context, email, fileId, zipFile)
         return zipFile
     }
 
@@ -333,12 +295,11 @@ class BackupManager(private val context: Context) {
         return result.getOrThrow()
     }
 
-    suspend fun deleteBackup(credential: GoogleAccountCredential, fileId: String): Result<Unit> {
+    suspend fun deleteBackup(email: String, fileId: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             trace("backup_manager_delete_backup") {
                 try {
-                    val driveService = getDriveService(credential)
-                    driveService.files().delete(fileId).execute()
+                    AppServices.backupStorage.delete(context, email, fileId)
                     Result.success(Unit)
                 } catch (e: IOException) {
                     Log.e(TAG, "Backup deletion failed", e)
@@ -348,40 +309,10 @@ class BackupManager(private val context: Context) {
         }
     }
 
-    @AddTrace(name = "backup_manager_get_or_create_backup_folder", enabled = true)
-    private fun getOrCreateBackupFolder(driveService: Drive): String {
-        val folderName = "Memory Map Backups"
-        val query = "mimeType = 'application/vnd.google-apps.folder' and name = '$folderName' and trashed = false"
-        val result = driveService.files().list().setQ(query).setSpaces("drive").execute()
-        if (result.files.isNotEmpty()) return result.files.first().id
-        val folderMetadata = DriveFile().apply {
-            name = folderName
-            mimeType = "application/vnd.google-apps.folder"
-        }
-        return driveService.files().create(folderMetadata).setFields("id").execute().id
-    }
-
     companion object {
         const val TAG = "BackupManager"
 
-        private const val DRIVE_LIST_PAGE_SIZE = 1000 // Drive's maximum
-
         /** Process-wide: BackupManager is created per caller, but only one backup or restore may run at a time. */
         private val backupLock = Mutex()
-
-        /**
-         * Collects every page of a paged Drive list call. [fetchPage] gets the page token (null for the
-         * first page) and returns that page's items and the next token (null or blank on the last page).
-         */
-        internal inline fun <T> collectAllPages(fetchPage: (pageToken: String?) -> Pair<List<T>, String?>): List<T> {
-            val all = mutableListOf<T>()
-            var pageToken: String? = null
-            do {
-                val (items, nextPageToken) = fetchPage(pageToken)
-                all += items
-                pageToken = nextPageToken?.takeIf { it.isNotBlank() && it != pageToken }
-            } while (pageToken != null)
-            return all
-        }
     }
 }
