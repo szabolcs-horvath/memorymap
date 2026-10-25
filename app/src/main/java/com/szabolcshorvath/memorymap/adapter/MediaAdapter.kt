@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import coil3.dispose
 import coil3.load
 import coil3.request.crossfade
 import coil3.size.Scale
@@ -37,10 +38,13 @@ class MediaAdapter(
             val isFromOtherDevice = currentDeviceId != null && mediaItem.deviceId != currentDeviceId
 
             if (isFromOtherDevice) {
+                // Cancel a load still running for the item this view showed before.
+                binding.thumbnailImage.dispose()
                 binding.thumbnailImage.setImageDrawable(null)
                 showError(binding, mediaItem)
                 binding.videoIcon.visibility = View.GONE
             } else {
+                hideError(binding) // the view may still show the error of the item it showed before
                 binding.thumbnailImage.load(mediaItem.uri) {
                     // Media thumbnails on MemoryFragment
                     scale(Scale.FILL)
