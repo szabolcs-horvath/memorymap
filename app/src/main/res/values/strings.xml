@@ -17,4 +17,7 @@
     <string name="restore_error_backup_unreadable">This backup could not be read, so nothing was changed. Try another backup.</string>
     <string name="place_search_unavailable">Place search isn\'t available in this build. Tap the map to pick a location.</string>
     <string name="sign_in_not_configured">Google sign-in isn\'t set up in this build (missing OAuth client ID).</string>
+    <string name="auto_backup_pending">Your latest changes will be backed up shortly (when online).</string>
+    <string name="auto_backup_running">Backing up your latest changes…</string>
+    <string name="auto_backup_failed">The last automatic backup failed. Tap \"Backup Now\" to try again.</string>
 </resources>

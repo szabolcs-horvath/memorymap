@@ -18,7 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.perf.metrics.Trace
-import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
@@ -365,7 +365,7 @@ class MainActivity :
         snackbar.setAction("Undo") {
             app.applicationScope.launch {
                 db.memoryGroupDao().restoreDeletedGroup(deleted)
-                BackupManager(app).triggerAutomaticBackup(db)
+                AutomaticBackups.schedule(app)
             }
         }
         snackbar.addCallback(object : Snackbar.Callback() {
@@ -374,7 +374,7 @@ class MainActivity :
                 // The delete is final now: the media grants can't be needed for an undo any more.
                 app.applicationScope.launch {
                     LocalMediaUtil.releaseUriGrantsIfUnused(app, db.memoryGroupDao(), deleted.mediaItems.map { it.uri })
-                    BackupManager(app).triggerAutomaticBackup(db)
+                    AutomaticBackups.schedule(app)
                 }
             }
         })

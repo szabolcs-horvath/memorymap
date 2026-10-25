@@ -1,8 +1,10 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
 import com.szabolcshorvath.memorymap.data.HSVPreset
@@ -16,7 +18,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import com.google.api.services.drive.model.File as DriveFile
 
-class SettingsFragmentViewModel : ViewModel() {
+class SettingsFragmentViewModel(application: Application) : AndroidViewModel(application) {
 
     sealed class BackupRestoreOperationResult {
         data class Success(val message: String? = null) : BackupRestoreOperationResult()
@@ -43,11 +45,11 @@ class SettingsFragmentViewModel : ViewModel() {
 
     private var savePresetsOrderJob: Job? = null
 
-    fun saveNewPresetsOrder(presets: List<HSVPreset>, database: MemoryMapDatabase, backupManager: BackupManager) {
+    fun saveNewPresetsOrder(presets: List<HSVPreset>, database: MemoryMapDatabase) {
         savePresetsOrderJob?.cancel()
         savePresetsOrderJob = viewModelScope.launch(Dispatchers.IO) {
             database.hsvPresetDao().updatePresets(presets)
-            backupManager.triggerAutomaticBackup(database)
+            AutomaticBackups.schedule(getApplication())
         }
     }
 

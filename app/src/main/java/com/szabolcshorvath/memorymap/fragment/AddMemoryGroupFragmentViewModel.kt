@@ -7,7 +7,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
-import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -68,7 +68,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     var isInitialized = false
 
-    fun saveMemoryGroup(database: MemoryMapDatabase, backupManager: BackupManager) {
+    fun saveMemoryGroup(database: MemoryMapDatabase) {
         if (_isSaving.value) return
         _isSaving.value = true
 
@@ -114,7 +114,8 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                 }
 
                 LocalMediaUtil.releaseUriGrantsIfUnused(getApplication(), dao, removedUris)
-                backupManager.triggerAutomaticBackup(database)
+                // In the background: saving no longer waits for the upload.
+                AutomaticBackups.schedule(getApplication())
                 _saveResult.send(SaveResult.Success(groupIdResult))
             } catch (e: Exception) {
                 Log.e("AddMemoryVM", "Error saving memory group", e)

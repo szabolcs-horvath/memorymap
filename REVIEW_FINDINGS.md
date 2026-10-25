@@ -29,7 +29,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | 2 | ✅ | [DATA-1](#data-1) | Destructive migration is *enabled*, so restoring a backup made by a newer app version silently wipes all data. |
 | 3 | ✅ | [DATA-2](#data-2) | "Undo" after deleting a memory loses all of its fragments. |
 | 4 | ✅ | [DATA-3](#data-3) | Concurrent backups share the same temp files, so backups can corrupt each other. |
-| 5 | ⬜ | [UX-1](#ux-1) | Saving a memory waits for the full Google Drive upload to finish. |
+| 5 | ✅ | [UX-1](#ux-1) | Saving a memory waits for the full Google Drive upload to finish. |
 | 6 | ✅ | [BUG-1](#bug-1) | Fragment colour sliders add a new listener on every rebind (the wrong `clear…` method is called). |
 | 7 | ✅ | [BUG-2](#bug-2) | On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible). |
 | 8 | 🟡 | [PERF-1](#perf-1) | A Firebase trace is started for every pair of markers in the O(N²) clustering loop. Partly fixed: the traces are gone, the comparison is still O(N²). |
@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 31 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 42 open
+✅ 34 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 38 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -90,7 +90,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
-**PERF — Performance** · 2 of 10 fixed
+**PERF — Performance** · 3 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -99,18 +99,18 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-3](#perf-3) | Medium | Save holds a DB write transaction while reading files |
 | ✅ | [PERF-4](#perf-4) | Medium | Media picker work runs on the main thread |
 | ⬜ | [PERF-5](#perf-5) | Medium | Cold start scans all media twice |
-| ⬜ | [PERF-6](#perf-6) | Medium | Every small change uploads the whole database |
+| ✅ | [PERF-6](#perf-6) | Medium | Every small change uploads the whole database |
 | ⬜ | [PERF-7](#perf-7) | Medium | Map rebuilt on every tab switch or detail open |
 | ⬜ | [PERF-8](#perf-8) | Low | Full marker reset on every emission |
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 2 of 15 fixed
+**UX — User experience** · 4 of 15 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
-| ⬜ | [UX-1](#ux-1) | High | Save spinner lasts for the whole Drive upload |
-| ⬜ | [UX-2](#ux-2) | Medium | Automatic backups block the whole Settings screen |
+| ✅ | [UX-1](#ux-1) | High | Save spinner lasts for the whole Drive upload |
+| ✅ | [UX-2](#ux-2) | Medium | Automatic backups block the whole Settings screen |
 | ✅ | [UX-3](#ux-3) | Medium | Deleting a Drive backup has no confirmation |
 | ✅ | [UX-4](#ux-4) | Medium | Restore requires "Allow all" media access |
 | ⬜ | [UX-5](#ux-5) | Medium | Location permission asked immediately and repeatedly |
@@ -131,7 +131,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 |---|---|---|---|
 | ⬜ | [ARCH-1](#arch-1) | High | Manual fragment management fights the framework |
 | ⬜ | [ARCH-2](#arch-2) | High | Business logic lives in Fragments and the Activity |
-| ⬜ | [ARCH-3](#arch-3) | High | Background work tied to UI scopes |
+| 🟡 | [ARCH-3](#arch-3) | High | Background work tied to UI scopes |
 | ⬜ | [ARCH-4](#arch-4) | Medium | Two Google auth stacks |
 | ⬜ | [ARCH-5](#arch-5) | Medium | Duplicated logic |
 | 🟡 | [ARCH-6](#arch-6) | Medium | Hand-rolled singletons, no DI |
@@ -240,7 +240,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `BackupManager.kt:86-98, 147`
 - **What:** Every backup uses `cacheDir/backup_temp` and `cacheDir/backup.zip`. Automatic backups are started from many places (save, reorder, presets, undo), and a manual backup can run at the same time. `MemoryFragmentViewModel` cancels the previous job, but the blocking Drive `execute()` keeps running. One run's `finally` deletes the zip the other is uploading, or overwrites it mid-upload.
 - **Fix:** Use a unique temp dir per run (`createTempFile`) and serialize backups with a `Mutex`, or move them to WorkManager unique work (ARCH-3).
-- **Status:** Fixed. Backup and restore share a process-wide `Mutex`, and every run uses its own temp directory (`BackupTempFiles`), with stale leftovers deleted at the start of the next run. Concurrent automatic backups now run one after another instead of in parallel, so a save can wait longer behind a running backup until UX-1 / PERF-6 make backups non-blocking and debounced.
+- **Status:** Fixed. Backup and restore share a process-wide `Mutex`, and every run uses its own temp directory (`BackupTempFiles`), with stale leftovers deleted at the start of the next run. Concurrent automatic backups now run one after another instead of in parallel. Saves no longer wait for them at all since UX-1 and PERF-6 moved automatic backups to WorkManager.
 
 ### <a id="data-4"></a>🟡 DATA-4 · Medium · Unbounded automatic backups; list truncated at 100
 - **Where:** `BackupManager.kt:160-193`
@@ -405,10 +405,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** `verifyAndFixMediaItems` runs `isMediaValid` (one ContentResolver IPC per item) for every media item on every launch, then `hasMissingMedia` repeats it for all items. Each detail page (`MemoryFragment.displayMediaItems`) repeats it again on every emission.
 - **Fix:** Check once per session and cache the result, check only after an install, restore or permission change, and return the invalid set from the first pass.
 
-### <a id="perf-6"></a>⬜ PERF-6 · Medium · Every small change uploads the whole database
+### <a id="perf-6"></a>✅ PERF-6 · Medium · Every small change uploads the whole database
 - **Where:** `MemoryFragmentViewModel.kt:34-54`, `SettingsFragmentViewModel.kt:45-51`, `SettingsFragment.kt:425-510`, `AddMemoryGroupFragmentViewModel.kt:117`
 - **What:** Each drag-reorder, preset tweak or save triggers a full zip and upload, with no debouncing, network constraint or battery constraint.
 - **Fix:** Debounced WorkManager unique work with `NetworkType.CONNECTED` (see ARCH-3).
+- **Status:** Fixed. Automatic backups are unique WorkManager work with `ExistingWorkPolicy.REPLACE`, a 15-second delay and `NetworkType.CONNECTED`: a burst of changes leads to one upload. Network and Drive server errors are retried with exponential backoff (up to 5 attempts). No battery constraint: one upload of the database is small.
 
 ### <a id="perf-7"></a>⬜ PERF-7 · Medium · Map rebuilt on every tab switch or detail open
 - **Where:** `MainActivity.kt:99-110, 156-164, 296-302`
@@ -437,15 +438,17 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## UX — User experience
 
-### <a id="ux-1"></a>⬜ UX-1 · High · Save spinner lasts for the whole Drive upload
+### <a id="ux-1"></a>✅ UX-1 · High · Save spinner lasts for the whole Drive upload
 - **Where:** `AddMemoryGroupFragmentViewModel.kt:116-118`
 - **What:** `triggerAutomaticBackup` is awaited before `SaveResult.Success` is sent. Saving takes as long as zip + auth + upload; offline it waits for network timeouts.
 - **Fix:** Send Success right after the DB transaction, then start the backup in the background.
+- **Status:** Fixed. Saving schedules the automatic backup (`AutomaticBackups.schedule`) and sends `SaveResult.Success` right after the database transaction; the upload runs later in the background.
 
-### <a id="ux-2"></a>⬜ UX-2 · Medium · Automatic backups block the whole Settings screen
+### <a id="ux-2"></a>✅ UX-2 · Medium · Automatic backups block the whole Settings screen
 - **Where:** `SettingsFragment.kt:236-253`
 - **What:** `BackupEvent.STARTED` shows the full loading overlay and disables every control, including presets, sign-out and send logs, for each automatic backup.
 - **Fix:** Show a small inline "Backing up…" indicator instead.
+- **Status:** Fixed. Automatic backups no longer touch the loading overlay. Settings shows a small inline line under "Backup Now" (pending, backing up, or last backup failed) from the WorkManager state, and refreshes the backup list quietly when a run finishes.
 
 ### <a id="ux-3"></a>✅ UX-3 · Medium · Deleting a Drive backup has no confirmation
 - **Where:** `adapter/BackupAdapter.kt:57`, `SettingsFragment.kt:1023-1028`
@@ -529,10 +532,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** DAO writes (preset CRUD, delete, undo transaction), backup triggers, relink orchestration and permission flows are written inline in UI classes. `CommonViewModel` hands raw `getDb()` and `getMemoryGroupDao()` to the UI. ViewModels expose mutable `var`s and a `MutableList` shared directly with an adapter (`viewModel.fragments` → `MemoryFragmentEditAdapter`).
 - **Fix:** Add repository and use-case classes (`MemoryRepository.save/delete/restore`, `BackupScheduler`, `MediaRelinker`). ViewModels expose immutable `StateFlow<UiState>` and take intents.
 
-### <a id="arch-3"></a>⬜ ARCH-3 · High · Background work tied to UI scopes
+### <a id="arch-3"></a>🟡 ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
 - **What:** Backups and relinks run in `lifecycleScope` or `viewModelScope`. They are cancelled or lost when the screen goes away or the process dies, and nothing coordinates or deduplicates them (DATA-3, PERF-6).
 - **Fix:** WorkManager unique work (`enqueueUniqueWork("auto-backup", REPLACE)` with a short initial delay and a network constraint) and a single `MediaRelinker` with a mutex.
+- **Status:** Partly fixed. Automatic backups run in WorkManager (`AutomaticBackupWorker`), so they survive the screen and the process and are deduplicated. Media re-linking still runs in `lifecycleScope` / `viewModelScope` (no shared `MediaRelinker` yet).
 
 ### <a id="arch-4"></a>⬜ ARCH-4 · Medium · Two Google auth stacks
 - **Where:** `auth/GoogleAuthManager.kt`, `SettingsFragment.kt:924-974`, `BackupManager.kt:44-58`

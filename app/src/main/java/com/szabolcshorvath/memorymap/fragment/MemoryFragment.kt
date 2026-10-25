@@ -19,7 +19,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
-import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
@@ -44,7 +43,6 @@ class MemoryFragment : Fragment() {
     private lateinit var fragmentsAdapter: MemoryFragmentAdapter
     private var memoryId: Int = -1
     private var memoryFragmentListener: MemoryFragmentListener? = null
-    private lateinit var backupManager: BackupManager
 
     private val relinkPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -122,7 +120,6 @@ class MemoryFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val viewLifecycleOwner = viewLifecycleOwner
         val context = context ?: return
-        backupManager = BackupManager(context)
 
         setupRecyclerViews()
 
@@ -308,11 +305,11 @@ class MemoryFragment : Fragment() {
     }
 
     private fun saveNewMediaOrder() {
-        viewModel.saveNewMediaOrder(viewModel.mediaItems, commonViewModel.getDb(), backupManager)
+        viewModel.saveNewMediaOrder(viewModel.mediaItems, commonViewModel.getDb())
     }
 
     private fun saveNewFragmentsOrder() {
-        viewModel.saveNewFragmentsOrder(viewModel.fragmentItems, commonViewModel.getDb(), backupManager)
+        viewModel.saveNewFragmentsOrder(viewModel.fragmentItems, commonViewModel.getDb())
     }
 
     private suspend fun displayDetails(data: MemoryGroupWithMedia) {

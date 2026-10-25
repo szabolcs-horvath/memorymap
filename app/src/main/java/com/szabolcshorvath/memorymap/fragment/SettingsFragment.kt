@@ -38,6 +38,8 @@ import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
+import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
+import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.HSVPreset
@@ -219,19 +221,14 @@ class SettingsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                BackupManager.backupEvents.collect { event ->
-                    when (event) {
-                        BackupManager.BackupEvent.STARTED -> {
-                            setLoadingState(true, "Automatic backup in progress...", hideBackupStatus = false)
-                        }
-
-                        BackupManager.BackupEvent.FINISHED -> {
-                            val email = _binding?.tvAccountName?.tag as? String
-                            if (email != null) {
-                                loadBackups(email)
-                            }
-                        }
+                var wasRunning = false
+                AutomaticBackups.status(requireContext()).collect { status ->
+                    showAutomaticBackupStatus(status)
+                    // A backup just finished: show it in the list, without blocking the screen.
+                    if (wasRunning && status != AutomaticBackupStatus.RUNNING) {
+                        (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it, quiet = true) }
                     }
+                    wasRunning = status == AutomaticBackupStatus.RUNNING
                 }
             }
         }
@@ -409,14 +406,15 @@ class SettingsFragment : Fragment() {
         binding.btSavePresets.setOnClickListener {
             val viewLifecycleOwner = viewLifecycleOwner
             viewModel.editingPreset?.let { preset ->
+                val appContext = requireContext().applicationContext
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     commonViewModel.getHSVPresetDao().insertPresets(listOf(preset))
+                    AutomaticBackups.schedule(appContext)
                     withContext(Dispatchers.Main) {
                         viewModel.originalPreset = preset.copy()
                         viewModel.editingPreset = preset.copy()
                         checkForChanges()
                         context?.let { Toast.makeText(it, "Preset saved", Toast.LENGTH_SHORT).show() }
-                        backupManager.triggerAutomaticBackup(commonViewModel.getDb())
                     }
                 }
             }
@@ -446,6 +444,7 @@ class SettingsFragment : Fragment() {
         val brightness = binding.sliderBrightness.value
 
         val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
+        val appContext = requireContext().applicationContext
         val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val newPreset = HSVPreset(
@@ -455,11 +454,11 @@ class SettingsFragment : Fragment() {
                 order = nextOrder
             )
             val ids = commonViewModel.getHSVPresetDao().insertPresets(listOf(newPreset))
+            if (ids.isNotEmpty()) AutomaticBackups.schedule(appContext)
 
             withContext(Dispatchers.Main) {
                 if (ids.isNotEmpty()) {
                     viewModel.newlyAddedPresetId = ids[0].toInt()
-                    backupManager.triggerAutomaticBackup(commonViewModel.getDb())
                 }
             }
         }
@@ -479,16 +478,17 @@ class SettingsFragment : Fragment() {
     }
 
     private fun deletePreset(preset: HSVPreset) {
+        val appContext = requireContext().applicationContext
         val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             commonViewModel.getHSVPresetDao().deletePreset(preset)
+            AutomaticBackups.schedule(appContext)
             withContext(Dispatchers.Main) {
                 if (viewModel.editingPreset?.id == preset.id) {
                     clearPresetSelection()
                     updateVisualsFromSliders()
                 }
                 context?.let { Toast.makeText(it, "Preset deleted", Toast.LENGTH_SHORT).show() }
-                backupManager.triggerAutomaticBackup(commonViewModel.getDb())
             }
         }
     }
@@ -766,7 +766,7 @@ class SettingsFragment : Fragment() {
         val presets = colorPresetAdapter.currentList.mapIndexed { index, preset ->
             preset.copy(order = index)
         }
-        viewModel.saveNewPresetsOrder(presets, commonViewModel.getDb(), backupManager)
+        viewModel.saveNewPresetsOrder(presets, commonViewModel.getDb())
     }
 
     private fun updateUI(email: String?) {
@@ -797,6 +797,20 @@ class SettingsFragment : Fragment() {
                 backupAdapter.submitList(emptyList())
             }
         }
+    }
+
+    /** A small inline line under "Backup Now": automatic backups never block the screen. */
+    private fun showAutomaticBackupStatus(status: AutomaticBackupStatus) {
+        val binding = _binding ?: return
+        val text = when (status) {
+            AutomaticBackupStatus.IDLE -> null
+            AutomaticBackupStatus.PENDING -> getString(R.string.auto_backup_pending)
+            AutomaticBackupStatus.RUNNING -> getString(R.string.auto_backup_running)
+            AutomaticBackupStatus.FAILED -> getString(R.string.auto_backup_failed)
+        }
+        binding.tvAutoBackupStatus.text = text
+        binding.pbAutoBackup.isVisible = status == AutomaticBackupStatus.RUNNING
+        binding.autoBackupStatus.isVisible = text != null
     }
 
     private fun setLoadingState(isLoading: Boolean, status: String? = null, hideBackupStatus: Boolean = true) {
@@ -889,11 +903,12 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun loadBackups(email: String) {
+    /** [quiet]: refresh the list without the loading overlay, for example after an automatic backup. */
+    private fun loadBackups(email: String, quiet: Boolean = false) {
         val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                setLoadingState(true, "Loading backups...", hideBackupStatus = false)
+                if (!quiet) setLoadingState(true, "Loading backups...", hideBackupStatus = false)
                 val scopes = listOf(DriveScopes.DRIVE_FILE)
                 val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
                 val backups = backupManager.listBackups(credential)
@@ -903,7 +918,7 @@ class SettingsFragment : Fragment() {
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to list backups", e)
             } finally {
-                setLoadingState(false)
+                if (!quiet) setLoadingState(false)
                 _binding?.swipeRefresh?.isRefreshing = false
             }
         }
