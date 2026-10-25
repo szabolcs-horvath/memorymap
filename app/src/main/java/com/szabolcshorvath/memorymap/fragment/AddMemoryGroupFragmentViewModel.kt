@@ -63,6 +63,8 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
     var markerSaturation = DEFAULT_MARKER_SATURATION
     var markerBrightness = DEFAULT_MARKER_BRIGHTNESS
 
+    /** An "Edit" request waiting for the fragment's view (see `AddMemoryGroupFragment.requestEditMode`). */
+    var pendingEditMemoryId: Int? = null
     var editingMemoryId: Int? = null
     var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     var currentDeviceId: String? = null

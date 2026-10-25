@@ -53,7 +53,7 @@ import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MarkerGenerator
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
-import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
+import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import com.szabolcshorvath.memorymap.util.findDatePicker
 import com.szabolcshorvath.memorymap.util.setOnPicked
 import ir.mahozad.android.PieChart.Slice
@@ -178,6 +178,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             }
         }
+
+        focusOnPendingMemory()
     }
 
     private fun setupOverlayRecyclerView() {
@@ -268,24 +270,37 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    fun focusOnMemory(lat: Double, lng: Double, id: Int) {
+    /**
+     * Shows memory [id] on the map. The request is kept in the ViewModel and handled once this fragment has a view
+     * (right away if it has one), so it can be made while the tab is hidden or still being shown.
+     */
+    fun requestFocusOnMemory(lat: Double, lng: Double, id: Int) {
         viewModel.isInitialZoomDone = true
-        val viewLifecycleOwner = viewLifecycleOwner
+        viewModel.pendingFocus = MapFragmentViewModel.FocusRequest(id, lat, lng)
+        focusOnPendingMemory()
+    }
+
+    /** Handles the pending focus request, if any. It stays pending until handled, so a view destroyed meanwhile retries it. */
+    private fun focusOnPendingMemory() {
+        val request = viewModel.pendingFocus ?: return
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            // Wait until groups are loaded and the requested memory is present
+            // Wait until groups are loaded and the requested memory is present, then for the filter from DataStore
             val groups = withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
-                commonViewModel.allGroups.first { list -> list.any { it.id == id } }
-            } ?: return@launch
-            val memory = groups.find { it.id == id } ?: return@launch
-
-            // Wait for filter to be loaded from DataStore
-            withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
+                commonViewModel.allGroups.first { list -> list.any { it.id == request.id } }
+            }
+            val isFilterLoaded = groups != null && withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
                 viewModel.isDateFilterLoaded.first { it }
-            } ?: return@launch
+            } != null
 
-            viewModel.pendingSelectionId = id
-            viewModel.pendingSelectionLat = lat
-            viewModel.pendingSelectionLng = lng
+            if (viewModel.pendingFocus != request) return@launch // A newer request replaced this one.
+            viewModel.pendingFocus = null
+            val memory = groups?.find { it.id == request.id }
+            if (memory == null || !isFilterLoaded) return@launch
+
+            viewModel.pendingSelectionId = request.id
+            viewModel.pendingSelectionLat = request.lat
+            viewModel.pendingSelectionLng = request.lng
 
             val oldStart = viewModel.filterStartDate.value
             val oldEnd = viewModel.filterEndDate.value
@@ -296,7 +311,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 // Filter didn't change, we can try to select immediately if the map and clusters are ready
                 val clusters = clustersFlow.value
                 if (mMap != null && clusters.isNotEmpty()) {
-                    moveToLocationAndSelectMarker(lat, lng, id, clusters)
+                    moveToLocationAndSelectMarker(request.lat, request.lng, request.id, clusters)
                     viewModel.pendingSelectionId = null
                     viewModel.pendingSelectionLat = null
                     viewModel.pendingSelectionLng = null
@@ -478,10 +493,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             )
         }
     }
-
-    private fun hasLocationPermission(context: Context): Boolean =
-        checkPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ||
-            checkPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {

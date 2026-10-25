@@ -37,6 +37,7 @@ import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
+import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
@@ -159,6 +160,7 @@ class AddMemoryGroupFragment : Fragment() {
         setupRecyclerViews()
         reattachPickerListeners()
         fragmentsAdapter.reattachPickerListeners()
+        loadPendingEdit()
 
         binding.titleInput.doAfterTextChanged { viewModel.title = it?.toString()?.ifBlank { null } }
         binding.descriptionInput.doAfterTextChanged { viewModel.description = it?.toString()?.ifBlank { null } }
@@ -515,75 +517,88 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
-    fun setEditMode(memoryId: Int) {
-        viewModel.editingMemoryId = memoryId
-        val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val groupWithMedia = commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId)
-            withContext(Dispatchers.Main) {
-                val binding = _binding ?: return@withContext
-                groupWithMedia?.let { data ->
-                    val group = data.group
-                    viewModel.lat = group.latitude
-                    viewModel.lng = group.longitude
-                    viewModel.placeName = group.placeName
-                    viewModel.address = group.address
-                    viewModel.title = group.title
-                    viewModel.description = group.description
-                    viewModel.isAllDay = group.isAllDay
-                    viewModel.startDateTime = group.startDate
-                    viewModel.endDateTime = group.endDate
-                    viewModel.markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
-                    viewModel.markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
-                    viewModel.markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+    /**
+     * Opens memory [memoryId] for editing. The request is kept in the ViewModel and loaded once this fragment has a
+     * view (right away if it has one), so it can be made while the tab is hidden or still being shown.
+     */
+    fun requestEditMode(memoryId: Int) {
+        viewModel.pendingEditMemoryId = memoryId
+        loadPendingEdit()
+    }
 
-                    binding.titleInput.setText(viewModel.title)
-                    binding.descriptionInput.setText(viewModel.description)
-                    binding.switchAllDay.isChecked = viewModel.isAllDay
-
-                    val sortedItems = data.mediaItems.sortedWith(MediaItemComparator())
-                    viewModel.selectedMedia.clear()
-                    viewModel.selectedMedia.addAll(
-                        sortedItems.map {
-                            SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
-                        }
-                    )
-                    updateMediaUI()
-
-                    val sortedFragments = data.fragments.sortedWith(MemoryFragmentComparator())
-                    viewModel.fragments.clear()
-                    viewModel.fragments.addAll(
-                        sortedFragments.map {
-                            MemoryFragmentEditAdapter.FragmentEditState(
-                                id = it.id,
-                                lat = it.latitude,
-                                lng = it.longitude,
-                                placeName = it.placeName,
-                                address = it.address,
-                                startDate = it.startDate,
-                                endDate = it.endDate,
-                                isAllDay = it.isAllDay,
-                                markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
-                                markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                                markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
-                                isTimeVisible = it.startDate != null,
-                                isDateExpanded = false,
-                                isColorExpanded = false,
-                                order = it.order
-                            )
-                        }
-                    )
-                    viewModel.fragmentsExpanded = true
-                    updateFragmentsUI()
-
-                    updateLocationText()
-                    viewModel.dateExpanded = true
-                    updateDateTimeButtons()
-                    updateColorUI()
-                    binding.btSave.text = "Update"
-                }
-            }
+    /** Loads the pending edit request, if any. It stays pending until loaded, so a view destroyed meanwhile retries it. */
+    private fun loadPendingEdit() {
+        val memoryId = viewModel.pendingEditMemoryId ?: return
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val groupWithMedia = withContext(Dispatchers.IO) { commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) }
+            if (viewModel.pendingEditMemoryId != memoryId) return@launch // A newer request replaced this one.
+            viewModel.pendingEditMemoryId = null
+            groupWithMedia?.let(::showForEditing) // Null if the memory was deleted meanwhile: then the form stays as it is.
         }
+    }
+
+    private fun showForEditing(data: MemoryGroupWithMedia) {
+        val binding = _binding ?: return
+        val group = data.group
+        viewModel.editingMemoryId = group.id
+        viewModel.lat = group.latitude
+        viewModel.lng = group.longitude
+        viewModel.placeName = group.placeName
+        viewModel.address = group.address
+        viewModel.title = group.title
+        viewModel.description = group.description
+        viewModel.isAllDay = group.isAllDay
+        viewModel.startDateTime = group.startDate
+        viewModel.endDateTime = group.endDate
+        viewModel.markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
+        viewModel.markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
+        viewModel.markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+
+        binding.titleInput.setText(viewModel.title)
+        binding.descriptionInput.setText(viewModel.description)
+        binding.switchAllDay.isChecked = viewModel.isAllDay
+
+        val sortedItems = data.mediaItems.sortedWith(MediaItemComparator())
+        viewModel.selectedMedia.clear()
+        viewModel.selectedMedia.addAll(
+            sortedItems.map {
+                SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
+            }
+        )
+        updateMediaUI()
+
+        val sortedFragments = data.fragments.sortedWith(MemoryFragmentComparator())
+        viewModel.fragments.clear()
+        viewModel.fragments.addAll(
+            sortedFragments.map {
+                MemoryFragmentEditAdapter.FragmentEditState(
+                    id = it.id,
+                    lat = it.latitude,
+                    lng = it.longitude,
+                    placeName = it.placeName,
+                    address = it.address,
+                    startDate = it.startDate,
+                    endDate = it.endDate,
+                    isAllDay = it.isAllDay,
+                    markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
+                    markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
+                    isTimeVisible = it.startDate != null,
+                    isDateExpanded = false,
+                    isColorExpanded = false,
+                    order = it.order
+                )
+            }
+        )
+        viewModel.fragmentsExpanded = true
+        updateFragmentsUI()
+
+        updateLocationText()
+        viewModel.dateExpanded = true
+        updateDateTimeButtons()
+        updateColorUI()
+        binding.btSave.text = "Update"
     }
 
     private class MediaItemComparator : Comparator<MediaItem> {

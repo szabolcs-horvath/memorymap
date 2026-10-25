@@ -30,6 +30,9 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     var isInitialZoomDone = false
     var lastCameraPosition: CameraPosition? = null
 
+    /** A "show on map" request waiting for the fragment's view (see `MapFragment.requestFocusOnMemory`). */
+    var pendingFocus: FocusRequest? = null
+
     var pendingSelectionId: Int? = null
     var pendingSelectionLat: Double? = null
     var pendingSelectionLng: Double? = null
@@ -140,6 +143,9 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         return items.indices.groupBy { find(it) }.values
             .map { indices -> Markerable.MarkerableCluster(indices.map { items[it] }) }
     }
+
+    /** Show memory [id], whose marker is at [lat], [lng]. */
+    data class FocusRequest(val id: Int, val lat: Double, val lng: Double)
 
     companion object {
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
