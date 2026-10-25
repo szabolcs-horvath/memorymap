@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 43 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 31 open
+✅ 44 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 30 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 14 of 16 fixed
+**BUG — Functional bugs** · 15 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -84,7 +84,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-9](#bug-9) | Medium | Media signature can differ between reads of the same file |
 | ✅ | [BUG-10](#bug-10) | Low | Undo, then a stale `refreshDatabase()` |
 | ✅ | [BUG-11](#bug-11) | Low | Thread-unsafe shared `SimpleDateFormat` |
-| ⬜ | [BUG-12](#bug-12) | Low | Crash paths on unexpected data |
+| ✅ | [BUG-12](#bug-12) | Low | Crash paths on unexpected data |
 | ✅ | [BUG-13](#bug-13) | Low | Search with no matches says "No memories yet. Add some!" |
 | ✅ | [BUG-14](#bug-14) | Low | Places SDK initialized with an empty key |
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
@@ -348,9 +348,10 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Use `java.time.format.DateTimeFormatter`.
 - **Status:** Fixed. The two backup formatters are `java.time.format.DateTimeFormatter`s (thread-safe) with the same patterns and `Locale.US`, applied to `LocalDateTime.now()`, so file names and metadata dates are unchanged. `DateTimeFormatterUtilTest` pins both formats.
 
-### <a id="bug-12"></a>⬜ BUG-12 · Low · Crash paths on unexpected data
+### <a id="bug-12"></a>✅ BUG-12 · Low · Crash paths on unexpected data
 - **Where:** `DateFilterOption.kt:48` (`valueOf` on a stored preference), `ColorUtil.kt:53-54` (`check` on saturation and brightness from DB or backup), `PickLocationFragment.kt:71` (`!!` on the prediction), `ColorUtil.kt:103` (`error()` if no contrast colour is found)
 - **Fix:** Fall back to defaults instead of throwing in UI paths.
+- **Status:** Fixed. An unknown stored filter name falls back to the default (`DateFilterOption.ofStoredName`). `hsvToColor` clamps saturation and brightness to 0–1 and uses the defaults for NaN values and a non-finite hue. `generateColorWithTargetContrast` returns black or white, whichever contrasts more, instead of throwing. An autocomplete result without a place is logged and ignored. Covered by `DateFilterOptionTest` and `ColorUtilTest`.
 
 ### <a id="bug-13"></a>✅ BUG-13 · Low · Search with no matches says "No memories yet. Add some!"
 - **Where:** `TimelineFragment.kt:68-74`, `res/layout/fragment_timeline.xml:61`

@@ -45,7 +45,11 @@ enum class DateFilterOption(val label: String, val dateRangeProvider: (now: Loca
             val valueInDataStore = dataStore.data
                 .map { it[PreferencesKeys.DEFAULT_DATE_FILTER] }
                 .firstOrNull()
-            return if (valueInDataStore != null) DateFilterOption.valueOf(valueInDataStore) else DEFAULT_DATE_FILTER_OPTION
+            return ofStoredName(valueInDataStore)
         }
+
+        /** The option stored under its enum name, or the default if none is stored or the name is unknown. */
+        fun ofStoredName(name: String?): DateFilterOption =
+            entries.firstOrNull { it.name == name } ?: DEFAULT_DATE_FILTER_OPTION
     }
 }

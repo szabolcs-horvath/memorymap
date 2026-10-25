@@ -49,9 +49,11 @@ object ColorUtil {
 
     @ColorInt
     fun hsvToColor(hue: Float, saturation: Float, brightness: Float): Int {
-        check(saturation in 0.0f..1.0f) { "Saturation must be between 0 and 1" }
-        check(brightness in 0.0f..1.0f) { "Brightness must be between 0 and 1" }
-        return Color.HSVToColor(floatArrayOf(normalizeHue(hue), saturation, brightness))
+        // The values come from the database and from backups, so out-of-range ones are clamped instead of failing.
+        val h = if (hue.isFinite()) normalizeHue(hue) else DEFAULT_MARKER_HUE
+        val s = if (saturation.isNaN()) DEFAULT_MARKER_SATURATION else saturation.coerceIn(0.0f, 1.0f)
+        val v = if (brightness.isNaN()) DEFAULT_MARKER_BRIGHTNESS else brightness.coerceIn(0.0f, 1.0f)
+        return Color.HSVToColor(floatArrayOf(h, s, v))
     }
 
     @ColorInt
@@ -76,29 +78,29 @@ object ColorUtil {
         // resultLuminance = (inputLuminance + 0.05) / targetContrast - 0.05
         val darkerLuminance = (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) / targetContrast - CONTRAST_RATION_CALIBRATION_CONSTANT
 
-        if (darkerLuminance in 0.0..inputLuminance) {
-            val candidate = luminanceToColor(hsl.copyOf(), darkerLuminance)
-            val actualContrast = contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
-            if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
-                return candidate
-            }
-        }
-
-        // --- Input is too dark: even black doesn't reach target contrast ---
-        // Fall back to a lighter result
+        // --- Then a lighter result, for an input too dark for even black to reach the target contrast ---
         // targetContrast = (resultLuminance + 0.05) / (inputLuminance + 0.05)
         // resultLuminance = targetContrast * (inputLuminance + 0.05) - 0.05
         val lighterLuminance = targetContrast * (inputLuminance + CONTRAST_RATION_CALIBRATION_CONSTANT) - CONTRAST_RATION_CALIBRATION_CONSTANT
 
-        if (lighterLuminance in inputLuminance..1.0) {
-            val candidate = luminanceToColor(hsl.copyOf(), lighterLuminance)
-            val actualContrast = contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
-            if (abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD) {
-                return candidate
-            }
-        }
+        // Not expected for the contrasts the app asks for: then black or white, whichever contrasts more, is the closest.
+        return candidateWithContrast(hsl, inputLuminance, darkerLuminance, 0.0..inputLuminance, targetContrast)
+            ?: candidateWithContrast(hsl, inputLuminance, lighterLuminance, inputLuminance..1.0, targetContrast)
+            ?: if (contrastRatio(inputLuminance, 0.0) >= contrastRatio(inputLuminance, 1.0)) Color.BLACK else Color.WHITE
+    }
 
-        error("Could not find a color with target contrast $targetContrast for $inputColor")
+    /** The colour with [hsl]'s hue and saturation and [luminance], if that is in [range] and reaches [targetContrast]. */
+    private fun candidateWithContrast(
+        hsl: FloatArray,
+        inputLuminance: Double,
+        luminance: Double,
+        range: ClosedFloatingPointRange<Double>,
+        targetContrast: Double
+    ): Int? {
+        if (luminance !in range) return null
+        val candidate = luminanceToColor(hsl.copyOf(), luminance)
+        val actualContrast = contrastRatio(inputLuminance, ColorUtils.calculateLuminance(candidate))
+        return candidate.takeIf { abs(actualContrast - targetContrast) <= TARGET_CONTRAST_THRESHOLD }
     }
 
     private fun luminanceToColor(hsl: FloatArray, luminance: Double): Int {
