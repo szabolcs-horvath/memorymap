@@ -19,4 +19,4 @@ Other data notes:
 - `order` columns (media, fragments, presets) are nullable. Sort by `order`, then fall back to the date (the comparators in `fragment/MemoryFragment.kt` and `fragment/AddMemoryGroupFragment.kt`).
 - `Markerable` is the shared interface of groups and fragments for the map, overlay and clustering (`MarkerableCluster`, `MarkerableDiffCallback`).
 - Editing a memory **deletes and re-inserts** its media and fragment rows (their ids change on every save).
-- DAOs are wrapped in a reflection proxy that adds a Firebase trace to every call (`PerfUtil.tracedDao`). Always get DAOs through `memoryGroupDao()` / `hsvPresetDao()`, not the `…Internal()` accessors.
+- DAO calls are not traced one by one (for a Flow-returning call, a trace would only measure creating the Flow, and Firebase rate-limits custom traces). Trace the operation around them instead: `PerfUtil.trace` or the traced `withTransaction`.

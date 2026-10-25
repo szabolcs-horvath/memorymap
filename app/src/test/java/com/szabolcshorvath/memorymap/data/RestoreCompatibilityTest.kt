@@ -35,8 +35,8 @@ class RestoreCompatibilityTest {
     fun setUp() = runBlocking {
         live = Room.inMemoryDatabaseBuilder(context, MemoryMapDatabase::class.java).build()
         // The user's current data, which a restore must replace (or, on failure, leave alone).
-        live.groupDaoForTest().insertGroup(LIVE_GROUP)
-        live.contentsDaoForTest().insertPresets(listOf(HSVPreset(id = 70, hue = 10f, saturation = 1f, brightness = 1f)))
+        live.memoryGroupDao().insertGroup(LIVE_GROUP)
+        live.databaseContentsDao().insertPresets(listOf(HSVPreset(id = 70, hue = 10f, saturation = 1f, brightness = 1f)))
         Unit
     }
 
@@ -55,7 +55,7 @@ class RestoreCompatibilityTest {
         val columns = SchemaDatabases.columns(version)
         val groupColumns = columns.getValue("memory_groups")
 
-        val group = live.contentsDaoForTest().getAllGroups().single()
+        val group = live.databaseContentsDao().getAllGroups().single()
         assertEquals(1, group.id)
         assertEquals("memory_groups.title", group.title)
         assertEquals("memory_groups.description", group.description)
@@ -68,7 +68,7 @@ class RestoreCompatibilityTest {
         assertEquals(if ("markerSaturation" in groupColumns) 0.5f else 1f, group.markerSaturation)
         assertEquals(if ("markerBrightness" in groupColumns || "markerValue" in groupColumns) 0.5f else 1f, group.markerBrightness)
 
-        val media = live.contentsDaoForTest().getAllMediaItems().single()
+        val media = live.databaseContentsDao().getAllMediaItems().single()
         assertEquals(1, media.groupId)
         assertEquals("media_items.uri", media.uri)
         assertEquals("media_items.mediaSignature", media.mediaSignature)
@@ -76,7 +76,7 @@ class RestoreCompatibilityTest {
         assertEquals(3L, media.fileSize)
         assertEquals(if ("order" in columns.getValue("media_items")) 3 else null, media.order)
 
-        val fragments = live.contentsDaoForTest().getAllFragments()
+        val fragments = live.databaseContentsDao().getAllFragments()
         if ("memory_fragments" in columns) {
             val fragment = fragments.single()
             assertEquals(1, fragment.groupId)
@@ -86,7 +86,7 @@ class RestoreCompatibilityTest {
             assertEquals(emptyList<MemoryFragment>(), fragments)
         }
 
-        val presets = live.contentsDaoForTest().getAllPresets()
+        val presets = live.databaseContentsDao().getAllPresets()
         if ("hsv_presets" in columns) {
             assertEquals(0.5f, presets.single().hue)
         } else {
@@ -128,7 +128,7 @@ class RestoreCompatibilityTest {
         val group = LIVE_GROUP.copy(id = 1, title = "Backup")
         val broken = DatabaseContents(groups = listOf(group, group), mediaItems = emptyList(), fragments = emptyList(), presets = emptyList())
 
-        assertThrows<SQLiteException> { runBlocking { broken.replaceAllIn(live.contentsDaoForTest()) } }
+        assertThrows<SQLiteException> { runBlocking { broken.replaceAllIn(live.databaseContentsDao()) } }
         assertLiveDataUnchanged()
     }
 
@@ -136,17 +136,17 @@ class RestoreCompatibilityTest {
     fun `media and fragments without a memory are skipped`() = runBlocking {
         val file = SchemaDatabases.create(context, "orphans.db", MemoryMapDatabase.DB_VERSION)
         val contents = MemoryMapDatabase.withCheckedCopy(context, file.name) {
-            DatabaseContents.readFrom(it.contentsDaoForTest())
+            DatabaseContents.readFrom(it.databaseContentsDao())
         }
         val withOrphans = contents.copy(
             mediaItems = contents.mediaItems + contents.mediaItems.single().copy(id = 2, groupId = 99),
             fragments = contents.fragments + contents.fragments.single().copy(id = 2, groupId = 99)
         )
 
-        withOrphans.replaceAllIn(live.contentsDaoForTest())
+        withOrphans.replaceAllIn(live.databaseContentsDao())
 
-        assertEquals(listOf(1), live.contentsDaoForTest().getAllMediaItems().map { it.id })
-        assertEquals(listOf(1), live.contentsDaoForTest().getAllFragments().map { it.id })
+        assertEquals(listOf(1), live.databaseContentsDao().getAllMediaItems().map { it.id })
+        assertEquals(listOf(1), live.databaseContentsDao().getAllFragments().map { it.id })
     }
 
     @Test
@@ -156,15 +156,15 @@ class RestoreCompatibilityTest {
 
     private suspend fun restore(backupName: String) {
         val contents = MemoryMapDatabase.withCheckedCopy(context, backupName) {
-            DatabaseContents.readFrom(it.contentsDaoForTest())
+            DatabaseContents.readFrom(it.databaseContentsDao())
         }
-        contents.replaceAllIn(live.contentsDaoForTest())
+        contents.replaceAllIn(live.databaseContentsDao())
     }
 
     private fun assertLiveDataUnchanged() = runBlocking {
-        assertEquals(listOf(LIVE_GROUP), live.contentsDaoForTest().getAllGroups())
-        assertEquals(listOf(70), live.contentsDaoForTest().getAllPresets().map { it.id })
-        assertNull(live.groupDaoForTest().getGroupWithMedia(1))
+        assertEquals(listOf(LIVE_GROUP), live.databaseContentsDao().getAllGroups())
+        assertEquals(listOf(70), live.databaseContentsDao().getAllPresets().map { it.id })
+        assertNull(live.memoryGroupDao().getGroupWithMedia(1))
     }
 
     companion object {

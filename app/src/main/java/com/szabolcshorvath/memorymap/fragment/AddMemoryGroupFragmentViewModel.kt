@@ -19,6 +19,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -103,26 +104,29 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                     snapshotPlaceName, snapshotAddress, effectiveStart, effectiveEnd,
                     snapshotIsAllDay, snapshotHue, snapshotSat, snapshotBri
                 )
-                // File reads (sizes, signatures, possibly a cloud download) happen before the transaction,
-                // so it only writes and doesn't block other writers, such as a backup snapshot, meanwhile.
-                val preparedMedia = prepareMediaItems(getApplication(), snapshotMedia)
-                val dao = database.memoryGroupDao()
+                val groupIdResult = trace("add_memory_group_view_model_save_memory_group") {
+                    // File reads (sizes, signatures, possibly a cloud download) happen before the transaction,
+                    // so it only writes and doesn't block other writers, such as a backup snapshot, meanwhile.
+                    val preparedMedia = prepareMediaItems(getApplication(), snapshotMedia)
+                    val dao = database.memoryGroupDao()
 
-                var removedUris: Set<String> = emptySet()
-                val groupIdResult = database.withTransaction("save_memory_group") {
-                    val groupId = if (snapshotEditingId != null) {
-                        dao.updateGroup(group)
-                        snapshotEditingId.toLong()
-                    } else {
-                        dao.insertGroup(group)
+                    var removedUris: Set<String> = emptySet()
+                    val savedId = database.withTransaction("save_memory_group") {
+                        val groupId = if (snapshotEditingId != null) {
+                            dao.updateGroup(group)
+                            snapshotEditingId.toLong()
+                        } else {
+                            dao.insertGroup(group)
+                        }
+
+                        removedUris = saveMediaItems(dao, groupId.toInt(), preparedMedia, snapshotEditingId)
+                        saveMemoryFragments(dao, groupId, snapshotFragments)
+                        groupId.toInt()
                     }
 
-                    removedUris = saveMediaItems(dao, groupId.toInt(), preparedMedia, snapshotEditingId)
-                    saveMemoryFragments(dao, groupId, snapshotFragments)
-                    groupId.toInt()
+                    LocalMediaUtil.releaseUriGrantsIfUnused(getApplication(), dao, removedUris)
+                    savedId
                 }
-
-                LocalMediaUtil.releaseUriGrantsIfUnused(getApplication(), dao, removedUris)
                 // In the background: saving no longer waits for the upload.
                 AutomaticBackups.schedule(getApplication())
                 withContext(Dispatchers.Main) { onSaved(groupIdResult) }

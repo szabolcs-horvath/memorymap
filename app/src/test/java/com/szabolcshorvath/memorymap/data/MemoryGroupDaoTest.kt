@@ -21,10 +21,7 @@ class MemoryGroupDaoTest {
     @BeforeEach
     fun setUp() {
         db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), MemoryMapDatabase::class.java).build()
-        // The public memoryGroupDao() wraps the DAO in Firebase traces, which need a configured FirebaseApp.
-        dao = MemoryMapDatabase::class.java.getDeclaredMethod("memoryGroupDaoInternal")
-            .apply { isAccessible = true }
-            .invoke(db) as MemoryGroupDao
+        dao = db.memoryGroupDao()
     }
 
     @AfterEach
