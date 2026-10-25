@@ -132,6 +132,8 @@ class MainActivity :
         pendingTraceTag = targetTag
         fragmentNavigationTrace = PerfUtil.startTrace("main_activity_navigate_to_tab_$targetTag")
 
+        if (targetTag != AddMemoryGroupFragment.TAG) addMemoryFragment?.closeUnchangedEdit()
+
         // 1. If we have a backstack (Detail views), clear it first
         if (supportFragmentManager.backStackEntryCount > 0) {
             supportFragmentManager.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)

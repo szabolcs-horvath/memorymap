@@ -16,12 +16,12 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.core.net.toUri
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.DiffUtil
@@ -30,19 +30,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
@@ -82,6 +78,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private var addMemoryGroupListener: AddMemoryGroupListener? = null
+    private var discardForEditDialog: AlertDialog? = null
     private lateinit var mediaAdapter: SelectedMediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentEditAdapter
     private lateinit var colorPresetAdapter: ColorPresetAdapter
@@ -518,18 +515,27 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     /**
-     * Opens memory [memoryId] for editing. The request is kept in the ViewModel and loaded once this fragment has a
-     * view (right away if it has one), so it can be made while the tab is hidden or still being shown.
+     * Opens memory [memoryId] for editing. The request is kept in the ViewModel and handled once this fragment has a
+     * view (right away if it has one), so it can be made while the tab is hidden or still being shown. If the form has
+     * unsaved changes, the user is asked first; for the memory already being edited, the changes are kept.
      */
     fun requestEditMode(memoryId: Int) {
         viewModel.pendingEditMemoryId = memoryId
         loadPendingEdit()
     }
 
-    /** Loads the pending edit request, if any. It stays pending until loaded, so a view destroyed meanwhile retries it. */
+    /** Handles the pending edit request, if any. It stays pending until handled, so a view destroyed meanwhile retries it. */
     private fun loadPendingEdit() {
         val memoryId = viewModel.pendingEditMemoryId ?: return
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        when {
+            !viewModel.hasUnsavedChanges() -> loadForEditing(memoryId, viewLifecycleOwner)
+            memoryId == viewModel.editingMemoryId -> viewModel.pendingEditMemoryId = null
+            else -> confirmDiscardForEdit(memoryId)
+        }
+    }
+
+    private fun loadForEditing(memoryId: Int, viewLifecycleOwner: LifecycleOwner) {
         viewLifecycleOwner.lifecycleScope.launch {
             val groupWithMedia = withContext(Dispatchers.IO) { commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) }
             if (viewModel.pendingEditMemoryId != memoryId) return@launch // A newer request replaced this one.
@@ -538,100 +544,50 @@ class AddMemoryGroupFragment : Fragment() {
         }
     }
 
+    /**
+     * Asks whether the edit request may replace the unsaved changes. The request stays pending while the question is
+     * shown, so it is asked again if the view is recreated (the dialog is dismissed with the view).
+     */
+    private fun confirmDiscardForEdit(memoryId: Int) {
+        val context = context ?: return
+        val isEditing = viewModel.editingMemoryId != null
+        discardForEditDialog?.dismiss()
+        discardForEditDialog = AlertDialog.Builder(context)
+            .setTitle(if (isEditing) R.string.discard_edit_title else R.string.discard_draft_title)
+            .setMessage(if (isEditing) R.string.discard_edit_message else R.string.discard_draft_message)
+            .setPositiveButton(R.string.discard) { _, _ ->
+                val viewLifecycleOwner = viewLifecycleOwnerLiveData.value
+                if (viewLifecycleOwner != null && viewModel.pendingEditMemoryId == memoryId) loadForEditing(memoryId, viewLifecycleOwner)
+            }
+            .setNegativeButton(R.string.keep_editing) { _, _ -> dropPendingEdit(memoryId) }
+            .setOnCancelListener { dropPendingEdit(memoryId) }
+            .show()
+    }
+
+    private fun dropPendingEdit(memoryId: Int) {
+        if (viewModel.pendingEditMemoryId == memoryId) viewModel.pendingEditMemoryId = null
+    }
+
+    /** Called when another tab is selected: an edit without changes is closed, so this tab offers a new memory next time. */
+    fun closeUnchangedEdit() {
+        if (viewModel.editingMemoryId == null || viewModel.hasUnsavedChanges()) return
+        viewModel.resetForm()
+        if (_binding != null) showClearedForm()
+    }
+
     private fun showForEditing(data: MemoryGroupWithMedia) {
         val binding = _binding ?: return
-        val group = data.group
-        viewModel.editingMemoryId = group.id
-        viewModel.lat = group.latitude
-        viewModel.lng = group.longitude
-        viewModel.placeName = group.placeName
-        viewModel.address = group.address
-        viewModel.title = group.title
-        viewModel.description = group.description
-        viewModel.isAllDay = group.isAllDay
-        viewModel.startDateTime = group.startDate
-        viewModel.endDateTime = group.endDate
-        viewModel.markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
-        viewModel.markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
-        viewModel.markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-
+        viewModel.fillForEditing(data)
         binding.titleInput.setText(viewModel.title)
         binding.descriptionInput.setText(viewModel.description)
         binding.switchAllDay.isChecked = viewModel.isAllDay
-
-        val sortedItems = data.mediaItems.sortedWith(MediaItemComparator())
-        viewModel.selectedMedia.clear()
-        viewModel.selectedMedia.addAll(
-            sortedItems.map {
-                SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
-            }
-        )
         updateMediaUI()
-
-        val sortedFragments = data.fragments.sortedWith(MemoryFragmentComparator())
-        viewModel.fragments.clear()
-        viewModel.fragments.addAll(
-            sortedFragments.map {
-                MemoryFragmentEditAdapter.FragmentEditState(
-                    id = it.id,
-                    lat = it.latitude,
-                    lng = it.longitude,
-                    placeName = it.placeName,
-                    address = it.address,
-                    startDate = it.startDate,
-                    endDate = it.endDate,
-                    isAllDay = it.isAllDay,
-                    markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
-                    markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
-                    isTimeVisible = it.startDate != null,
-                    isDateExpanded = false,
-                    isColorExpanded = false,
-                    order = it.order
-                )
-            }
-        )
-        viewModel.fragmentsExpanded = true
         updateFragmentsUI()
-
         updateLocationText()
-        viewModel.dateExpanded = true
         updateDateTimeButtons()
         updateColorUI()
         binding.btSave.text = "Update"
-    }
-
-    private class MediaItemComparator : Comparator<MediaItem> {
-        override fun compare(a: MediaItem, b: MediaItem): Int {
-            // Sort media items based on order or dateTaken
-            return when {
-                a.order != null && b.order != null -> a.order.compareTo(b.order)
-                a.order != null -> -1
-                b.order != null -> 1
-                else -> b.dateTaken.compareTo(a.dateTaken)
-            }
-        }
-    }
-
-    private class MemoryFragmentComparator : Comparator<MemoryFragment> {
-        override fun compare(a: MemoryFragment, b: MemoryFragment): Int {
-            // Sort fragments based on order or startDate
-            return when {
-                a.order != null && b.order != null -> a.order.compareTo(b.order)
-                a.order != null -> -1
-                b.order != null -> 1
-                else -> {
-                    val dateA = a.startDate
-                    val dateB = b.startDate
-                    when {
-                        dateA != null && dateB != null -> dateA.compareTo(dateB)
-                        dateA != null -> -1
-                        dateB != null -> 1
-                        else -> 0
-                    }
-                }
-            }
-        }
+        viewModel.markUnchanged() // Last, after the views have written back what they show.
     }
 
     private fun updateTitleAndDescription() {
@@ -798,6 +754,8 @@ class AddMemoryGroupFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        discardForEditDialog?.dismiss()
+        discardForEditDialog = null
         _binding = null
     }
 

@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 48 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 27 open
+✅ 49 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 26 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -105,7 +105,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 6 of 15 fixed
+**UX — User experience** · 7 of 15 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -114,7 +114,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-3](#ux-3) | Medium | Deleting a Drive backup has no confirmation |
 | ✅ | [UX-4](#ux-4) | Medium | Restore requires "Allow all" media access |
 | ⬜ | [UX-5](#ux-5) | Medium | Location permission asked immediately and repeatedly |
-| ⬜ | [UX-6](#ux-6) | Medium | Edit mode overwrites an unsaved draft and stays active |
+| ✅ | [UX-6](#ux-6) | Medium | Edit mode overwrites an unsaved draft and stays active |
 | ⬜ | [UX-7](#ux-7) | Medium | Form state lost on process death |
 | ⬜ | [UX-8](#ux-8) | Medium | Full-screen images are decoded at screen size |
 | ✅ | [UX-9](#ux-9) | Medium | Map date filter excludes memories that overlap the range |
@@ -475,10 +475,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** The system dialog appears on first launch with no explanation, and again each time the map or picker resumes in a new fragment instance (the "denied" flag lives only in the fragment or ViewModel).
 - **Fix:** Ask when the user taps "my location", show a rationale, and persist the denial.
 
-### <a id="ux-6"></a>⬜ UX-6 · Medium · Edit mode overwrites an unsaved draft and stays active
+### <a id="ux-6"></a>✅ UX-6 · Medium · Edit mode overwrites an unsaved draft and stays active
 - **Where:** `AddMemoryGroupFragment.kt:522-591`, `MainActivity.kt:382-386`
 - **What:** Tapping "Edit" on a memory silently replaces any in-progress new memory. If the user leaves without saving, the "Add" tab still shows the edit form ("Update") next time.
 - **Fix:** Ask before discarding a dirty draft, and keep "new" and "edit" separate (for example, edit as its own screen).
+- **Status:** Fixed. The form knows whether it has unsaved changes: `hasUnsavedChanges` compares what a save would store with the content when the form was last cleared or loaded for editing (`FormContent`; expanding a section is not a change). An Edit request on a changed form first asks "Discard the new memory?" or "Discard your changes?"; "Keep editing" leaves the form as it is, and the question comes back if the screen is recreated while it is shown. Editing the memory that is already open with changes keeps them. Switching to another tab closes an edit without changes, so the Add tab offers a new memory next time; an edit with changes is kept like a draft, on purpose. Edit as its own screen is left for the navigation rework (ARCH-1). Covered by `AddMemoryGroupFragmentViewModelTest`.
 
 ### <a id="ux-7"></a>⬜ UX-7 · Medium · Form state lost on process death
 - **Where:** `AddMemoryGroupFragmentViewModel.kt:44-69`, other ViewModels

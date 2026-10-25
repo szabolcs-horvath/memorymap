@@ -21,4 +21,10 @@
     <string name="auto_backup_running">Backing up your latest changes…</string>
     <string name="auto_backup_failed">The last automatic backup failed. Tap \"Backup Now\" to try again.</string>
     <string name="memory_saved">Memory saved</string>
+    <string name="discard_draft_title">Discard the new memory?</string>
+    <string name="discard_draft_message">Editing this memory replaces the memory you started on the Add tab.</string>
+    <string name="discard_edit_title">Discard your changes?</string>
+    <string name="discard_edit_message">Editing this memory replaces your unsaved changes to the memory you were editing.</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
 </resources>
