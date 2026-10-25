@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 37 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 35 open
+✅ 38 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 35 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -139,14 +139,14 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ⬜ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
 
-**BUILD — Build, CI, tooling** · 2 of 4 fixed
+**BUILD — Build, CI, tooling** · 3 of 4 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ✅ | [BUILD-1](#build-1) | Medium | CI never runs the tests |
 | ✅ | [BUILD-2](#build-2) | Medium | `MAPS_API_KEY` wiring is inconsistent |
 | ⬜ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
-| ❔ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
+| ✅ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
 
 **TEST — Coverage gaps** · 0 of 3 fixed
 
@@ -604,11 +604,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 ### <a id="build-3"></a>⬜ BUILD-3 · Low · Supply-chain hygiene
 - **What:** GitHub Actions are pinned to tags (`@v4`) rather than SHAs; `gradle-wrapper.properties` has no `distributionSha256Sum`.
 
-### <a id="build-4"></a>❔ BUILD-4 · Low · Robolectric cannot run against `targetSdk 37`
+### <a id="build-4"></a>✅ BUILD-4 · Low · Robolectric cannot run against `targetSdk 37`
 - **Where:** noted in `SIGNATURE_FIX_PLAN.md` §5
 - **What:** `ColorUtilTest` does not start, so the only colour tests are effectively off.
 - **Fix:** Pin `@Config(sdk = [36])` for Robolectric tests, or make `ColorUtil` pure-JVM (its maths does not need Android).
 - **Note (2026-10-24):** Could not reproduce. With Robolectric 4.17, `ColorUtilTest` (91 tests) and `MemoryGroupDaoTest` run and pass locally. Probably resolved by a dependency upgrade; close it after a CI run confirms.
+- **Status:** Fixed (2026-10-25) by the Robolectric 4.17 upgrade, no code change needed. The "Tests" CI workflow runs all unit tests, including the Robolectric ones, against `targetSdk 37` on JDK 21, and they pass.
 
 [↑ Back to index](#index)
 

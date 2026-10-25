@@ -125,5 +125,5 @@ of the same item (for example reordering) is not overwritten.
 1. `LocalMediaUtilTest` (JVM): the same-file rule.
 2. Emulator: pick photos, save, confirm picker URIs are stored and grants persist; revoke
    `READ_MEDIA_*` and confirm they still load; confirm cold start does not re-link valid picker items.
-3. Note: the Robolectric tests (`ColorUtilTest`) currently fail to start because Robolectric does not
-   support `targetSdk 37` yet. This is unrelated to media re-linking.
+3. Note: when this plan was written, the Robolectric tests (`ColorUtilTest`) failed to start with
+   `targetSdk 37`. They run with Robolectric 4.17, locally and in CI. This is unrelated to media re-linking.

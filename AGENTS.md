@@ -25,7 +25,7 @@ Local setup needs files that are **not** in git:
 - Without `MAPS_API_KEY` the map doesn't load and place search is turned off (tapping the map still works).
 - Without `OAUTH_WEB_CLIENT_ID` the build still succeeds, and sign-in says it isn't set up.
 - JitPack (`settings.gradle.kts`) only serves the `com.github.chrisbanes` group (PhotoView). A new JitPack dependency needs its group added there.
-- Robolectric-based tests (`ColorUtilTest`, `MemoryGroupDaoTest`) run locally with Robolectric 4.17; `BUILD-4` (they could not start with `targetSdk 37`) looks resolved.
+- Robolectric-based tests (`ColorUtilTest`, `MemoryGroupDaoTest`, …) run against `targetSdk 37` with Robolectric 4.17 (older versions could not start them). They need JDK 21 or newer.
 - CI runs the unit tests and lint (`tests.yml`, JDK 21, which Robolectric needs for Android 15 and newer) and Detekt (`detekt.yml`) on every push and PR to master, and each fails the check. Run `./gradlew testDebugUnitTest detekt lintDebug` locally before pushing.
 - Detekt only reports issues that aren't in `config/detekt/baseline.xml`. Fix new issues instead of adding them to the baseline; regenerate it (`./gradlew detektBaseline`) only after fixing listed ones, so they don't come back unnoticed.
 
