@@ -28,6 +28,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,7 +58,6 @@ class MemoryFragment : Fragment() {
     private fun triggerBackgroundRelink() {
         val ctx = context
         val binding = _binding
-        // Captured once: the getter throws if the progress callback runs after the view is destroyed.
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value
         if (ctx == null || binding == null || viewLifecycleOwner == null) return
         binding.btRelinkMedia.isEnabled = false
@@ -65,14 +65,7 @@ class MemoryFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    LocalMediaUtil.verifyAndFixMediaItems(ctx, commonViewModel.getMemoryGroupDao()) { status ->
-                        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                            val currentBinding = _binding ?: return@launch
-                            currentBinding.tvMediaWarningText.text = status
-                        }
-                    }
-                }
+                MediaRelinker.relink(ctx) { status -> _binding?.tvMediaWarningText?.text = status }
             } finally {
                 val currentBinding = _binding
                 if (currentBinding != null) {

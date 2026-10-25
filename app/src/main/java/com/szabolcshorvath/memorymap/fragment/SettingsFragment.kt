@@ -50,6 +50,7 @@ import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateTimeFormatter
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.LogManager
+import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
@@ -116,13 +117,7 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             setLoadingState(true, "Scanning local media library...", hideBackupStatus = true)
             try {
-                withContext(Dispatchers.IO) {
-                    LocalMediaUtil.verifyAndFixMediaItems(ctx, commonViewModel.getMemoryGroupDao()) { status ->
-                        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                            setLoadingState(true, status, hideBackupStatus = true)
-                        }
-                    }
-                }
+                MediaRelinker.relink(ctx) { status -> setLoadingState(true, status, hideBackupStatus = true) }
             } finally {
                 setLoadingState(false, hideBackupStatus = false)
                 Toast.makeText(ctx, "Media re-linking complete", Toast.LENGTH_SHORT).show()
@@ -185,12 +180,8 @@ class SettingsFragment : Fragment() {
                             viewLifecycleOwner.lifecycleScope.launch {
                                 setLoadingState(true, "Scanning local media library...", hideBackupStatus = true)
                                 try {
-                                    withContext(Dispatchers.IO) {
-                                        LocalMediaUtil.verifyAndFixMediaItems(context, commonViewModel.getMemoryGroupDao()) { status ->
-                                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
-                                                setLoadingState(true, status, hideBackupStatus = true)
-                                            }
-                                        }
+                                    MediaRelinker.relink(context) { status ->
+                                        setLoadingState(true, status, hideBackupStatus = true)
                                     }
                                 } finally {
                                     setLoadingState(false, hideBackupStatus = false)

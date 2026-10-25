@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 40 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 33 open
+✅ 41 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 33 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -125,13 +125,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
 | ⬜ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
 
-**ARCH — Structure / maintainability** · 0 of 9 fixed
+**ARCH — Structure / maintainability** · 1 of 9 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ⬜ | [ARCH-1](#arch-1) | High | Manual fragment management fights the framework |
 | ⬜ | [ARCH-2](#arch-2) | High | Business logic lives in Fragments and the Activity |
-| 🟡 | [ARCH-3](#arch-3) | High | Background work tied to UI scopes |
+| ✅ | [ARCH-3](#arch-3) | High | Background work tied to UI scopes |
 | ⬜ | [ARCH-4](#arch-4) | Medium | Two Google auth stacks |
 | ⬜ | [ARCH-5](#arch-5) | Medium | Duplicated logic |
 | 🟡 | [ARCH-6](#arch-6) | Medium | Hand-rolled singletons, no DI |
@@ -536,11 +536,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** DAO writes (preset CRUD, delete, undo transaction), backup triggers, relink orchestration and permission flows are written inline in UI classes. `CommonViewModel` hands raw `getDb()` and `getMemoryGroupDao()` to the UI. ViewModels expose mutable `var`s and a `MutableList` shared directly with an adapter (`viewModel.fragments` → `MemoryFragmentEditAdapter`).
 - **Fix:** Add repository and use-case classes (`MemoryRepository.save/delete/restore`, `BackupScheduler`, `MediaRelinker`). ViewModels expose immutable `StateFlow<UiState>` and take intents.
 
-### <a id="arch-3"></a>🟡 ARCH-3 · High · Background work tied to UI scopes
+### <a id="arch-3"></a>✅ ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
 - **What:** Backups and relinks run in `lifecycleScope` or `viewModelScope`. They are cancelled or lost when the screen goes away or the process dies, and nothing coordinates or deduplicates them (DATA-3, PERF-6).
 - **Fix:** WorkManager unique work (`enqueueUniqueWork("auto-backup", REPLACE)` with a short initial delay and a network constraint) and a single `MediaRelinker` with a mutex.
-- **Status:** Partly fixed. Automatic backups run in WorkManager (`AutomaticBackupWorker`), so they survive the screen and the process and are deduplicated. Media re-linking still runs in `lifecycleScope` / `viewModelScope` (no shared `MediaRelinker` yet).
+- **Status:** Fixed. Automatic backups run in WorkManager (`AutomaticBackupWorker`), so they survive the screen and the process and are deduplicated. Media re-linking goes through `MediaRelinker.relink`: runs happen one at a time (a `Mutex`) in `MemoryMapApplication.applicationScope`, so they finish when the screen goes away, and requests made during a run share the next run (`SerialRunner`, covered by `SerialRunnerTest`). Screens only wait for the result and show its progress. A run killed with the process is not resumed; the next cold start runs it again.
 
 ### <a id="arch-4"></a>⬜ ARCH-4 · Medium · Two Google auth stacks
 - **Where:** `auth/GoogleAuthManager.kt`, `SettingsFragment.kt:924-974`, `BackupManager.kt:44-58`
