@@ -28,7 +28,7 @@ kotlin {
 
         defaultConfig {
             applicationId = "com.szabolcshorvath.memorymap"
-            minSdk = 27
+            minSdk = 34
             targetSdk = 37
             versionCode = 37
             versionName = "Media Re-linking"

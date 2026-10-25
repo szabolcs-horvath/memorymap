@@ -25,6 +25,7 @@ Local setup needs files that are **not** in git:
 - Without `MAPS_API_KEY` the map doesn't load and place search is turned off (tapping the map still works).
 - Without `OAUTH_WEB_CLIENT_ID` the build still succeeds, and sign-in says it isn't set up.
 - JitPack (`settings.gradle.kts`) only serves the `com.github.chrisbanes` group (PhotoView). A new JitPack dependency needs its group added there.
+- `minSdk` is 34 (Android 14), the oldest version any user has. Code needs no version checks or fallbacks for older Android versions.
 - Robolectric-based tests (`ColorUtilTest`, `MemoryGroupDaoTest`, …) run against `targetSdk 37` with Robolectric 4.17 (older versions could not start them). They need JDK 21 or newer.
 - CI runs the unit tests and lint (`tests.yml`, JDK 21, which Robolectric needs for Android 15 and newer) and Detekt (`detekt.yml`) on every push and PR to master, and each fails the check. Run `./gradlew testDebugUnitTest detekt lintDebug` locally before pushing.
 - Detekt only reports issues that aren't in `config/detekt/baseline.xml`. Fix new issues instead of adding them to the baseline; regenerate it (`./gradlew detektBaseline`) only after fixing listed ones, so they don't come back unnoticed.
@@ -59,7 +60,7 @@ Local setup needs files that are **not** in git:
 - Backup and restore share one process-wide `Mutex` in `BackupManager`, so they run one at a time (callers wait for the running one). Each run uses its own temp directory in `cacheDir` (`BackupTempFiles`); leftovers from killed runs are deleted when the next run starts.
 - Old backups are never deleted by the app (pruning was deliberately postponed, `DATA-4`). `listBackups` pages through all of them.
 - Restore: download, extract only the known entries (`BackupZip`), check `metadata.json` and `database.sqlite` exist, reject backups from a newer database version (`BackupCompatibility`), open the extracted copy with `MemoryMapDatabase.withCheckedCopy` (migrations, schema and integrity checks; rejects a file SQLite would have to create from scratch), read every row (`DatabaseContents`), then replace the live database's contents in one transaction (`DatabaseContentsDao.replaceAll`). The live database is never closed or swapped, Room's Flows pick up the new data, and any failure leaves the current data untouched. The UI then re-links media with whatever media access was granted (the restore never waits for it) and offers full access if photos are still unlinked.
-- Android's own Auto Backup and device transfer exclude the database and the DataStore (`res/xml/data_extraction_rules.xml`, `backup_rules.xml`): memories come back only through the Drive backups. Keep both files in sync.
+- Android's own Auto Backup and device transfer exclude the database and the DataStore (`res/xml/data_extraction_rules.xml`): memories come back only through the Drive backups.
 - Auth: sign-in stores the email in DataStore (`USER_EMAIL_KEY`); Drive consent goes through `AuthorizationClient`; API calls build a `GoogleAccountCredential` from the email.
 
 ## Conventions

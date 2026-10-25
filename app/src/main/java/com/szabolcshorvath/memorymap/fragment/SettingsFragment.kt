@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -977,10 +976,8 @@ class SettingsFragment : Fragment() {
             .setPositiveButton("Restore") { _, _ ->
                 if (PermissionUtil.hasAllMediaPermissions(context)) {
                     executeRestore(file)
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    showPermissionInfoDialog(file)
                 } else {
-                    launchPermissionRequest(file)
+                    showPermissionInfoDialog(file)
                 }
             }
             .setNegativeButton("Cancel", null)

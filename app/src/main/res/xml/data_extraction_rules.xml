@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Android's own backup and device transfer (Android 12+). The database is excluded on purpose: the app's
+   Android's own backup and device transfer. The database is excluded on purpose: the app's
    Drive backups are the only way memories are restored, with version, integrity and media re-link checks.
    The DataStore (signed-in email, settings) is excluded with it, so a new phone doesn't start automatic
    Drive backups of an empty database before the user has restored one.
-   Keep in sync with backup_rules.xml (Android 11 and older).
 -->
 <data-extraction-rules>
     <cloud-backup>

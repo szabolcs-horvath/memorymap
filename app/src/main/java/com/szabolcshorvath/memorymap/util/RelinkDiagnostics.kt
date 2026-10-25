@@ -8,7 +8,6 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
@@ -102,27 +101,17 @@ object RelinkDiagnostics {
     }
 
     private fun packageInfo(context: Context): PackageInfo? = try {
-        val packageManager = context.packageManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
-        } else {
-            @Suppress("DEPRECATION")
-            packageManager.getPackageInfo(context.packageName, 0)
-        }
+        context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
     } catch (_: PackageManager.NameNotFoundException) {
         null
     }
 
-    private fun mediaPermissions(): List<String> = buildList {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(Manifest.permission.READ_MEDIA_IMAGES)
-            add(Manifest.permission.READ_MEDIA_VIDEO)
-        } else {
-            add(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) add(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(Manifest.permission.ACCESS_MEDIA_LOCATION)
-    }
+    private fun mediaPermissions(): List<String> = listOf(
+        Manifest.permission.READ_MEDIA_IMAGES,
+        Manifest.permission.READ_MEDIA_VIDEO,
+        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+        Manifest.permission.ACCESS_MEDIA_LOCATION,
+    )
 }
 
 /** Read-only queries of this phone's MediaStore, with the signatures it computes cached. */
@@ -180,7 +169,7 @@ private class PhoneLibrary(private val context: Context) {
         val args = arrayOf(from, to, from / MILLIS_PER_SECOND, to / MILLIS_PER_SECOND).map { it.toString() }.toTypedArray()
         val files = mutableListOf<PhoneFile>()
         for (contentUri in contentUris) {
-            query(contentUri, nearbyProjection(), Selection(selection, args, includeTrashed = true)) { c ->
+            query(contentUri, NEARBY_PROJECTION, Selection(selection, args, includeTrashed = true)) { c ->
                 if (files.size < NEARBY_SCAN_LIMIT) files += phoneFile(contentUri, c)
             }
         }
@@ -198,21 +187,21 @@ private class PhoneLibrary(private val context: Context) {
     private fun phoneFile(contentUri: Uri, c: Cursor) = PhoneFile(
         uri = ContentUris.withAppendedId(contentUri, c.getLong(c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID))).toString(),
         displayName = c.string(MediaStore.MediaColumns.DISPLAY_NAME),
-        relativePath = c.string(RELATIVE_PATH),
+        relativePath = c.string(MediaStore.MediaColumns.RELATIVE_PATH),
         mimeType = c.string(MediaStore.MediaColumns.MIME_TYPE),
         size = c.long(MediaStore.MediaColumns.SIZE) ?: 0L,
         dateTaken = c.long(MediaStore.MediaColumns.DATE_TAKEN) ?: 0L,
         dateModified = (c.long(MediaStore.MediaColumns.DATE_MODIFIED) ?: 0L) * MILLIS_PER_SECOND,
         width = c.long(MediaStore.MediaColumns.WIDTH)?.toInt() ?: 0,
         height = c.long(MediaStore.MediaColumns.HEIGHT)?.toInt() ?: 0,
-        ownerPackage = c.string(OWNER_PACKAGE_NAME),
-        isTrashed = c.long(IS_TRASHED) == 1L,
-        isPending = c.long(IS_PENDING) == 1L
+        ownerPackage = c.string(MediaStore.MediaColumns.OWNER_PACKAGE_NAME),
+        isTrashed = c.long(MediaStore.MediaColumns.IS_TRASHED) == 1L,
+        isPending = c.long(MediaStore.MediaColumns.IS_PENDING) == 1L
     )
 
     /** Runs [onRow] for every row. Returns false if the query failed or returned no cursor. */
     private fun query(contentUri: Uri, projection: Array<String>, selection: Selection, onRow: (Cursor) -> Unit): Boolean = try {
-        val cursor = if (selection.includeTrashed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        val cursor = if (selection.includeTrashed) {
             val queryArgs = Bundle().apply {
                 putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection.sql)
                 putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, selection.args)
@@ -234,7 +223,7 @@ private class PhoneLibrary(private val context: Context) {
 
     private fun describe(e: Exception) = "${e.javaClass.simpleName}: ${e.message}"
 
-    /** A query's WHERE clause. Trashed and pending files are included only when asked (Android 11 and newer). */
+    /** A query's WHERE clause. Trashed and pending files are included only when asked. */
     private class Selection(val sql: String?, val args: Array<String> = emptyArray(), val includeTrashed: Boolean = false)
 
     private companion object {
@@ -245,27 +234,23 @@ private class PhoneLibrary(private val context: Context) {
         const val SECONDS_PER_HOUR = 3600L
         const val NEARBY_WINDOW_MS = RelinkReportFormatter.NEARBY_WINDOW_HOURS * SECONDS_PER_HOUR * MILLIS_PER_SECOND
 
-        // Column names spelled out: these exist from Android 10 (Q) or 11 (R), and older versions just lack them.
-        const val RELATIVE_PATH = "relative_path"
-        const val OWNER_PACKAGE_NAME = "owner_package_name"
-        const val IS_PENDING = "is_pending"
-        const val IS_TRASHED = "is_trashed"
-
         val STORED_PROJECTION = arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN)
         val SIZE_PROJECTION = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE)
 
-        fun nearbyProjection(): Array<String> = buildList {
-            add(MediaStore.MediaColumns._ID)
-            add(MediaStore.MediaColumns.DISPLAY_NAME)
-            add(MediaStore.MediaColumns.MIME_TYPE)
-            add(MediaStore.MediaColumns.SIZE)
-            add(MediaStore.MediaColumns.DATE_TAKEN)
-            add(MediaStore.MediaColumns.DATE_MODIFIED)
-            add(MediaStore.MediaColumns.WIDTH)
-            add(MediaStore.MediaColumns.HEIGHT)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) addAll(listOf(RELATIVE_PATH, OWNER_PACKAGE_NAME, IS_PENDING))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) add(IS_TRASHED)
-        }.toTypedArray()
+        val NEARBY_PROJECTION = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.DATE_TAKEN,
+            MediaStore.MediaColumns.DATE_MODIFIED,
+            MediaStore.MediaColumns.WIDTH,
+            MediaStore.MediaColumns.HEIGHT,
+            MediaStore.MediaColumns.RELATIVE_PATH,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
+            MediaStore.MediaColumns.IS_PENDING,
+            MediaStore.MediaColumns.IS_TRASHED,
+        )
     }
 }
 
