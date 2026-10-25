@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 51 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
+✅ 51 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 25 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -105,7 +105,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 8 of 15 fixed
+**UX — User experience** · 8 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -124,6 +124,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
 | ⬜ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
 | ⬜ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
+| ⬜ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
 
 **ARCH — Structure / maintainability** · 1 of 10 fixed
 
@@ -155,7 +156,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 |---|---|---|---|
 | 🟡 | [TEST-1](#test-1) | High | No Room migration tests |
 | ⬜ | [TEST-2](#test-2) | Medium | Critical logic is untested |
-| ⬜ | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
+| 🟡 | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
 
 **I18N / A11Y** · 0 of 4 fixed
 
@@ -537,6 +538,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** Legacy framework drawables look out of place in Material 3, and the version name is shown in system settings and the store.
 - **Fix:** Use Material Symbols vector icons and semantic versioning.
 
+### <a id="ux-16"></a>⬜ UX-16 · Low · Confirmation dialogs close when the phone is turned
+- **Where:** `SettingsFragment.kt` (restore, delete backup, delete preset, media access), `MemoryFragment.kt` (delete), `AddMemoryGroupFragment.kt` (clear or discard, replacing an edit), `util/MyLocationAction.kt` (explanation, open settings)
+- **What:** These are plain `AlertDialog`s, which Android doesn't bring back after a configuration change: turning the phone closes them, and the user has to start again. Found by the rotation UI tests (TEST-3); `RotationTest.restoreConfirmationStaysOpen` is skipped until this is fixed.
+- **Fix:** Show them as `DialogFragment`s, with what they need in their arguments or the ViewModel and the answer passed back as a fragment result, so they come back after a rotation.
+- **Compose migration ([ARCH-10](#arch-10)):** a Compose dialog is shown from state; kept in the ViewModel or `rememberSaveable`, it survives a rotation, so the migration fixes this if each dialog's state is kept there.
+
 [↑ Back to index](#index)
 
 ---
@@ -612,7 +619,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - `AddMemoryGroupFragmentViewModel.isInitialized` (written, never read)
 - The `IS_FIRST_RUN` / `LAST_APP_VERSION` block in `MainActivity.kt:244-256` writes the version twice and reads it nowhere
 - The commented-out passkey and password branches in `GoogleAuthManager.kt`
-- `ExampleUnitTest` and `ExampleInstrumentedTest`
+- `ExampleUnitTest` (`ExampleInstrumentedTest` is gone)
 - The DataStore is named `"googleAuthDatastore"` but holds all app preferences
 - The default literals in `SettingsFragment.kt:290,313` duplicate the `PreferencesKeys` defaults
 - `SIGNATURE_FIX_PLAN.md` now documents media re-linking, not a "fix plan"; move it to `docs/media-relinking.md`
@@ -689,7 +696,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 ### <a id="test-2"></a>⬜ TEST-2 · Medium · Critical logic is untested
 - **What:** No tests for `MediaHasher` (BUG-9), backup zip/unzip/restore (SEC-3, SEC-4, DATA-5), the clustering and date filter in `MapFragmentViewModel` (UX-9, UX-10), `saveMediaItems` dedup and grant release, the DAO queries, or the undo flow (DATA-2).
 
-### <a id="test-3"></a>⬜ TEST-3 · Low · No UI or instrumentation tests
+### <a id="test-3"></a>🟡 TEST-3 · Low · No UI or instrumentation tests
 - **What:** Only the template `ExampleInstrumentedTest` exists. Espresso is declared but unused.
 - **Blocks:** [ARCH-1](#arch-1), [PERF-7](#perf-7) and [ARCH-10](#arch-10) (Compose migration). **None of them may start until this item is complete:** the entire UI covered, with every user flow and as many edge cases as possible. Covering only the screens or flows a change touches is not enough.
 - **Fix:** Add instrumented UI tests for the whole app, run in CI on an emulator (for example Gradle managed devices), so that "covered" means "passing". At least:
@@ -705,6 +712,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Make the tests outlive the UI code:** they are the safety net for ARCH-10, so they must keep running when a screen moves to Compose. Find elements by what the user sees (text, content descriptions, test tags exposed as resource ids), for example with UI Automator, or keep all element lookups in one screen-object layer per screen so only that layer changes. Tests written straight against View ids with Espresso would have to be rewritten during the migration and would prove nothing.
 - **Changing tests during the migration:** a test may change only together with a deliberate change in behaviour or look that is objectively better than the old one (the rule in [ARCH-10](#arch-10)). The test is then updated in the same commit to describe the new behaviour, and the commit message says why. A test is never edited only because a migrated screen fails it: the screen is fixed instead.
 - **Test seams needed:** Google sign-in, Drive, the system photo picker and location are outside the app. Give them fakes the tests can inject (signed-in account, a Drive with backups, picked media URIs, a fixed location).
+- **Status:** Partly fixed. The setup is in place: instrumented tests with UI Automator behind one screen object per screen, the Test Orchestrator with a fresh install for every test, fakes for sign-in and Drive (`AppServices`), helpers for test data, and CI on Gradle managed emulators with API 35 and 37 (`ui-tests.yml`). The navigation tests cover every tab switch, back from every tab and detail screen, tapping a tab while a memory, the media viewer or the location picker is open, Show on Map, Show on Timeline and Edit (with the target tab opened before and not), the location picker round trip, and rotation on every screen and with the date and time pickers open. Still to do: process death (it needs a test module that drives the app from outside its process), the screens' own flows listed above, and fakes for location and the photo picker. Android 14 (minSdk) can't be tested on an emulator: every API 34 image ships Google Play services 23.18, whose map renderer crashes on the app's markers, so it needs a real device or Firebase Test Lab. Plain dialogs closing on rotation is [UX-16](#ux-16); its test is skipped until that is fixed.
 
 [↑ Back to index](#index)
 
@@ -722,6 +730,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ### <a id="a11y-1"></a>⬜ A11Y-1 · Medium · Missing content descriptions
 - **What:** Only 6 `contentDescription`s among about 59 image and button views (thumbnails, colour swatches, play/pause, chevrons, pick-media, colour indicators).
+- **Note:** the map's quick-filter and colour-statistics buttons, the media thumbnails and the full-screen viewer have descriptions now (added for the UI tests).
 - **Compose migration ([ARCH-10](#arch-10)):** Compose's `Icon` and `Image` require a content description, so the migration forces this anyway. Better to do it before: the UI tests (TEST-3) find elements by content description so that they keep working after the migration, so descriptions added now (as string resources) help those tests and carry over to Compose unchanged.
 
 ### <a id="a11y-2"></a>⬜ A11Y-2 · Low · Colour is the only signal

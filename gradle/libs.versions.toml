@@ -49,8 +49,11 @@ firebaseCrashlytics = "3.0.8"
 firebasePerf = "2.0.2"
 
 # Testing
-espressoCore = "3.7.0"
 androidxJunitVersion = "1.3.0"
+androidxTestCore = "1.7.0"
+androidxTestOrchestrator = "1.6.1"
+androidxTestRunner = "1.7.0"
+uiautomator = "2.4.0"
 junitBom = "6.1.3"
 mockk = "1.14.11"
 robolectric = "4.17"
@@ -124,8 +127,11 @@ firebase-perf = { module = "com.google.firebase:firebase-perf" }
 detekt-formatting = { group = "io.gitlab.arturbosch.detekt", name = "detekt-formatting", version.ref = "detekt" }
 
 # Testing
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunitVersion" }
+androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
+androidx-test-orchestrator = { group = "androidx.test", name = "orchestrator", version.ref = "androidxTestOrchestrator" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junitBom" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }

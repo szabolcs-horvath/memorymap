@@ -17,6 +17,7 @@ import coil3.request.crossfade
 import coil3.size.Scale
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.ItemMediaFullBinding
 
 class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.MediaViewHolder>(
@@ -41,6 +42,9 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
             resetState()
             val uri = item.first.toUri()
             val isVideo = item.second == "VIDEO"
+            val description = binding.root.context.getString(if (isVideo) R.string.video else R.string.photo)
+            binding.fullImageView.contentDescription = description
+            binding.fullVideoView.contentDescription = description
 
             if (isVideo) {
                 binding.fullImageView.visibility = View.VISIBLE

@@ -27,7 +27,7 @@ Local setup needs files that are **not** in git:
 - JitPack (`settings.gradle.kts`) only serves the `com.github.chrisbanes` group (PhotoView). A new JitPack dependency needs its group added there.
 - `minSdk` is 34 (Android 14), the oldest version any user has. Code needs no version checks or fallbacks for older Android versions.
 - Robolectric-based tests (`ColorUtilTest`, `MemoryGroupDaoTest`, …) run against `targetSdk 37` with Robolectric 4.17 (older versions could not start them). They need JDK 21 or newer.
-- CI runs the unit tests and lint (`tests.yml`, JDK 21, which Robolectric needs for Android 15 and newer) and Detekt (`detekt.yml`) on every push and PR to master, and each fails the check. Run `./gradlew testDebugUnitTest detekt lintDebug` locally before pushing.
+- CI runs the unit tests and lint (`tests.yml`, JDK 21, which Robolectric needs for Android 15 and newer), Detekt (`detekt.yml`) and the UI tests on an emulator (`ui-tests.yml`) on every push and PR to master, and each fails the check. Run `./gradlew testDebugUnitTest detekt lintDebug` locally before pushing, and the UI tests (see Tests) when a change touches the UI.
 - Detekt only reports issues that aren't in `config/detekt/baseline.xml`. Fix new issues instead of adding them to the baseline; regenerate it (`./gradlew detektBaseline`) only after fixing listed ones, so they don't come back unnoticed.
 
 ## Architecture
@@ -90,4 +90,10 @@ Local setup needs files that are **not** in git:
 - Robolectric tests use `@ExtendWith(RobolectricExtension::class)` (JUnit 5).
 - DAO tests run on Room under Robolectric (`MemoryGroupDaoTest`, `RestoreCompatibilityTest`) and get the DAOs from the database, as the app does (`db.memoryGroupDao()`).
 - `RestoreCompatibilityTest` builds a database for every schema version a backup can have (6 to `DB_VERSION`) from `app/schemas` (`SchemaDatabases`) and runs it through the restore steps. A new `DB_VERSION` is picked up automatically; it needs the exported schema JSON. Keep this test passing: it is what guarantees old backups stay restorable.
-- No dedicated per-migration, hashing or UI tests yet (`TEST-1`, `TEST-2`, `TEST-3`).
+- No dedicated per-migration or hashing tests yet (`TEST-1`, `TEST-2`).
+- UI tests (`app/src/androidTest`, JUnit 4) drive the real app with UI Automator on Gradle managed emulators: `./gradlew pixel6Api35DebugAndroidTest pixel6Api37DebugAndroidTest` (the first run downloads the emulator images). CI runs both versions as parallel jobs. TEST-3 lists what the tests don't cover yet, such as process death.
+  - API 37 is the targetSdk. API 35 stands in for minSdk 34: every API 34 emulator image (including the Play Store ones) ships Google Play services 23.18 from 2023 and can't update it, and that version's map renderer crashes on the app's advanced markers. Real Android 14 phones keep Play services current, so this is an emulator limit, not an app bug. Testing on Android 14 needs a real device or Firebase Test Lab.
+  - ⚠️ Every test starts from a fresh install: the Test Orchestrator clears the app's data first (`clearPackageData`). Running them on a phone or emulator of your own (`connectedDebugAndroidTest`) wipes the debug app's memories there.
+  - `MemoryMapTestRunner` puts fakes into `AppServices` before the app starts (`FakeAccountService`, `FakeBackupStorage`), so no test reaches a Google account, and turns off Firebase collection. Location and the photo picker have no fakes yet.
+  - Add data with `TestData` (it writes through the app's DAOs and DataStore, and adds photos to the gallery) before `MemoryMapAppRule.launch()`. When a test fails, the rule logs the screen's element tree (tag `UiTestScreen`) into the test's logcat.
+  - Only the screen objects (`screens/`) look elements up: by text, content description or hint, and by resource id only where nothing visible names the element. Tests never look elements up themselves, so a screen that moves to Compose changes only its screen object. Give new icon-only controls a content description.
