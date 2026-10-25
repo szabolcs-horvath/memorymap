@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 22 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 51 open
+✅ 23 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 50 open
 
 **SEC — Security / privacy** · 6 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 6 of 16 fixed
+**BUG — Functional bugs** · 7 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -83,7 +83,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [BUG-8](#bug-8) | Medium | Tab actions depend on `post()` ordering |
 | ⬜ | [BUG-9](#bug-9) | Medium | Media signature can differ between reads of the same file |
 | ✅ | [BUG-10](#bug-10) | Low | Undo, then a stale `refreshDatabase()` |
-| ⬜ | [BUG-11](#bug-11) | Low | Thread-unsafe shared `SimpleDateFormat` |
+| ✅ | [BUG-11](#bug-11) | Low | Thread-unsafe shared `SimpleDateFormat` |
 | ⬜ | [BUG-12](#bug-12) | Low | Crash paths on unexpected data |
 | ⬜ | [BUG-13](#bug-13) | Low | Search with no matches says "No memories yet. Add some!" |
 | ⬜ | [BUG-14](#bug-14) | Low | Places SDK initialized with an empty key |
@@ -337,10 +337,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Remove these calls, and keep the restore swap in the repository (DATA-6).
 - **Status:** Fixed. `refreshDatabase()` and all its call sites are removed (there is no swap any more, see DATA-6).
 
-### <a id="bug-11"></a>⬜ BUG-11 · Low · Thread-unsafe shared `SimpleDateFormat`
+### <a id="bug-11"></a>✅ BUG-11 · Low · Thread-unsafe shared `SimpleDateFormat`
 - **Where:** `util/DateTimeFormatterUtil.kt:10-11`
 - **What:** Global `SimpleDateFormat` instances are used from IO threads by concurrent backups and can produce garbled names or timestamps.
 - **Fix:** Use `java.time.format.DateTimeFormatter`.
+- **Status:** Fixed. The two backup formatters are `java.time.format.DateTimeFormatter`s (thread-safe) with the same patterns and `Locale.US`, applied to `LocalDateTime.now()`, so file names and metadata dates are unchanged. `DateTimeFormatterUtilTest` pins both formats.
 
 ### <a id="bug-12"></a>⬜ BUG-12 · Low · Crash paths on unexpected data
 - **Where:** `DateFilterOption.kt:48` (`valueOf` on a stored preference), `ColorUtil.kt:53-54` (`check` on saturation and brightness from DB or backup), `PickLocationFragment.kt:71` (`!!` on the prediction), `ColorUtil.kt:103` (`error()` if no contrast colour is found)

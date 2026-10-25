@@ -34,7 +34,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.Date
+import java.time.LocalDateTime
 import com.google.api.services.drive.model.File as DriveFile
 
 class BackupManager(private val context: Context) {
@@ -165,7 +165,7 @@ class BackupManager(private val context: Context) {
     private fun createMetadataFile(dbFile: File, isAutomatic: Boolean, tempDir: File): File {
         val metadata = JSONObject()
         metadata.put("timestamp", System.currentTimeMillis())
-        metadata.put("date", BACKUP_METADATA_DATE_FORMATTER.format(Date()))
+        metadata.put("date", LocalDateTime.now().format(BACKUP_METADATA_DATE_FORMATTER))
         metadata.put("dbSize", dbFile.length())
         metadata.put("version", 2) // Metadata version
         metadata.put("dbVersion", MemoryMapDatabase.DB_VERSION)
@@ -192,7 +192,7 @@ class BackupManager(private val context: Context) {
         val folderId = getOrCreateBackupFolder(driveService)
         val fileMetadata = DriveFile()
         val prefix = if (isAutomatic) "MemoryMap_Automatic_Backup_" else "MemoryMap_Manual_Backup_"
-        fileMetadata.name = "$prefix${BACKUP_FILE_NAME_DATE_FORMATTER.format(Date())}.zip"
+        fileMetadata.name = "$prefix${LocalDateTime.now().format(BACKUP_FILE_NAME_DATE_FORMATTER)}.zip"
         fileMetadata.parents = listOf(folderId)
 
         val mediaContent = FileContent("application/zip", zipFile)
