@@ -20,6 +20,7 @@ class GoogleAuthManager(private val context: Context) {
 
     /** Signs in with Google and returns the account's email. Throws if sign-in fails or is cancelled. */
     suspend fun signIn(): String = withContext(Dispatchers.Main) {
+        if (BuildConfig.OAUTH_WEB_CLIENT_ID.isBlank()) throw SignInNotConfiguredException()
         val googleIdOption = GetSignInWithGoogleOption.Builder(BuildConfig.OAUTH_WEB_CLIENT_ID).build()
         val request = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
 

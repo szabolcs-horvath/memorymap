@@ -23,6 +23,7 @@ Local setup needs files that are **not** in git:
 > ⚠️ `local.properties` also holds the release signing passwords. `app/build.gradle.kts` reads only the keys it needs: `MAPS_API_KEY` goes to a manifest placeholder and `OAUTH_WEB_CLIENT_ID` to `BuildConfig`. To add a new value, wire it up explicitly in the same way. Never expose the whole file (for example with the Maps Secrets Gradle plugin), and never log `BuildConfig` fields.
 
 - Without `MAPS_API_KEY` the map doesn't load and place search is turned off (tapping the map still works).
+- Without `OAUTH_WEB_CLIENT_ID` the build still succeeds, and sign-in says it isn't set up.
 - JitPack (`settings.gradle.kts`) only serves the `com.github.chrisbanes` group (PhotoView). A new JitPack dependency needs its group added there.
 - Robolectric-based tests (`ColorUtilTest`, `MemoryGroupDaoTest`) run locally with Robolectric 4.17; `BUILD-4` (they could not start with `targetSdk 37`) looks resolved.
 - CI does **not** run unit tests, and Detekt in CI never fails the build. Run both locally.

@@ -40,9 +40,9 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 30 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 43 open
+✅ 31 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 42 open
 
-**SEC — Security / privacy** · 7 of 8 fixed
+**SEC — Security / privacy** · 8 of 8 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -53,7 +53,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [SEC-5](#sec-5) | Low | Unrestricted JitPack repository |
 | ✅ | [SEC-6](#sec-6) | Low | FileProvider exposes the whole cache directory |
 | ✅ | [SEC-7](#sec-7) | Low | Auto Backup enabled with empty rules |
-| ⬜ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
+| ✅ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
 
 **DATA — Data loss / integrity** · 7 of 9 fixed
 
@@ -212,10 +212,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Decide explicitly. Either exclude the database (the app has its own backup), or keep it and document the behaviour.
 - **Status:** Fixed (decision: exclude). `data_extraction_rules.xml` (cloud backup and device transfer) and `backup_rules.xml` (Android 11 and older) exclude the database and the DataStore. Memories come back only through the app's Drive backups. The DataStore is excluded too, so a new phone doesn't start automatic Drive backups of an empty database before the user restores one.
 
-### <a id="sec-8"></a>⬜ SEC-8 · Low · Missing OAuth client ID becomes the string `"null"`
+### <a id="sec-8"></a>✅ SEC-8 · Low · Missing OAuth client ID becomes the string `"null"`
 - **Where:** `app/build.gradle.kts:41-42`
 - **What:** If `OAUTH_WEB_CLIENT_ID` is missing, `BuildConfig.OAUTH_WEB_CLIENT_ID == "null"`, and sign-in fails with an obscure error.
 - **Fix:** Fail the build, or default to `""` and show a clear message.
+- **Status:** Fixed. `OAUTH_WEB_CLIENT_ID` falls back to the env var, then to `""` (never `"null"`). With an empty value, `GoogleAuthManager.signIn()` throws `SignInNotConfiguredException` and Settings says sign-in isn't set up in this build. The build doesn't fail, so CI runs without secrets still work.
 
 [↑ Back to index](#index)
 
