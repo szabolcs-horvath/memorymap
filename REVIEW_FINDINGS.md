@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 34 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 38 open
+✅ 35 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 37 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -90,13 +90,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
-**PERF — Performance** · 3 of 10 fixed
+**PERF — Performance** · 4 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | 🟡 | [PERF-1](#perf-1) | High | Firebase trace inside the O(N²) clustering loop |
 | ⬜ | [PERF-2](#perf-2) | High | DAO reflection proxy plus a Firebase trace on every DB call |
-| ⬜ | [PERF-3](#perf-3) | Medium | Save holds a DB write transaction while reading files |
+| ✅ | [PERF-3](#perf-3) | Medium | Save holds a DB write transaction while reading files |
 | ✅ | [PERF-4](#perf-4) | Medium | Media picker work runs on the main thread |
 | ⬜ | [PERF-5](#perf-5) | Medium | Cold start scans all media twice |
 | ✅ | [PERF-6](#perf-6) | Medium | Every small change uploads the whole database |
@@ -389,10 +389,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** Every DAO call goes through `java.lang.reflect.Proxy` and creates a Firebase trace. For Flow-returning methods the trace measures only Flow creation, so the data is meaningless. Firebase also rate-limits custom traces.
 - **Fix:** Drop the proxy. Firebase Perf already captures app start and screen rendering; trace a few high-level operations (save, backup, restore) by hand.
 
-### <a id="perf-3"></a>⬜ PERF-3 · Medium · Save holds a DB write transaction while reading files
+### <a id="perf-3"></a>✅ PERF-3 · Medium · Save holds a DB write transaction while reading files
 - **Where:** `AddMemoryGroupFragmentViewModel.kt:103-114, 173-243`
 - **What:** `saveMediaItems` runs MediaStore queries and `MediaHasher` (file I/O, which can download cloud files) **inside** `withTransaction`, blocking every other writer for the whole time.
 - **Fix:** Compute metadata and signatures before opening the transaction, ideally right after picking.
+- **Status:** Fixed. `prepareMediaItems` fills in missing sizes, dates and signatures (file reads, possibly a cloud download) before `withTransaction`; the transaction only writes the group, media and fragments. Signatures are still computed at save time, not right after picking.
 
 ### <a id="perf-4"></a>✅ PERF-4 · Medium · Media picker work runs on the main thread
 - **Where:** `AddMemoryGroupFragment.kt:87-131`

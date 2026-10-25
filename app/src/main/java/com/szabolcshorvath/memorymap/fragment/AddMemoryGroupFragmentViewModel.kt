@@ -97,6 +97,9 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                     snapshotPlaceName, snapshotAddress, effectiveStart, effectiveEnd,
                     snapshotIsAllDay, snapshotHue, snapshotSat, snapshotBri
                 )
+                // File reads (sizes, signatures, possibly a cloud download) happen before the transaction,
+                // so it only writes and doesn't block other writers, such as a backup snapshot, meanwhile.
+                val preparedMedia = prepareMediaItems(getApplication(), snapshotMedia)
                 val dao = database.memoryGroupDao()
 
                 var removedUris: Set<String> = emptySet()
@@ -108,7 +111,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                         dao.insertGroup(group)
                     }
 
-                    removedUris = saveMediaItems(dao, groupId, getApplication(), snapshotMedia, snapshotEditingId)
+                    removedUris = saveMediaItems(dao, groupId.toInt(), preparedMedia, snapshotEditingId)
                     saveMemoryFragments(dao, groupId, snapshotFragments)
                     groupId.toInt()
                 }
@@ -171,23 +174,30 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         markerBrightness = markerBrightness
     )
 
-    private suspend fun saveMediaItems(
-        dao: MemoryGroupDao,
-        groupId: Long,
-        context: Context,
-        mediaToSave: List<AddMemoryGroupFragment.SelectedMedia>,
-        editingId: Int?
-    ): Set<String> {
+    /**
+     * Writes the [prepared] media of group [groupId], replacing its old media when editing.
+     * Returns the URIs the group no longer uses. Database work only: runs inside the save transaction.
+     */
+    private suspend fun saveMediaItems(dao: MemoryGroupDao, groupId: Int, prepared: List<MediaItem>, editingId: Int?): Set<String> {
         val previousUris = if (editingId != null) {
-            dao.getGroupWithMedia(groupId.toInt())?.mediaItems?.mapTo(HashSet()) { it.uri }.orEmpty()
+            dao.getGroupWithMedia(groupId)?.mediaItems?.mapTo(HashSet()) { it.uri }.orEmpty()
         } else {
             emptySet()
         }
         if (editingId != null) {
-            dao.deleteMediaByGroupId(groupId.toInt())
+            dao.deleteMediaByGroupId(groupId)
         }
+        val mediaItems = prepared.map { it.copy(groupId = groupId) }
+        dao.insertMediaItems(mediaItems)
+        return previousUris - mediaItems.mapTo(HashSet()) { it.uri }
+    }
 
-        val mediaItems = mediaToSave.mapIndexed { index, selected ->
+    /**
+     * Builds the media items to save (group id still 0): fills in missing sizes, dates and signatures,
+     * drops duplicates and numbers them. Reads files, so it runs before the save transaction.
+     */
+    private fun prepareMediaItems(context: Context, mediaToSave: List<AddMemoryGroupFragment.SelectedMedia>): List<MediaItem> {
+        return mediaToSave.mapIndexed { index, selected ->
             val uri = selected.uri
             var size = selected.fileSize
             var date = selected.dateTaken
@@ -226,7 +236,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
             // The picker URI is kept as is: its persisted grant survives reboots and does not depend on
             // READ_MEDIA_* permissions, which the user can revoke and Android auto-resets for unused apps.
             MediaItem(
-                groupId = groupId.toInt(),
+                groupId = 0,
                 uri = uri.toString(),
                 deviceId = selected.deviceId,
                 type = selected.type,
@@ -238,9 +248,6 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         }
             .distinctBy { it.mediaSignature.ifEmpty { it.uri } }
             .mapIndexed { index, item -> item.copy(order = index + 1) }
-
-        dao.insertMediaItems(mediaItems)
-        return previousUris - mediaItems.mapTo(HashSet()) { it.uri }
     }
 
     private suspend fun saveMemoryFragments(dao: MemoryGroupDao, groupId: Long, fragmentsToSave: List<MemoryFragmentEditAdapter.FragmentEditState>) {
