@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 35 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 37 open
+✅ 36 fixed · 🟡 5 partly fixed · ❔ 1 to verify · ⬜ 36 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 11 of 16 fixed
+**BUG — Functional bugs** · 12 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -79,7 +79,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-4](#bug-4) | Medium | Sign-in can leave the Settings screen stuck on "Signing in…" |
 | ✅ | [BUG-5](#bug-5) | Medium | Removing a selected photo can crash |
 | ✅ | [BUG-6](#bug-6) | Medium | Results registered in `onCreateView` (Settings) |
-| ⬜ | [BUG-7](#bug-7) | Medium | Leaving the Add tab while saving causes a surprise navigation later |
+| ✅ | [BUG-7](#bug-7) | Medium | Leaving the Add tab while saving causes a surprise navigation later |
 | ⬜ | [BUG-8](#bug-8) | Medium | Tab actions depend on `post()` ordering |
 | ⬜ | [BUG-9](#bug-9) | Medium | Media signature can differ between reads of the same file |
 | ✅ | [BUG-10](#bug-10) | Low | Undo, then a stale `refreshDatabase()` |
@@ -318,10 +318,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Register it once as a property initializer, like the other launchers.
 - **Status:** Fixed. `startAuthorizationIntent` is a property initializer.
 
-### <a id="bug-7"></a>⬜ BUG-7 · Medium · Leaving the Add tab while saving causes a surprise navigation later
+### <a id="bug-7"></a>✅ BUG-7 · Medium · Leaving the Add tab while saving causes a surprise navigation later
 - **Where:** `AddMemoryGroupFragment.kt:257-284`
 - **What:** `saveResult` is a buffered Channel collected only while the view is STARTED. If the user switches tabs during a save (which is slow, see UX-1), the Success event waits, and when they next open "Add" the app suddenly jumps to the memory detail. The fields are not cleared until then.
 - **Fix:** Handle completion in the ViewModel (clear the form state there), and expose navigation as a one-shot event that is consumed when it is shown.
+- **Status:** Fixed. The view model clears the form itself when a save succeeds, so the screen is empty whenever it is shown next. It sends the "open the saved memory" event only while the Add tab is shown (`isScreenShown`, kept up to date in `onHiddenChanged`); a save that finishes after the user switched tabs shows a "Memory saved" toast instead of navigating later. A rotation during the save still navigates, since the tab isn't hidden.
 
 ### <a id="bug-8"></a>⬜ BUG-8 · Medium · Tab actions depend on `post()` ordering
 - **Where:** `MainActivity.kt:167-180, 325-386`

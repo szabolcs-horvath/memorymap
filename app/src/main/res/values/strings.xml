@@ -20,4 +20,5 @@
     <string name="auto_backup_pending">Your latest changes will be backed up shortly (when online).</string>
     <string name="auto_backup_running">Backing up your latest changes…</string>
     <string name="auto_backup_failed">The last automatic backup failed. Tap \"Backup Now\" to try again.</string>
+    <string name="memory_saved">Memory saved</string>
 </resources>

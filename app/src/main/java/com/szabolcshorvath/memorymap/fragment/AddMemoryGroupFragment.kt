@@ -52,7 +52,6 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -265,8 +264,9 @@ class AddMemoryGroupFragment : Fragment() {
                         val context = context
                         when (result) {
                             is AddMemoryGroupFragmentViewModel.SaveResult.Success -> {
+                                // The view model has already cleared the form.
                                 addMemoryGroupListener?.onMemorySaved(result.groupId)
-                                clearFields()
+                                showClearedForm()
                             }
 
                             is AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
@@ -467,27 +467,15 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun clearFields() {
-        viewModel.editingMemoryId = null
-        viewModel.title = null
-        viewModel.description = null
-        viewModel.lat = null
-        viewModel.lng = null
-        viewModel.placeName = null
-        viewModel.address = null
-        viewModel.isAllDay = false
-        viewModel.startDateTime = ZonedDateTime.now()
-        viewModel.endDateTime = ZonedDateTime.now().plusHours(1)
-        viewModel.markerHue = DEFAULT_MARKER_HUE
-        viewModel.markerSaturation = DEFAULT_MARKER_SATURATION
-        viewModel.markerBrightness = DEFAULT_MARKER_BRIGHTNESS
-        viewModel.dateExpanded = true
+        viewModel.resetForm()
+        showClearedForm()
+    }
+
+    /** Shows the empty form after [AddMemoryGroupFragmentViewModel.resetForm]. */
+    private fun showClearedForm() {
         updateDateTimeButtons()
-        viewModel.selectedMedia.clear()
         updateMediaUI()
-        viewModel.fragments.clear()
-        viewModel.fragmentsExpanded = true
         updateFragmentsUI()
-        viewModel.colorExpanded = false
         updateColorUI()
 
         binding.titleInput.text?.clear()
@@ -495,6 +483,12 @@ class AddMemoryGroupFragment : Fragment() {
         updateLocationText()
         binding.switchAllDay.isChecked = false
         binding.btSave.text = "Save Memory"
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        // A save that finishes while another tab is shown must not open the memory once this tab is shown again.
+        viewModel.isScreenShown = !hidden
     }
 
     fun updateLocation(newLat: Double, newLng: Double, newPlaceName: String? = null, newAddress: String? = null) {

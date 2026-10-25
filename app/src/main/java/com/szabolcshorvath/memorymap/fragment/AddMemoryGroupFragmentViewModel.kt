@@ -4,8 +4,10 @@ import android.app.Application
 import android.content.Context
 import android.provider.MediaStore
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -67,6 +70,9 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
     var dateExpanded = true
 
     var isInitialized = false
+
+    /** Whether the Add screen is shown (not hidden behind another tab); kept up to date by the fragment. */
+    var isScreenShown = true
 
     fun saveMemoryGroup(database: MemoryMapDatabase) {
         if (_isSaving.value) return
@@ -119,7 +125,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                 LocalMediaUtil.releaseUriGrantsIfUnused(getApplication(), dao, removedUris)
                 // In the background: saving no longer waits for the upload.
                 AutomaticBackups.schedule(getApplication())
-                _saveResult.send(SaveResult.Success(groupIdResult))
+                withContext(Dispatchers.Main) { onSaved(groupIdResult) }
             } catch (e: Exception) {
                 Log.e("AddMemoryVM", "Error saving memory group", e)
                 _saveResult.send(SaveResult.Error(e.localizedMessage ?: "Unknown error"))
@@ -127,6 +133,41 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                 _isSaving.value = false
             }
         }
+    }
+
+    /**
+     * Clears the form here, so it is empty whenever the screen is shown next. Opens the saved memory only
+     * if the Add screen is on screen: a save that finishes after the user left must not jump there later.
+     */
+    private suspend fun onSaved(groupId: Int) {
+        resetForm()
+        if (isScreenShown) {
+            _saveResult.send(SaveResult.Success(groupId))
+        } else {
+            Toast.makeText(getApplication(), R.string.memory_saved, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Clears the form: after a successful save, or when the user clears it. */
+    fun resetForm() {
+        editingMemoryId = null
+        title = null
+        description = null
+        lat = null
+        lng = null
+        placeName = null
+        address = null
+        isAllDay = false
+        startDateTime = ZonedDateTime.now()
+        endDateTime = ZonedDateTime.now().plusHours(1)
+        markerHue = DEFAULT_MARKER_HUE
+        markerSaturation = DEFAULT_MARKER_SATURATION
+        markerBrightness = DEFAULT_MARKER_BRIGHTNESS
+        dateExpanded = true
+        selectedMedia.clear()
+        fragments.clear()
+        fragmentsExpanded = true
+        colorExpanded = false
     }
 
     private fun calculateEffectiveStartTime(isAllDay: Boolean, startDateTime: ZonedDateTime): ZonedDateTime = if (isAllDay) {
