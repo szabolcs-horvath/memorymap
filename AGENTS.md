@@ -2,7 +2,7 @@
 
 Guide for AI agents and new contributors. Read this before changing code.
 Known problems and planned improvements are tracked in [REVIEW_FINDINGS.md](REVIEW_FINDINGS.md) by ID (for example `BUG-3`).
-Check that file before "fixing" something that looks odd: it may already be catalogued, with a suggested fix.
+Check that file before "fixing" something that looks odd: it may already be catalogued, with a suggested fix. When you fix one, add a **Status** line to it and update its heading marker and index row (see the top of that file).
 Database and schema rules live in `app/src/main/java/com/szabolcshorvath/memorymap/data/AGENTS.md`.
 The design of media re-linking is documented in `SIGNATURE_FIX_PLAN.md` (despite the file name).
 
