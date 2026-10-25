@@ -37,6 +37,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
+import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.HSVPreset
@@ -625,6 +626,13 @@ class SettingsFragment : Fragment() {
                     }
                 } catch (e: Exception) {
                     when (e) {
+                        is SignInNotConfiguredException -> {
+                            Log.e(TAG, "Sign in is not configured", e)
+                            context?.let {
+                                Toast.makeText(it, R.string.sign_in_not_configured, Toast.LENGTH_LONG).show()
+                            }
+                        }
+
                         is NoCredentialException,
                         is GetCredentialException -> {
                             Log.w(TAG, "Sign in failed", e)

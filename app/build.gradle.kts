@@ -38,7 +38,8 @@ kotlin {
             // Pass only the values the app needs: local.properties also holds the signing passwords.
             manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
 
-            val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID")
+            // Empty when not set: sign-in then shows a clear "not configured" message instead of failing with "null".
+            val oauthClientId = localProperties.getProperty("OAUTH_WEB_CLIENT_ID") ?: System.getenv("OAUTH_WEB_CLIENT_ID") ?: ""
             buildConfigField("String", "OAUTH_WEB_CLIENT_ID", "\"$oauthClientId\"")
         }
 
