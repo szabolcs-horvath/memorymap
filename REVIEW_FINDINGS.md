@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 50 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
+✅ 51 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -125,7 +125,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
 | ⬜ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
 
-**ARCH — Structure / maintainability** · 1 of 9 fixed
+**ARCH — Structure / maintainability** · 1 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -138,6 +138,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ⬜ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ⬜ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
+| ⬜ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (blocked until the whole UI is covered by UI tests) |
 
 **BUILD — Build, CI, tooling** · 3 of 4 fixed
 
@@ -424,7 +425,9 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `MainActivity.kt:99-110, 156-164, 296-302`
 - **What:** See ARCH-1. `setMaxLifecycle(CREATED)` destroys the hidden fragments' views, and `replace()` in `onMemoryClicked` removes *all* tab fragments. Each return to the Map recreates `SupportMapFragment`, the GoogleMap, the ClusterManager and all markers.
 - **Fix:** Keep tab views alive (`STARTED`, not `CREATED`) or use Navigation with multiple back stacks. Open details with `add` + `hide` instead of `replace`.
-- **Plan:** see [ARCH-1](#arch-1), which has the planned fix, what to watch for (stale data) and the tests it waits for.
+- **Plan:** see [ARCH-1](#arch-1), which has the planned fix and what to watch for (stale data).
+- **Compose migration ([ARCH-10](#arch-10)):** Compose alone does not fix this, but the migration's last step replaces `MainActivity`'s fragment handling, and that is where keeping the map alive would then be solved. See ARCH-1 for which order to choose.
+- **⛔ Precondition:** do not start until the ENTIRE UI is covered by UI tests ([TEST-3](#test-3)): every screen, every user flow and as many edge cases as possible, passing in CI.
 
 ### <a id="perf-8"></a>⬜ PERF-8 · Low · Full marker reset on every emission
 - **Where:** `MapFragment.kt:503-566`
@@ -493,6 +496,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `adapter/MediaPagerAdapter.kt:58-61, 144-149`
 - **What:** `size(screenWidth, screenHeight)` limits resolution, so pinch-zoom in PhotoView only upscales a blurry bitmap.
 - **Fix:** Load at `Size.ORIGINAL` (or tile with subsampling) when zoomed.
+- **Compose migration ([ARCH-10](#arch-10)):** likely made redundant. The migration replaces `MediaPagerAdapter` and PhotoView with a Compose zoom library; telephoto, for example, loads sharper tiles through Coil as you zoom in. A fix in the current code would be thrown away, so do it only if it can't wait.
 
 ### <a id="ux-9"></a>✅ UX-9 · Medium · Map date filter excludes memories that overlap the range
 - **Where:** `MapFragmentViewModel.kt:94-101`
@@ -510,16 +514,19 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `AddMemoryGroupFragment.kt:750-751`, `MemoryFragmentEditAdapter.kt:569-570`, `DateFilterOption.kt:15`, `MediaAdapter.kt:78`
 - **What:** 24-hour clock forced, "This week" always starts on Monday, and a fixed `yyyy.MM.dd` format in the media error overlay.
 - **Fix:** Use `DateFormat.is24HourFormat(context)`, `WeekFields.of(locale)` and localized formatters.
+- **Compose migration ([ARCH-10](#arch-10)):** partly affected. The 24-hour clock is set where the time pickers are built, and the migration replaces them with Material 3 Compose pickers, so set it there (from the system setting) instead of fixing it twice. "This week" in `DateFilterOption` and the date format are not UI code and can be fixed independently.
 
 ### <a id="ux-12"></a>⬜ UX-12 · Low · Media viewer is not immersive
 - **Where:** `MainActivity.kt:304-319`, `res/layout/fragment_media_viewer.xml`
 - **What:** The bottom navigation and system bars stay visible, there is no tap-to-hide, and tapping a tab pops the viewer.
 - **Fix:** Hide the bottom navigation and system bars while viewing.
+- **Compose migration ([ARCH-10](#arch-10)):** heavily affected. The media viewer is rewritten (pager and zoom), and the bottom navigation and the tab-pops-the-viewer behaviour change again if the migration's last step replaces `MainActivity`'s fragment shell. Hiding the system bars (`WindowInsetsControllerCompat`) carries over; tap-to-hide and the bottom navigation are better built into the Compose viewer.
 
 ### <a id="ux-13"></a>⬜ UX-13 · Low · Edge-to-edge enabled and then cancelled out
 - **Where:** `MainActivity.kt:84`, `res/layout/activity_main_container.xml:6`
 - **What:** `enableEdgeToEdge()` plus `fitsSystemWindows="true"` on the root pads everything, so the map never draws behind the system bars.
 - **Fix:** Apply insets per view (map padding, bottom navigation).
+- **Compose migration ([ARCH-10](#arch-10)):** heavily affected. Compose handles insets itself (`Scaffold`, `WindowInsets` modifiers, `contentPadding` on the map), so per-view inset code in the XML layouts would be thrown away. Fix it screen by screen during the migration, unless it can't wait.
 
 ### <a id="ux-14"></a>⬜ UX-14 · Low · Raw technical text shown to users
 - **Where:** `SettingsFragmentViewModel.kt:65,84,101` (exception class names), `MapFragment.kt:629` ("Lat: %.4f…"), `MemoryFragment.kt:350`, `MemoryFragmentAdapter.kt:61` (raw coordinates)
@@ -552,12 +559,14 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Add tab: a save error would be shown (toast) while another tab is shown, instead of when the Add tab is opened next. `isScreenShown` already keeps a success from opening the memory.
   - The keyboard may stay open after switching tabs from the Timeline search (the view is hidden, not destroyed).
   - Hidden tabs keep re-drawing on every data change; for the map that is a full marker reset (PERF-8).
-- **Tests first:** this changes the lifecycle of every screen, so it waits for UI tests (TEST-3) that cover: switching tabs; Show on map, Show in timeline and Edit from a memory, also while the target tab already has a view; the location picker round trip; back from a memory and from the media viewer; rotation and process death; and data changed on one tab showing on another. Then check on a device that the map is built only once (`dumpsys activity`) and compare tab-switch times (the `main_activity_navigate_to_tab_*` traces).
+- **⛔ Tests first (hard precondition):** this changes the lifecycle of every screen, so **it must not be started until the ENTIRE UI is covered by UI tests (TEST-3): every screen, every user flow and as many edge cases as possible, passing in CI.** Tests for only the flows listed here are not enough. These flows matter most and must be among them: switching tabs; Show on map, Show in timeline and Edit from a memory, also while the target tab already has a view; the location picker round trip; back from a memory and from the media viewer; rotation and process death; and data changed on one tab showing on another. After the change, check on a device that the map is built only once (`dumpsys activity`) and compare tab-switch times (the `main_activity_navigate_to_tab_*` traces).
+- **Compose migration ([ARCH-10](#arch-10)):** both wait for the same complete UI test suite (TEST-3). The migration keeps the fragments for most of its steps, so this plan still applies alongside it. Only its last, optional step replaces `MainActivity`'s fragment handling with a Compose shell, which would throw this work away and solve PERF-7 there instead. Once TEST-3 is done, decide: if the Compose shell is planned soon, skip this plan and solve PERF-7 in that step; otherwise do this plan first.
 
 ### <a id="arch-2"></a>⬜ ARCH-2 · High · Business logic lives in Fragments and the Activity
 - **Where:** `SettingsFragment.kt` (1041 lines), `AddMemoryGroupFragment.kt` (786), `MapFragment.kt` (778), `MainActivity.kt`
 - **What:** DAO writes (preset CRUD, delete, undo transaction), backup triggers, relink orchestration and permission flows are written inline in UI classes. `CommonViewModel` hands raw `getDb()` and `getMemoryGroupDao()` to the UI. ViewModels expose mutable `var`s and a `MutableList` shared directly with an adapter (`viewModel.fragments` → `MemoryFragmentEditAdapter`).
 - **Fix:** Add repository and use-case classes (`MemoryRepository.save/delete/restore`, `BackupScheduler`, `MediaRelinker`). ViewModels expose immutable `StateFlow<UiState>` and take intents.
+- **Compose migration ([ARCH-10](#arch-10)):** the ViewModel part (`StateFlow<UiState>` plus intents) is step 2 of the migration, done one screen at a time right before that screen moves to Compose. Doing it earlier is fine and makes the migration smaller. The repository and use-case part does not depend on the migration.
 
 ### <a id="arch-3"></a>✅ ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
@@ -582,6 +591,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Location permission handling ×2: `MapFragment`, `PickLocationFragment`
   - Selected-media metadata query ×2: `AddMemoryGroupFragment.kt:104-115`, `AddMemoryGroupFragmentViewModel.kt:194-215`
 - **Fix:** Extract shared components (a `ColorPickerView`, a `DateRangeEditor`) and helpers.
+- **Compose migration ([ARCH-10](#arch-10)):** the UI items (the HSV slider, preset and animation UI ×3, the date and time pickers ×2, `showError` ×2) become shared composables during the migration. A `ColorPickerView` or `DateRangeEditor` built as a View now would be thrown away, so build those as composables then. The non-UI items (comparators, `getFormattedDate`, `hsvToColor`, the media metadata query, the relink trigger logic) don't depend on the migration and can be done any time.
 
 ### <a id="arch-6"></a>🟡 ARCH-6 · Medium · Hand-rolled singletons, no DI
 - **Where:** `CommonRepository`, `MemoryMapDatabase`, `InstallationIdentifier`, `BackupManager(context)` created per fragment, `GoogleAuthManager` per call
@@ -607,6 +617,36 @@ When a status changes, update the item's **Status** line, the marker in its head
 - The default literals in `SettingsFragment.kt:290,313` duplicate the `PreferencesKeys` defaults
 - `SIGNATURE_FIX_PLAN.md` now documents media re-linking, not a "fix plan"; move it to `docs/media-relinking.md`
 - `ColorPresetAdapter.setSelectedPresetId` is never called from the Add screen, so the chosen preset is never highlighted there
+
+### <a id="arch-10"></a>⬜ ARCH-10 · Medium · UI built on XML Views, not Jetpack Compose
+- **Where:** all of `fragment/`, `adapter/`, `MainActivity.kt`, `view/MaxHeightCardView.kt` and `res/layout/`. As of `28df90b` that is about 6,000 lines of Kotlin and 2,900 lines of layout XML.
+- **What:** The UI uses XML layouts, ViewBinding, fragments and RecyclerView adapters. Views now mostly get maintenance, while Google builds new UI features for Compose first. Several rules in AGENTS.md exist only because of the View system: `_binding ?: return` and `viewLifecycleOwnerLiveData`, launchers as property initializers, the Slider listener trap, the picker tags and `setOnPicked` after rotation, and the `DiffUtil` adapters. This is about upkeep, not a bug users see.
+- **⛔ HARD PRECONDITION: do not start any part of this migration, not even a pilot screen, until the ENTIRE UI is covered by UI tests (TEST-3).** That means every screen, every user flow, and as many edge cases as possible, all passing on the current View UI. Partial coverage, "the main flows" or "the screen being migrated" is NOT enough. Until TEST-3 is done this item stays blocked, whatever the order of other work. The tests must also run unchanged against each migrated screen (see TEST-3 for how), because they are the only proof that behaviour stayed the same.
+- **Same behaviour and look, unless objectively better:** a migrated screen must behave and look the same as before. The only allowed exception is a change that is objectively better than the old behaviour or look: for example fixing a bug, an open finding (such as UX-8 or UX-13), an accessibility problem, or a mismatch with Material 3 guidance. "Easier to build in Compose" or a matter of taste does not count. When in doubt, keep the old behaviour or look and propose the change separately. Each such change must be:
+  - deliberate, never a side effect noticed afterwards
+  - named, with the reason, in the commit message
+  - covered by updating the affected UI tests in the same commit, so the tests describe the new behaviour; never edit a test only to make it pass.
+- **Assessment** (2026-10-25): technically feasible and worth doing, but only one screen at a time, never as a big-bang rewrite. The data, backup, re-linking, hashing and WorkManager code (about 4,500 lines) is not touched. Every UI part has a Compose equivalent:
+  - Map: `maps-compose`. Keep the existing `ClusterManager`, `MarkerableClusterRenderer` and `MarkerGenerator`, and attach them through the map's effect API instead of using Compose-drawn cluster content (slower with many markers). This is the hardest screen.
+  - `ViewPager2` (memory pager, media) → `HorizontalPager`. PhotoView → a zoom library (for example telephoto).
+  - Pie chart library → a small Canvas `drawArc`, which removes a dependency.
+  - `ItemTouchHelper` drag-to-reorder (memory fragments, media, colour presets) → not built in, needs a library (for example `sh.calvin.reorderable`).
+  - Material date and time pickers → Material 3 `DatePicker` / `TimePicker`, which removes the rotation workaround in `util/PickerListeners.kt`.
+  - `ListAdapter` / `DiffUtil` → `LazyColumn` with stable keys. Places autocomplete does not depend on Views and stays.
+- **Caveats:**
+  - Compose does not fix PERF-7 by itself. A `NavHost` also throws away screens that aren't shown, so keeping the map alive is still a deliberate decision (see ARCH-1).
+  - Behaviour built up over many commits has to be carried over (see the rule above): unsaved changes and edit mode on the Add tab, pending cross-tab requests, map padding around the overlay and the Google logo, the undo Snackbar and its grant release, and asking for location only from a "my location" button.
+  - The APK gets a few MB bigger, and the Firebase Perf traces for tab switching (`main_activity_navigate_to_tab_*`) need new names.
+- **Related findings** (each has a "Compose migration" note):
+  - Likely made redundant, or fixed differently, by the migration: [UX-8](#ux-8) (zoomed images), [UX-13](#ux-13) (insets), [UX-12](#ux-12) (immersive viewer), the UI parts of [ARCH-5](#arch-5) (shared colour and date components), the picker part of [UX-11](#ux-11), and the preset outline in [A11Y-2](#a11y-2).
+  - Part of the migration, or better done before it: [ARCH-2](#arch-2) (step 2), [A11Y-1](#a11y-1) (the UI tests rely on content descriptions), [I18N-1](#i18n-1) (the resources carry over).
+  - Same test gate, and the shell question in step 5: [ARCH-1](#arch-1), [PERF-7](#perf-7).
+- **Plan** (not started; **blocked until the precondition above is met**):
+  1. Gate check: confirm TEST-3 is complete and green in CI, as listed there. If anything is missing, stop and finish the tests first.
+  2. Per screen: first move its ViewModel to an immutable `StateFlow<UiState>` plus intents (ARCH-2). Then replace the fragment's layout with a `ComposeView`, keeping the fragment and `MainActivity`'s tab handling. This works with or without the ARCH-1 change.
+  3. Screens, easiest first: Timeline (pilot), Settings, memory detail with pager and media viewer, Add/Edit, then the location picker and the Map.
+  4. After each screen: run the full UI test suite (not only that screen's tests), the unit tests, `detekt` and `lintDebug`, and check on a device. Compare screenshots of the screen before and after, in light and dark theme, in portrait and landscape; any difference must be an objectively better change as defined above. Delete the old layout, adapter and any dependency that is no longer used, and remove the View-only rules from AGENTS.md. One screen per commit.
+  5. Last, and only if it is worth it: replace the fragment shell with a Compose scaffold and decide then how hidden tabs stay alive (ARCH-1, PERF-7).
 
 [↑ Back to index](#index)
 
@@ -651,7 +691,20 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ### <a id="test-3"></a>⬜ TEST-3 · Low · No UI or instrumentation tests
 - **What:** Only the template `ExampleInstrumentedTest` exists. Espresso is declared but unused.
-- **Fix:** Add instrumented UI tests (Espresso), starting with navigation: switching tabs, cross-tab actions, back from detail screens and rotation. The [ARCH-1](#arch-1) / PERF-7 fix waits for them (its plan lists what they should cover).
+- **Blocks:** [ARCH-1](#arch-1), [PERF-7](#perf-7) and [ARCH-10](#arch-10) (Compose migration). **None of them may start until this item is complete:** the entire UI covered, with every user flow and as many edge cases as possible. Covering only the screens or flows a change touches is not enough.
+- **Fix:** Add instrumented UI tests for the whole app, run in CI on an emulator (for example Gradle managed devices), so that "covered" means "passing". At least:
+  - **Navigation:** every tab switch; back from every screen (memory pager, media viewer, location picker); rotation on every screen and with dialogs and pickers open; process death and restore on every screen.
+  - **Map:** markers and clusters; tapping a marker or a cluster and the overlay it opens; opening a memory from the overlay; every date filter option, including overlapping ranges; the colour pie chart; the "show fragments" and "cluster markers" settings taking effect; place search; the "my location" flow (explanation, granted, denied, permanently denied with the offer to open settings); no memories.
+  - **Timeline:** grouping by day, search with and without matches, no memories, opening a memory, "Show in timeline" scrolling and flashing.
+  - **Add/Edit:** a new memory with every field (title, description, location, all-day and date range, date and time pickers, colour and presets, adding, removing and reordering photos and videos, and fragments with their own location, dates and colour, added, edited, reordered and removed); validation errors; the unsaved-changes prompt; Edit from a memory, also while another memory is being edited; leaving the tab with and without changes and while saving; save errors.
+  - **Location picker:** tapping the map, place search, "my location", confirm, cancel and back, reverse geocoding failing (offline).
+  - **Memory pager:** swiping between memories; Show on map, Show in timeline and Edit, both when the target tab already has a view and when it doesn't; delete then Undo; delete then dismiss; media from another device (error tile); opening the media viewer, zooming, playing a video.
+  - **Settings:** not configured, signed out, signing in and signing out; backup list and paging; manual backup; restore with its confirmation and failure; deleting a backup with confirmation; the automatic backup status line; colour presets added, edited, reordered and deleted; map preferences and the default filter; re-linking media; sending logs.
+  - **Across screens:** data changed on one tab shows on the others; a restore reaches every screen.
+  - **Edge cases:** empty database, a large database, no network, dark mode, very long texts, and anything a past BUG or UX finding fixed.
+- **Make the tests outlive the UI code:** they are the safety net for ARCH-10, so they must keep running when a screen moves to Compose. Find elements by what the user sees (text, content descriptions, test tags exposed as resource ids), for example with UI Automator, or keep all element lookups in one screen-object layer per screen so only that layer changes. Tests written straight against View ids with Espresso would have to be rewritten during the migration and would prove nothing.
+- **Changing tests during the migration:** a test may change only together with a deliberate change in behaviour or look that is objectively better than the old one (the rule in [ARCH-10](#arch-10)). The test is then updated in the same commit to describe the new behaviour, and the commit message says why. A test is never edited only because a migrated screen fails it: the screen is fixed instead.
+- **Test seams needed:** Google sign-in, Drive, the system photo picker and location are outside the app. Give them fakes the tests can inject (signed-in account, a Drive with backups, picked media URIs, a fixed location).
 
 [↑ Back to index](#index)
 
@@ -662,15 +715,18 @@ When a status changes, update the item's **Status** line, the marker in its head
 ### <a id="i18n-1"></a>⬜ I18N-1 · Medium · All UI text is hard-coded
 - **Where:** `res/values/strings.xml` holds only `app_name` and `map_id`. There are about 70 literal `android:text` values in layouts, plus Kotlin literals (Toasts, dialogs, status messages, `DateFilterOption` labels, "N Memories" in `Markerable.kt:48`, which is also not pluralized).
 - **Fix:** Move the text to `strings.xml` and `plurals`. Store `DateFilterOption` by enum name (already done) and look up labels from resources.
+- **Compose migration ([ARCH-10](#arch-10)):** the about 70 literals in layouts go away with the XML. Moving them to `strings.xml` first is not wasted, since Compose reads the same resources (`stringResource`). At the latest, each migrated screen must take all its text from resources and add no new literals.
 
 ### <a id="i18n-2"></a>⬜ I18N-2 · Low · RTL disabled
 - **Where:** `AndroidManifest.xml:29` (`supportsRtl="false"`)
 
 ### <a id="a11y-1"></a>⬜ A11Y-1 · Medium · Missing content descriptions
 - **What:** Only 6 `contentDescription`s among about 59 image and button views (thumbnails, colour swatches, play/pause, chevrons, pick-media, colour indicators).
+- **Compose migration ([ARCH-10](#arch-10)):** Compose's `Icon` and `Image` require a content description, so the migration forces this anyway. Better to do it before: the UI tests (TEST-3) find elements by content description so that they keep working after the migration, so descriptions added now (as string resources) help those tests and carry over to Compose unchanged.
 
 ### <a id="a11y-2"></a>⬜ A11Y-2 · Low · Colour is the only signal
 - **What:** Marker colour, the pie-chart stats and the timeline colour bars carry meaning only through colour. The preset outline uses fixed `Color.BLACK` / `LTGRAY` (`ColorPresetAdapter.kt:42`), which is invisible on a dark theme.
 - **Fix:** Add labels or patterns, and use theme attributes for the outlines.
+- **Compose migration ([ARCH-10](#arch-10)):** the preset outline lives in `ColorPresetAdapter`, which the migration removes; the Compose version should use the theme's outline colour. Labels or patterns for markers, the pie chart and the timeline are a design change that doesn't depend on the migration.
 
 [↑ Back to index](#index)
