@@ -58,7 +58,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="No memories yet. Add some!"
+        android:layout_marginHorizontal="24dp"
+        android:gravity="center"
+        android:text="@string/timeline_empty"
         android:textAppearance="?attr/textAppearanceTitleLarge"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:visibility="gone" />

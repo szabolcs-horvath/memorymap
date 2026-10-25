@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 23 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 50 open
+✅ 24 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 49 open
 
 **SEC — Security / privacy** · 6 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 7 of 16 fixed
+**BUG — Functional bugs** · 8 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -85,7 +85,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-10](#bug-10) | Low | Undo, then a stale `refreshDatabase()` |
 | ✅ | [BUG-11](#bug-11) | Low | Thread-unsafe shared `SimpleDateFormat` |
 | ⬜ | [BUG-12](#bug-12) | Low | Crash paths on unexpected data |
-| ⬜ | [BUG-13](#bug-13) | Low | Search with no matches says "No memories yet. Add some!" |
+| ✅ | [BUG-13](#bug-13) | Low | Search with no matches says "No memories yet. Add some!" |
 | ⬜ | [BUG-14](#bug-14) | Low | Places SDK initialized with an empty key |
 | ⬜ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ⬜ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
@@ -347,9 +347,10 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `DateFilterOption.kt:48` (`valueOf` on a stored preference), `ColorUtil.kt:53-54` (`check` on saturation and brightness from DB or backup), `PickLocationFragment.kt:71` (`!!` on the prediction), `ColorUtil.kt:103` (`error()` if no contrast colour is found)
 - **Fix:** Fall back to defaults instead of throwing in UI paths.
 
-### <a id="bug-13"></a>⬜ BUG-13 · Low · Search with no matches says "No memories yet. Add some!"
+### <a id="bug-13"></a>✅ BUG-13 · Low · Search with no matches says "No memories yet. Add some!"
 - **Where:** `TimelineFragment.kt:68-74`, `res/layout/fragment_timeline.xml:61`
 - **Fix:** Show "No memories match '<query>'" when the query is not blank.
+- **Status:** Fixed. The empty view says `No memories match "<query>"` when the search isn't blank, otherwise "No memories yet. Add some!" (both in `strings.xml`).
 
 ### <a id="bug-14"></a>⬜ BUG-14 · Low · Places SDK initialized with an empty key
 - **Where:** `MemoryMapApplication.kt:31-42`

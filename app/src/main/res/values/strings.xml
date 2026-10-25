@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">Memory Map</string>
     <string name="map_id">faa667fb8a498f042bacb4c5</string>
+    <string name="timeline_empty">No memories yet. Add some!</string>
+    <string name="timeline_no_matches">No memories match \"%1$s\"</string>
     <string name="restore_error_backup_too_new">This backup was made with a newer version of Memory Map. Update the app, then restore it again.</string>
     <string name="restore_media_access_title">Access to your photos</string>
     <string name="restore_media_access_message">After the restore, Memory Map links your memories to the photos and videos on this phone. Choose \"Allow all\" so it can find all of them.\n\nIf you select only some photos, or don\'t allow access, the restore still works, and you can allow more access afterwards to link the rest.</string>
