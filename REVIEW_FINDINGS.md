@@ -40,9 +40,9 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 29 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 44 open
+✅ 30 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 43 open
 
-**SEC — Security / privacy** · 6 of 8 fixed
+**SEC — Security / privacy** · 7 of 8 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -50,7 +50,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [SEC-2](#sec-2) | High | Debug builds are signed with the release key |
 | ✅ | [SEC-3](#sec-3) | Medium | Zip-slip check is a plain prefix match |
 | ✅ | [SEC-4](#sec-4) | Medium | Restored database is not validated |
-| ⬜ | [SEC-5](#sec-5) | Low | Unrestricted JitPack repository |
+| ✅ | [SEC-5](#sec-5) | Low | Unrestricted JitPack repository |
 | ✅ | [SEC-6](#sec-6) | Low | FileProvider exposes the whole cache directory |
 | ✅ | [SEC-7](#sec-7) | Low | Auto Backup enabled with empty rules |
 | ⬜ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
@@ -194,10 +194,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Open the extracted file read-only, check `user_version <= DB_VERSION` and `integrity_check == ok`, then swap it in. See also DATA-1 and DATA-5.
 - **Status:** Fixed. Restore requires `database.sqlite`, then opens the extracted copy with `MemoryMapDatabase.withCheckedCopy`: the app's own Room configuration (migrations, schema validation), `PRAGMA integrity_check`, and a guard that rejects the file if SQLite had to create it (Android deletes an unopenable file and SQLite then creates an empty one, which would otherwise have wiped the user's data on restore). Covered by `RestoreCompatibilityTest`.
 
-### <a id="sec-5"></a>⬜ SEC-5 · Low · Unrestricted JitPack repository
+### <a id="sec-5"></a>✅ SEC-5 · Low · Unrestricted JitPack repository
 - **Where:** `settings.gradle.kts:25-27`
 - **What:** JitPack is added for every dependency. Any artifact that is not on Google or Maven Central can be resolved from it (dependency-confusion risk). It is only needed for `com.github.chrisbanes:PhotoView`.
 - **Fix:** `maven("https://jitpack.io") { content { includeGroup("com.github.chrisbanes") } }`.
+- **Status:** Fixed. The JitPack repository in `settings.gradle.kts` only serves the `com.github.chrisbanes` group (PhotoView).
 
 ### <a id="sec-6"></a>✅ SEC-6 · Low · FileProvider exposes the whole cache directory
 - **Where:** `res/xml/file_paths.xml:3`
