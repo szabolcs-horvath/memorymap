@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.location.Address
 import android.location.Geocoder
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -38,7 +37,6 @@ import com.szabolcshorvath.memorymap.util.MyLocationAction
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.IOException
 import java.util.Locale
 
 class PickLocationFragment : Fragment(), OnMapReadyCallback {
@@ -246,33 +244,25 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val geocoder = Geocoder(context, Locale.getDefault())
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    geocoder.getFromLocation(
-                        latLng.latitude,
-                        latLng.longitude,
-                        1,
-                        object : Geocoder.GeocodeListener {
-                            override fun onGeocode(addresses: MutableList<Address>) {
-                                showResult(addresses.firstOrNull())
-                            }
-
-                            // Offline or on a service error only this is called, never onGeocode.
-                            override fun onError(errorMessage: String?) {
-                                Log.e(TAG, "Reverse geocoding failed for $latLng: $errorMessage")
-                                showResult(null)
-                            }
+                Geocoder(context, Locale.getDefault()).getFromLocation(
+                    latLng.latitude,
+                    latLng.longitude,
+                    1,
+                    object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: MutableList<Address>) {
+                            showResult(addresses.firstOrNull())
                         }
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    showResult(geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)?.firstOrNull())
-                }
+
+                        // Offline or on a service error only this is called, never onGeocode.
+                        override fun onError(errorMessage: String?) {
+                            Log.e(TAG, "Reverse geocoding failed for $latLng: $errorMessage")
+                            showResult(null)
+                        }
+                    }
+                )
             } catch (e: Exception) {
                 when (e) {
-                    is IllegalArgumentException,
-                    is IOException -> Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
-
+                    is IllegalArgumentException -> Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
                     else -> Log.e(TAG, "Reverse geocoding failed for $latLng", e)
                 }
                 showResult(null)

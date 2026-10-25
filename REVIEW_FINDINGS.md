@@ -55,7 +55,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [SEC-7](#sec-7) | Low | Auto Backup enabled with empty rules |
 | ✅ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
 
-**DATA — Data loss / integrity** · 7 of 9 fixed
+**DATA — Data loss / integrity** · 8 of 9 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -67,7 +67,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-6](#data-6) | Medium | Restore closes the database under live users |
 | ✅ | [DATA-7](#data-7) | Medium | Deleting a memory never releases URI grants and never backs up |
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
-| ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
+| ✅ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
 **BUG — Functional bugs** · 16 of 16 fixed
 
@@ -210,7 +210,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `AndroidManifest.xml:23-25`, `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`
 - **What:** `allowBackup="true"` with template rule files. The live WAL-mode database, and the DataStore with the user's email, go to Google's Auto Backup and device transfer. This runs alongside the app's own Drive backup and can restore a database whose URIs belong to another phone.
 - **Fix:** Decide explicitly. Either exclude the database (the app has its own backup), or keep it and document the behaviour.
-- **Status:** Fixed (decision: exclude). `data_extraction_rules.xml` (cloud backup and device transfer) and `backup_rules.xml` (Android 11 and older) exclude the database and the DataStore. Memories come back only through the app's Drive backups. The DataStore is excluded too, so a new phone doesn't start automatic Drive backups of an empty database before the user restores one.
+- **Status:** Fixed (decision: exclude). `data_extraction_rules.xml` (cloud backup and device transfer) and `backup_rules.xml` (Android 11 and older) exclude the database and the DataStore. Memories come back only through the app's Drive backups. The DataStore is excluded too, so a new phone doesn't start automatic Drive backups of an empty database before the user restores one. Since `minSdk` 34, only `data_extraction_rules.xml` is needed; `backup_rules.xml` was removed.
 
 ### <a id="sec-8"></a>✅ SEC-8 · Low · Missing OAuth client ID becomes the string `"null"`
 - **Where:** `app/build.gradle.kts:41-42`
@@ -272,10 +272,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Log or report the count, release the grants, and renumber `order`.
 - **Status:** Fixed. `deduplicateMediaItems` logs the removed ids, reports the count in the re-link progress message, deletes the duplicates and closes the `order` gaps in one transaction (`MemoryGroupDao.deleteDuplicateMedia`, which writes only the `order` column), then releases grants no other item uses. A memory with any unordered item is not renumbered, so its displayed order can't change. Covered by `LocalMediaUtilTest` and `MemoryGroupDaoTest`.
 
-### <a id="data-9"></a>⬜ DATA-9 · Low · Early migrations cannot run below Android 14
+### <a id="data-9"></a>✅ DATA-9 · Low · Early migrations cannot run below Android 14
 - **Where:** `MemoryMapDatabase.kt:54-80`
 - **What:** `ALTER TABLE … DROP COLUMN` needs SQLite 3.35+ (API 34+), but `minSdk = 27`. Migrations 1→2 and 4→5 would crash on older devices. This only matters for very old installed databases: backups were introduced at schema version 6 (January 4, 2026), so no backup goes through these migrations.
 - **Fix:** Rewrite them as create-new-table, copy, drop, rename, or drop support for schema versions below 5.
+- **Status:** Fixed differently. `minSdk` is now 34 (every user has Android 14 or newer), and Android 14 ships SQLite 3.39, so the migrations run unchanged on every supported device.
 
 [↑ Back to index](#index)
 

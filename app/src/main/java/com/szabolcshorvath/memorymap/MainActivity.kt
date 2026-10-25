@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.OnBackPressedCallback
@@ -225,12 +226,7 @@ class MainActivity :
         trace("main_activity_check_app_status") {
             try {
                 val currentVersion =
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                        packageManager.getPackageInfo(packageName, 0).longVersionCode
-                    } else {
-                        @Suppress("DEPRECATION")
-                        packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
-                    }
+                    packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).longVersionCode
 
                 val prefs = dataStore.data.first()
                 val isFirstRun = prefs[PreferencesKeys.IS_FIRST_RUN] ?: true
