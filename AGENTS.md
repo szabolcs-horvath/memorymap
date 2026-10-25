@@ -26,7 +26,8 @@ Local setup needs files that are **not** in git:
 - Without `OAUTH_WEB_CLIENT_ID` the build still succeeds, and sign-in says it isn't set up.
 - JitPack (`settings.gradle.kts`) only serves the `com.github.chrisbanes` group (PhotoView). A new JitPack dependency needs its group added there.
 - Robolectric-based tests (`ColorUtilTest`, `MemoryGroupDaoTest`) run locally with Robolectric 4.17; `BUILD-4` (they could not start with `targetSdk 37`) looks resolved.
-- CI does **not** run unit tests, and Detekt in CI never fails the build. Run both locally.
+- CI runs the unit tests and lint (`tests.yml`, JDK 21, which Robolectric needs for Android 15 and newer) and Detekt (`detekt.yml`) on every push and PR to master, and each fails the check. Run `./gradlew testDebugUnitTest detekt lintDebug` locally before pushing.
+- Detekt only reports issues that aren't in `config/detekt/baseline.xml`. Fix new issues instead of adding them to the baseline; regenerate it (`./gradlew detektBaseline`) only after fixing listed ones, so they don't come back unnoticed.
 
 ## Architecture
 
@@ -61,7 +62,7 @@ Local setup needs files that are **not** in git:
 
 ## Conventions
 
-- Run `./gradlew detekt` before committing. `MagicNumber` is active, which is why numbers live in named `private const val`s in a `companion object`.
+- Run `./gradlew detekt` before committing (CI fails on new issues). `MagicNumber` is active, which is why numbers live in named `private const val`s in a `companion object`.
 - In async callbacks use `val binding = _binding ?: return`, and `viewLifecycleOwnerLiveData.value ?: return` instead of `viewLifecycleOwner` (that getter throws when there is no view).
 - Register activity result launchers as **property initializers**, never in `onCreateView`: views are recreated on every tab switch, so callbacks would pile up.
 - Firebase Performance is used heavily: `@AddTrace` annotations, `PerfUtil.trace("name") { }`, `RoomDatabase.withTransaction("name") { }` (the traced overload in `PerfUtil`). Trace names are `snake_case` (`<class>_<method>`). Don't put `@AddTrace` on hot or per-item functions (helpers called per marker, per pair or per media item): each call starts a trace.
