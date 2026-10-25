@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.ManagedVirtualDevice
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.FileInputStream
 import java.util.Properties
@@ -33,7 +34,11 @@ kotlin {
             versionCode = 38
             versionName = "minSdk 34"
 
-            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            // Installs fakes for sign-in and Drive before the app starts (androidTest).
+            testInstrumentationRunner = "com.szabolcshorvath.memorymap.MemoryMapTestRunner"
+            // Every UI test starts from a fresh install: no memories, preferences or files from an earlier test.
+            // This also wipes the debug app's data on the device the tests run on.
+            testInstrumentationRunnerArguments["clearPackageData"] = "true"
 
             // Pass only the values the app needs: local.properties also holds the signing passwords.
             manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
@@ -96,6 +101,25 @@ kotlin {
         }
 
         testOptions {
+            // UI tests: each test runs in its own app process, so a crash fails only that test.
+            execution = "ANDROIDX_TEST_ORCHESTRATOR"
+            animationsDisabled = true
+
+            // The emulators CI runs the UI tests on: ./gradlew pixel6Api35DebugAndroidTest pixel6Api37DebugAndroidTest
+            // 37 is the targetSdk. 35 stands in for minSdk 34: every API 34 emulator image ships Google Play services
+            // 23.18 (2023), whose map renderer crashes on the app's advanced markers, and can't update it.
+            managedDevices {
+                allDevices {
+                    for (sdk in listOf(35, 37)) {
+                        create<ManagedVirtualDevice>("pixel6Api$sdk") {
+                            device = "Pixel 6"
+                            sdkVersion = sdk
+                            systemImageSource = "google" // Google APIs: the map needs Google Play services.
+                        }
+                    }
+                }
+            }
+
             unitTests {
                 isIncludeAndroidResources = true
                 all {
@@ -169,7 +193,10 @@ dependencies {
     testImplementation(libs.robolectric)
     testRuntimeOnly(libs.junit.platform.launcher)
     androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.test.core.ktx)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.uiautomator)
+    androidTestUtil(libs.androidx.test.orchestrator)
 
     // Debug tools
     debugImplementation(libs.leakcanary)

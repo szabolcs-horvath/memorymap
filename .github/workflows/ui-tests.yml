@@ -1,0 +1,82 @@
+name: UI tests
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  ui-tests:
+    # Two jobs that run at the same time: API 37 is the targetSdk, and API 35 stands in for minSdk 34, whose emulator
+    # images all ship a Google Play services (23.18) too old to draw the app's map markers (see app/build.gradle.kts).
+    name: UI tests on Android API ${{ matrix.sdk }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sdk: 35
+            image: android-35
+          - sdk: 37
+            image: android-37.0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # The emulator needs hardware acceleration (KVM), which Linux runners have but don't open to the runner user.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # The emulator image is large; keep it between runs.
+      - name: Cache the emulator image
+        uses: actions/cache@v6
+        with:
+          path: /usr/local/lib/android/sdk/system-images/${{ matrix.image }}/google_apis
+          key: emulator-image-${{ matrix.image }}-google_apis-x86_64
+
+      # The map needs the Maps key (the location picker tests tap it); sign-in and Drive are faked in the tests.
+      - name: Create local.properties file
+        run: |
+          cat > local.properties <<'PROPS'
+          MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}
+          PROPS
+
+      - name: Create google-services.json
+        run: |
+          cat > app/google-services.json <<'JSON'
+          ${{ secrets.GOOGLE_SERVICES_JSON }}
+          JSON
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run UI tests
+        run: >-
+          ./gradlew pixel6Api${{ matrix.sdk }}DebugAndroidTest
+          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-test-reports-api-${{ matrix.sdk }}
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+          retention-days: 14

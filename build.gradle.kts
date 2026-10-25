@@ -22,6 +22,10 @@ subprojects {
         allRules = false
         config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
         baseline = file("${rootProject.projectDir}/config/detekt/baseline.xml")
+        // The default sources plus the UI tests.
+        source.setFrom(
+            listOf("main", "test", "androidTest").flatMap { set -> listOf("src/$set/java", "src/$set/kotlin") }
+        )
     }
 
     dependencies {

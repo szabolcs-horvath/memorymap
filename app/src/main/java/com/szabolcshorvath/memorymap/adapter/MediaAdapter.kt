@@ -11,6 +11,7 @@ import coil3.request.crossfade
 import coil3.size.Scale
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaThumbnailBinding
@@ -36,6 +37,9 @@ class MediaAdapter(
     ) {
         fun bind(mediaItem: MediaItem) {
             val isFromOtherDevice = currentDeviceId != null && mediaItem.deviceId != currentDeviceId
+            binding.root.contentDescription = binding.root.context.getString(
+                if (mediaItem.type == MediaType.VIDEO) R.string.open_video else R.string.open_photo
+            )
 
             if (isFromOtherDevice) {
                 // Cancel a load still running for the item this view showed before.
