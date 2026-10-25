@@ -33,7 +33,6 @@ import com.google.android.material.timepicker.TimeFormat
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.adapter.SelectedMediaAdapter
-import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
@@ -80,7 +79,6 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private var addMemoryGroupListener: AddMemoryGroupListener? = null
-    private lateinit var backupManager: BackupManager
     private lateinit var mediaAdapter: SelectedMediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentEditAdapter
     private lateinit var colorPresetAdapter: ColorPresetAdapter
@@ -155,7 +153,6 @@ class AddMemoryGroupFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val viewLifecycleOwner = viewLifecycleOwner
         val context = context ?: return
-        backupManager = BackupManager(context)
 
         setupRecyclerViews()
 
@@ -251,7 +248,7 @@ class AddMemoryGroupFragment : Fragment() {
                 context.let { Toast.makeText(it, e.message, Toast.LENGTH_SHORT).show() }
                 return@setOnClickListener
             }
-            viewModel.saveMemoryGroup(commonViewModel.getDb(), backupManager)
+            viewModel.saveMemoryGroup(commonViewModel.getDb())
         }
 
         viewLifecycleOwner.lifecycleScope.launch {

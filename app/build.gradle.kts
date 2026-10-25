@@ -135,6 +135,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // Background work (automatic backups)
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Media
     implementation(libs.coil)
     implementation(libs.coil.video)

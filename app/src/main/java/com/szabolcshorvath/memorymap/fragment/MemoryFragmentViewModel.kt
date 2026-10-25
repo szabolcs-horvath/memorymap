@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.CommonRepository
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
@@ -31,25 +31,25 @@ class MemoryFragmentViewModel(application: Application, savedStateHandle: SavedS
     private var mediaOrderJob: Job? = null
     private var fragmentsOrderJob: Job? = null
 
-    fun saveNewMediaOrder(items: List<MediaItem>, database: MemoryMapDatabase, backupManager: BackupManager) {
+    fun saveNewMediaOrder(items: List<MediaItem>, database: MemoryMapDatabase) {
         mediaOrderJob?.cancel()
         val updatedItems = items.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
         mediaOrderJob = viewModelScope.launch(Dispatchers.IO) {
             database.memoryGroupDao().updateMediaItems(updatedItems)
-            backupManager.triggerAutomaticBackup(database)
+            AutomaticBackups.schedule(getApplication())
         }
     }
 
-    fun saveNewFragmentsOrder(fragments: List<MemoryFragmentEntity>, database: MemoryMapDatabase, backupManager: BackupManager) {
+    fun saveNewFragmentsOrder(fragments: List<MemoryFragmentEntity>, database: MemoryMapDatabase) {
         fragmentsOrderJob?.cancel()
         val updatedFragments = fragments.mapIndexed { index, item ->
             item.copy(order = index + 1)
         }
         fragmentsOrderJob = viewModelScope.launch(Dispatchers.IO) {
             database.memoryGroupDao().updateFragments(updatedFragments)
-            backupManager.triggerAutomaticBackup(database)
+            AutomaticBackups.schedule(getApplication())
         }
     }
 

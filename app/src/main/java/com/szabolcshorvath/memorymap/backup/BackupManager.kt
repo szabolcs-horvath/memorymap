@@ -22,8 +22,6 @@ import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -39,8 +37,6 @@ import com.google.api.services.drive.model.File as DriveFile
 
 class BackupManager(private val context: Context) {
 
-    enum class BackupEvent { STARTED, FINISHED }
-
     private val tempFiles = BackupTempFiles(context.cacheDir)
 
     fun getDriveService(credential: GoogleAccountCredential): Drive =
@@ -50,24 +46,19 @@ class BackupManager(private val context: Context) {
             credential
         ).setApplicationName("Memory Map").build()
 
-    suspend fun triggerAutomaticBackup(db: MemoryMapDatabase) {
-        withContext(Dispatchers.IO) {
-            trace("backup_manager_trigger_automatic_backup") {
-                try {
-                    val email = context.dataStore.data.map { it[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull() ?: return@withContext
-                    _backupEvents.emit(BackupEvent.STARTED)
-                    val googleAuthManager = GoogleAuthManager(context)
-                    val scopes = listOf(DriveScopes.DRIVE_FILE)
-                    val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                    performBackup(credential, db, isAutomatic = true) {
-                        Log.d(TAG, "Automatic backup progress: $it")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to trigger automatic backup", e)
-                } finally {
-                    _backupEvents.emit(BackupEvent.FINISHED)
-                }
-            }
+    /**
+     * Backs up if a user is signed in. Only [AutomaticBackupWorker] calls this; everything else
+     * schedules a backup with [AutomaticBackups.schedule].
+     */
+    suspend fun runAutomaticBackup(db: MemoryMapDatabase): AutomaticBackupOutcome = withContext(Dispatchers.IO) {
+        trace("backup_manager_run_automatic_backup") {
+            val email = context.dataStore.data.map { it[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull()
+                ?: return@trace AutomaticBackupOutcome.NOT_SIGNED_IN
+            val credential = GoogleAuthManager(context).getGoogleAccountCredential(email, listOf(DriveScopes.DRIVE_FILE))
+            performBackup(credential, db, isAutomatic = true) { Log.d(TAG, "Automatic backup progress: $it") }.fold(
+                onSuccess = { AutomaticBackupOutcome.SUCCEEDED },
+                onFailure = { e -> if (AutomaticBackups.isRetryable(e)) AutomaticBackupOutcome.RETRY else AutomaticBackupOutcome.FAILED }
+            )
         }
     }
 
@@ -377,9 +368,6 @@ class BackupManager(private val context: Context) {
 
         /** Process-wide: BackupManager is created per caller, but only one backup or restore may run at a time. */
         private val backupLock = Mutex()
-
-        private val _backupEvents = MutableSharedFlow<BackupEvent>(extraBufferCapacity = 1)
-        val backupEvents = _backupEvents.asSharedFlow()
 
         /**
          * Collects every page of a paged Drive list call. [fetchPage] gets the page token (null for the
