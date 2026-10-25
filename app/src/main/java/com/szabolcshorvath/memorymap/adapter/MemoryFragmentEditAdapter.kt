@@ -10,20 +10,13 @@ import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.listitem.ListItemViewHolder
-import com.google.android.material.timepicker.MaterialTimePicker
-import com.google.android.material.timepicker.TimeFormat
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryGroupListener
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
-import java.time.Instant
-import java.time.LocalTime
-import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.Locale
 import java.util.UUID
@@ -37,6 +30,7 @@ class MemoryFragmentEditAdapter(
     private val updateFragmentsUI: () -> Unit
 ) : ListAdapter<MemoryFragmentEditAdapter.FragmentEditState, MemoryFragmentEditAdapter.MemoryFragmentEditViewHolder>(FragmentEditState.FragmentDiffCallback()) {
     private var hsvPresets: List<HSVPreset> = emptyList()
+    private val pickers = FragmentEditPickers(fragments, getChildFragmentManager, updateFragmentsUI)
 
     data class FragmentEditState(
         val id: Int = 0,
@@ -275,19 +269,19 @@ class MemoryFragmentEditAdapter(
             }
         }
         binding.btStartDate.setOnClickListener {
-            pickFragmentDate(holder.bindingAdapterPosition, true)
+            pickers.pickDate(holder.bindingAdapterPosition, true)
         }
         binding.btStartTime.setOnClickListener {
-            pickFragmentTime(holder.bindingAdapterPosition, true)
+            pickers.pickTime(holder.bindingAdapterPosition, true)
         }
         binding.btEndDate.setOnClickListener {
-            pickFragmentDate(holder.bindingAdapterPosition, false)
+            pickers.pickDate(holder.bindingAdapterPosition, false)
         }
         binding.btEndTime.setOnClickListener {
-            pickFragmentTime(holder.bindingAdapterPosition, false)
+            pickers.pickTime(holder.bindingAdapterPosition, false)
         }
         binding.btDateRange.setOnClickListener {
-            pickFragmentDateRange(holder.bindingAdapterPosition)
+            pickers.pickDateRange(holder.bindingAdapterPosition)
         }
     }
 
@@ -483,124 +477,10 @@ class MemoryFragmentEditAdapter(
         }
     }
 
-    private fun pickFragmentDateRange(index: Int) {
-        if (index == RecyclerView.NO_POSITION) return
-        // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
-        // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
-        val item = fragments[index]
-        val builder = MaterialDatePicker.Builder.dateRangePicker()
-            .setTitleText("Select Date Range")
-            .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
-        val start = item.startDate ?: ZonedDateTime.now()
-        val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
-
-        // MaterialDatePicker expects UTC midnight millis
-        val startMillis = start.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        val endMillis = end.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        val selection = androidx.core.util.Pair(startMillis, endMillis)
-
-        builder.setSelection(selection)
-        val picker = builder.build()
-        picker.addOnPositiveButtonClickListener { range ->
-            if (range.first != null && range.second != null) {
-                // MaterialDatePicker returns UTC midnight millis.
-                // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
-                val newStartDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneOffset.UTC).toLocalDate()
-                val newEndDate = Instant.ofEpochMilli(range.second!!).atZone(ZoneOffset.UTC).toLocalDate()
-
-                // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
-                // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
-                val current = fragments[index]
-                fragments[index] = current.copy(
-                    startDate = newStartDate.atStartOfDay(ZoneId.systemDefault()),
-                    endDate = newEndDate.atStartOfDay(ZoneId.systemDefault())
-                )
-                updateFragmentsUI()
-            }
-        }
-        picker.show(getChildFragmentManager(), DATE_RANGE_PICKER_TAG)
-    }
-
-    private fun pickFragmentDate(index: Int, isStart: Boolean) {
-        if (index == RecyclerView.NO_POSITION) return
-        // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
-        // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
-        val item = fragments[index]
-        val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
-
-        val builder = MaterialDatePicker.Builder.datePicker()
-            .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
-            .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
-
-        val picker = builder.build()
-        picker.addOnPositiveButtonClickListener { selection ->
-            // MaterialDatePicker returns UTC midnight millis.
-            // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
-            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneOffset.UTC).toLocalDate()
-
-            // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
-            // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
-            val currentItem = fragments[index]
-            if (isStart) {
-                val newStart = newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
-                var newEnd = currentItem.endDate
-                if (newEnd != null && newEnd.isBefore(newStart)) newEnd = newStart.plusHours(1)
-                fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
-            } else {
-                val newEnd = newDate.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault())
-                var newStart = currentItem.startDate
-                if (newStart != null && newEnd.isBefore(newStart)) {
-                    newStart = newEnd.minusHours(1)
-                }
-                fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
-            }
-            updateFragmentsUI()
-        }
-        picker.show(getChildFragmentManager(), DATE_PICKER_TAG)
-    }
-
-    private fun pickFragmentTime(index: Int, isStart: Boolean) {
-        if (index == RecyclerView.NO_POSITION) return
-        // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
-        // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
-        val item = fragments[index]
-        val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
-
-        val picker = MaterialTimePicker.Builder()
-            .setTimeFormat(TimeFormat.CLOCK_24H)
-            .setHour(current.hour)
-            .setMinute(current.minute)
-            .setTitleText(if (isStart) "Select Start Time" else "Select End Time")
-            .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
-            .build()
-
-        picker.addOnPositiveButtonClickListener {
-            val newTime = LocalTime.of(picker.hour, picker.minute)
-            // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
-            // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
-            val currentItem = fragments[index]
-            if (isStart) {
-                val newStart = current.with(newTime)
-                var newEnd = currentItem.endDate
-                if (newEnd != null && newEnd.isBefore(newStart)) newEnd = newStart.plusHours(1)
-                fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
-            } else {
-                val newEnd = current.with(newTime)
-                var newStart = currentItem.startDate
-                if (newStart != null && newEnd.isBefore(newStart)) {
-                    newStart = newEnd.minusHours(1)
-                }
-                fragments[index] = currentItem.copy(startDate = newStart, endDate = newEnd)
-            }
-            updateFragmentsUI()
-        }
-        picker.show(getChildFragmentManager(), TIME_PICKER_TAG)
-    }
+    /** Attaches the listeners of fragment pickers that are still open after the screen's view was recreated. */
+    fun reattachPickerListeners() = pickers.reattachListeners()
 
     companion object {
-        private const val DATE_RANGE_PICKER_TAG = "DATE_RANGE_PICKER"
-        private const val DATE_PICKER_TAG = "DATE_PICKER"
-        private const val TIME_PICKER_TAG = "TIME_PICKER"
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
         private const val COLOR_CHANGE_ANIMATION_DURATION = 300L

@@ -45,6 +45,9 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
+import com.szabolcshorvath.memorymap.util.findDatePicker
+import com.szabolcshorvath.memorymap.util.findTimePicker
+import com.szabolcshorvath.memorymap.util.setOnPicked
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -154,6 +157,8 @@ class AddMemoryGroupFragment : Fragment() {
         val context = context ?: return
 
         setupRecyclerViews()
+        reattachPickerListeners()
+        fragmentsAdapter.reattachPickerListeners()
 
         binding.titleInput.doAfterTextChanged { viewModel.title = it?.toString()?.ifBlank { null } }
         binding.descriptionInput.doAfterTextChanged { viewModel.description = it?.toString()?.ifBlank { null } }
@@ -698,18 +703,7 @@ class AddMemoryGroupFragment : Fragment() {
         builder.setSelection(selection)
 
         val picker = builder.build()
-        picker.addOnPositiveButtonClickListener { range ->
-            if (range.first != null && range.second != null) {
-                // MaterialDatePicker returns UTC midnight millis.
-                // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
-                val newStartDate = Instant.ofEpochMilli(range.first!!).atZone(ZoneOffset.UTC).toLocalDate()
-                val newEndDate = Instant.ofEpochMilli(range.second!!).atZone(ZoneOffset.UTC).toLocalDate()
-
-                viewModel.startDateTime = newStartDate.atStartOfDay(ZoneId.systemDefault())
-                viewModel.endDateTime = newEndDate.atStartOfDay(ZoneId.systemDefault())
-                updateDateTimeButtons()
-            }
-        }
+        picker.setOnPicked(::applyPickedDateRange)
         picker.show(childFragmentManager, DATE_RANGE_PICKER_TAG)
     }
 
@@ -720,20 +714,8 @@ class AddMemoryGroupFragment : Fragment() {
             .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
 
         val picker = builder.build()
-        picker.addOnPositiveButtonClickListener { selection ->
-            // MaterialDatePicker returns UTC midnight millis.
-            // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
-            val newDate = Instant.ofEpochMilli(selection).atZone(ZoneOffset.UTC).toLocalDate()
-            if (isStart) {
-                viewModel.startDateTime = newDate.atTime(viewModel.startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
-                if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.endDateTime = viewModel.startDateTime.plusHours(1)
-            } else {
-                viewModel.endDateTime = newDate.atTime(viewModel.endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
-                if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.startDateTime = viewModel.endDateTime.minusHours(1)
-            }
-            updateDateTimeButtons()
-        }
-        picker.show(childFragmentManager, DATE_PICKER_TAG)
+        picker.setOnPicked { applyPickedDate(it, isStart) }
+        picker.show(childFragmentManager, if (isStart) START_DATE_PICKER_TAG else END_DATE_PICKER_TAG)
     }
 
     private fun pickTime(isStart: Boolean) {
@@ -746,18 +728,57 @@ class AddMemoryGroupFragment : Fragment() {
             .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
             .build()
 
-        picker.addOnPositiveButtonClickListener {
-            val newTime = LocalTime.of(picker.hour, picker.minute)
-            if (isStart) {
-                viewModel.startDateTime = viewModel.startDateTime.with(newTime)
-                if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.endDateTime = viewModel.startDateTime.plusHours(1)
-            } else {
-                viewModel.endDateTime = viewModel.endDateTime.with(newTime)
-                if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.startDateTime = viewModel.endDateTime.minusHours(1)
-            }
-            updateDateTimeButtons()
+        picker.setOnPicked { applyPickedTime(it, isStart) }
+        picker.show(childFragmentManager, if (isStart) START_TIME_PICKER_TAG else END_TIME_PICKER_TAG)
+    }
+
+    /** Attaches the listeners of the memory's date and time pickers that are still open after the view was recreated. */
+    private fun reattachPickerListeners() {
+        val manager = childFragmentManager
+        manager.findDatePicker<androidx.core.util.Pair<Long, Long>>(DATE_RANGE_PICKER_TAG)
+            ?.setOnPicked(::applyPickedDateRange)
+        manager.findDatePicker<Long>(START_DATE_PICKER_TAG)?.setOnPicked { applyPickedDate(it, isStart = true) }
+        manager.findDatePicker<Long>(END_DATE_PICKER_TAG)?.setOnPicked { applyPickedDate(it, isStart = false) }
+        manager.findTimePicker(START_TIME_PICKER_TAG)?.setOnPicked { applyPickedTime(it, isStart = true) }
+        manager.findTimePicker(END_TIME_PICKER_TAG)?.setOnPicked { applyPickedTime(it, isStart = false) }
+    }
+
+    private fun applyPickedDateRange(range: androidx.core.util.Pair<Long, Long>) {
+        val first = range.first ?: return
+        val second = range.second ?: return
+        // MaterialDatePicker returns UTC midnight millis.
+        // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
+        val newStartDate = Instant.ofEpochMilli(first).atZone(ZoneOffset.UTC).toLocalDate()
+        val newEndDate = Instant.ofEpochMilli(second).atZone(ZoneOffset.UTC).toLocalDate()
+
+        viewModel.startDateTime = newStartDate.atStartOfDay(ZoneId.systemDefault())
+        viewModel.endDateTime = newEndDate.atStartOfDay(ZoneId.systemDefault())
+        updateDateTimeButtons()
+    }
+
+    private fun applyPickedDate(selection: Long, isStart: Boolean) {
+        // MaterialDatePicker returns UTC midnight millis.
+        // We convert to LocalDate using UTC to avoid off-by-one errors in some timezones.
+        val newDate = Instant.ofEpochMilli(selection).atZone(ZoneOffset.UTC).toLocalDate()
+        if (isStart) {
+            viewModel.startDateTime = newDate.atTime(viewModel.startDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+            if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.endDateTime = viewModel.startDateTime.plusHours(1)
+        } else {
+            viewModel.endDateTime = newDate.atTime(viewModel.endDateTime.toLocalTime()).atZone(ZoneId.systemDefault())
+            if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.startDateTime = viewModel.endDateTime.minusHours(1)
         }
-        picker.show(childFragmentManager, TIME_PICKER_TAG)
+        updateDateTimeButtons()
+    }
+
+    private fun applyPickedTime(newTime: LocalTime, isStart: Boolean) {
+        if (isStart) {
+            viewModel.startDateTime = viewModel.startDateTime.with(newTime)
+            if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.endDateTime = viewModel.startDateTime.plusHours(1)
+        } else {
+            viewModel.endDateTime = viewModel.endDateTime.with(newTime)
+            if (viewModel.endDateTime.isBefore(viewModel.startDateTime)) viewModel.startDateTime = viewModel.endDateTime.minusHours(1)
+        }
+        updateDateTimeButtons()
     }
 
     override fun onDestroyView() {
@@ -767,9 +788,13 @@ class AddMemoryGroupFragment : Fragment() {
 
     companion object {
         const val TAG = "AddMemoryGroupFragment"
-        private const val DATE_RANGE_PICKER_TAG = "DATE_RANGE_PICKER"
-        private const val DATE_PICKER_TAG = "DATE_PICKER"
-        private const val TIME_PICKER_TAG = "TIME_PICKER"
+
+        // Distinct from the tags of the fragment pickers (MemoryFragmentEditAdapter), which share childFragmentManager.
+        private const val DATE_RANGE_PICKER_TAG = "MEMORY_DATE_RANGE_PICKER"
+        private const val START_DATE_PICKER_TAG = "MEMORY_START_DATE_PICKER"
+        private const val END_DATE_PICKER_TAG = "MEMORY_END_DATE_PICKER"
+        private const val START_TIME_PICKER_TAG = "MEMORY_START_TIME_PICKER"
+        private const val END_TIME_PICKER_TAG = "MEMORY_END_TIME_PICKER"
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
         private const val COLOR_CHANGE_ANIMATION_DURATION = 300L
