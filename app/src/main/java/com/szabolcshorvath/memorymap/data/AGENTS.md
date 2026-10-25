@@ -18,5 +18,6 @@ Other data notes:
 - Dates are `ZonedDateTime`, stored as ISO strings (`Converters`). All-day memories use the start of the day through `LocalTime.MAX` in the system zone.
 - `order` columns (media, fragments, presets) are nullable. Sort by `order`, then fall back to the date (the comparators in `fragment/MemoryFragment.kt` and `fragment/AddMemoryGroupFragment.kt`).
 - `Markerable` is the shared interface of groups and fragments for the map, overlay and clustering (`MarkerableCluster`, `MarkerableDiffCallback`).
+- `MarkerClustering` groups markers at the same spot into one pin before the map's own zoom-based clustering: a marker joins the nearest pin whose anchor (its first marker) is under 20 m away, or 100 m for the same place name and address. It never chains through other members, and a grid limits each marker to the anchors nearby. The pin is drawn at the centroid (`MarkerableCluster.position`).
 - Editing a memory **deletes and re-inserts** its media and fragment rows (their ids change on every save).
 - DAO calls are not traced one by one (for a Flow-returning call, a trace would only measure creating the Flow, and Firebase rate-limits custom traces). Trace the operation around them instead: `PerfUtil.trace` or the traced `withTransaction`.

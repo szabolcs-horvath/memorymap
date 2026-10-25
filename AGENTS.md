@@ -87,4 +87,4 @@ Local setup needs files that are **not** in git:
 - Robolectric tests use `@ExtendWith(RobolectricExtension::class)` (JUnit 5).
 - DAO tests run on Room under Robolectric (`MemoryGroupDaoTest`, `RestoreCompatibilityTest`) and get the DAOs from the database, as the app does (`db.memoryGroupDao()`).
 - `RestoreCompatibilityTest` builds a database for every schema version a backup can have (6 to `DB_VERSION`) from `app/schemas` (`SchemaDatabases`) and runs it through the restore steps. A new `DB_VERSION` is picked up automatically; it needs the exported schema JSON. Keep this test passing: it is what guarantees old backups stay restorable.
-- No dedicated per-migration, hashing, clustering or UI tests yet (`TEST-1`, `TEST-2`, `TEST-3`).
+- No dedicated per-migration, hashing or UI tests yet (`TEST-1`, `TEST-2`, `TEST-3`).
