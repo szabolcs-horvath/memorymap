@@ -5,6 +5,7 @@ import android.content.Context
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.szabolcshorvath.memorymap.R
@@ -14,6 +15,7 @@ import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
+import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
@@ -76,6 +78,9 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     /** Whether the Add screen is shown (not hidden behind another tab); kept up to date by the fragment. */
     var isScreenShown = true
+
+    /** The form's content when it was last cleared or loaded for editing. Declared after the fields it reads. */
+    private var unchangedContent = currentContent()
 
     fun saveMemoryGroup(database: MemoryMapDatabase) {
         if (_isSaving.value) return
@@ -154,6 +159,89 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         }
     }
 
+    /** Whether the form differs from how it was last cleared or loaded for editing, in anything a save would store. */
+    fun hasUnsavedChanges(): Boolean = currentContent() != unchangedContent
+
+    /** Takes the current content as unchanged: after the form is cleared or a memory is loaded for editing. */
+    fun markUnchanged() {
+        unchangedContent = currentContent()
+    }
+
+    private fun currentContent() = FormContent(
+        title, description, lat, lng, placeName, address, startDateTime, endDateTime, isAllDay,
+        markerHue, markerSaturation, markerBrightness, selectedMedia.toList(),
+        // Whether a fragment's sections are expanded is only how the form looks.
+        fragments.map { it.copy(isDateExpanded = false, isColorExpanded = false) }
+    )
+
+    /** What a save would store, to compare the form with how it was. */
+    private data class FormContent(
+        val title: String?,
+        val description: String?,
+        val lat: Double?,
+        val lng: Double?,
+        val placeName: String?,
+        val address: String?,
+        val startDateTime: ZonedDateTime,
+        val endDateTime: ZonedDateTime,
+        val isAllDay: Boolean,
+        val markerHue: Float,
+        val markerSaturation: Float,
+        val markerBrightness: Float,
+        val media: List<AddMemoryGroupFragment.SelectedMedia>,
+        val fragments: List<MemoryFragmentEditAdapter.FragmentEditState>
+    )
+
+    /** Fills the form with [data], a memory opened for editing. */
+    fun fillForEditing(data: MemoryGroupWithMedia) {
+        val group = data.group
+        editingMemoryId = group.id
+        lat = group.latitude
+        lng = group.longitude
+        placeName = group.placeName
+        address = group.address
+        title = group.title
+        description = group.description
+        isAllDay = group.isAllDay
+        startDateTime = group.startDate
+        endDateTime = group.endDate
+        markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
+        markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
+        markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
+        dateExpanded = true
+
+        selectedMedia.clear()
+        selectedMedia.addAll(
+            data.mediaItems.sortedWith(MediaItemComparator()).map {
+                AddMemoryGroupFragment.SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
+            }
+        )
+
+        fragments.clear()
+        fragments.addAll(
+            data.fragments.sortedWith(MemoryFragmentComparator()).map {
+                MemoryFragmentEditAdapter.FragmentEditState(
+                    id = it.id,
+                    lat = it.latitude,
+                    lng = it.longitude,
+                    placeName = it.placeName,
+                    address = it.address,
+                    startDate = it.startDate,
+                    endDate = it.endDate,
+                    isAllDay = it.isAllDay,
+                    markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
+                    markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                    markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
+                    isTimeVisible = it.startDate != null,
+                    isDateExpanded = false,
+                    isColorExpanded = false,
+                    order = it.order
+                )
+            }
+        )
+        fragmentsExpanded = true
+    }
+
     /** Clears the form: after a successful save, or when the user clears it. */
     fun resetForm() {
         editingMemoryId = null
@@ -174,6 +262,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         fragments.clear()
         fragmentsExpanded = true
         colorExpanded = false
+        markUnchanged()
     }
 
     private fun calculateEffectiveStartTime(isAllDay: Boolean, startDateTime: ZonedDateTime): ZonedDateTime = if (isAllDay) {
@@ -328,5 +417,38 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
             )
         }
         dao.insertFragments(fragmentEntities)
+    }
+}
+
+private class MediaItemComparator : Comparator<MediaItem> {
+    override fun compare(a: MediaItem, b: MediaItem): Int {
+        // Sort media items based on order or dateTaken
+        return when {
+            a.order != null && b.order != null -> a.order.compareTo(b.order)
+            a.order != null -> -1
+            b.order != null -> 1
+            else -> b.dateTaken.compareTo(a.dateTaken)
+        }
+    }
+}
+
+private class MemoryFragmentComparator : Comparator<MemoryFragment> {
+    override fun compare(a: MemoryFragment, b: MemoryFragment): Int {
+        // Sort fragments based on order or startDate
+        return when {
+            a.order != null && b.order != null -> a.order.compareTo(b.order)
+            a.order != null -> -1
+            b.order != null -> 1
+            else -> {
+                val dateA = a.startDate
+                val dateB = b.startDate
+                when {
+                    dateA != null && dateB != null -> dateA.compareTo(dateB)
+                    dateA != null -> -1
+                    dateB != null -> 1
+                    else -> 0
+                }
+            }
+        }
     }
 }

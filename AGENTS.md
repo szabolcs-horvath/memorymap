@@ -40,6 +40,7 @@ Local setup needs files that are **not** in git:
 
 ### State
 - Screen ViewModels mostly hold plain `var` fields: UI state survives rotation but not process death.
+- The Add tab is both "new memory" and "edit memory". `AddMemoryGroupFragmentViewModel.hasUnsavedChanges` compares the form with how it was when last cleared or loaded for editing (call `markUnchanged` after filling it). An Edit request asks before it replaces unsaved changes (for the memory already being edited it keeps them), and switching to another tab closes an edit that has no changes (`closeUnchangedEdit`). A new field that a save stores must also go into `FormContent`, or changing it won't count as a change.
 - Preferences: a single DataStore named `"googleAuthDatastore"` (it holds all app prefs, not just auth). Keys and defaults are in `util/PreferencesKeys.kt`; the default map filter is in `util/DateFilterOption.kt` (stored by enum `name`).
 
 ### Media handling and re-linking (read `SIGNATURE_FIX_PLAN.md`)
