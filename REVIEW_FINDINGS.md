@@ -423,6 +423,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `MainActivity.kt:99-110, 156-164, 296-302`
 - **What:** See ARCH-1. `setMaxLifecycle(CREATED)` destroys the hidden fragments' views, and `replace()` in `onMemoryClicked` removes *all* tab fragments. Each return to the Map recreates `SupportMapFragment`, the GoogleMap, the ClusterManager and all markers.
 - **Fix:** Keep tab views alive (`STARTED`, not `CREATED`) or use Navigation with multiple back stacks. Open details with `add` + `hide` instead of `replace`.
+- **Plan:** see [ARCH-1](#arch-1), which has the planned fix, what to watch for (stale data) and the tests it waits for.
 
 ### <a id="perf-8"></a>⬜ PERF-8 · Low · Full marker reset on every emission
 - **Where:** `MapFragment.kt:503-566`
@@ -538,6 +539,19 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `MainActivity.kt` (whole file)
 - **What:** Tabs are added up front, then hidden *and* capped at `CREATED`, which destroys their views, so `hide()` is redundant and every switch rebuilds the screen. Details use `replace()`, which tears down all tabs. Cross-screen calls go through `lateinit` fragment references plus `post()`. This causes BUG-6, BUG-8 and PERF-7.
 - **Fix:** Navigation component with bottom-nav multiple back stacks (or `STARTED` + `hide` without `replace`). Pass requests as arguments.
+- **Plan** (2026-10-25; not started, waiting for UI tests, see below): keep the manual tab management, but stop destroying views. BUG-6 and BUG-8 are fixed already (launchers are property initializers; cross-tab requests wait in the ViewModel), so what is left is PERF-7. The Navigation component would not fix that: its bottom-nav back stacks save each tab's state but still destroy and rebuild its view.
+  1. `navigateToTab`: a hidden tab that already has a view is capped at `STARTED` (paused, view kept); a tab never shown stays at `CREATED`, so start-up doesn't build every screen. Loop only over the tabs and the picker, not every fragment in the activity.
+  2. `onMemoryClicked`: `add` the pager and hide the current tab at `STARTED`, instead of `replace` (which removes every tab). Back then returns to the tab as it was (camera, open overlay, scroll, search).
+  3. `onMediaClick` caps the hidden pager at `STARTED`, and `onPickLocation` the hidden Add form. The picker still goes back to `CREATED` when popped, so a second map doesn't stay in memory.
+  4. After the activity is recreated (rotation, process restore), set hidden tabs back to `CREATED` (`commitNow` in `onCreate`), so a rotation doesn't build every visited tab at once.
+  5. Cross-tab requests (`requestFocusOnMemory`, `requestScrollToAndFlash`, `requestEditMode`) run in `onResume` (at once if already resumed) instead of as soon as there is a view: a paused tab has a view but is still hidden, so the Timeline would scroll an invisible list and the flash would be lost.
+  6. Update AGENTS.md (Navigation, and the "hidden tabs have no view" gotcha).
+- **Stale data:** checked for the plan. Map, Timeline and the memory pager draw from Room and DataStore flows collected while `STARTED`, so a paused tab keeps updating (a restore reaches it too), and no write path changes. To handle in the change:
+  - Settings reads the "show fragments" and "cluster markers" switches and the default filter once, when its view is built. Nothing else writes them today, but collect them instead, or they go stale once the view outlives a tab switch.
+  - Add tab: a save error would be shown (toast) while another tab is shown, instead of when the Add tab is opened next. `isScreenShown` already keeps a success from opening the memory.
+  - The keyboard may stay open after switching tabs from the Timeline search (the view is hidden, not destroyed).
+  - Hidden tabs keep re-drawing on every data change; for the map that is a full marker reset (PERF-8).
+- **Tests first:** this changes the lifecycle of every screen, so it waits for UI tests (TEST-3) that cover: switching tabs; Show on map, Show in timeline and Edit from a memory, also while the target tab already has a view; the location picker round trip; back from a memory and from the media viewer; rotation and process death; and data changed on one tab showing on another. Then check on a device that the map is built only once (`dumpsys activity`) and compare tab-switch times (the `main_activity_navigate_to_tab_*` traces).
 
 ### <a id="arch-2"></a>⬜ ARCH-2 · High · Business logic lives in Fragments and the Activity
 - **Where:** `SettingsFragment.kt` (1041 lines), `AddMemoryGroupFragment.kt` (786), `MapFragment.kt` (778), `MainActivity.kt`
@@ -636,6 +650,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ### <a id="test-3"></a>⬜ TEST-3 · Low · No UI or instrumentation tests
 - **What:** Only the template `ExampleInstrumentedTest` exists. Espresso is declared but unused.
+- **Fix:** Add instrumented UI tests (Espresso), starting with navigation: switching tabs, cross-tab actions, back from detail screens and rotation. The [ARCH-1](#arch-1) / PERF-7 fix waits for them (its plan lists what they should cover).
 
 [↑ Back to index](#index)
 
