@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 25 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 48 open
+✅ 26 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 47 open
 
 **SEC — Security / privacy** · 6 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 9 of 16 fixed
+**BUG — Functional bugs** · 10 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -87,7 +87,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [BUG-12](#bug-12) | Low | Crash paths on unexpected data |
 | ✅ | [BUG-13](#bug-13) | Low | Search with no matches says "No memories yet. Add some!" |
 | ✅ | [BUG-14](#bug-14) | Low | Places SDK initialized with an empty key |
-| ⬜ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
+| ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ⬜ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
 **PERF — Performance** · 0 of 10 fixed
@@ -358,10 +358,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Check `isNullOrBlank()` and log clearly.
 - **Status:** Fixed. Places is initialized only when the key is not blank (and a missing `metaData` no longer throws); otherwise a warning is logged. Without Places, tapping a POI falls back to the address lookup and the search button shows a message, because `Places.createClient` and the search screen need an initialized SDK.
 
-### <a id="bug-15"></a>⬜ BUG-15 · Low · Recycled thumbnails briefly show stale content
+### <a id="bug-15"></a>✅ BUG-15 · Low · Recycled thumbnails briefly show stale content
 - **Where:** `adapter/MediaAdapter.kt:36-61`, `SelectedMediaAdapter.kt:50-75`
 - **What:** The error overlay is not reset before a new load, and in the "other device" branch the previous Coil request is not disposed, so it can still finish into the recycled view.
 - **Fix:** Call `hideError()` and `thumbnailImage.dispose()` at the start of `bind`.
+- **Status:** Fixed. Both thumbnail adapters cancel the view's previous Coil request (`dispose()`) before showing an other-device tile, and hide the error overlay before starting a new load.
 
 ### <a id="bug-16"></a>⬜ BUG-16 · Low · Timeline flash can leave the wrong colour
 - **Where:** `adapter/TimelineAdapter.kt:117-128`
