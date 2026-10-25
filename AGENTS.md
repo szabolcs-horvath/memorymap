@@ -36,7 +36,7 @@ Local setup needs files that are **not** in git:
   - Consequence: a hidden fragment **has no view** (`CREATED` destroys it). Every tab switch recreates the view, so restore UI state from the ViewModel in `onViewCreated` (see `ARCH-1`, `PERF-7`).
 - Detail screens use the back stack: `MemoryPagerFragment` is opened with `replace` (`onMemoryClicked`), `MediaViewerFragment` with `add` + hide the pager, and `PickLocationFragment` is shown over the Add tab with `addToBackStack`.
 - Screens talk to the activity through **listener interfaces** that `MainActivity` implements (`MapListener`, `TimelineListener`, `MemoryFragmentListener`, `AddMemoryGroupListener`, `PickLocationListener`), attached in `onAttach`.
-- Cross-tab actions (show on map/timeline, edit) call `selectTab(itemId) { targetFragment.someMethod() }`, which relies on `binding.root.post` running after the tab transaction (`BUG-8`).
+- Cross-tab actions (show on map/timeline, edit) call `selectTab(itemId)` and then a `request…` method on the target fragment (`requestFocusOnMemory`, `requestScrollToAndFlash`, `requestEditMode`). The fragment keeps the request in its ViewModel and handles it once it has a view (right away, or in `onViewCreated`), so nothing depends on when the tab transaction runs. A request stays pending until handled, and a newer one replaces it. `MainActivity` looks the fragments up by tag each time instead of keeping references.
 
 ### State
 - Screen ViewModels mostly hold plain `var` fields: UI state survives rotation but not process death.
@@ -73,7 +73,7 @@ Local setup needs files that are **not** in git:
 
 ## Gotchas (quick list)
 
-- Hidden tabs have no view, so calling a method on a tab fragment from the activity before its view exists will crash (`BUG-8`).
+- Hidden tabs have no view. A tab fragment method called from the activity must not touch the view directly: keep the request in the ViewModel and handle it when the view exists (see the cross-tab actions above).
 - `data.MemoryFragment` (entity) vs `fragment.MemoryFragment` (screen): the name clash is handled with `import … as MemoryFragmentEntity` in `MemoryFragmentViewModel`.
 - `MemoryFragment.title` (entity) is a mutable `@Ignore` field, filled from the parent group at runtime.
 - Deleting a group cascades to fragments and media. The undo (`MainActivity.onMemoryDeleted`) calls `MemoryGroupDao.restoreDeletedGroup`, which re-inserts all three in one transaction. Media URI grants are released, and an automatic backup runs, only when the undo Snackbar is dismissed without "Undo": a released grant can't be taken back, so undo would lose the photos. If the process dies while the Snackbar is showing, those grants stay (harmless, but they count toward the 512 cap).

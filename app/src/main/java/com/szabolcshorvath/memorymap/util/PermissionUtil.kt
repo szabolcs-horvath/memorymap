@@ -11,6 +11,11 @@ object PermissionUtil {
     fun checkPermission(context: Context, permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
+    /** Whether the app may use the location, precise or approximate. */
+    fun hasLocationPermission(context: Context): Boolean =
+        checkPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ||
+            checkPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+
     fun getRequiredMediaPermissions(): Array<String> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(

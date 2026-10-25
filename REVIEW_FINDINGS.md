@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 45 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 29 open
+✅ 46 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 28 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 15 of 16 fixed
+**BUG — Functional bugs** · 16 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -80,7 +80,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-5](#bug-5) | Medium | Removing a selected photo can crash |
 | ✅ | [BUG-6](#bug-6) | Medium | Results registered in `onCreateView` (Settings) |
 | ✅ | [BUG-7](#bug-7) | Medium | Leaving the Add tab while saving causes a surprise navigation later |
-| ⬜ | [BUG-8](#bug-8) | Medium | Tab actions depend on `post()` ordering |
+| ✅ | [BUG-8](#bug-8) | Medium | Tab actions depend on `post()` ordering |
 | ✅ | [BUG-9](#bug-9) | Medium | Media signature can differ between reads of the same file |
 | ✅ | [BUG-10](#bug-10) | Low | Undo, then a stale `refreshDatabase()` |
 | ✅ | [BUG-11](#bug-11) | Low | Thread-unsafe shared `SimpleDateFormat` |
@@ -325,10 +325,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Handle completion in the ViewModel (clear the form state there), and expose navigation as a one-shot event that is consumed when it is shown.
 - **Status:** Fixed. The view model clears the form itself when a save succeeds, so the screen is empty whenever it is shown next. It sends the "open the saved memory" event only while the Add tab is shown (`isScreenShown`, kept up to date in `onHiddenChanged`); a save that finishes after the user switched tabs shows a "Memory saved" toast instead of navigating later. A rotation during the save still navigates, since the tab isn't hidden.
 
-### <a id="bug-8"></a>⬜ BUG-8 · Medium · Tab actions depend on `post()` ordering
+### <a id="bug-8"></a>✅ BUG-8 · Medium · Tab actions depend on `post()` ordering
 - **Where:** `MainActivity.kt:167-180, 325-386`
 - **What:** `focusOnMemory`, `scrollToAndFlash` and `setEditMode` access `viewLifecycleOwner` or `lateinit adapter` of a fragment whose view only exists after the async tab transaction. It works because `commit()`'s runnable happens to be queued before `root.post`. If the activity is recreated, the fallback `?: MapFragment()` instances are unattached and these calls crash.
 - **Fix:** Pass the request as fragment arguments or ViewModel state that the fragment consumes in `onViewCreated`.
+- **Status:** Fixed. The actions are requests the target fragment keeps in its ViewModel (`requestFocusOnMemory`, `requestScrollToAndFlash`, `requestEditMode`) and handles once it has a view, right away or in `onViewCreated`; `selectTab` no longer takes an action and nothing is posted. A request stays pending until handled (a view destroyed meanwhile retries it) and a newer one replaces it. Edit mode starts only once the memory has loaded, so a memory deleted meanwhile leaves the form as it was. `MainActivity` looks the fragments up by tag instead of keeping references, so there are no unattached fallback instances.
 
 ### <a id="bug-9"></a>✅ BUG-9 · Medium · Media signature can differ between reads of the same file
 - **Where:** `util/MediaHasher.kt:39-41, 64-76`

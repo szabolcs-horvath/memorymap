@@ -57,11 +57,11 @@ class MainActivity :
     private lateinit var binding: ActivityMainContainerBinding
     private lateinit var commonViewModel: CommonViewModel
 
-    private lateinit var mapFragment: MapFragment
-    private lateinit var timelineFragment: TimelineFragment
-    private lateinit var addMemoryFragment: AddMemoryGroupFragment
-    private lateinit var pickLocationFragment: PickLocationFragment
-    private lateinit var settingsFragment: SettingsFragment
+    // Looked up by tag each time: after the activity is recreated, the FragmentManager restores these instances.
+    private val mapFragment get() = supportFragmentManager.findFragmentByTag(MapFragment.TAG) as? MapFragment
+    private val timelineFragment get() = supportFragmentManager.findFragmentByTag(TimelineFragment.TAG) as? TimelineFragment
+    private val addMemoryFragment get() = supportFragmentManager.findFragmentByTag(AddMemoryGroupFragment.TAG) as? AddMemoryGroupFragment
+    private val pickLocationFragment get() = supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment
 
     private var fragmentNavigationTrace: Trace? = null
     private var pendingTraceTag: String? = null
@@ -83,12 +83,13 @@ class MainActivity :
 
         commonViewModel = ViewModelProvider(this)[CommonViewModel::class.java]
 
+        // After a recreation the FragmentManager has already restored the fragments.
         if (savedInstanceState == null) {
-            mapFragment = MapFragment()
-            timelineFragment = TimelineFragment()
-            addMemoryFragment = AddMemoryGroupFragment()
-            pickLocationFragment = PickLocationFragment()
-            settingsFragment = SettingsFragment()
+            val mapFragment = MapFragment()
+            val timelineFragment = TimelineFragment()
+            val addMemoryFragment = AddMemoryGroupFragment()
+            val pickLocationFragment = PickLocationFragment()
+            val settingsFragment = SettingsFragment()
 
             supportFragmentManager.beginTransaction()
                 .add(R.id.fragmentContainer, mapFragment, MapFragment.TAG)
@@ -102,12 +103,6 @@ class MainActivity :
                 .add(R.id.fragmentContainer, settingsFragment, SettingsFragment.TAG).hide(settingsFragment)
                 .setMaxLifecycle(settingsFragment, Lifecycle.State.CREATED)
                 .commit()
-        } else {
-            mapFragment = supportFragmentManager.findFragmentByTag(MapFragment.TAG) as? MapFragment ?: MapFragment()
-            timelineFragment = supportFragmentManager.findFragmentByTag(TimelineFragment.TAG) as? TimelineFragment ?: TimelineFragment()
-            addMemoryFragment = supportFragmentManager.findFragmentByTag(AddMemoryGroupFragment.TAG) as? AddMemoryGroupFragment ?: AddMemoryGroupFragment()
-            pickLocationFragment = supportFragmentManager.findFragmentByTag(PickLocationFragment.TAG) as? PickLocationFragment ?: PickLocationFragment()
-            settingsFragment = supportFragmentManager.findFragmentByTag(SettingsFragment.TAG) as? SettingsFragment ?: SettingsFragment()
         }
 
         setupBottomNavigationBar()
@@ -158,7 +153,11 @@ class MainActivity :
         transaction.commit()
     }
 
-    private fun selectTab(itemId: Int, action: (() -> Unit)? = null) {
+    /**
+     * Switches to tab [itemId]. To make the tab do something, give its fragment a request it keeps in its ViewModel and
+     * handles once it has a view (for example `MapFragment.requestFocusOnMemory`); its view may not exist yet here.
+     */
+    private fun selectTab(itemId: Int) {
         val isAlreadySelected = binding.bottomNavigation.selectedItemId == itemId
         binding.bottomNavigation.selectedItemId = itemId
 
@@ -166,10 +165,6 @@ class MainActivity :
         // so we manually call navigateToTab to ensure backstack is cleared and fragment is shown.
         if (isAlreadySelected) {
             navigateToTab(itemId)
-        }
-
-        action?.let {
-            binding.root.post(it)
         }
     }
 
@@ -316,29 +311,29 @@ class MainActivity :
     }
 
     override fun onNavigateToTimeline(memoryId: Int) {
-        selectTab(R.id.navigation_timeline) {
-            timelineFragment.scrollToAndFlash(memoryId)
-        }
+        selectTab(R.id.navigation_timeline)
+        timelineFragment?.requestScrollToAndFlash(memoryId)
     }
 
     override fun onNavigateToMap(lat: Double, lng: Double, id: Int) {
-        selectTab(R.id.navigation_map) {
-            mapFragment.focusOnMemory(lat, lng, id)
-        }
+        selectTab(R.id.navigation_map)
+        mapFragment?.requestFocusOnMemory(lat, lng, id)
     }
 
     override fun onPickLocation(lat: Double?, lng: Double?, placeName: String?, address: String?) {
+        val picker = pickLocationFragment ?: return
+        val form = addMemoryFragment ?: return
         if (lat == null || lng == null) {
-            pickLocationFragment.clearSelection()
+            picker.clearSelection()
         } else {
-            pickLocationFragment.setInitialLocation(lat, lng, placeName, address)
+            picker.setInitialLocation(lat, lng, placeName, address)
         }
 
         supportFragmentManager.beginTransaction()
-            .hide(addMemoryFragment) // Specifically hide the caller
-            .setMaxLifecycle(addMemoryFragment, Lifecycle.State.CREATED)
-            .show(pickLocationFragment)
-            .setMaxLifecycle(pickLocationFragment, Lifecycle.State.RESUMED)
+            .hide(form) // Specifically hide the caller
+            .setMaxLifecycle(form, Lifecycle.State.CREATED)
+            .show(picker)
+            .setMaxLifecycle(picker, Lifecycle.State.RESUMED)
             .addToBackStack(PickLocationFragment.TAG) // Use the TAG here
             .commit()
     }
@@ -350,7 +345,7 @@ class MainActivity :
     override fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?) {
         // Simply pop the backstack to return to the AddMemoryFragment
         supportFragmentManager.popBackStack()
-        addMemoryFragment.updateLocation(lat, lng, placeName, address)
+        addMemoryFragment?.updateLocation(lat, lng, placeName, address)
     }
 
     override fun onMemoryDeleted(deleted: MemoryGroupWithMedia) {
@@ -380,9 +375,8 @@ class MainActivity :
     }
 
     override fun onEditMemory(memoryId: Int) {
-        selectTab(R.id.navigation_add) {
-            addMemoryFragment.setEditMode(memoryId)
-        }
+        selectTab(R.id.navigation_add)
+        addMemoryFragment?.requestEditMode(memoryId)
     }
 
     companion object {

@@ -35,7 +35,7 @@ import com.google.android.libraries.places.widget.PlaceAutocomplete
 import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
-import com.szabolcshorvath.memorymap.util.PermissionUtil.checkPermission
+import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -369,10 +369,6 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             )
         }
     }
-
-    private fun hasLocationPermission(context: Context): Boolean =
-        checkPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ||
-            checkPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
 
     @SuppressLint("MissingPermission")
     private fun enableMyLocation() {

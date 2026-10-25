@@ -118,12 +118,16 @@ class TimelineFragment : Fragment() {
         binding.rvTimeline.adapter = adapter
     }
 
-    fun scrollToAndFlash(memoryId: Int) {
-        val position = adapter.getPositionForId(memoryId)
-        if (position != -1) {
+    /**
+     * Scrolls to memory [memoryId] and flashes it. The request is kept in the ViewModel until a view's list contains
+     * the memory, so it can be made while the tab is hidden or still being shown.
+     */
+    fun requestScrollToAndFlash(memoryId: Int) {
+        viewModel.pendingScrollMemoryId = memoryId
+        // The adapter belongs to the current view, so only use it while there is one.
+        if (_binding != null && adapter.getPositionForId(memoryId) != -1) {
+            viewModel.pendingScrollMemoryId = null
             performScrollAndFlash(memoryId)
-        } else {
-            viewModel.pendingScrollMemoryId = memoryId
         }
     }
 
