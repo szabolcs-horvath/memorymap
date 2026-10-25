@@ -107,6 +107,22 @@
             app:startAngle="-90" />
     </com.google.android.material.card.MaterialCardView>
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/bt_myLocation"
+        style="@style/Widget.Material3Expressive.Button.TonalButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/my_location"
+        android:padding="0dp"
+        app:cornerRadius="8dp"
+        app:icon="@android:drawable/ic_menu_mylocation"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="@+id/dateFilterContainer"
+        app:layout_constraintTop_toBottomOf="@id/statsOverlayCard"
+        app:layout_goneMarginTop="8dp" />
+
     <com.szabolcshorvath.memorymap.view.MaxHeightCardView
         android:id="@+id/overlayCard"
         android:layout_width="0dp"

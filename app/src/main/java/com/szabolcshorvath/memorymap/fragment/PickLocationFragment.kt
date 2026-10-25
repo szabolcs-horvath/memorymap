@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
@@ -35,6 +34,7 @@ import com.google.android.libraries.places.widget.PlaceAutocomplete
 import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
+import com.szabolcshorvath.memorymap.util.MyLocationAction
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -49,18 +49,10 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     private var mMap: GoogleMap? = null
     private var pickLocationListener: PickLocationListener? = null
 
-    private val locationPermissionRequest = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
-        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        ) {
-            enableMyLocation()
-            selectUserLocation()
-        } else {
-            viewModel.permissionDenied = true
-        }
+    // The only place the picker asks for location access: when the user taps the "my location" button.
+    private val myLocationAction = MyLocationAction(this) { latLng ->
+        enableMyLocation()
+        selectLocation(latLng)
     }
 
     private val autocompleteLauncher =
@@ -161,13 +153,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
 
         binding.btSearch.setOnClickListener { startAutocomplete() }
+        binding.btMyLocation.setOnClickListener { myLocationAction.start() }
 
         binding.root.doOnLayout { setGoogleMapPadding() }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        requestLocationPermissionIfNeeded()
     }
 
     private fun startAutocomplete() {
@@ -191,7 +179,7 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
         googleMap.uiSettings.isRotateGesturesEnabled = false
         googleMap.uiSettings.isMapToolbarEnabled = false
-        googleMap.uiSettings.isMyLocationButtonEnabled = true
+        googleMap.uiSettings.isMyLocationButtonEnabled = false // Our own button: it can ask for access (bt_myLocation).
         googleMap.uiSettings.isZoomControlsEnabled = true
 
         enableMyLocation()
@@ -237,11 +225,6 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
                 // Without the Places SDK (no API key) the address lookup still works.
                 reverseGeocode(poiLatLng)
             }
-        }
-
-        googleMap.setOnMyLocationButtonClickListener {
-            selectUserLocation()
-            true
         }
 
         if (viewModel.selectedLat == null) {
@@ -358,28 +341,16 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         )
     }
 
-    private fun requestLocationPermissionIfNeeded() {
-        val context = context
-        if (context != null && !hasLocationPermission(context) && !viewModel.permissionDenied) {
-            locationPermissionRequest.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        }
-    }
-
     @SuppressLint("MissingPermission")
     private fun enableMyLocation() {
         val map = mMap
         val context = context
         if (context != null && hasLocationPermission(context) && map != null) {
             map.isMyLocationEnabled = true
-            viewModel.permissionDenied = false
         }
     }
 
+    /** Selects where the user is, if location access was granted. Never asks for it (see [myLocationAction]). */
     @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
         viewModel.activeAutocompletePlaceId = null
@@ -388,15 +359,17 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
-                val map = mMap
-                if (location != null && map != null) {
-                    val latLng = LatLng(location.latitude, location.longitude)
-                    updateSelectedLocation(latLng, isLoading = true)
-                    reverseGeocode(latLng)
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
-                }
+                if (location != null) selectLocation(LatLng(location.latitude, location.longitude))
             }
         }
+    }
+
+    private fun selectLocation(latLng: LatLng) {
+        val map = mMap ?: return
+        viewModel.activeAutocompletePlaceId = null
+        updateSelectedLocation(latLng, isLoading = true)
+        reverseGeocode(latLng)
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
     }
 
     fun setInitialLocation(lat: Double, lng: Double, placeName: String?, address: String?) {
