@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 26 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 47 open
+✅ 27 fixed · 🟡 4 partly fixed · ❔ 1 to verify · ⬜ 46 open
 
 **SEC — Security / privacy** · 6 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ⬜ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 10 of 16 fixed
+**BUG — Functional bugs** · 11 of 16 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -88,7 +88,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-13](#bug-13) | Low | Search with no matches says "No memories yet. Add some!" |
 | ✅ | [BUG-14](#bug-14) | Low | Places SDK initialized with an empty key |
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
-| ⬜ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
+| ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
 **PERF — Performance** · 0 of 10 fixed
 
@@ -364,10 +364,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Call `hideError()` and `thumbnailImage.dispose()` at the start of `bind`.
 - **Status:** Fixed. Both thumbnail adapters cancel the view's previous Coil request (`dispose()`) before showing an other-device tile, and hide the error overlay before starting a new load.
 
-### <a id="bug-16"></a>⬜ BUG-16 · Low · Timeline flash can leave the wrong colour
+### <a id="bug-16"></a>✅ BUG-16 · Low · Timeline flash can leave the wrong colour
 - **Where:** `adapter/TimelineAdapter.kt:117-128`
 - **What:** The "original" colour is read from the card. A second flash during the first one, or recycling mid-animation, keeps the highlight colour.
 - **Fix:** Use the theme surface colour as the base and cancel the animator in `onViewRecycled`.
+- **Status:** Fixed. The card's colour is read once when the view holder is created. A new flash cancels the running one, and `onViewRecycled` cancels it and restores the card colour.
 
 [↑ Back to index](#index)
 

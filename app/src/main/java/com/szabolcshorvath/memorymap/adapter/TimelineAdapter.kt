@@ -78,6 +78,10 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
     inner class TimelineViewHolder(private val binding: ItemTimelineMemoryBinding) :
         ListItemViewHolder(binding.root) {
+        // Read before any flash changes it: reading it at flash time could pick up a highlight colour.
+        private val baseCardColor = binding.timelineCard.cardBackgroundColor
+        private var flashAnimator: ValueAnimator? = null
+
         fun bind(memoryGroup: MemoryGroup, sectionPosition: Int, sectionCount: Int) {
             bind(sectionPosition, sectionCount)
             binding.timelineCard.preventCornerOverlap = false
@@ -115,17 +119,30 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
         }
 
         fun flash() {
-            val originalColor = binding.timelineCard.cardBackgroundColor.defaultColor
+            cancelFlash()
+            val baseColor = baseCardColor.defaultColor
             val flashColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondaryContainer)
 
-            val colorAnim = ValueAnimator.ofObject(ArgbEvaluator(), originalColor, flashColor, originalColor)
-            colorAnim.duration = FLASH_ANIMATION_DURATION_MILLIS
-            colorAnim.addUpdateListener { animator ->
-                binding.timelineCard.setCardBackgroundColor(animator.animatedValue as Int)
+            flashAnimator = ValueAnimator.ofObject(ArgbEvaluator(), baseColor, flashColor, baseColor).apply {
+                duration = FLASH_ANIMATION_DURATION_MILLIS
+                addUpdateListener { animator ->
+                    binding.timelineCard.setCardBackgroundColor(animator.animatedValue as Int)
+                }
+                start()
             }
-
-            colorAnim.start()
         }
+
+        /** Stops a running flash and puts the card's own colour back. */
+        fun cancelFlash() {
+            flashAnimator?.cancel()
+            flashAnimator = null
+            binding.timelineCard.setCardBackgroundColor(baseCardColor)
+        }
+    }
+
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        super.onViewRecycled(holder)
+        (holder as? TimelineViewHolder)?.cancelFlash()
     }
 
     class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) : RecyclerView.ViewHolder(binding.root) {
