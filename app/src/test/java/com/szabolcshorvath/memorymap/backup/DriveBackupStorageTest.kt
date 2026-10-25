@@ -3,7 +3,7 @@ package com.szabolcshorvath.memorymap.backup
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-class BackupManagerTest {
+class DriveBackupStorageTest {
 
     @Test
     fun `collects every page in order`() {
@@ -14,7 +14,7 @@ class BackupManagerTest {
         )
         val requested = mutableListOf<String?>()
 
-        val all = BackupManager.collectAllPages { token ->
+        val all = DriveBackupStorage.collectAllPages { token ->
             requested += token
             pages.getValue(token)
         }
@@ -25,18 +25,18 @@ class BackupManagerTest {
 
     @Test
     fun `single page`() {
-        assertEquals(listOf("a"), BackupManager.collectAllPages { listOf("a") to null })
+        assertEquals(listOf("a"), DriveBackupStorage.collectAllPages { listOf("a") to null })
     }
 
     @Test
     fun `blank next token ends the listing`() {
-        assertEquals(listOf("a"), BackupManager.collectAllPages { listOf("a") to "" })
+        assertEquals(listOf("a"), DriveBackupStorage.collectAllPages { listOf("a") to "" })
     }
 
     @Test
     fun `repeated next token ends the listing instead of looping forever`() {
         var calls = 0
-        val all = BackupManager.collectAllPages {
+        val all = DriveBackupStorage.collectAllPages {
             calls++
             listOf(calls) to "same"
         }
@@ -45,6 +45,6 @@ class BackupManagerTest {
 
     @Test
     fun `empty listing`() {
-        assertEquals(emptyList<Int>(), BackupManager.collectAllPages { emptyList<Int>() to null })
+        assertEquals(emptyList<Int>(), DriveBackupStorage.collectAllPages { emptyList<Int>() to null })
     }
 }

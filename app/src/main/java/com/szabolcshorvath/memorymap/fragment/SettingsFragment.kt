@@ -25,17 +25,14 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
-import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.Scope
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.api.services.drive.DriveScopes
+import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
-import com.szabolcshorvath.memorymap.auth.GoogleAuthManager
+import com.szabolcshorvath.memorymap.auth.DriveAuthorization
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
@@ -69,7 +66,6 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
     private val commonViewModel: CommonViewModel by activityViewModels()
     private val viewModel: SettingsFragmentViewModel by viewModels()
-    private lateinit var googleAuthManager: GoogleAuthManager
     private lateinit var backupManager: BackupManager
     private val startAuthorizationIntent = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -77,8 +73,8 @@ class SettingsFragment : Fragment() {
         try {
             val context = context ?: return@registerForActivityResult
             if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
-            val authorizationResult = Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(activityResult.data)
-            successfulAuthorization(authorizationResult.grantedScopes)
+            AppServices.accounts.checkDriveConsentResult(context, activityResult.data)
+            successfulAuthorization()
         } catch (e: ApiException) {
             Log.e(TAG, "Authorization failed", e)
             viewModel.isBackupRequested = false
@@ -133,8 +129,7 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val viewLifecycleOwner = viewLifecycleOwner
         val context = context
-        googleAuthManager = context?.let { GoogleAuthManager(it) } ?: return
-        backupManager = BackupManager(context)
+        backupManager = BackupManager(context ?: return)
         setupRecyclerViews()
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
@@ -602,7 +597,7 @@ class SettingsFragment : Fragment() {
             setLoadingState(true, "Signing in...")
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
-                    val email = googleAuthManager.signIn()
+                    val email = AppServices.accounts.signIn(requireContext())
                     val context = context
                     if (context != null) {
                         context.dataStore.updateData {
@@ -654,7 +649,7 @@ class SettingsFragment : Fragment() {
 
         binding.btSignOut.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
-                googleAuthManager.signOut()
+                AppServices.accounts.signOut(requireContext())
                 viewModel.backupsLoadedForEmail = null
                 updateUI(null)
                 context?.dataStore?.edit { preferences ->
@@ -899,9 +894,7 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 if (!quiet) setLoadingState(true, "Loading backups...", hideBackupStatus = false)
-                val scopes = listOf(DriveScopes.DRIVE_FILE)
-                val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                val backups = backupManager.listBackups(credential)
+                val backups = backupManager.listBackups(email)
                 backupAdapter.submitList(backups)
                 viewModel.backupsLoadedForEmail = email
                 viewModel.lastLoadedBackups = backups
@@ -916,34 +909,28 @@ class SettingsFragment : Fragment() {
 
     private fun requestDriveAuthorization(isBackup: Boolean) {
         val context = context ?: return
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
         viewModel.isBackupRequested = isBackup
-        val requestedScopes: List<Scope> = listOf(Scope(DriveScopes.DRIVE_FILE))
-        Identity.getAuthorizationClient(context)
-            .authorize(
-                AuthorizationRequest.builder()
-                    .setRequestedScopes(requestedScopes)
-                    .build()
-            )
-            .addOnSuccessListener { authorizationResult ->
-                if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
-                if (authorizationResult.hasResolution()) {
-                    val pendingIntent = authorizationResult.pendingIntent
-                    startAuthorizationIntent.launch(
-                        IntentSenderRequest.Builder(pendingIntent!!.intentSender).build()
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                when (val authorization = AppServices.accounts.authorizeDrive(context)) {
+                    DriveAuthorization.Granted -> successfulAuthorization()
+
+                    is DriveAuthorization.NeedsConsent -> startAuthorizationIntent.launch(
+                        IntentSenderRequest.Builder(authorization.intentSender).build()
                     )
-                } else {
-                    successfulAuthorization(authorizationResult.grantedScopes)
                 }
-            }
-            .addOnFailureListener { e ->
-                if (viewLifecycleOwnerLiveData.value == null) return@addOnFailureListener
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 Log.e(TAG, "Failed to authorize", e)
                 setLoadingState(false)
                 viewModel.isBackupRequested = false
             }
+        }
     }
 
-    private fun successfulAuthorization(scopes: List<String>) {
+    private fun successfulAuthorization() {
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
         val context = context ?: return
         viewLifecycleOwner.lifecycleScope.launch {
@@ -958,8 +945,7 @@ class SettingsFragment : Fragment() {
 
             if (viewModel.isBackupRequested) {
                 viewModel.isBackupRequested = false
-                val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-                viewModel.performBackup(credential, commonViewModel.getDb(), backupManager)
+                viewModel.performBackup(email, commonViewModel.getDb(), backupManager)
             } else {
                 loadBackups(email)
             }
@@ -1026,9 +1012,7 @@ class SettingsFragment : Fragment() {
 
     private fun executeRestore(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        val scopes = listOf(DriveScopes.DRIVE_FILE)
-        val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-        viewModel.restoreBackup(credential, file.id, commonViewModel.getDb(), backupManager)
+        viewModel.restoreBackup(email, file.id, commonViewModel.getDb(), backupManager)
     }
 
     private fun onDeleteBackup(file: DriveFile) {
@@ -1043,9 +1027,7 @@ class SettingsFragment : Fragment() {
 
     private fun executeDeleteBackup(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        val scopes = listOf(DriveScopes.DRIVE_FILE)
-        val credential = googleAuthManager.getGoogleAccountCredential(email, scopes)
-        viewModel.deleteBackup(credential, file.id, backupManager)
+        viewModel.deleteBackup(email, file.id, backupManager)
     }
 
     override fun onDestroyView() {

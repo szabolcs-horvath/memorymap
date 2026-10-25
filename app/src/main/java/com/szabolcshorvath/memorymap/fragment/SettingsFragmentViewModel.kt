@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.fragment
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
@@ -53,10 +52,10 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
         }
     }
 
-    fun performBackup(credential: GoogleAccountCredential, database: MemoryMapDatabase, backupManager: BackupManager) {
+    fun performBackup(email: String, database: MemoryMapDatabase, backupManager: BackupManager) {
         viewModelScope.launch {
             _operationStatus.value = "Starting backup..."
-            val result = backupManager.performBackup(credential, database, isAutomatic = false) { status ->
+            val result = backupManager.performBackup(email, database, isAutomatic = false) { status ->
                 _operationStatus.value = status
             }
             _operationStatus.value = null
@@ -72,10 +71,10 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
         }
     }
 
-    fun restoreBackup(credential: GoogleAccountCredential, fileId: String, database: MemoryMapDatabase, backupManager: BackupManager) {
+    fun restoreBackup(email: String, fileId: String, database: MemoryMapDatabase, backupManager: BackupManager) {
         viewModelScope.launch {
             _operationStatus.value = "Starting restore..."
-            val result = backupManager.restoreBackup(credential, fileId, database) { status ->
+            val result = backupManager.restoreBackup(email, fileId, database) { status ->
                 _operationStatus.value = status
             }
             _operationStatus.value = null
@@ -95,10 +94,10 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
         }
     }
 
-    fun deleteBackup(credential: GoogleAccountCredential, fileId: String, backupManager: BackupManager) {
+    fun deleteBackup(email: String, fileId: String, backupManager: BackupManager) {
         viewModelScope.launch {
             _operationStatus.value = "Deleting backup..."
-            val result = backupManager.deleteBackup(credential, fileId)
+            val result = backupManager.deleteBackup(email, fileId)
             _operationStatus.value = null
             result.fold(
                 onSuccess = {
