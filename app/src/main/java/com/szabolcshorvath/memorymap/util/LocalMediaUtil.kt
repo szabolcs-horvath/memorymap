@@ -11,6 +11,7 @@ import com.google.firebase.perf.trace
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 object LocalMediaUtil {
     const val TAG = "LocalMediaUtil"
@@ -29,10 +30,38 @@ object LocalMediaUtil {
         val dateTaken: Long
     )
 
+    /** What a re-link run left: how many items still point to no file on this device, and a message for the UI. */
+    data class RelinkResult(
+        val missingCount: Int,
+        val summary: String
+    )
+
+    /** Everything [needsRelink] looks at. A change to any of these gives a new key, so a new check. */
+    private data class LinkKey(
+        val id: Int,
+        val uri: String,
+        val deviceId: String,
+        val fileSize: Long,
+        val dateTaken: Long
+    )
+
+    private val MediaItem.linkKey get() = LinkKey(id, uri, deviceId, fileSize, dateTaken)
+
+    /**
+     * Results of [needsRelink] for this process. Each check is a ContentResolver call, and the detail page
+     * asks on every emission. [verifyAndFixMediaItems] (cold start, restore, permission grants, the Re-link
+     * buttons) checks every item again and replaces the cache. A photo deleted from the gallery while the
+     * app runs is noticed at the next of those.
+     */
+    private val relinkNeeded = ConcurrentHashMap<LinkKey, Boolean>()
+
+    /** Whether any of [mediaItems] needs re-linking. Uses the cached results, checking only new items. */
     suspend fun hasMissingMedia(context: Context, mediaItems: List<MediaItem>): Boolean {
         trace("local_media_util_has_missing_media") {
             val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
-            return mediaItems.any { needsRelink(context, it, installationIdentifier) }
+            return mediaItems.any { item ->
+                relinkNeeded.getOrPut(item.linkKey) { needsRelink(context, item, installationIdentifier) }
+            }
         }
     }
 
@@ -99,34 +128,41 @@ object LocalMediaUtil {
      * Re-links media items that came from another installation or whose URI no longer resolves to
      * their file. Readable photo picker URIs are left alone: their persisted grant survives reboots
      * and, unlike MediaStore URIs, does not depend on the broad media permission.
+     *
+     * Checks every item again (media access or the database may have changed) and refreshes the cache
+     * [hasMissingMedia] uses.
      */
     suspend fun verifyAndFixMediaItems(
         context: Context,
         dao: MemoryGroupDao,
         onProgress: ((String) -> Unit)? = null
-    ) {
+    ): RelinkResult =
         trace("local_media_util_verify_and_fix_media_items") {
             val installationIdentifier = InstallationIdentifier.getInstallationIdentifier(context)
             val mediaItems = dao.getAllMediaItems()
-            val itemsNeedingFix = mediaItems.filter { needsRelink(context, it, installationIdentifier) }
+            relinkNeeded.clear()
+            val itemsNeedingFix = mediaItems.filter { item ->
+                needsRelink(context, item, installationIdentifier).also { relinkNeeded[item.linkKey] = it }
+            }
 
-            when {
+            val result = when {
                 itemsNeedingFix.isEmpty() -> {
                     Log.d(TAG, "All ${mediaItems.size} media items are valid on this device.")
-                    onProgress?.invoke("All media items are valid")
+                    RelinkResult(0, "All media items are valid")
                 }
 
                 !PermissionUtil.hasAnyMediaPermission(context) -> {
                     Log.w(TAG, "Storage permission not granted. Skipping MediaStore candidate re-linking.")
-                    onProgress?.invoke("Permission required to re-link media")
+                    RelinkResult(itemsNeedingFix.size, "Permission required to re-link media")
                 }
 
                 else -> {
                     relink(context, dao, itemsNeedingFix, mediaItems.size, installationIdentifier, onProgress)
                 }
             }
+            onProgress?.invoke(result.summary)
+            result
         }
-    }
 
     private suspend fun relink(
         context: Context,
@@ -135,7 +171,7 @@ object LocalMediaUtil {
         totalMediaCount: Int,
         installationIdentifier: String,
         onProgress: ((String) -> Unit)?
-    ) {
+    ): RelinkResult {
         onProgress?.invoke("Scanning local media library...")
         Log.d(
             TAG,
@@ -147,6 +183,7 @@ object LocalMediaUtil {
         val candidatePool = queryCandidatesForSizes(context, targetSizes)
         val sigs = SignatureCache { signatureOrNull(context, it) }
         var relinkedCount = 0
+        val stillMissing = HashSet<Int>()
 
         for ((index, item) in itemsNeedingFix.withIndex()) {
             onProgress?.invoke("Re-linking photo ${index + 1} of ${itemsNeedingFix.size}...")
@@ -160,8 +197,10 @@ object LocalMediaUtil {
                 )
                 // Update only the link columns so a concurrent edit (e.g. reordering) is not overwritten.
                 dao.updateMediaLink(item.id, match.uri, installationIdentifier)
+                relinkNeeded[item.copy(uri = match.uri, deviceId = installationIdentifier).linkKey] = false
                 relinkedCount++
             } else {
+                stillMissing += item.id
                 Log.w(
                     TAG,
                     "RE-LINK SKIPPED [No Match]: item id=${item.id}, origUri=${item.uri}, " +
@@ -175,9 +214,13 @@ object LocalMediaUtil {
             Log.i(TAG, "RE-LINK COMPLETE: Successfully updated $relinkedCount media items in Room DB.")
         }
         val removedDuplicates = deduplicateMediaItems(context, dao)
+        stillMissing -= removedDuplicates.mapTo(HashSet()) { it.id }
 
         val summary = if (relinkedCount > 0) "Media re-linking complete. Re-linked $relinkedCount items." else "No matching photos found to re-link."
-        onProgress?.invoke(if (removedDuplicates > 0) "$summary Removed $removedDuplicates duplicate photos." else summary)
+        return RelinkResult(
+            missingCount = stillMissing.size,
+            summary = if (removedDuplicates.isNotEmpty()) "$summary Removed ${removedDuplicates.size} duplicate photos." else summary
+        )
     }
 
     private fun findBySignature(
@@ -258,9 +301,9 @@ object LocalMediaUtil {
     /**
      * After re-linking, two items of one memory can point to the same photo (same signature). Keeps the
      * oldest of each, deletes the rest, closes the gaps they leave in `order` and releases grants no other
-     * item uses. Returns how many items were removed.
+     * item uses. Returns the removed items.
      */
-    suspend fun deduplicateMediaItems(context: Context, dao: MemoryGroupDao): Int =
+    suspend fun deduplicateMediaItems(context: Context, dao: MemoryGroupDao): List<MediaItem> =
         trace("local_media_util_deduplicate_media_items") {
             val allMedia = dao.getAllMediaItems()
             val duplicates = findDuplicateMedia(allMedia)
@@ -277,7 +320,7 @@ object LocalMediaUtil {
                 dao.deleteDuplicateMedia(duplicates, newOrders)
                 releaseUriGrantsIfUnused(context, dao, duplicates.map { it.uri })
             }
-            duplicates.size
+            duplicates
         }
 
     /** Items of the same memory with the same signature, except the oldest (lowest id) of each set. */

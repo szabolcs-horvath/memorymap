@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 39 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 34 open
+✅ 40 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 33 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -90,7 +90,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 
-**PERF — Performance** · 4 of 10 fixed
+**PERF — Performance** · 5 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -98,7 +98,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-2](#perf-2) | High | DAO reflection proxy plus a Firebase trace on every DB call |
 | ✅ | [PERF-3](#perf-3) | Medium | Save holds a DB write transaction while reading files |
 | ✅ | [PERF-4](#perf-4) | Medium | Media picker work runs on the main thread |
-| ⬜ | [PERF-5](#perf-5) | Medium | Cold start scans all media twice |
+| ✅ | [PERF-5](#perf-5) | Medium | Cold start scans all media twice |
 | ✅ | [PERF-6](#perf-6) | Medium | Every small change uploads the whole database |
 | ⬜ | [PERF-7](#perf-7) | Medium | Map rebuilt on every tab switch or detail open |
 | ⬜ | [PERF-8](#perf-8) | Low | Full marker reset on every emission |
@@ -403,10 +403,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** `withContext(Dispatchers.IO)`.
 - **Status:** Fixed. Persisting the URI grants, reading the installation id and the per-item type, size and date queries run in one `Dispatchers.IO` block; only the list update runs on the main thread.
 
-### <a id="perf-5"></a>⬜ PERF-5 · Medium · Cold start scans all media twice
+### <a id="perf-5"></a>✅ PERF-5 · Medium · Cold start scans all media twice
 - **Where:** `MainActivity.kt:258-265`, `LocalMediaUtil.kt:33-41, 105-131`
 - **What:** `verifyAndFixMediaItems` runs `isMediaValid` (one ContentResolver IPC per item) for every media item on every launch, then `hasMissingMedia` repeats it for all items. Each detail page (`MemoryFragment.displayMediaItems`) repeats it again on every emission.
 - **Fix:** Check once per session and cache the result, check only after an install, restore or permission change, and return the invalid set from the first pass.
+- **Status:** Fixed. `verifyAndFixMediaItems` returns how many items are still missing (`RelinkResult`), so cold start no longer checks every item a second time. `hasMissingMedia` (detail page, after a restore) answers from a per-process cache keyed by everything the check reads (id, URI, device id, size, date), so only new or changed items are checked. Each re-link run (cold start, restore, permission grant, the Re-link buttons) checks every item again and replaces the cache. A photo deleted from the gallery while the app runs is noticed at the next run.
 
 ### <a id="perf-6"></a>✅ PERF-6 · Medium · Every small change uploads the whole database
 - **Where:** `MemoryFragmentViewModel.kt:34-54`, `SettingsFragmentViewModel.kt:45-51`, `SettingsFragment.kt:425-510`, `AddMemoryGroupFragmentViewModel.kt:117`
