@@ -33,9 +33,6 @@ jobs:
           OAUTH_WEB_CLIENT_ID=${{ secrets.OAUTH_WEB_CLIENT_ID }}
           EOF
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
       # Fails the check on new issues. Existing ones are listed in config/detekt/baseline.xml.
       - name: Run Detekt
         id: detekt
