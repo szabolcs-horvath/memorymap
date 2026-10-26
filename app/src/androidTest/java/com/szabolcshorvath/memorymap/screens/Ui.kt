@@ -51,25 +51,40 @@ object Ui {
         assertTrue("$what is still shown", isGone(condition = condition))
 
     /**
-     * Scrolls the page until [condition] matches: down first, and back up once it reaches the bottom (a page can
-     * come back scrolled after a rotation). Waits for content that loads later, such as the backup list. A page
-     * only scrolls when it is taller than the screen. If nothing matches in time, the caller's check fails.
+     * Scrolls the page until [condition] matches: back to the top first (a page can come back scrolled after a
+     * rotation), then down. If it reaches the bottom without a match, it starts again from the top, which waits for
+     * content that loads later, such as the backup list. A page only scrolls when it is taller than the screen. If
+     * nothing matches in time, the caller's check fails.
      */
     fun scrollTo(condition: AccessibilityNodeInfo.() -> Boolean) {
-        val end = SystemClock.uptimeMillis() + TIMEOUT_MS
-        var direction = Direction.DOWN
+        val end = SystemClock.uptimeMillis() + SCROLL_TIMEOUT_MS
+        var atTop = false
         while (!isShown(timeoutMs = 0, condition = condition) && SystemClock.uptimeMillis() < end) {
             val page = findOrNull(timeoutMs = 0) { isScrollable && className?.toString()?.endsWith("ScrollView") == true }
-            val canScrollFurther = page?.scroll(direction, SCROLL_PERCENT) ?: false
-            if (page != null && !canScrollFurther) {
-                direction = if (direction == Direction.DOWN) Direction.UP else Direction.DOWN
+            when {
+                page == null -> SystemClock.sleep(SCROLL_PAUSE_MS)
+
+                !atTop -> {
+                    for (fling in 1..MAX_FLINGS) if (!page.fling(Direction.UP)) break
+                    atTop = true
+                }
+
+                // At the bottom: wait a moment, then search again from the top.
+                !page.scroll(Direction.DOWN, SCROLL_PERCENT, SCROLL_SPEED) -> {
+                    SystemClock.sleep(SCROLL_PAUSE_MS)
+                    atTop = false
+                }
             }
-            SystemClock.sleep(SCROLL_PAUSE_MS)
         }
     }
 
-    private const val SCROLL_PERCENT = 0.8f
-    private const val SCROLL_PAUSE_MS = 200L
+    private const val SCROLL_TIMEOUT_MS = 30_000L
+    private const val SCROLL_PERCENT = 0.7f
+
+    // Pixels per second. Slow enough not to fling, so a scroll never carries the page past what it looks for.
+    private const val SCROLL_SPEED = 1000
+    private const val SCROLL_PAUSE_MS = 300L
+    private const val MAX_FLINGS = 10
 
     fun pressBack() {
         device.pressBack()
