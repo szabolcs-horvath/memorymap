@@ -39,6 +39,8 @@ kotlin {
             // Every UI test starts from a fresh install: no memories, preferences or files from an earlier test.
             // This also wipes the debug app's data on the device the tests run on.
             testInstrumentationRunnerArguments["clearPackageData"] = "true"
+            // Lets a failing test save a screenshot that Gradle copies into the test results.
+            testInstrumentationRunnerArguments["useTestStorageService"] = "true"
 
             // Pass only the values the app needs: local.properties also holds the signing passwords.
             manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
@@ -196,7 +198,9 @@ dependencies {
     androidTestImplementation(libs.androidx.test.core.ktx)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.uiautomator)
+    androidTestImplementation(libs.androidx.test.services.storage)
     androidTestUtil(libs.androidx.test.orchestrator)
+    androidTestUtil(libs.androidx.test.services)
 
     // Debug tools
     debugImplementation(libs.leakcanary)
