@@ -84,6 +84,11 @@ jobs:
           ./gradlew pixel6Api${{ matrix.sdk }}DebugAndroidTest
           -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
 
+      # A table of the results on the job page, and an annotation for each failed test.
+      - name: Summarize the results
+        if: always()
+        run: java .github/scripts/UiTestSummary.java "Android API ${{ matrix.sdk }}" app/build/outputs/androidTest-results
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -92,4 +97,5 @@ jobs:
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
+            app/build/outputs/managed_device_android_test_additional_output/
           retention-days: 14
