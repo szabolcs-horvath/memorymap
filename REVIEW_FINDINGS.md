@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 51 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 25 open
+✅ 51 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 26 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -105,7 +105,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 8 of 16 fixed
+**UX — User experience** · 8 of 17 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -125,6 +125,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
 | ⬜ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
 | ⬜ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
+| ⬜ | [UX-17](#ux-17) | Low | A date picker ignores the picked date after process death |
 
 **ARCH — Structure / maintainability** · 1 of 10 fixed
 
@@ -302,7 +303,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `MapFragment.kt:209-235`, `AddMemoryGroupFragment.kt:697-770`, `MemoryFragmentEditAdapter.kt:486-598`
 - **What:** `MaterialDatePicker` and `MaterialTimePicker` are restored by the FragmentManager after a configuration change, but their `addOnPositiveButtonClickListener` lambdas are not. Picking a date after rotating does nothing. The fragment-editor pickers also capture `index`, which can point to a different fragment, or be out of range, if the list changes while the dialog is open.
 - **Fix:** Re-attach listeners in `onViewCreated` by finding the picker by tag, or use `setFragmentResultListener`. Identify fragments by `localId`, not index.
-- **Status:** Fixed. Each picker is shown under a tag that says what it is for, and its listener is attached again in `onViewCreated` to the picker found by that tag, replacing any earlier listener (`util/PickerListeners.kt`). The Add screen and fragment pickers have distinct tags (they share `childFragmentManager`). A fragment picker carries the fragment's `localId`, so the pick goes to that fragment, or nowhere if it was removed meanwhile. After process death the restored pickers apply to the reset form (`UX-7`).
+- **Status:** Fixed. Each picker is shown under a tag that says what it is for, and its listener is attached again in `onViewCreated` to the picker found by that tag, replacing any earlier listener (`util/PickerListeners.kt`). The Add screen and fragment pickers have distinct tags (they share `childFragmentManager`). A fragment picker carries the fragment's `localId`, so the pick goes to that fragment, or nowhere if it was removed meanwhile. After process death the restored pickers apply to the reset form (`UX-7`); date pickers then ignore the picked date ([UX-17](#ux-17)).
 
 ### <a id="bug-4"></a>✅ BUG-4 · Medium · Sign-in can leave the Settings screen stuck on "Signing in…"
 - **Where:** `auth/GoogleAuthManager.kt:35-63`, `SettingsFragment.kt:627-675`
@@ -489,9 +490,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Status:** Fixed. The form knows whether it has unsaved changes: `hasUnsavedChanges` compares what a save would store with the content when the form was last cleared or loaded for editing (`FormContent`; expanding a section is not a change). An Edit request on a changed form first asks "Discard the new memory?" or "Discard your changes?"; "Keep editing" leaves the form as it is, and the question comes back if the screen is recreated while it is shown. Editing the memory that is already open with changes keeps them. Switching to another tab closes an edit without changes, so the Add tab offers a new memory next time; an edit with changes is kept like a draft, on purpose. Edit as its own screen is left for the navigation rework (ARCH-1). Covered by `AddMemoryGroupFragmentViewModelTest`.
 
 ### <a id="ux-7"></a>⬜ UX-7 · Medium · Form state lost on process death
-- **Where:** `AddMemoryGroupFragmentViewModel.kt:44-69`, other ViewModels
-- **What:** The whole draft (title, media, fragments, dates) lives in plain ViewModel fields, not `SavedStateHandle`. Opening the photo picker or switching apps can kill the process and lose it.
-- **Fix:** Persist the draft through `SavedStateHandle` or a draft table.
+- **Where:** `AddMemoryGroupFragmentViewModel.kt:44-69`, `PickLocationFragmentViewModel.kt`, other ViewModels
+- **What:** The whole draft (title, media, fragments, dates) lives in plain ViewModel fields, not `SavedStateHandle`. Opening the photo picker or switching apps can kill the process and lose it. The process death UI tests (TEST-3) show what is lost:
+  - The Add form keeps only what its text fields show (title, description). The location, dates, colour, photos and fragments go back to a new memory's defaults.
+  - An edit forgets which memory it was editing: the button goes back to "Save Memory". Saving needs a location, so nothing is saved at once, but after picking the location again, Save creates a second memory instead of updating the first.
+  - The location picker loses the picked spot.
+  - `ProcessDeathTest.addFormKeepsTheTitleAndLocation`, `editKeepsEditingTheSameMemory` and `locationPickerKeepsThePickedSpot` are skipped until this is fixed.
+- **Fix:** Persist the draft through `SavedStateHandle` or a draft table, including the id of the memory being edited and the location picker's picked spot.
 
 ### <a id="ux-8"></a>⬜ UX-8 · Medium · Full-screen images are decoded at screen size
 - **Where:** `adapter/MediaPagerAdapter.kt:58-61, 144-149`
@@ -540,9 +545,15 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ### <a id="ux-16"></a>⬜ UX-16 · Low · Confirmation dialogs close when the phone is turned
 - **Where:** `SettingsFragment.kt` (restore, delete backup, delete preset, media access), `MemoryFragment.kt` (delete), `AddMemoryGroupFragment.kt` (clear or discard, replacing an edit), `util/MyLocationAction.kt` (explanation, open settings)
-- **What:** These are plain `AlertDialog`s, which Android doesn't bring back after a configuration change: turning the phone closes them, and the user has to start again. Found by the rotation UI tests (TEST-3); `RotationTest.restoreConfirmationStaysOpen` is skipped until this is fixed.
-- **Fix:** Show them as `DialogFragment`s, with what they need in their arguments or the ViewModel and the answer passed back as a fragment result, so they come back after a rotation.
+- **What:** These are plain `AlertDialog`s, which Android doesn't bring back after a configuration change: turning the phone closes them, and the user has to start again. The same happens after process death. Found by the rotation and process death UI tests (TEST-3); `RotationTest.restoreConfirmationStaysOpen` and `ProcessDeathTest.restoreConfirmationStaysOpen` are skipped until this is fixed.
+- **Fix:** Show them as `DialogFragment`s, with what they need in their arguments or saved state and the answer passed back as a fragment result, so they come back after a rotation or process death.
 - **Compose migration ([ARCH-10](#arch-10)):** a Compose dialog is shown from state; kept in the ViewModel or `rememberSaveable`, it survives a rotation, so the migration fixes this if each dialog's state is kept there.
+
+### <a id="ux-17"></a>⬜ UX-17 · Low · A date picker ignores the picked date after process death
+- **Where:** every `MaterialDatePicker`: `AddMemoryGroupFragment.kt` (`pickDate`, `pickDateRange`), `adapter/FragmentEditPickers.kt`, `MapFragment.kt` (custom date filter)
+- **What:** If Android kills the app while a date picker is open, the picker comes back when the user returns, and its listener is attached again (BUG-3). But tapping a date and OK applies the date it opened with, not the tapped one. Most likely a Material Components bug: after process death the picker and its calendar each rebuild their own copy of the selection, taps change the calendar's copy, and OK reads the picker's. A rotation keeps one shared copy, so it works there. Time pickers are not affected. Found by `ProcessDeathTest.datePickerStaysOpenAndStillWorks`, which is skipped until this is fixed.
+- **Fix:** First check whether a newer Material Components release fixes it. Otherwise, when a date picker comes back after process death (its screen's ViewModel is new), close it and open a new one for the same field with the same selection.
+- **Compose migration ([ARCH-10](#arch-10)):** the Compose `DatePicker` keeps its state in `rememberDatePickerState`, which has no second copy, so the migration fixes this.
 
 [↑ Back to index](#index)
 
@@ -712,7 +723,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Make the tests outlive the UI code:** they are the safety net for ARCH-10, so they must keep running when a screen moves to Compose. Find elements by what the user sees (text, content descriptions, test tags exposed as resource ids), for example with UI Automator, or keep all element lookups in one screen-object layer per screen so only that layer changes. Tests written straight against View ids with Espresso would have to be rewritten during the migration and would prove nothing.
 - **Changing tests during the migration:** a test may change only together with a deliberate change in behaviour or look that is objectively better than the old one (the rule in [ARCH-10](#arch-10)). The test is then updated in the same commit to describe the new behaviour, and the commit message says why. A test is never edited only because a migrated screen fails it: the screen is fixed instead.
 - **Test seams needed:** Google sign-in, Drive, the system photo picker and location are outside the app. Give them fakes the tests can inject (signed-in account, a Drive with backups, picked media URIs, a fixed location).
-- **Status:** Partly fixed. The setup is in place: instrumented tests with UI Automator behind one screen object per screen, the Test Orchestrator with a fresh install for every test, fakes for sign-in and Drive (`AppServices`), helpers for test data, and CI on Gradle managed emulators with API 35 and 37 (`ui-tests.yml`). The navigation tests cover every tab switch, back from every tab and detail screen, tapping a tab while a memory, the media viewer or the location picker is open, Show on Map, Show on Timeline and Edit (with the target tab opened before and not), the location picker round trip, and rotation on every screen and with the date and time pickers open. Still to do: process death (it needs a test module that drives the app from outside its process), the screens' own flows listed above, and fakes for location and the photo picker. Android 14 (minSdk) can't be tested on an emulator: every API 34 image ships Google Play services 23.18, whose map renderer crashes on the app's markers, so it needs a real device or Firebase Test Lab. Plain dialogs closing on rotation is [UX-16](#ux-16); its test is skipped until that is fixed.
+- **Status:** Partly fixed. The setup is in place: instrumented tests with UI Automator behind one screen object per screen, the Test Orchestrator with a fresh install for every test, fakes for sign-in and Drive (`AppServices`), helpers for test data, and CI on Gradle managed emulators with API 35 and 37 (`ui-tests.yml`). The navigation tests cover every tab switch, back from every tab and detail screen, tapping a tab while a memory, the media viewer or the location picker is open, Show on Map, Show on Timeline and Edit (with the target tab opened before and not), the location picker round trip, and rotation on every screen and with the date and time pickers open. Process death is covered on the same screens and pickers (`ProcessDeathTest`), simulated with "Don't keep activities": Android rebuilds the screens from their saved state alone and clears their ViewModels, as after a real process death. The process itself keeps running, so the app's own start-up after a kill (such as the re-link on a cold start) is not covered. Those tests found [UX-17](#ux-17) and showed what [UX-7](#ux-7) loses; their tests are skipped until those are fixed. Still to do: the screens' own flows listed above, and fakes for location and the photo picker. Android 14 (minSdk) can't be tested on an emulator: every API 34 image ships Google Play services 23.18, whose map renderer crashes on the app's markers, so it needs a real device or Firebase Test Lab. Plain dialogs closing on rotation and process death is [UX-16](#ux-16); its tests are skipped until that is fixed.
 
 [↑ Back to index](#index)
 
