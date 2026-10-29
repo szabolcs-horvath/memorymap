@@ -18,11 +18,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - sdk: 35
-            image: android-35
-          - sdk: 37
-            image: android-37.0
+        # Gradle downloads the emulator and its image each run. Don't cache the image on its own: Gradle then
+        # skips installing the emulator too, and the setup fails ("Cannot query the value of this property").
+        sdk: [ 35, 37 ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -42,13 +40,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-
-      # The emulator image is large; keep it between runs.
-      - name: Cache the emulator image
-        uses: actions/cache@v6
-        with:
-          path: /usr/local/lib/android/sdk/system-images/${{ matrix.image }}/google_apis
-          key: emulator-image-${{ matrix.image }}-google_apis-x86_64
 
       # The map needs the Maps key (the location picker tests tap it); sign-in and Drive are faked in the tests.
       - name: Create local.properties file
