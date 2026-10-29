@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.screens
 import androidx.test.uiautomator.textAsString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 
 /** The Map tab. */
 object MapScreen : TabScreen {
@@ -30,6 +31,17 @@ object TimelineScreen : TabScreen {
         hasId("tv_memoryTitle") && hasText(title)
     }
 
+    fun assertMemoryGone(title: String) = Ui.assertGone("\"$title\" in the timeline") {
+        hasId("tv_memoryTitle") && hasText(title)
+    }
+
+    fun search(text: String) {
+        Ui.find { hasHint(SEARCH) && isEditable }.text = text
+        Ui.device.waitForIdle()
+    }
+
+    fun assertSearch(text: String) = Ui.assertShown("The search \"$text\"") { hasHint(SEARCH) && hasText(text) }
+
     fun openMemory(title: String) {
         Ui.find { hasId("tv_memoryTitle") && hasText(title) }.click()
         Ui.device.waitForIdle()
@@ -40,6 +52,9 @@ object TimelineScreen : TabScreen {
 object AddScreen : TabScreen {
     private const val SELECT_LOCATION = "Select on Map"
     private const val NO_LOCATION = "No location selected"
+    private const val SAVE = "Save Memory"
+    private const val UPDATE = "Update"
+    private const val HALF_DAY = 12
 
     override fun assertShown() = Ui.assertShown("The Add form") { hasText(SELECT_LOCATION) }
 
@@ -53,9 +68,15 @@ object AddScreen : TabScreen {
     fun assertTitle(title: String) = Ui.assertShown("The title \"$title\"") { hasHint("Title") && hasText(title) }
 
     fun save() {
-        Ui.scrollTo { hasText("Save Memory") }
-        Ui.find { hasText("Save Memory") }.click()
+        Ui.scrollTo { hasText(SAVE) }
+        Ui.find { hasText(SAVE) }.click()
         Ui.device.waitForIdle()
+    }
+
+    /** The form edits an existing memory: its button updates that memory instead of saving a new one. */
+    fun assertEditing() {
+        Ui.scrollTo { hasText(UPDATE) || hasText(SAVE) }
+        Ui.assertShown("The Update button of a memory being edited") { hasText(UPDATE) }
     }
 
     fun selectLocation() {
@@ -89,6 +110,20 @@ object AddScreen : TabScreen {
     fun startTimeText(): String? {
         expandDateSection()
         return Ui.find { hasId("bt_startTime") }.text
+    }
+
+    /** The start date shows [day] as its day of the month (for example "Sep 15, 2026" for 15). */
+    fun assertStartDay(day: Int) {
+        val text = startDateText().orEmpty()
+        assertTrue("The start date \"$text\" is not on day $day", Regex("\\b$day\\b").containsMatchIn(text))
+    }
+
+    /** The start time shows [hour] (0-23), in the 24-hour or the 12-hour clock ("21:05" or "9:05 PM" for 21). */
+    fun assertStartHour(hour: Int) {
+        val text = startTimeText().orEmpty()
+        val shown = text.substringBefore(':').trim().toIntOrNull()
+        val twelveHour = (hour % HALF_DAY).let { if (it == 0) HALF_DAY else it }
+        assertTrue("The start time \"$text\" is not at hour $hour", shown == hour || shown == twelveHour)
     }
 
     private fun expandDateSection() {
@@ -154,11 +189,12 @@ object DatePickerDialog {
 
 /** The clock dialog for picking a time. */
 object TimePickerDialog {
-    /** Picks the hour after the one shown, so the time always changes. */
-    fun pickNextHour() {
-        val hour = Ui.find { hasId("material_hour_tv") }.text.toInt()
-        Ui.find { hasDescription("${(hour + 1) % HOURS_PER_DAY} hours") }.click()
+    /** Picks the hour after the one shown, so the time always changes, and returns it (0-23). */
+    fun pickNextHour(): Int {
+        val hour = (Ui.find { hasId("material_hour_tv") }.text.toInt() + 1) % HOURS_PER_DAY
+        Ui.find { hasDescription("$hour hours") }.click()
         Ui.device.waitForIdle()
+        return hour
     }
 
     private const val HOURS_PER_DAY = 24
