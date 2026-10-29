@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 51 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 26 open
+✅ 51 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 27 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ✅ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 16 of 16 fixed
+**BUG — Functional bugs** · 16 of 17 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -89,6 +89,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-14](#bug-14) | Low | Places SDK initialized with an empty key |
 | ✅ | [BUG-15](#bug-15) | Low | Recycled thumbnails briefly show stale content |
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
+| ⬜ | [BUG-17](#bug-17) | Low | Show on Timeline can leave a memory below the screen |
 
 **PERF — Performance** · 7 of 10 fixed
 
@@ -380,6 +381,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** The "original" colour is read from the card. A second flash during the first one, or recycling mid-animation, keeps the highlight colour.
 - **Fix:** Use the theme surface colour as the base and cancel the animator in `onViewRecycled`.
 - **Status:** Fixed. The card's colour is read once when the view holder is created. A new flash cancels the running one, and `onViewRecycled` cancels it and restores the card colour.
+
+### <a id="bug-17"></a>⬜ BUG-17 · Low · Show on Timeline can leave a memory below the screen
+- **Where:** `TimelineFragment.performScrollAndFlash`, `res/layout/fragment_timeline.xml`
+- **What:** The search bar scrolls away with the list (`scroll|enterAlways`), so while it shows, the bottom of the list sits below the screen by the bar's height. Scrolling by hand hides the bar. Show on Timeline scrolls the list in code and leaves the bar where it is, so a memory near the end of the list (the oldest ones) stays below the screen edge, and so does its flash. Found by the Timeline UI tests (TEST-3); `TimelineTest.showOnTimelineScrollsToTheOldestMemory` is skipped until this is fixed.
+- **Fix:** Hide the search bar (`appBar.setExpanded(false)`) when scrolling to a memory, as scrolling by hand does.
 
 [↑ Back to index](#index)
 
@@ -723,7 +729,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Make the tests outlive the UI code:** they are the safety net for ARCH-10, so they must keep running when a screen moves to Compose. Find elements by what the user sees (text, content descriptions, test tags exposed as resource ids), for example with UI Automator, or keep all element lookups in one screen-object layer per screen so only that layer changes. Tests written straight against View ids with Espresso would have to be rewritten during the migration and would prove nothing.
 - **Changing tests during the migration:** a test may change only together with a deliberate change in behaviour or look that is objectively better than the old one (the rule in [ARCH-10](#arch-10)). The test is then updated in the same commit to describe the new behaviour, and the commit message says why. A test is never edited only because a migrated screen fails it: the screen is fixed instead.
 - **Test seams needed:** Google sign-in, Drive, the system photo picker and location are outside the app. Give them fakes the tests can inject (signed-in account, a Drive with backups, picked media URIs, a fixed location).
-- **Status:** Partly fixed. The setup is in place: instrumented tests with UI Automator behind one screen object per screen, the Test Orchestrator with a fresh install for every test, fakes for sign-in and Drive (`AppServices`), helpers for test data, and CI on Gradle managed emulators with API 35 and 37 (`ui-tests.yml`). The navigation tests cover every tab switch, back from every tab and detail screen, tapping a tab while a memory, the media viewer or the location picker is open, Show on Map, Show on Timeline and Edit (with the target tab opened before and not), the location picker round trip, and rotation on every screen and with the date and time pickers open. Process death is covered on the same screens and pickers (`ProcessDeathTest`), simulated with "Don't keep activities": Android rebuilds the screens from their saved state alone and clears their ViewModels, as after a real process death. The process itself keeps running, so the app's own start-up after a kill (such as the re-link on a cold start) is not covered. Those tests found [UX-17](#ux-17) and showed what [UX-7](#ux-7) loses; their tests are skipped until those are fixed. Still to do: the screens' own flows listed above, and fakes for location and the photo picker. Android 14 (minSdk) can't be tested on an emulator: every API 34 image ships Google Play services 23.18, whose map renderer crashes on the app's markers, so it needs a real device or Firebase Test Lab. Plain dialogs closing on rotation and process death is [UX-16](#ux-16); its tests are skipped until that is fixed.
+- **Status:** Partly fixed. The setup is in place: instrumented tests with UI Automator behind one screen object per screen, the Test Orchestrator with a fresh install for every test, fakes for sign-in and Drive (`AppServices`), helpers for test data, and CI on Gradle managed emulators with API 35 and 37 (`ui-tests.yml`). The navigation tests cover every tab switch, back from every tab and detail screen, tapping a tab while a memory, the media viewer or the location picker is open, Show on Map, Show on Timeline and Edit (with the target tab opened before and not), the location picker round trip, and rotation on every screen and with the date and time pickers open. Process death is covered on the same screens and pickers (`ProcessDeathTest`), simulated with "Don't keep activities": Android rebuilds the screens from their saved state alone and clears their ViewModels, as after a real process death. The process itself keeps running, so the app's own start-up after a kill (such as the re-link on a cold start) is not covered. Those tests found [UX-17](#ux-17) and showed what [UX-7](#ux-7) loses; their tests are skipped until those are fixed. The Timeline tests cover grouping by day, search (title, description, place, address; no matches; cleared), no memories, the Scroll to top button and Show on Timeline scrolling to a memory far down; they found [BUG-17](#bug-17). The memory screen tests cover swiping between memories, delete with Cancel, Undo and the final delete, and a photo from another phone. Still to do: the other screens' own flows listed above, the timeline's flash (not visible to the tests), the media viewer's swiping, zoom and video, and fakes for location and the photo picker. Android 14 (minSdk) can't be tested on an emulator: every API 34 image ships Google Play services 23.18, whose map renderer crashes on the app's markers, so it needs a real device or Firebase Test Lab. Plain dialogs closing on rotation and process death is [UX-16](#ux-16); its tests are skipped until that is fixed.
 
 [↑ Back to index](#index)
 

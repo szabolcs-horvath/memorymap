@@ -32,22 +32,32 @@ object TestData {
     private val dao get() = MemoryMapDatabase.getDatabase(context).memoryGroupDao()
     private val createdPhotos = mutableListOf<Uri>()
 
-    /** Adds a memory and returns its id. Memories are shown newest first, so [daysAgo] sets their order. */
+    /** Where a memory is: its coordinates, the place name and the address the location picker would store. */
+    data class Place(val latitude: Double, val longitude: Double, val name: String?, val address: String? = null) {
+        companion object {
+            val BUDAPEST = Place(47.4979, 19.0402, "Budapest")
+        }
+    }
+
+    /**
+     * Adds a memory that starts at [hour]:00 [daysAgo] days ago and returns its id. Memories are shown newest first,
+     * so [daysAgo] and [hour] set their order.
+     */
     fun memory(
         title: String,
         daysAgo: Long = 1,
-        latitude: Double = 47.4979,
-        longitude: Double = 19.0402,
-        placeName: String? = "Budapest",
+        hour: Int = 12,
+        place: Place = Place.BUDAPEST,
+        description: String? = null,
     ): Int = runBlocking {
-        val start = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(daysAgo).withHour(12).withMinute(0)
+        val start = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(daysAgo).withHour(hour).withMinute(0)
         val group = MemoryGroup(
             title = title,
-            description = null,
-            latitude = latitude,
-            longitude = longitude,
-            placeName = placeName,
-            address = null,
+            description = description,
+            latitude = place.latitude,
+            longitude = place.longitude,
+            placeName = place.name,
+            address = place.address,
             startDate = start,
             endDate = start.plusHours(2),
             isAllDay = false,
@@ -74,6 +84,27 @@ object TestData {
             )
         )
         uri
+    }
+
+    /**
+     * Adds a photo to memory [groupId] as a restored backup brings it from another phone: a different installation
+     * id, and a file that doesn't exist here, so re-linking finds nothing to link it to.
+     */
+    fun photoFromAnotherDevice(groupId: Int, fileSize: Long = FOREIGN_PHOTO_SIZE) = runBlocking {
+        dao.insertMediaItems(
+            listOf(
+                MediaItem(
+                    groupId = groupId,
+                    uri = "content://media/external/images/media/$MISSING_MEDIA_ID",
+                    deviceId = "another-device",
+                    type = MediaType.IMAGE,
+                    mediaSignature = "${fileSize}_00000000000000000000000000000000",
+                    fileSize = fileSize,
+                    dateTaken = 0,
+                    order = 0,
+                )
+            )
+        )
     }
 
     /** Signs in as [email] the way a finished sign-in leaves the app; Drive calls then go to the fake storage. */
@@ -110,4 +141,6 @@ object TestData {
     private const val IMAGE_WIDTH = 640
     private const val IMAGE_HEIGHT = 480
     private const val JPEG_QUALITY = 90
+    private const val FOREIGN_PHOTO_SIZE = 2_345_678L
+    private const val MISSING_MEDIA_ID = 987_654_321L
 }
