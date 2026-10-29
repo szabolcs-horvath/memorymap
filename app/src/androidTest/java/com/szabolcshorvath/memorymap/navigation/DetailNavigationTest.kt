@@ -27,7 +27,7 @@ class DetailNavigationTest {
     fun addMemories() {
         val withPhoto = TestData.memory(NEWER, daysAgo = 1)
         TestData.photo(withPhoto)
-        TestData.memory(OLDER, daysAgo = 10, latitude = 48.2082, longitude = 16.3738, placeName = "Vienna")
+        TestData.memory(OLDER, daysAgo = 10, place = TestData.Place(48.2082, 16.3738, "Vienna"))
     }
 
     @Test

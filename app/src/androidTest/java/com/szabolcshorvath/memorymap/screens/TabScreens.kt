@@ -1,9 +1,12 @@
 package com.szabolcshorvath.memorymap.screens
 
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.textAsString
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import java.time.LocalDate
 
 /** The Map tab. */
 object MapScreen : TabScreen {
@@ -41,6 +44,39 @@ object TimelineScreen : TabScreen {
     }
 
     fun assertSearch(text: String) = Ui.assertShown("The search \"$text\"") { hasHint(SEARCH) && hasText(text) }
+
+    fun assertEmpty() = Ui.assertShown("The empty timeline message") { hasText("No memories yet. Add some!") }
+
+    fun assertNoMatches(query: String) = Ui.assertShown("The no-match message for \"$query\"") {
+        hasText("No memories match \"$query\"")
+    }
+
+    /** The header the timeline shows above the memories of [date]. */
+    fun dayHeader(date: LocalDate): String = date.format(DateTimeFormatterUtil.dateFormatter())
+
+    /** Day headers and memory titles appear in this order, from top to bottom (all on screen). */
+    fun assertTopToBottom(vararg texts: String) {
+        val tops = texts.map { text ->
+            Ui.find { (hasId("tv_date") || hasId("tv_memoryTitle")) && hasText(text) }.visibleBounds.top
+        }
+        assertEquals("The timeline order of ${texts.toList()}", tops.sorted(), tops)
+        assertEquals("Two of ${texts.toList()} share a row", tops.size, tops.toSet().size)
+    }
+
+    /** Scrolls the list down by most of a screen. Returns false at the bottom. */
+    fun scrollDown(): Boolean = Ui.find { hasId("rv_timeline") }.scroll(Direction.DOWN, SCROLL_PERCENT)
+
+    fun assertScrollToTopShown() = Ui.assertShown("The Scroll to top button") { hasDescription(SCROLL_TO_TOP) }
+
+    fun assertScrollToTopGone() = Ui.assertGone("The Scroll to top button") { hasDescription(SCROLL_TO_TOP) }
+
+    fun scrollToTop() {
+        Ui.find { hasDescription(SCROLL_TO_TOP) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    private const val SCROLL_TO_TOP = "Scroll to top"
+    private const val SCROLL_PERCENT = 0.8f
 
     fun openMemory(title: String) {
         Ui.find { hasId("tv_memoryTitle") && hasText(title) }.click()
