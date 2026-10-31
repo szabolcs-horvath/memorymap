@@ -30,6 +30,76 @@ object MapScreen : TabScreen {
     fun assertOverlayShows(title: String) = Ui.assertShown("The map overlay with \"$title\"") {
         hasId("tv_memoryTitle") && hasText(title)
     }
+
+    fun assertOverlayGone() = Ui.assertGone("The map overlay") { hasId("tv_memoryTitle") }
+
+    /** Opens memory [title] from the overlay card. */
+    fun openFromOverlay(title: String) {
+        Ui.find { hasId("tv_memoryTitle") && hasText(title) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    /**
+     * A marker titled [title] is on the map: a memory's title, or "N Memories" for several at one place. A
+     * fragment's marker has its memory's title. Cluster circles have no title.
+     */
+    fun assertMarkerShown(title: String) = Ui.assertShown("The marker \"$title\"") { isMarker(title) }
+
+    fun assertMarkerGone(title: String) = Ui.assertGone("The marker \"$title\"") { isMarker(title) }
+
+    /** Waits until exactly [count] markers titled [title] are on the map. */
+    fun assertMarkerCount(title: String, count: Int) {
+        val marker = By.desc(markerDescription(title))
+        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        var found = Ui.device.findObjects(marker).size
+        while (found != count && SystemClock.uptimeMillis() < end) {
+            SystemClock.sleep(POLL_MS)
+            found = Ui.device.findObjects(marker).size
+        }
+        assertEquals("Markers titled \"$title\"", count, found)
+    }
+
+    fun tapMarker(title: String) {
+        Ui.find { isMarker(title) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    private fun AccessibilityNodeInfo.isMarker(title: String) =
+        markerDescription(title).matcher(contentDescription ?: "").matches()
+
+    // The map describes a marker as its title and snippet: "Paris trip. " (the app sets no snippet).
+    private fun markerDescription(title: String): Pattern = Pattern.compile(Pattern.quote(title) + "\\.\\s*")
+
+    /** Picks a date filter from the quick filter menu ("Last 7 Days", ..., "All Time"). */
+    fun pickQuickFilter(label: String) {
+        Ui.find { hasDescription("Quick date filters") }.click()
+        Ui.find { hasText(label) && !hasId(DATE_RANGE) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    /** The date filter button shows [label]: a quick filter's name, or the picked dates. */
+    fun assertFilter(label: String) = Ui.assertShown("The date filter \"$label\"") { hasId(DATE_RANGE) && hasText(label) }
+
+    fun toggleColorStatistics() {
+        Ui.find { hasDescription(STATS) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    fun assertColorStatisticsShown() = Ui.assertShown("The colour statistics") { hasId(PIE_CHART) }
+
+    fun assertColorStatisticsGone() = Ui.assertGone("The colour statistics") { hasId(PIE_CHART) }
+
+    /** Taps an empty spot of the map: the top left corner, away from the markers and the buttons. */
+    fun tapEmptyMap() {
+        val map = Ui.find { hasDescription("Google Map") }.visibleBounds
+        Ui.device.click(map.left + map.width() / EMPTY_SPOT_DIVISOR, map.top + map.height() / 2)
+        Ui.device.waitForIdle()
+    }
+
+    private const val DATE_RANGE = "bt_dateRange"
+    private const val PIE_CHART = "pieChart"
+    private const val POLL_MS = 200L
+    private const val EMPTY_SPOT_DIVISOR = 10
 }
 
 /** The Timeline tab. */
