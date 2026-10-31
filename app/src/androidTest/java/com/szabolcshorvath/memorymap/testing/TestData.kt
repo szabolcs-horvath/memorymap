@@ -89,9 +89,14 @@ object TestData {
     /**
      * Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. With
      * [linkedToThisPhone] false, it is saved as a restored backup brings it from another phone: the file is here,
-     * but re-linking has yet to find it.
+     * but re-linking has yet to find it. A memory shows its photos by [order], lowest first.
      */
-    fun photo(groupId: Int, color: Int = Color.rgb(30, 120, 200), linkedToThisPhone: Boolean = true): Uri = runBlocking {
+    fun photo(
+        groupId: Int,
+        color: Int = Color.rgb(30, 120, 200),
+        linkedToThisPhone: Boolean = true,
+        order: Int = 0,
+    ): Uri = runBlocking {
         val uri = createGalleryImage(color)
         val size = context.contentResolver.openFileDescriptor(uri, "r")!!.use { it.statSize }
         val thisPhone = InstallationIdentifier.getInstallationIdentifier(context)
@@ -105,7 +110,7 @@ object TestData {
                     mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                     fileSize = size,
                     dateTaken = 0,
-                    order = 0,
+                    order = order,
                 )
             )
         )
