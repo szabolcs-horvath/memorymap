@@ -113,6 +113,12 @@ object TestData {
     }
 
     /**
+     * Adds a photo to the phone's gallery only, in no memory: one for the fake photo picker to return. Photos of
+     * one colour are the same file to the app, which keeps only one of them in a memory.
+     */
+    fun galleryPhoto(color: Int = Color.rgb(200, 80, 40)): Uri = createGalleryImage(color)
+
+    /**
      * Adds a photo to memory [groupId] as a restored backup brings it from another phone: a different installation
      * id, and a file that doesn't exist here, so re-linking finds nothing to link it to.
      */
