@@ -19,7 +19,6 @@ import androidx.transition.ChangeBounds
 import androidx.transition.Fade
 import androidx.transition.TransitionManager
 import androidx.transition.TransitionSet
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -37,6 +36,7 @@ import com.google.maps.android.clustering.Cluster
 import com.google.maps.android.clustering.ClusterManager
 import com.google.maps.android.clustering.view.DefaultAdvancedMarkersClusterRenderer
 import com.google.maps.android.collections.MarkerManager
+import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
@@ -478,12 +478,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    @SuppressWarnings("MissingPermission")
     private fun zoomToUserLocationIfPossible() {
         val context = context
         if (context != null && hasLocationPermission(context) && !viewModel.isInitialZoomDone) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            AppServices.location.lastLocation(context).addOnSuccessListener { location ->
                 if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
                 val googleMap = mMap
                 if (location != null && googleMap != null && !viewModel.isInitialZoomDone) {
