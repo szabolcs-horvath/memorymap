@@ -4,7 +4,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Element;
@@ -28,6 +30,7 @@ public class UiTestSummary {
         List<String> passed = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
         List<Failure> failed = new ArrayList<>();
+        Set<String> reported = new HashSet<>();
 
         for (Path report : reports(resultsDir)) {
             NodeList cases = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(report.toFile())
@@ -36,6 +39,7 @@ public class UiTestSummary {
                 Element testCase = (Element) cases.item(i);
                 String className = testCase.getAttribute("classname");
                 String test = className.substring(className.lastIndexOf('.') + 1) + "." + testCase.getAttribute("name");
+                reported.add(className + "-" + testCase.getAttribute("name"));
                 Element problem = child(testCase, "failure");
                 if (problem == null) problem = child(testCase, "error");
                 // The managed-device report writes an @Ignore'd test as an empty <failure/>; Gradle counts it as skipped.
@@ -52,11 +56,20 @@ public class UiTestSummary {
             }
         }
 
+        // Every test that starts leaves its logcat. One without a result was lost: its run never reported back,
+        // which the emulator sometimes does, and Gradle doesn't count it as a failure.
+        List<String> lost = lost(resultsDir, reported);
+
         List<String> lines = new ArrayList<>(List.of("### UI tests on " + title, ""));
         if (passed.isEmpty() && failed.isEmpty() && skipped.isEmpty()) {
             lines.add("No test results: the build or the emulator failed before the tests ran. See the job log.");
         } else {
-            lines.add("✅ " + passed.size() + " passed · ❌ " + failed.size() + " failed · ⏭️ " + skipped.size() + " skipped");
+            lines.add("✅ " + passed.size() + " passed · ❌ " + failed.size() + " failed · ⏭️ " + skipped.size() + " skipped"
+                    + (lost.isEmpty() ? "" : " · ⚠️ " + lost.size() + " without a result"));
+            if (!lost.isEmpty()) {
+                lines.addAll(List.of("", "Started but without a result (not checked, rerun them): `"
+                        + String.join("`, `", lost) + "`"));
+            }
             if (!failed.isEmpty()) {
                 lines.addAll(List.of("", "| Failed test | Message |", "|---|---|"));
                 for (Failure failure : failed) {
@@ -80,6 +93,23 @@ public class UiTestSummary {
         }
         for (Failure failure : failed) {
             System.out.println("::error title=" + escape(title + ": " + failure.test()) + "::" + escape(failure.message()));
+        }
+        for (String test : lost) {
+            System.out.println("::warning title=" + escape(title + ": " + test) + "::Started but without a result; rerun it.");
+        }
+    }
+
+    /** Tests that left a logcat (`logcat-<class>-<method>.txt`) but no result in the JUnit XML. */
+    private static List<String> lost(Path dir, Set<String> reported) throws IOException {
+        if (!Files.isDirectory(dir)) return List.of();
+        try (Stream<Path> files = Files.walk(dir)) {
+            return files.map(p -> p.getFileName().toString())
+                    .filter(name -> name.startsWith("logcat-") && name.endsWith(".txt"))
+                    .map(name -> name.substring("logcat-".length(), name.length() - ".txt".length()))
+                    .filter(test -> !reported.contains(test))
+                    .map(test -> test.substring(test.lastIndexOf('.') + 1).replace('-', '.'))
+                    .sorted()
+                    .toList();
         }
     }
 
