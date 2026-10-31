@@ -1,0 +1,235 @@
+package com.szabolcshorvath.memorymap.settings
+
+import androidx.credentials.exceptions.NoCredentialException
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.szabolcshorvath.memorymap.fakes.FakeAccountService
+import com.szabolcshorvath.memorymap.fakes.FakeAccountService.DEFAULT_EMAIL
+import com.szabolcshorvath.memorymap.fakes.FakeBackupStorage
+import com.szabolcshorvath.memorymap.screens.BottomNav
+import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.MemoryScreen
+import com.szabolcshorvath.memorymap.screens.SettingsScreen
+import com.szabolcshorvath.memorymap.screens.ShareSheet
+import com.szabolcshorvath.memorymap.screens.TimelineScreen
+import com.szabolcshorvath.memorymap.screens.Ui
+import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
+import com.szabolcshorvath.memorymap.testing.TestData
+import org.junit.Ignore
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** The Settings tab: the Google account, Drive backups and restores, map preferences and media maintenance. */
+@RunWith(AndroidJUnit4::class)
+class SettingsTest {
+    @get:Rule
+    val app = MemoryMapAppRule()
+
+    @Test
+    fun signingInShowsTheAccountAndItsBackups() {
+        addBackup(MANUAL_BACKUP)
+        openSettings()
+        SettingsScreen.assertSignedOut()
+
+        SettingsScreen.signIn()
+
+        SettingsScreen.assertSignedIn(DEFAULT_EMAIL)
+        SettingsScreen.assertBackupShown(MANUAL)
+    }
+
+    @Test
+    fun aFailedSignInStaysSignedOut() {
+        FakeAccountService.signInError = NoCredentialException()
+        openSettings()
+
+        SettingsScreen.signIn()
+
+        SettingsScreen.assertSignedOut()
+    }
+
+    @Test
+    fun signingOutHidesTheBackups() {
+        TestData.signIn()
+        addBackup(MANUAL_BACKUP)
+        openSettings()
+        SettingsScreen.assertBackupShown(MANUAL)
+
+        SettingsScreen.signOut()
+
+        SettingsScreen.assertSignedOut()
+        SettingsScreen.assertBackupGone(MANUAL)
+    }
+
+    @Test
+    fun backupNowAddsABackup() {
+        TestData.memory(KEPT)
+        TestData.signIn()
+        openSettings()
+
+        SettingsScreen.backUpNow()
+
+        SettingsScreen.assertResult("Backup successful")
+        SettingsScreen.assertBackupShown(MANUAL)
+    }
+
+    @Test
+    fun restoringABackupBringsBackWhatItHolds() {
+        backUpThenRestore()
+
+        SettingsScreen.waitUntilIdle()
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.assertMemoryShown(KEPT)
+        TimelineScreen.assertMemoryGone(ADDED_AFTER_THE_BACKUP)
+    }
+
+    @Test
+    @Ignore("The re-link after a restore hides \"Restore successful\" at once (UX-18). Turn this on with the fix.")
+    fun aRestoreSaysThatItSucceeded() {
+        backUpThenRestore()
+
+        SettingsScreen.waitUntilIdle()
+        SettingsScreen.assertResult("Restore successful")
+    }
+
+    /** Backs up a memory, adds another one, and restores the backup. */
+    private fun backUpThenRestore() {
+        TestData.memory(KEPT)
+        TestData.signIn()
+        TestData.grantMediaAccess()
+        openSettings()
+        SettingsScreen.backUpNow()
+        SettingsScreen.assertResult("Backup successful")
+        TestData.memory(ADDED_AFTER_THE_BACKUP)
+
+        SettingsScreen.tapRestoreOnFirstBackup()
+        Dialog.assertShown(RESTORE_TITLE)
+        Dialog.tap("Restore")
+    }
+
+    @Test
+    fun aBrokenBackupFailsToRestoreAndKeepsTheData() {
+        TestData.memory(KEPT)
+        TestData.signIn()
+        TestData.grantMediaAccess()
+        addBackup(MANUAL_BACKUP) // Without content: the download fails.
+        openSettings()
+
+        SettingsScreen.tapRestoreOnFirstBackup()
+        Dialog.tap("Cancel")
+        Dialog.assertGone(RESTORE_TITLE)
+        SettingsScreen.tapRestoreOnFirstBackup()
+        Dialog.tap("Restore")
+
+        SettingsScreen.assertResult("Restore failed")
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.assertMemoryShown(KEPT)
+    }
+
+    @Test
+    fun deletingABackupAsksFirst() {
+        TestData.signIn()
+        addBackup(AUTOMATIC_BACKUP, minutesAgo = 60)
+        addBackup(MANUAL_BACKUP, minutesAgo = 5)
+        openSettings()
+        SettingsScreen.assertBackupShown(MANUAL)
+
+        SettingsScreen.tapDeleteOnFirstBackup()
+        Dialog.assertShown(DELETE_TITLE)
+        Dialog.tap("Cancel")
+        Dialog.assertGone(DELETE_TITLE)
+        SettingsScreen.assertBackupShown(MANUAL)
+
+        SettingsScreen.tapDeleteOnFirstBackup()
+        Dialog.tap("Delete")
+
+        SettingsScreen.assertResult("Backup deleted")
+        SettingsScreen.assertBackupGone(MANUAL)
+        SettingsScreen.assertBackupShown(AUTOMATIC)
+    }
+
+    @Test
+    fun aChangeIsBackedUpAutomatically() {
+        TestData.signIn()
+        openSettings()
+
+        SettingsScreen.addColorPreset()
+
+        SettingsScreen.assertAutomaticBackupPending()
+        SettingsScreen.assertBackupAppears(AUTOMATIC, timeoutMs = AUTOMATIC_BACKUP_TIMEOUT_MS)
+    }
+
+    @Test
+    fun mapPreferencesStaySet() {
+        openSettings()
+
+        SettingsScreen.setShowFragmentMarkers(true)
+        SettingsScreen.setMarkerClustering(false)
+        SettingsScreen.setDefaultMapFilter("Last 30 Days")
+        BottomNav.open(Tab.MAP)
+        BottomNav.open(Tab.SETTINGS)
+
+        SettingsScreen.assertShowFragmentMarkers(true)
+        SettingsScreen.assertMarkerClustering(false)
+        SettingsScreen.assertDefaultMapFilter("Last 30 Days")
+    }
+
+    @Test
+    fun reLinkingFindsAPhotoBroughtFromAnotherPhone() {
+        TestData.grantMediaAccess()
+        val memory = TestData.memory(KEPT)
+        openSettings()
+        // Added after the start, so the re-link that runs when the app starts doesn't link it.
+        TestData.photo(memory, linkedToThisPhone = false)
+        openMemoryFromTimeline(KEPT)
+        MemoryScreen.assertPhotoFromAnotherDevice()
+
+        BottomNav.open(Tab.SETTINGS)
+        SettingsScreen.relinkMedia()
+        SettingsScreen.waitForRelinkToFinish()
+
+        openMemoryFromTimeline(KEPT)
+        MemoryScreen.assertPhotoLoaded()
+    }
+
+    @Test
+    fun sendingLogsOpensTheShareSheet() {
+        openSettings()
+
+        SettingsScreen.sendLogs()
+
+        ShareSheet.assertShown()
+        Ui.pressBack()
+        SettingsScreen.assertShown()
+    }
+
+    private fun openSettings() {
+        app.launch()
+        BottomNav.open(Tab.SETTINGS)
+    }
+
+    private fun openMemoryFromTimeline(title: String) {
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.openMemory(title)
+        MemoryScreen.assertShowing(title)
+    }
+
+    private fun addBackup(name: String, minutesAgo: Long = 0) {
+        FakeBackupStorage.add(DEFAULT_EMAIL, name, modifiedMillis = System.currentTimeMillis() - minutesAgo * MINUTE_MS)
+    }
+
+    private companion object {
+        const val KEPT = "Vienna trip"
+        const val ADDED_AFTER_THE_BACKUP = "Lake day"
+        const val MANUAL = "Manual Backup"
+        const val AUTOMATIC = "Automatic Backup"
+        const val MANUAL_BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"
+        const val AUTOMATIC_BACKUP = "MemoryMap_Automatic_Backup_20261019_080000.zip"
+        const val RESTORE_TITLE = "Restore Backup"
+        const val DELETE_TITLE = "Delete backup?"
+        const val MINUTE_MS = 60_000L
+
+        // Automatic backups start 15 seconds after the last change.
+        const val AUTOMATIC_BACKUP_TIMEOUT_MS = 60_000L
+    }
+}

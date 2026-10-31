@@ -1,12 +1,17 @@
 package com.szabolcshorvath.memorymap.screens
 
+import android.os.SystemClock
+import android.view.accessibility.AccessibilityNodeInfo
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.Until
 import androidx.test.uiautomator.textAsString
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import java.time.LocalDate
+import java.util.regex.Pattern
 
 /** The Map tab. */
 object MapScreen : TabScreen {
@@ -190,15 +195,143 @@ object SettingsScreen : TabScreen {
 
     /** The backup list shows a backup with [label] ("Manual Backup", "Automatic Backup" or the file name). */
     fun assertBackupShown(label: String) {
-        Ui.scrollTo { hasId("tv_backup_name") && hasText(label) }
-        Ui.assertShown("The backup \"$label\"") { hasId("tv_backup_name") && hasText(label) }
+        Ui.scrollTo { isBackup(label) }
+        Ui.assertShown("The backup \"$label\"") { isBackup(label) }
     }
 
-    fun tapRestoreOnFirstBackup() {
-        Ui.scrollTo { hasDescription("Restore") }
-        Ui.find { hasDescription("Restore") }.click()
+    fun assertBackupGone(label: String) = Ui.assertGone("The backup \"$label\"") { isBackup(label) }
+
+    /** Waits up to [timeoutMs] for a backup with [label] to appear in the list, such as an automatic backup. */
+    fun assertBackupAppears(label: String, timeoutMs: Long) {
+        val end = SystemClock.uptimeMillis() + timeoutMs
+        while (SystemClock.uptimeMillis() < end) {
+            Ui.scrollTo { isBackup(label) }
+            if (Ui.isShown(timeoutMs = 0) { isBackup(label) }) return
+        }
+        assertBackupShown(label)
+    }
+
+    private fun AccessibilityNodeInfo.isBackup(label: String) = hasId("tv_backup_name") && hasText(label)
+
+    /** The first backup in the list is the newest. */
+    fun tapRestoreOnFirstBackup() = tapOnFirstBackup("Restore")
+
+    fun tapDeleteOnFirstBackup() = tapOnFirstBackup("Delete")
+
+    private fun tapOnFirstBackup(button: String) {
+        Ui.scrollTo { hasDescription(button) }
+        Ui.find { hasDescription(button) && isEnabled }.click()
         Ui.device.waitForIdle()
     }
+
+    fun signIn() = tapButton(CONNECT)
+
+    fun signOut() = tapButton("Disconnect")
+
+    fun backUpNow() = tapButton("Backup Now")
+
+    fun relinkMedia() = tapButton(RELINK)
+
+    fun sendLogs() = tapButton("Send Debug Logs")
+
+    /** Waits until the re-link run is over: the screen's buttons work again. */
+    fun waitForRelinkToFinish() {
+        Ui.scrollTo { hasText(RELINK) }
+        Ui.assertShown("The Re-link button, enabled again") { hasText(RELINK) && isEnabled }
+    }
+
+    /**
+     * Waits until a backup, restore or delete and anything after it (a restore re-links media) is over: the
+     * loading overlay is gone and the buttons work again.
+     */
+    fun waitUntilIdle() {
+        assertTrue(
+            "Settings is still busy",
+            Ui.isGone(timeoutMs = BUSY_TIMEOUT_MS) { hasId("loadingOverlay") }
+        )
+        waitForRelinkToFinish()
+    }
+
+    /** The result line of the last backup, restore or delete starts with [text], such as "Backup successful". */
+    fun assertResult(text: String) {
+        Ui.scrollTo { isResult(text) }
+        Ui.assertShown("The result \"$text\"") { isResult(text) }
+    }
+
+    private fun AccessibilityNodeInfo.isResult(text: String) =
+        hasId("tv_backupStatusDetails") && textAsString().orEmpty().startsWith(text)
+
+    fun assertAutomaticBackupPending() {
+        val pending = "Your latest changes will be backed up shortly (when online)."
+        Ui.scrollTo { hasText(pending) }
+        Ui.assertShown("The automatic backup line") { hasText(pending) }
+    }
+
+    /** Opens the colour presets section and adds the colour shown as a new preset. */
+    fun addColorPreset() {
+        Ui.scrollTo { hasText("Color presets") }
+        if (!Ui.isShown(timeoutMs = 0) { hasText(ADD_PRESET) }) Ui.find { hasText("Color presets") }.click()
+        tapButton(ADD_PRESET)
+    }
+
+    fun setShowFragmentMarkers(on: Boolean) = setSwitch(SHOW_FRAGMENTS, on)
+
+    fun setMarkerClustering(on: Boolean) = setSwitch(CLUSTERING, on)
+
+    fun assertShowFragmentMarkers(on: Boolean) = assertSwitch(SHOW_FRAGMENTS, on)
+
+    fun assertMarkerClustering(on: Boolean) = assertSwitch(CLUSTERING, on)
+
+    /** Picks [label] ("Last 7 Days", "All Time", ...) as the date filter the map opens with. */
+    fun setDefaultMapFilter(label: String) {
+        Ui.scrollTo { hasId(DEFAULT_FILTER) }
+        Ui.find { hasId(DEFAULT_FILTER) }.click()
+        Ui.find { hasText(label) && !hasId(DEFAULT_FILTER) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    fun assertDefaultMapFilter(label: String) {
+        Ui.scrollTo { hasId(DEFAULT_FILTER) }
+        Ui.assertShown("The default map filter \"$label\"") { hasId(DEFAULT_FILTER) && hasText(label) }
+    }
+
+    // The switches stay disabled until the saved setting is loaded.
+    private fun setSwitch(label: String, on: Boolean) {
+        Ui.scrollTo { hasText(label) }
+        val switch = Ui.find { hasText(label) && isEnabled }
+        if (switch.isChecked != on) switch.click()
+        assertSwitch(label, on)
+    }
+
+    private fun assertSwitch(label: String, on: Boolean) {
+        Ui.scrollTo { hasText(label) }
+        Ui.assertShown("\"$label\" turned ${if (on) "on" else "off"}") { hasText(label) && isEnabled && isChecked == on }
+    }
+
+    private fun tapButton(text: String) {
+        Ui.scrollTo { hasText(text) }
+        Ui.find { hasText(text) && isEnabled }.click()
+        Ui.device.waitForIdle()
+    }
+
+    private const val CLUSTERING = "Enable Marker Clustering"
+    private const val RELINK = "Re-link Gallery Photos"
+    private const val ADD_PRESET = "Add current as new preset"
+    private const val DEFAULT_FILTER = "spinner_defaultFilter"
+    private const val BUSY_TIMEOUT_MS = 30_000L
+}
+
+/** The system's share sheet, which another app shows over this one. */
+object ShareSheet {
+    // Android 14 and newer show it from its own app; older versions from "android".
+    private val PACKAGES = Pattern.compile("com\\.android\\.intentresolver|android")
+
+    fun assertShown() = assertTrue(
+        "The share sheet did not open",
+        Ui.device.wait(Until.hasObject(By.pkg(PACKAGES)), TIMEOUT_MS) == true
+    )
+
+    private const val TIMEOUT_MS = 15_000L
 }
 
 /** A dialog with a title, such as a confirmation. */
