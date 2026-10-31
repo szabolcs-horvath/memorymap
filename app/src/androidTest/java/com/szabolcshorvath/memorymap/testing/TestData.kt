@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.datastore.preferences.core.edit
 import androidx.test.platform.app.InstrumentationRegistry
+import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -110,6 +111,21 @@ object TestData {
                     order = 0,
                 )
             )
+        )
+    }
+
+    /** A colour as the colour sliders set it: hue 0-360, saturation and brightness 0-1. */
+    data class Hsv(val hue: Float, val saturation: Float = 1f, val brightness: Float = 1f)
+
+    /**
+     * Sets the colour presets, in this order. The app adds its default presets on the first start only when there
+     * are none, so these replace them.
+     */
+    fun colorPresets(vararg colors: Hsv) = runBlocking {
+        MemoryMapDatabase.getDatabase(context).hsvPresetDao().insertPresets(
+            colors.mapIndexed { index, color ->
+                HSVPreset(hue = color.hue, saturation = color.saturation, brightness = color.brightness, order = index)
+            }
         )
     }
 

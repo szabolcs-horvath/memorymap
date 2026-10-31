@@ -1,16 +1,21 @@
 package com.szabolcshorvath.memorymap.screens
 
+import android.graphics.Point
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.Until
 import androidx.test.uiautomator.textAsString
+import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import java.time.LocalDate
+import java.util.Locale
 import java.util.regex.Pattern
 
 /** The Map tab. */
@@ -319,6 +324,105 @@ object SettingsScreen : TabScreen {
     private const val ADD_PRESET = "Add current as new preset"
     private const val DEFAULT_FILTER = "spinner_defaultFilter"
     private const val BUSY_TIMEOUT_MS = 30_000L
+}
+
+/** The colour presets section of Settings: the swatches and the sliders that edit the selected one. */
+object ColorPresetsSection {
+    fun open() {
+        Ui.scrollTo { hasText(HEADER) }
+        if (!Ui.isShown(timeoutMs = 0) { hasText(ADD) }) Ui.find { hasText(HEADER) }.click()
+        Ui.scrollTo { hasText(ADD) }
+    }
+
+    fun select(color: Hsv) {
+        Ui.find { isSwatch(color) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    fun assertShown(color: Hsv) = Ui.assertShown("The preset ${describe(color)}") { isSwatch(color) }
+
+    fun assertGone(color: Hsv) = Ui.assertGone("The preset ${describe(color)}") { isSwatch(color) }
+
+    fun assertSelected(color: Hsv) = Ui.assertShown("The preset ${describe(color)}, selected") {
+        isSwatch(color) && isSelected
+    }
+
+    /** The presets appear in this order, from left to right (all on screen). */
+    fun assertLeftToRight(vararg colors: Hsv) {
+        val lefts = colors.map { color -> Ui.find { isSwatch(color) }.visibleBounds.left }
+        assertEquals("The order of the presets ${colors.map(::describe)}", lefts.sorted(), lefts)
+    }
+
+    /** The sliders show [color], as they do for the selected preset. */
+    fun assertSlidersShow(color: Hsv) {
+        Ui.assertShown("Hue ${color.hue.toInt()}") { hasId("tv_HueValue") && hasText(color.hue.toInt().toString()) }
+        Ui.assertShown("Saturation ${color.saturation}") {
+            hasId("tv_SaturationValue") && hasText(decimal(color.saturation))
+        }
+        Ui.assertShown("Brightness ${color.brightness}") {
+            hasId("tv_BrightnessValue") && hasText(decimal(color.brightness))
+        }
+    }
+
+    /** Taps the hue slider at [fraction] of its width (0 left, 1 right) and returns the hue it shows then. */
+    fun tapHue(fraction: Float): Int {
+        Ui.scrollTo { hasId("tv_BrightnessValue") } // The sliders sit below the swatches; this keeps both on screen.
+        // The Material sliders report themselves as not visible to accessibility services, so they can't be looked
+        // up. The hue slider spans the row between the "Hue" line (label and value) and the "Saturation" line.
+        val label = Ui.find { hasText("Hue") }.visibleBounds
+        val value = Ui.find { hasId("tv_HueValue") }.visibleBounds
+        val next = Ui.find { hasText("Saturation") }.visibleBounds
+        val x = label.left + ((value.right - label.left) * fraction).toInt()
+        Ui.device.click(x, (value.bottom + next.top) / 2)
+        Ui.device.waitForIdle()
+        return Ui.find { hasId("tv_HueValue") }.text.toInt()
+    }
+
+    fun save() = tap("Save")
+
+    fun undo() = tap("Undo")
+
+    fun addCurrentColor() = tap(ADD)
+
+    /** Taps "Delete Preset", which asks first ([Dialog] with [DELETE_QUESTION]). */
+    fun delete() = tap("Delete Preset")
+
+    /**
+     * Long-presses the preset [color] and drags it into the place of [onto]. The list moves a preset past another
+     * only once it covers most of it, so the drag ends at the far edge of [onto].
+     */
+    fun drag(color: Hsv, onto: Hsv) {
+        val swatch = Ui.find { isSwatch(color) }
+        val target = Ui.find { isSwatch(onto) }.visibleBounds
+        val from = swatch.visibleCenter
+        val x = if (target.centerX() < from.x) target.left + EDGE_INSET else target.right - EDGE_INSET
+        swatch.drag(Point(x, target.centerY()), DRAG_SPEED)
+        Ui.device.waitForIdle()
+    }
+
+    const val DELETE_QUESTION = "Are you sure you want to delete this color preset?"
+
+    private fun tap(text: String) {
+        Ui.scrollTo { hasText(text) }
+        Ui.find { hasText(text) && isEnabled }.click()
+        Ui.device.waitForIdle()
+    }
+
+    private fun AccessibilityNodeInfo.isSwatch(color: Hsv) = hasDescription(describe(color))
+
+    private fun describe(color: Hsv): String = InstrumentationRegistry.getInstrumentation().targetContext.getString(
+        R.string.color_preset_description,
+        color.hue.toInt(),
+        color.saturation,
+        color.brightness
+    )
+
+    private fun decimal(value: Float) = String.format(Locale.getDefault(), "%.2f", value)
+
+    private const val HEADER = "Color presets"
+    private const val ADD = "Add current as new preset"
+    private const val DRAG_SPEED = 600 // Pixels per second.
+    private const val EDGE_INSET = 2
 }
 
 /** The system's share sheet, which another app shows over this one. */
