@@ -17,7 +17,6 @@ import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -31,6 +30,7 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.kotlin.awaitFetchPlace
 import com.google.android.libraries.places.widget.PlaceAutocomplete
 import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
+import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
 import com.szabolcshorvath.memorymap.util.MyLocationAction
@@ -341,13 +341,11 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     /** Selects where the user is, if location access was granted. Never asks for it (see [myLocationAction]). */
-    @SuppressLint("MissingPermission")
     private fun selectUserLocation() {
         viewModel.activeAutocompletePlaceId = null
         val context = context
         if (context != null && hasLocationPermission(context)) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            AppServices.location.lastLocation(context).addOnSuccessListener { location ->
                 if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
                 if (location != null) selectLocation(LatLng(location.latitude, location.longitude))
             }

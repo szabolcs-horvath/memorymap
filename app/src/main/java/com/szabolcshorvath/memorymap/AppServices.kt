@@ -9,6 +9,8 @@ import com.szabolcshorvath.memorymap.auth.AccountService
 import com.szabolcshorvath.memorymap.auth.GoogleAccountService
 import com.szabolcshorvath.memorymap.backup.BackupStorage
 import com.szabolcshorvath.memorymap.backup.DriveBackupStorage
+import com.szabolcshorvath.memorymap.util.FusedLocationService
+import com.szabolcshorvath.memorymap.util.LocationService
 
 /**
  * The outside services the app talks to through an interface. UI tests replace them with fakes before the app
@@ -31,4 +33,9 @@ object AppServices {
     @Volatile
     @set:VisibleForTesting
     var mediaPicker: ActivityResultContract<PickVisualMediaRequest, List<Uri>> = ActivityResultContracts.PickMultipleVisualMedia()
+
+    /** Where the phone is, for the "my location" buttons and the first view of the map and the location picker. */
+    @Volatile
+    @set:VisibleForTesting
+    var location: LocationService = FusedLocationService
 }

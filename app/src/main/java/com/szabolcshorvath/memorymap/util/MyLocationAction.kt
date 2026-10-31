@@ -1,7 +1,6 @@
 package com.szabolcshorvath.memorymap.util
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -12,9 +11,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
+import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
@@ -88,11 +86,10 @@ class MyLocationAction(private val fragment: Fragment, private val onLocation: (
         }
     }
 
-    @SuppressLint("MissingPermission") // Only called with location permission.
+    /** Finds where the phone is and passes it on. Only called with location permission. */
     private fun fetchLocation() {
         val context = fragment.context ?: return
-        LocationServices.getFusedLocationProviderClient(context)
-            .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+        AppServices.location.currentLocation(context)
             .addOnCompleteListener { task ->
                 if (fragment.viewLifecycleOwnerLiveData.value == null) return@addOnCompleteListener
                 // Null when the phone's location is turned off or there is no fix yet.
