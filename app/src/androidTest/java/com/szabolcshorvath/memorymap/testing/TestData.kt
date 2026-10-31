@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.testing
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -17,6 +18,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
+import com.szabolcshorvath.memorymap.fakes.FakeLocationService
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
@@ -191,6 +193,19 @@ object TestData {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         PermissionUtil.getRequiredMediaPermissions().forEach { automation.grantRuntimePermission(context.packageName, it) }
     }
+
+    /** Grants the app location access, as "While using the app" in the system dialog does. */
+    fun grantLocationAccess() {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        LOCATION_PERMISSIONS.forEach { automation.grantRuntimePermission(context.packageName, it) }
+    }
+
+    /** The phone is at [place], as far as the app can tell (once it has location access). */
+    fun phoneAt(place: Place) {
+        FakeLocationService.position = place.latitude to place.longitude
+    }
+
+    private val LOCATION_PERMISSIONS = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
 
     /** Signs in as [email] the way a finished sign-in leaves the app; Drive calls then go to the fake storage. */
     fun signIn(email: String = FakeAccountService.DEFAULT_EMAIL) = runBlocking {

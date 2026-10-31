@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.screens
 import android.graphics.Color
 import android.graphics.Point
 import android.os.SystemClock
+import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
@@ -11,7 +12,9 @@ import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.textAsString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import java.util.Locale
+import java.util.concurrent.TimeoutException
 import java.util.regex.Pattern
 import kotlin.math.abs
 
@@ -242,4 +245,42 @@ object LocationPickerScreen {
         Ui.find { hasText(CONFIRM) }.click()
         Ui.device.waitForIdle()
     }
+
+    /** Taps the "my location" button, which picks where the phone is (asking for access first). */
+    fun tapMyLocation() {
+        Ui.find { hasDescription(MY_LOCATION) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    /** No spot is picked: no marker shows. It waits a moment, in case one is on its way. */
+    fun assertNothingPicked() =
+        assertTrue("A location was picked", !waitUntil(NOTHING_PICKED_WAIT_MS) { markers().isNotEmpty() })
+
+    private const val MY_LOCATION = "My location"
+    private const val NOTHING_PICKED_WAIT_MS = 3_000L
+}
+
+/**
+ * A short message Android shows near the bottom of the screen. Android draws it outside the app's window, where the
+ * element tree doesn't reach, so this listens for the announcement Android makes for screen readers instead.
+ */
+object ToastMessage {
+    /** Runs [action] and waits until it shows the message [text]. */
+    fun assertShownAfter(text: String, action: () -> Unit) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        try {
+            automation.executeAndWaitForEvent(
+                { action() },
+                { event ->
+                    event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED &&
+                        event.text.any { it.toString() == text }
+                },
+                TIMEOUT_MS
+            )
+        } catch (_: TimeoutException) {
+            fail("The message \"$text\" was not shown")
+        }
+    }
+
+    private const val TIMEOUT_MS = 10_000L
 }

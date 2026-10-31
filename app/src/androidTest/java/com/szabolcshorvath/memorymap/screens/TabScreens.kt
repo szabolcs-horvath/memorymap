@@ -11,6 +11,7 @@ import androidx.test.uiautomator.Until
 import androidx.test.uiautomator.textAsString
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.testing.TestData.Hsv
+import com.szabolcshorvath.memorymap.testing.TestData.Place
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -90,6 +91,12 @@ object MapScreen : TabScreen {
 
     fun assertColorStatisticsGone() = Ui.assertGone("The colour statistics") { hasId(PIE_CHART) }
 
+    /** Taps the "my location" button, which moves the map to where the phone is (asking for access first). */
+    fun tapMyLocation() {
+        Ui.find { hasDescription(MY_LOCATION) }.click()
+        Ui.device.waitForIdle()
+    }
+
     /** Taps an empty spot of the map: the top left corner, away from the markers and the buttons. */
     fun tapEmptyMap() {
         val map = Ui.find { hasDescription("Google Map") }.visibleBounds
@@ -97,6 +104,7 @@ object MapScreen : TabScreen {
         Ui.device.waitForIdle()
     }
 
+    private const val MY_LOCATION = "My location"
     private const val DATE_RANGE = "bt_dateRange"
     private const val PIE_CHART = "pieChart"
     private const val POLL_MS = 200L
@@ -212,6 +220,16 @@ object AddScreen : TabScreen {
     }
 
     fun assertNoLocation() = assertEquals(NO_LOCATION, locationText())
+
+    /** The memory's location is [place]: its name, found by the address lookup, or its coordinates if that failed. */
+    fun assertLocationIs(place: Place) {
+        val text = locationText().orEmpty()
+        val coordinates = "${place.latitude}, ${place.longitude}"
+        assertTrue(
+            "The location \"$text\" is not ${place.name}",
+            place.name?.let { it in text } == true || coordinates in text
+        )
+    }
 
     fun assertHasLocation() = assertNotEquals("No location was picked", NO_LOCATION, locationText())
 
