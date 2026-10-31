@@ -17,6 +17,7 @@ import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
+import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.runBlocking
 import java.time.ZoneId
@@ -65,16 +66,21 @@ object TestData {
         dao.insertGroup(group).toInt()
     }
 
-    /** Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. */
-    fun photo(groupId: Int, color: Int = Color.rgb(30, 120, 200)): Uri = runBlocking {
+    /**
+     * Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. With
+     * [linkedToThisPhone] false, it is saved as a restored backup brings it from another phone: the file is here,
+     * but re-linking has yet to find it.
+     */
+    fun photo(groupId: Int, color: Int = Color.rgb(30, 120, 200), linkedToThisPhone: Boolean = true): Uri = runBlocking {
         val uri = createGalleryImage(color)
         val size = context.contentResolver.openFileDescriptor(uri, "r")!!.use { it.statSize }
+        val thisPhone = InstallationIdentifier.getInstallationIdentifier(context)
         dao.insertMediaItems(
             listOf(
                 MediaItem(
                     groupId = groupId,
                     uri = uri.toString(),
-                    deviceId = InstallationIdentifier.getInstallationIdentifier(context),
+                    deviceId = if (linkedToThisPhone) thisPhone else ANOTHER_DEVICE,
                     type = MediaType.IMAGE,
                     mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                     fileSize = size,
@@ -96,7 +102,7 @@ object TestData {
                 MediaItem(
                     groupId = groupId,
                     uri = "content://media/external/images/media/$MISSING_MEDIA_ID",
-                    deviceId = "another-device",
+                    deviceId = ANOTHER_DEVICE,
                     type = MediaType.IMAGE,
                     mediaSignature = "${fileSize}_00000000000000000000000000000000",
                     fileSize = fileSize,
@@ -105,6 +111,12 @@ object TestData {
                 )
             )
         )
+    }
+
+    /** Grants the app access to all photos and videos, as "Allow all" in the system dialog does. */
+    fun grantMediaAccess() {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        PermissionUtil.getRequiredMediaPermissions().forEach { automation.grantRuntimePermission(context.packageName, it) }
     }
 
     /** Signs in as [email] the way a finished sign-in leaves the app; Drive calls then go to the fake storage. */
@@ -143,4 +155,5 @@ object TestData {
     private const val JPEG_QUALITY = 90
     private const val FOREIGN_PHOTO_SIZE = 2_345_678L
     private const val MISSING_MEDIA_ID = 987_654_321L
+    private const val ANOTHER_DEVICE = "another-device"
 }

@@ -15,7 +15,11 @@ object FakeAccountService : AccountService {
     @Volatile
     var signInEmail: String = DEFAULT_EMAIL
 
-    override suspend fun signIn(activityContext: Context): String = signInEmail
+    /** When set, signing in fails with this, the way a cancelled or failed Google sign-in does. */
+    @Volatile
+    var signInError: Exception? = null
+
+    override suspend fun signIn(activityContext: Context): String = signInError?.let { throw it } ?: signInEmail
 
     override suspend fun signOut(context: Context) = Unit
 

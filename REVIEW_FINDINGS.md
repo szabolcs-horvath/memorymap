@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 51 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 27 open
+✅ 51 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 28 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -106,7 +106,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 8 of 17 fixed
+**UX — User experience** · 8 of 18 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -127,6 +127,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
 | ⬜ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
 | ⬜ | [UX-17](#ux-17) | Low | A date picker ignores the picked date after process death |
+| ⬜ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
 
 **ARCH — Structure / maintainability** · 1 of 10 fixed
 
@@ -561,6 +562,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** First check whether a newer Material Components release fixes it. Otherwise, when a date picker comes back after process death (its screen's ViewModel is new), close it and open a new one for the same field with the same selection.
 - **Compose migration ([ARCH-10](#arch-10)):** the Compose `DatePicker` keeps its state in `rememberDatePickerState`, which has no second copy, so the migration fixes this.
 
+### <a id="ux-18"></a>⬜ UX-18 · Low · "Restore successful" disappears at once
+- **Where:** `SettingsFragment.kt` (the `RestoreSuccess` branch in `onViewCreated`, `setLoadingState`)
+- **What:** After a successful restore, Settings shows "Restore successful" and right away starts re-linking media. The re-link shows the loading overlay with `hideBackupStatus = true`, which hides the result line again, and nothing shows it afterwards. So the user gets no lasting sign that the restore worked. After a backup the line stays: the list reload that follows passes `hideBackupStatus = false`. Found by the Settings UI tests (TEST-3); `SettingsTest.aRestoreSaysThatItSucceeded` is skipped until this is fixed.
+- **Fix:** Keep the result line during the re-link after a restore (`hideBackupStatus = false`), or show it again when the re-link is done.
+
 [↑ Back to index](#index)
 
 ---
@@ -729,7 +735,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Make the tests outlive the UI code:** they are the safety net for ARCH-10, so they must keep running when a screen moves to Compose. Find elements by what the user sees (text, content descriptions, test tags exposed as resource ids), for example with UI Automator, or keep all element lookups in one screen-object layer per screen so only that layer changes. Tests written straight against View ids with Espresso would have to be rewritten during the migration and would prove nothing.
 - **Changing tests during the migration:** a test may change only together with a deliberate change in behaviour or look that is objectively better than the old one (the rule in [ARCH-10](#arch-10)). The test is then updated in the same commit to describe the new behaviour, and the commit message says why. A test is never edited only because a migrated screen fails it: the screen is fixed instead.
 - **Test seams needed:** Google sign-in, Drive, the system photo picker and location are outside the app. Give them fakes the tests can inject (signed-in account, a Drive with backups, picked media URIs, a fixed location).
-- **Status:** Partly fixed. The setup is in place: instrumented tests with UI Automator behind one screen object per screen, the Test Orchestrator with a fresh install for every test, fakes for sign-in and Drive (`AppServices`), helpers for test data, and CI on Gradle managed emulators with API 35 and 37 (`ui-tests.yml`). The navigation tests cover every tab switch, back from every tab and detail screen, tapping a tab while a memory, the media viewer or the location picker is open, Show on Map, Show on Timeline and Edit (with the target tab opened before and not), the location picker round trip, and rotation on every screen and with the date and time pickers open. Process death is covered on the same screens and pickers (`ProcessDeathTest`), simulated with "Don't keep activities": Android rebuilds the screens from their saved state alone and clears their ViewModels, as after a real process death. The process itself keeps running, so the app's own start-up after a kill (such as the re-link on a cold start) is not covered. Those tests found [UX-17](#ux-17) and showed what [UX-7](#ux-7) loses; their tests are skipped until those are fixed. The Timeline tests cover grouping by day, search (title, description, place, address; no matches; cleared), no memories, the Scroll to top button and Show on Timeline scrolling to a memory far down; they found [BUG-17](#bug-17). The memory screen tests cover swiping between memories, delete with Cancel, Undo and the final delete, and a photo from another phone. Still to do: the other screens' own flows listed above, the timeline's flash (not visible to the tests), the media viewer's swiping, zoom and video, and fakes for location and the photo picker. Android 14 (minSdk) can't be tested on an emulator: every API 34 image ships Google Play services 23.18, whose map renderer crashes on the app's markers, so it needs a real device or Firebase Test Lab. Plain dialogs closing on rotation and process death is [UX-16](#ux-16); its tests are skipped until that is fixed.
+- **Status:** Partly fixed. The setup is in place: instrumented tests with UI Automator behind one screen object per screen, the Test Orchestrator with a fresh install for every test, fakes for sign-in and Drive (`AppServices`), helpers for test data, and CI on Gradle managed emulators with API 35 and 37 (`ui-tests.yml`). The navigation tests cover every tab switch, back from every tab and detail screen, tapping a tab while a memory, the media viewer or the location picker is open, Show on Map, Show on Timeline and Edit (with the target tab opened before and not), the location picker round trip, and rotation on every screen and with the date and time pickers open. Process death is covered on the same screens and pickers (`ProcessDeathTest`), simulated with "Don't keep activities": Android rebuilds the screens from their saved state alone and clears their ViewModels, as after a real process death. The process itself keeps running, so the app's own start-up after a kill (such as the re-link on a cold start) is not covered. Those tests found [UX-17](#ux-17) and showed what [UX-7](#ux-7) loses; their tests are skipped until those are fixed. The Timeline tests cover grouping by day, search (title, description, place, address; no matches; cleared), no memories, the Scroll to top button and Show on Timeline scrolling to a memory far down; they found [BUG-17](#bug-17). The memory screen tests cover swiping between memories, delete with Cancel, Undo and the final delete, and a photo from another phone. The Settings tests cover signing in (and a failed sign-in) and out, Backup Now, a backup restored into changed data, a broken backup that fails to restore, deleting a backup with Cancel and Delete, an automatic backup after a change with its status line, the map preferences and default filter staying set, re-linking a photo brought from another phone, and Send Debug Logs opening the share sheet; they found [UX-18](#ux-18). Still to do: the other screens' own flows listed above; in Settings, the colour presets (their swatches have no content description, [A11Y-1](#a11y-1)), backup list paging (the fake Drive doesn't page) and the media access dialogs; the timeline's flash (not visible to the tests); the media viewer's swiping, zoom and video; and fakes for location and the photo picker. Android 14 (minSdk) can't be tested on an emulator: every API 34 image ships Google Play services 23.18, whose map renderer crashes on the app's markers, so it needs a real device or Firebase Test Lab. Plain dialogs closing on rotation and process death is [UX-16](#ux-16); its tests are skipped until that is fixed.
 
 [↑ Back to index](#index)
 
