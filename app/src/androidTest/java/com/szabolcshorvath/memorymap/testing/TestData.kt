@@ -12,10 +12,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
+import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
+import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import com.szabolcshorvath.memorymap.util.PermissionUtil
@@ -38,12 +40,18 @@ object TestData {
     data class Place(val latitude: Double, val longitude: Double, val name: String?, val address: String? = null) {
         companion object {
             val BUDAPEST = Place(47.4979, 19.0402, "Budapest")
+            val VIENNA = Place(48.2082, 16.3738, "Vienna")
+            val MADRID = Place(40.4168, -3.7038, "Madrid")
+            val PARIS = Place(48.8566, 2.3522, "Paris")
+            val ROME = Place(41.9028, 12.4964, "Rome")
+            val ATHENS = Place(37.9838, 23.7275, "Athens")
+            val CAPE_TOWN = Place(-33.9249, 18.4241, "Cape Town")
         }
     }
 
     /**
-     * Adds a memory that starts at [hour]:00 [daysAgo] days ago and returns its id. Memories are shown newest first,
-     * so [daysAgo] and [hour] set their order.
+     * Adds a memory that starts at [hour]:00 [daysAgo] days ago and lasts two hours, and returns its id. Memories
+     * are shown newest first, so [daysAgo] and [hour] set their order.
      */
     fun memory(
         title: String,
@@ -51,21 +59,32 @@ object TestData {
         hour: Int = 12,
         place: Place = Place.BUDAPEST,
         description: String? = null,
-    ): Int = runBlocking {
+    ): Int {
         val start = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(daysAgo).withHour(hour).withMinute(0)
-        val group = MemoryGroup(
-            title = title,
-            description = description,
-            latitude = place.latitude,
-            longitude = place.longitude,
-            placeName = place.name,
-            address = place.address,
-            startDate = start,
-            endDate = start.plusHours(2),
-            isAllDay = false,
-        )
-        dao.insertGroup(group).toInt()
+        return insertMemory(title, start, start.plusHours(2), place, description)
     }
+
+    /** Adds a memory that runs from noon [startedDaysAgo] days ago to noon [endedDaysAgo] days ago. */
+    fun trip(title: String, startedDaysAgo: Long, endedDaysAgo: Long, place: Place = Place.BUDAPEST): Int {
+        val today = ZonedDateTime.now(ZoneId.systemDefault()).withHour(12).withMinute(0)
+        return insertMemory(title, today.minusDays(startedDaysAgo), today.minusDays(endedDaysAgo), place, null)
+    }
+
+    private fun insertMemory(title: String, start: ZonedDateTime, end: ZonedDateTime, place: Place, description: String?) =
+        runBlocking {
+            val group = MemoryGroup(
+                title = title,
+                description = description,
+                latitude = place.latitude,
+                longitude = place.longitude,
+                placeName = place.name,
+                address = place.address,
+                startDate = start,
+                endDate = end,
+                isAllDay = false,
+            )
+            dao.insertGroup(group).toInt()
+        }
 
     /**
      * Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. With
@@ -112,6 +131,33 @@ object TestData {
                 )
             )
         )
+    }
+
+    /** Adds a fragment at [place] to memory [groupId], with no dates of its own. */
+    fun fragment(groupId: Int, place: Place) = runBlocking {
+        dao.insertFragments(
+            listOf(
+                MemoryFragment(
+                    groupId = groupId,
+                    latitude = place.latitude,
+                    longitude = place.longitude,
+                    placeName = place.name,
+                    address = place.address,
+                    startDate = null,
+                    endDate = null,
+                )
+            )
+        )
+    }
+
+    /** Turns marker clustering on or off, as the Settings switch does. */
+    fun markerClustering(enabled: Boolean) = runBlocking {
+        context.dataStore.edit { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] = enabled }
+    }
+
+    /** Sets the date filter the map opens with, as the Settings dropdown does. */
+    fun defaultMapFilter(option: DateFilterOption) = runBlocking {
+        context.dataStore.edit { it[PreferencesKeys.DEFAULT_DATE_FILTER] = option.name }
     }
 
     /** A colour as the colour sliders set it: hue 0-360, saturation and brightness 0-1. */
