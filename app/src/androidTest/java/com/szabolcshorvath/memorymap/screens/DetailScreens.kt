@@ -1,8 +1,11 @@
 package com.szabolcshorvath.memorymap.screens
 
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.textAsString
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 
 /** A memory opened from the map or the timeline (one page of the memory pager). */
@@ -31,6 +34,24 @@ object MemoryScreen {
 
     /** Swipes to the previous memory in the timeline's order (a newer one). */
     fun swipeToNewer() = swipe(Direction.RIGHT)
+
+    /** The date line, such as "Oct 24, 2026 12:00 PM - 2:00 PM", or the day alone for an all-day memory. */
+    fun dateText(): String = Ui.find { hasId("tv_date") }.text
+
+    fun assertDescription(text: String) = Ui.assertShown("The description \"$text\"") {
+        hasId("tv_description") && hasText(text)
+    }
+
+    /** Waits until the memory shows [count] photo thumbnails. */
+    fun assertPhotoCount(count: Int) {
+        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        var found = Ui.device.findObjects(By.desc("Open photo")).size
+        while (found != count && SystemClock.uptimeMillis() < end) {
+            SystemClock.sleep(POLL_MS)
+            found = Ui.device.findObjects(By.desc("Open photo")).size
+        }
+        assertEquals("Photo thumbnails", count, found)
+    }
 
     /** The photo shows as a thumbnail, without the could-not-load warning. */
     fun assertPhotoLoaded() {
@@ -72,6 +93,7 @@ object MemoryScreen {
     }
 
     private const val SWIPE_PERCENT = 0.8f
+    private const val POLL_MS = 200L
     private const val SWIPE_SPEED = 2500 // Pixels per second.
     private const val MAX_SWIPES = 3
     private const val SWIPE_TIMEOUT_MS = 3_000L

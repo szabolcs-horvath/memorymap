@@ -176,16 +176,24 @@ object AddScreen : TabScreen {
 
     override fun assertGone() = Ui.assertGone("The Add form") { hasText(SELECT_LOCATION) }
 
+    // The title and description are at the top of the form: scroll back up first, the form may be scrolled down.
     fun typeTitle(title: String) {
-        Ui.find { hasHint("Title") && isEditable }.text = title
+        Ui.scrollTo { isTitleField() }
+        Ui.find { isTitleField() }.text = title
         Ui.device.waitForIdle()
     }
 
-    fun assertTitle(title: String) = Ui.assertShown("The title \"$title\"") { hasHint("Title") && hasText(title) }
+    fun assertTitle(title: String) {
+        Ui.scrollTo { isTitleField() }
+        Ui.assertShown("The title \"$title\"") { isTitleField() && hasText(title) }
+    }
 
+    private fun AccessibilityNodeInfo.isTitleField() = hasHint("Title") && isEditable
+
+    /** Taps "Save Memory", or "Update" while editing. */
     fun save() {
-        Ui.scrollTo { hasText(SAVE) }
-        Ui.find { hasText(SAVE) }.click()
+        Ui.scrollTo { hasText(SAVE) || hasText(UPDATE) }
+        Ui.find { hasText(SAVE) || hasText(UPDATE) }.click()
         Ui.device.waitForIdle()
     }
 
@@ -246,6 +254,54 @@ object AddScreen : TabScreen {
         if (Ui.isShown(timeoutMs = 0) { hasId("bt_startDate") }) return
         Ui.find { hasText("Date & Time") }.click()
         Ui.find { hasId("bt_startDate") }
+    }
+
+    fun typeDescription(text: String) {
+        Ui.scrollTo { hasHint("Description") && isEditable }
+        Ui.find { hasHint("Description") && isEditable }.text = text
+        Ui.device.waitForIdle()
+    }
+
+    /** The title field is empty: a new, cleared form. */
+    fun assertNoTitle() {
+        Ui.scrollTo { isTitleField() }
+        Ui.assertShown("An empty title") { isTitleField() && textAsString().let { it.isNullOrEmpty() || it == "Title" } }
+    }
+
+    /** The form saves a new memory: its button says "Save Memory", not "Update". */
+    fun assertNew() {
+        Ui.scrollTo { hasText(UPDATE) || hasText(SAVE) }
+        Ui.assertShown("The Save Memory button of a new memory") { hasText(SAVE) }
+    }
+
+    /** Taps "Add Photos/Videos", which opens the photo picker (the fake one in the tests). */
+    fun addPhotos() = tap("Add Photos/Videos")
+
+    /** The form shows "[count] items selected" under its photos. */
+    fun assertSelectedCount(count: Int) {
+        Ui.scrollTo { hasText("$count items selected") }
+        Ui.assertShown("$count picked photos") { hasText("$count items selected") }
+    }
+
+    fun removeFirstPhoto() = tap { hasDescription("Remove photo") }
+
+    /** Taps Clear, which asks first ([Dialog] "Clear Fields", or "Discard Changes" while editing). */
+    fun clear() = tap("Clear")
+
+    /** Turns the All Day switch on or off. */
+    fun setAllDay(on: Boolean) {
+        expandDateSection()
+        val switch = Ui.find { hasText("All Day?") }
+        if (switch.isChecked != on) switch.click()
+        Ui.assertShown("All Day ${if (on) "on" else "off"}") { hasText("All Day?") && isChecked == on }
+    }
+
+    private fun tap(text: String) = tap { hasText(text) && isEnabled }
+
+    private fun tap(condition: AccessibilityNodeInfo.() -> Boolean) {
+        Ui.scrollTo(condition)
+        Ui.find(condition = condition).click()
+        Ui.device.waitForIdle()
     }
 }
 
@@ -514,8 +570,11 @@ object Dialog {
 
     fun assertGone(title: String) = Ui.assertGone("The dialog \"$title\"") { hasText(title) }
 
+    /** Taps [button] in the dialog, not a button with the same text on the screen behind it ("Clear"). */
     fun tap(button: String) {
-        Ui.find { isClickable && textAsString().equals(button, ignoreCase = true) }.click()
+        Ui.find {
+            isClickable && textAsString().equals(button, ignoreCase = true) && window?.isFocused != false
+        }.click()
         Ui.device.waitForIdle()
     }
 }
