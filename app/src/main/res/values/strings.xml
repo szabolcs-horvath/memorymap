@@ -36,6 +36,8 @@
     <string name="open_video">Open video</string>
     <string name="photo">Photo</string>
     <string name="video">Video</string>
+    <string name="remove_photo">Remove photo</string>
+    <string name="remove_video">Remove video</string>
     <string name="color_preset_description">Color preset: hue %1$d, saturation %2$.2f, brightness %3$.2f</string>
     <string name="location_rationale_title">Use your location?</string>
     <string name="location_rationale_message">Memory Map uses your location to show where you are on the map and to pick it for a memory. It\'s only used while the app is open.</string>
