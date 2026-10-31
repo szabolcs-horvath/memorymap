@@ -11,6 +11,7 @@ import coil3.request.crossfade
 import coil3.size.Scale
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
@@ -51,6 +52,9 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
     override fun onBindViewHolder(holder: SelectedMediaViewHolder, position: Int) {
         val item = getItem(position)
         val isFromOtherDevice = currentDeviceId != null && item.deviceId != currentDeviceId
+        holder.binding.btRemove.contentDescription = holder.binding.root.context.getString(
+            if (item.type == MediaType.VIDEO) R.string.remove_video else R.string.remove_photo
+        )
 
         if (isFromOtherDevice) {
             // Cancel a load still running for the item this view showed before.
