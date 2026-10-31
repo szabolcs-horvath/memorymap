@@ -2,8 +2,10 @@ package com.szabolcshorvath.memorymap.screens
 
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.onElement
@@ -20,6 +22,8 @@ import org.junit.Assert.assertTrue
 object Ui {
     const val TIMEOUT_MS = 10_000L
     private const val POLL_MS = 100L
+    private const val SETTLE_TIMEOUT_MS = 2_000L
+    private const val SETTLE_CHECK_MS = 150L
 
     val device: UiDevice get() = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
 
@@ -29,6 +33,22 @@ object Ui {
 
     fun findOrNull(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): UiObject2? =
         device.onElementOrNull(timeoutMs) { isVisibleToUser && condition() }
+
+    /**
+     * Like [find], but waits until the element stops moving, for example while a list above it shrinks after a
+     * removal. A tap on an element that is still moving can land where it just was.
+     */
+    fun findSettled(condition: AccessibilityNodeInfo.() -> Boolean): UiObject2 {
+        val end = SystemClock.uptimeMillis() + SETTLE_TIMEOUT_MS
+        var element = find(condition = condition)
+        while (SystemClock.uptimeMillis() < end) {
+            val bounds = element.visibleBounds
+            SystemClock.sleep(SETTLE_CHECK_MS)
+            element = find(condition = condition)
+            if (element.visibleBounds == bounds) break
+        }
+        return element
+    }
 
     /** Waits up to [timeoutMs] for a visible element matching [condition]. */
     fun isShown(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): Boolean =
@@ -60,25 +80,69 @@ object Ui {
         val end = SystemClock.uptimeMillis() + SCROLL_TIMEOUT_MS
         var atTop = false
         while (!isShown(timeoutMs = 0, condition = condition) && SystemClock.uptimeMillis() < end) {
-            val page = findOrNull(timeoutMs = 0) { isScrollable && className?.toString()?.endsWith("ScrollView") == true }
-            when {
-                page == null -> SystemClock.sleep(SCROLL_PAUSE_MS)
-
-                !atTop -> {
-                    for (fling in 1..MAX_FLINGS) if (!page.fling(Direction.UP)) break
-                    atTop = true
-                }
-
-                // At the bottom: wait a moment, then search again from the top.
-                !page.scroll(Direction.DOWN, SCROLL_PERCENT, SCROLL_SPEED) -> {
-                    SystemClock.sleep(SCROLL_PAUSE_MS)
-                    atTop = false
-                }
+            atTop = try {
+                scrollStep(atTop)
+            } catch (_: StaleObjectException) {
+                // The screen replaced the page meanwhile (for example a tab that just opened builds its view): find
+                // the new page and start again from the top.
+                false
             }
         }
     }
 
+    /** One step of [scrollTo]: up to the top if the page isn't there yet, else down. Returns whether it is at the top. */
+    private fun scrollStep(atTop: Boolean): Boolean {
+        val page = findOrNull(timeoutMs = 0) { isPage() }
+        return when {
+            page == null -> {
+                SystemClock.sleep(SCROLL_PAUSE_MS)
+                atTop
+            }
+
+            !atTop -> {
+                // A fling that can't move the page waits seconds for a scroll that never comes: ask first.
+                for (fling in 1..MAX_FLINGS) if (!canScroll(up = true) || !page.fling(Direction.UP)) break
+                true
+            }
+
+            !canScroll(up = false) || !page.scroll(Direction.DOWN, SCROLL_PERCENT, SCROLL_SPEED) -> {
+                // At the bottom: wait a moment, then search again from the top.
+                SystemClock.sleep(SCROLL_PAUSE_MS)
+                false
+            }
+
+            else -> true
+        }
+    }
+
+    private fun AccessibilityNodeInfo.isPage() = isScrollable && className?.toString()?.endsWith("ScrollView") == true
+
+    /** Whether the page can scroll further [up] (or down): it offers that scroll action only when it can. */
+    private fun canScroll(up: Boolean): Boolean {
+        val action = if (up) AccessibilityAction.ACTION_SCROLL_BACKWARD else AccessibilityAction.ACTION_SCROLL_FORWARD
+        return isShown(timeoutMs = 0) { isPage() && actionList.contains(action) }
+    }
+
+    /** Scrolls the page all the way up, for an element that has a namesake further down (a fragment's). */
+    fun scrollToTop() {
+        val page = findOrNull(timeoutMs = 0) { isPage() } ?: return
+        try {
+            for (fling in 1..MAX_FLINGS) if (!canScroll(up = true) || !page.fling(Direction.UP)) break
+        } catch (_: StaleObjectException) {
+            scrollToTop()
+        }
+        device.waitForIdle()
+    }
+
+    /** Scrolls the page down by about a third of the screen. */
+    fun scrollDownALittle() {
+        if (!canScroll(up = false)) return
+        findOrNull(timeoutMs = 0) { isPage() }?.scroll(Direction.DOWN, NUDGE_PERCENT, SCROLL_SPEED)
+        device.waitForIdle()
+    }
+
     private const val SCROLL_TIMEOUT_MS = 30_000L
+    private const val NUDGE_PERCENT = 0.3f
     private const val SCROLL_PERCENT = 0.7f
 
     // Pixels per second. Slow enough not to fling, so a scroll never carries the page past what it looks for.
