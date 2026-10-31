@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.databinding.ItemColorPresetBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
@@ -43,6 +44,14 @@ class ColorPresetAdapter(var onPresetClick: ((HSVPreset) -> Unit)? = null) : Rec
             setStroke(strokeWidth, strokeColor)
         }
         holder.binding.colorView.background = shape
+        // The colour as the sliders show it, so it isn't told by colour alone; screen readers also say "selected".
+        holder.binding.colorView.contentDescription = context.getString(
+            R.string.color_preset_description,
+            preset.hue.toInt(),
+            preset.saturation,
+            preset.brightness
+        )
+        holder.binding.colorView.isSelected = isSelected
 
         holder.binding.colorView.setOnClickListener {
             onPresetClick?.invoke(preset)
