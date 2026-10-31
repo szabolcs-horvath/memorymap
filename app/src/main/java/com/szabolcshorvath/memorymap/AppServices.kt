@@ -1,5 +1,9 @@
 package com.szabolcshorvath.memorymap
 
+import android.net.Uri
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.VisibleForTesting
 import com.szabolcshorvath.memorymap.auth.AccountService
 import com.szabolcshorvath.memorymap.auth.GoogleAccountService
@@ -19,4 +23,12 @@ object AppServices {
     @Volatile
     @set:VisibleForTesting
     var backupStorage: BackupStorage = DriveBackupStorage
+
+    /**
+     * The system photo picker the Add form opens. UI tests replace it with one that returns chosen photos at once.
+     * A screen reads it when it registers its launcher, which it does once, when it is created.
+     */
+    @Volatile
+    @set:VisibleForTesting
+    var mediaPicker: ActivityResultContract<PickVisualMediaRequest, List<Uri>> = ActivityResultContracts.PickMultipleVisualMedia()
 }

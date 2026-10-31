@@ -30,6 +30,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
+import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
@@ -84,7 +85,7 @@ class AddMemoryGroupFragment : Fragment() {
     private lateinit var colorPresetAdapter: ColorPresetAdapter
 
     private val pickMediaLauncher =
-        registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+        registerForActivityResult(AppServices.mediaPicker) { uris ->
             val context = context ?: return@registerForActivityResult
             val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
             val knownDeviceId = viewModel.currentDeviceId
