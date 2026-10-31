@@ -6,6 +6,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import androidx.test.uiautomator.textAsString
 import com.szabolcshorvath.memorymap.R
@@ -193,7 +194,7 @@ object AddScreen : TabScreen {
     /** Taps "Save Memory", or "Update" while editing. */
     fun save() {
         Ui.scrollTo { hasText(SAVE) || hasText(UPDATE) }
-        Ui.find { hasText(SAVE) || hasText(UPDATE) }.click()
+        Ui.findSettled { hasText(SAVE) || hasText(UPDATE) }.click()
         Ui.device.waitForIdle()
     }
 
@@ -203,7 +204,9 @@ object AddScreen : TabScreen {
         Ui.assertShown("The Update button of a memory being edited") { hasText(UPDATE) }
     }
 
+    /** Opens the location picker for the memory (its own "Select on Map", at the top of the form, not a fragment's). */
     fun selectLocation() {
+        Ui.scrollToTop()
         Ui.find { hasText(SELECT_LOCATION) }.click()
         Ui.device.waitForIdle()
     }
@@ -212,7 +215,11 @@ object AddScreen : TabScreen {
 
     fun assertHasLocation() = assertNotEquals("No location was picked", NO_LOCATION, locationText())
 
-    private fun locationText(): String? = Ui.find { hasId("tv_location") }.text
+    // The memory's location, near the top of the form; a fragment card further down has a location line too.
+    private fun locationText(): String? {
+        Ui.scrollToTop()
+        return Ui.find { hasId("tv_location") }.text
+    }
 
     fun openStartDatePicker() {
         expandDateSection()
@@ -295,6 +302,57 @@ object AddScreen : TabScreen {
         if (switch.isChecked != on) switch.click()
         Ui.assertShown("All Day ${if (on) "on" else "off"}") { hasText("All Day?") && isChecked == on }
     }
+
+    /** Opens the marker colour's sliders and picks the preset [color], which moves them to it. */
+    fun pickColor(color: Hsv) {
+        Ui.scrollTo { hasText(MARKER_COLOR) }
+        if (!Ui.isShown(timeoutMs = 0) { hasId("tv_HueValue") }) Ui.find { hasText(MARKER_COLOR) }.click()
+        ColorPresetsSection.select(color)
+    }
+
+    /** The marker colour's sliders show [color]. */
+    fun assertColor(color: Hsv) {
+        Ui.scrollTo { hasText(MARKER_COLOR) }
+        if (!Ui.isShown(timeoutMs = 0) { hasId("tv_HueValue") }) Ui.find { hasText(MARKER_COLOR) }.click()
+        ColorPresetsSection.assertSlidersShow(color)
+    }
+
+    fun addFragment() = tap("Add a Memory Fragment")
+
+    /** Opens the location picker for the first fragment (its own "Select on Map", not the memory's). */
+    fun selectFragmentLocation() {
+        fragmentCard().findObject(By.text(SELECT_LOCATION)).click()
+        Ui.device.waitForIdle()
+    }
+
+    fun assertFragmentHasLocation() = assertNotEquals("The fragment has no location", NO_LOCATION, fragmentLocation())
+
+    fun assertFragmentHasNoLocation() = assertEquals(NO_LOCATION, fragmentLocation())
+
+    private fun fragmentLocation(): String? =
+        fragmentCard().findObject(By.res(Ui.device.currentPackageName, "tv_location")).text
+
+    fun removeFragment() = tap { hasDescription(REMOVE_FRAGMENT) }
+
+    fun assertNoFragments() = Ui.assertGone("A fragment") { hasDescription(REMOVE_FRAGMENT) }
+
+    /**
+     * The first fragment's card, with its location part on screen. Scrolling stops as soon as its remove button
+     * (at the top of the card) shows, so this nudges the page down until the card's "Select on Map" shows too.
+     */
+    private fun fragmentCard(): UiObject2 {
+        Ui.scrollTo { hasDescription(REMOVE_FRAGMENT) }
+        repeat(MAX_NUDGES) {
+            val card = Ui.find { hasId("fragmentEditCard") }
+            if (card.findObject(By.text(SELECT_LOCATION)) != null) return card
+            Ui.scrollDownALittle()
+        }
+        return Ui.find { hasId("fragmentEditCard") }
+    }
+
+    private const val MAX_NUDGES = 5
+    private const val MARKER_COLOR = "Marker Color"
+    private const val REMOVE_FRAGMENT = "Remove fragment"
 
     private fun tap(text: String) = tap { hasText(text) && isEnabled }
 
@@ -452,7 +510,10 @@ object SettingsScreen : TabScreen {
     private const val BUSY_TIMEOUT_MS = 30_000L
 }
 
-/** The colour presets section of Settings: the swatches and the sliders that edit the selected one. */
+/**
+ * The colour presets section of Settings: the swatches and the sliders that edit the selected one. [select] and
+ * [assertSlidersShow] also work for the Add form's marker colour, which has the same swatches and sliders.
+ */
 object ColorPresetsSection {
     fun open() {
         Ui.scrollTo { hasText(HEADER) }
@@ -461,6 +522,7 @@ object ColorPresetsSection {
     }
 
     fun select(color: Hsv) {
+        Ui.scrollTo { isSwatch(color) }
         Ui.find { isSwatch(color) }.click()
         Ui.device.waitForIdle()
     }
@@ -481,6 +543,7 @@ object ColorPresetsSection {
 
     /** The sliders show [color], as they do for the selected preset. */
     fun assertSlidersShow(color: Hsv) {
+        Ui.scrollTo { hasId("tv_BrightnessValue") }
         Ui.assertShown("Hue ${color.hue.toInt()}") { hasId("tv_HueValue") && hasText(color.hue.toInt().toString()) }
         Ui.assertShown("Saturation ${color.saturation}") {
             hasId("tv_SaturationValue") && hasText(decimal(color.saturation))

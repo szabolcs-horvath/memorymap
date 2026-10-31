@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.memory
 
+import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
@@ -7,6 +8,7 @@ import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
+import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import org.junit.Rule
@@ -83,6 +85,25 @@ class MemoryScreenTest {
         open(MIDDLE)
 
         MemoryScreen.assertPhotoFromAnotherDevice()
+    }
+
+    @Test
+    fun draggingAPhotoChangesTheirOrderForGood() {
+        val memory = TestData.memory(MIDDLE)
+        TestData.photo(memory, Color.RED, order = 0)
+        TestData.photo(memory, Color.BLUE, order = 1)
+        open(MIDDLE)
+        MemoryScreen.assertPhotoCount(2)
+        MemoryScreen.assertPhotoColors(Color.RED, Color.BLUE)
+
+        MemoryScreen.dragPhoto(from = 1, onto = 0)
+        MemoryScreen.assertPhotoColors(Color.BLUE, Color.RED)
+
+        Ui.pressBack()
+        TimelineScreen.openMemory(MIDDLE)
+        MemoryScreen.assertShowing(MIDDLE)
+        MemoryScreen.assertPhotoCount(2)
+        MemoryScreen.assertPhotoColors(Color.BLUE, Color.RED)
     }
 
     private fun open(title: String) {
