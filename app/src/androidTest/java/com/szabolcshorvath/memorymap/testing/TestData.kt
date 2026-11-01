@@ -194,8 +194,8 @@ object TestData {
 
     private fun shell(command: String): String = Ui.device.executeShellCommand(command)
 
-    /** Adds a fragment at [place] to memory [groupId], with no dates of its own. */
-    fun fragment(groupId: Int, place: Place) = runBlocking {
+    /** Adds a fragment at [place] to memory [groupId], with no dates of its own. A memory lists its fragments by [order]. */
+    fun fragment(groupId: Int, place: Place, order: Int? = null) = runBlocking {
         dao.insertFragments(
             listOf(
                 MemoryFragment(
@@ -206,9 +206,15 @@ object TestData {
                     address = place.address,
                     startDate = null,
                     endDate = null,
+                    order = order,
                 )
             )
         )
+    }
+
+    /** Turns the fragments' own markers on or off, as the Settings switch does. */
+    fun showFragmentMarkers(enabled: Boolean) = runBlocking {
+        context.dataStore.edit { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] = enabled }
     }
 
     /** Turns marker clustering on or off, as the Settings switch does. */

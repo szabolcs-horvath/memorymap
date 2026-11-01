@@ -119,6 +119,63 @@ object MemoryScreen {
         )
     }
 
+    /** The (only) fragment's dates read exactly [text], such as "Sep 10, 2026 - Sep 12, 2026" for an all-day one. */
+    fun assertFragmentDates(text: String) {
+        val shown = fragmentCard().findObject(By.res(Ui.device.currentPackageName, "tv_time"))?.text
+        assertEquals("The fragment's dates", text, shown)
+    }
+
+    /** The fragments are listed in this order, from top to bottom, by the place each card shows (all on screen). */
+    fun assertFragmentsTopToBottom(vararg places: String) {
+        openFragments()
+        Ui.scrollTo { hasId("tv_location") && isInFragmentCard() && hasText(places.last()) }
+        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        var shown = fragmentPlaces()
+        while (shown != places.toList() && SystemClock.uptimeMillis() < end) {
+            SystemClock.sleep(POLL_MS)
+            shown = fragmentPlaces()
+        }
+        assertEquals("The order of the fragments", places.toList(), shown)
+    }
+
+    private fun fragmentPlaces(): List<String> = try {
+        fragmentCards().map { it.findObject(By.res(Ui.device.currentPackageName, "tv_location")).text }
+    } catch (_: StaleObjectException) {
+        emptyList() // A card was bound again while it was read.
+    }
+
+    private fun fragmentCards(): List<UiObject2> =
+        Ui.device.findObjects(By.res(Ui.device.currentPackageName, "fragmentCard")).sortedBy { it.visibleBounds.top }
+
+    /**
+     * Long-presses the fragment card showing [place] and drags it into the place of the one showing [onto]. The list
+     * moves a card past another only once it covers most of it, so the drag ends at the far edge of [onto].
+     */
+    fun dragFragment(place: String, onto: String) {
+        fun card(name: String) = fragmentCards().first {
+            it.findObject(By.res(Ui.device.currentPackageName, "tv_location"))?.text == name
+        }
+        val moved = card(place)
+        val target = card(onto).visibleBounds
+        val from = moved.visibleCenter
+        val y = if (target.centerY() < from.y) target.top + EDGE_INSET else target.bottom - EDGE_INSET
+        moved.drag(Point(target.centerX(), y), DRAG_SPEED)
+        Ui.device.waitForIdle()
+    }
+
+    /** Taps the (only) fragment's own Show on Map, which shows only while fragment markers are turned on. */
+    fun showFragmentOnMap() {
+        openFragments()
+        Ui.scrollTo { hasText(SHOW_ON_MAP) && isInFragmentCard() }
+        tap { hasText(SHOW_ON_MAP) && isInFragmentCard() }
+    }
+
+    /** Taps "Re-link Media Files" on the could-not-load warning, which asks for photo access first if needed. */
+    fun relinkMedia() {
+        Ui.scrollTo { hasText(RELINK) }
+        tap { hasText(RELINK) && isEnabled }
+    }
+
     /**
      * The first fragment's card, on screen, with the fragments section opened. It looks for the card's location line,
      * which every card shows (its Show on Map button shows only while fragment markers are turned on).
@@ -232,6 +289,8 @@ object MemoryScreen {
     private const val SWIPE_PERCENT = 0.8f
     private const val POLL_MS = 200L
     private const val FRAGMENTS = "Memory Fragments"
+    private const val SHOW_ON_MAP = "Show on Map"
+    private const val RELINK = "Re-link Media Files"
     private const val OPEN_PHOTO = "Open photo"
     private const val OPEN_VIDEO = "Open video"
     private const val EDGE_INSET = 2

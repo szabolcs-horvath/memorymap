@@ -7,6 +7,7 @@ import com.szabolcshorvath.memorymap.screens.DateRangePickerDialog
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.SettingsScreen
+import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
@@ -153,6 +154,26 @@ class MapTest {
         BottomNav.open(Tab.MAP)
 
         MapScreen.assertMarkerCount(EURO_TRIP, 2)
+    }
+
+    @Test
+    fun aFragmentsShowOnMapOpensTheMapAtTheFragment() {
+        TestData.markerClustering(false)
+        TestData.showFragmentMarkers(true)
+        val trip = TestData.memory(EURO_TRIP, place = Place.MADRID)
+        TestData.fragment(trip, Place.ATHENS)
+        app.launch()
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.openMemory(EURO_TRIP)
+
+        MemoryScreen.showFragmentOnMap()
+
+        MapScreen.assertShown()
+        BottomNav.assertSelected(Tab.MAP)
+        // The fragment's marker in Athens is selected, not the memory's own in Madrid, which is off the zoomed-in map.
+        MapScreen.assertOverlayPlace(Place.ATHENS.name!!)
+        MapScreen.assertOverlayShows(EURO_TRIP)
+        MapScreen.assertMarkerCount(EURO_TRIP, 1)
     }
 
     @Test

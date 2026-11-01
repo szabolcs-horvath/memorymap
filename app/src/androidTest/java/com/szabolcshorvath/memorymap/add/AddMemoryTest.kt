@@ -10,6 +10,7 @@ import com.szabolcshorvath.memorymap.screens.DatePickerDialog
 import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
+import com.szabolcshorvath.memorymap.screens.TimePickerDialog
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
@@ -212,6 +213,59 @@ class AddMemoryTest {
         assertFalse("The all-day memory shows a time: \"$date\"", date.contains(":"))
     }
 
+    @Test
+    fun theEndStaysAfterTheStart() {
+        TestData.memory(VIENNA) // Yesterday from 12:00 to 14:00.
+        openForEditing(VIENNA)
+
+        // An end before the start moves the start to an hour before it.
+        AddScreen.openEndDatePicker()
+        DatePickerDialog.pickDayInPreviousMonth(PICKED_DAY)
+        Dialog.tap("OK")
+        AddScreen.assertEndDay(PICKED_DAY)
+        AddScreen.assertStartDay(PICKED_DAY)
+
+        // A start after the end moves the end to an hour after it.
+        AddScreen.openStartTimePicker()
+        TimePickerDialog.pickHour(LATE_HOUR)
+        Dialog.tap("OK")
+        AddScreen.assertStartHour(LATE_HOUR)
+        AddScreen.assertEndHour(LATE_HOUR + 1)
+
+        AddScreen.openEndTimePicker()
+        TimePickerDialog.pickHour(LATER_HOUR)
+        Dialog.tap("OK")
+        AddScreen.assertEndHour(LATER_HOUR)
+        AddScreen.assertStartHour(LATE_HOUR)
+        AddScreen.save()
+
+        MemoryScreen.assertShowing(VIENNA)
+        // The 12-hour clock puts a narrow no-break space before "PM".
+        val date = MemoryScreen.dateText().replace(NARROW_SPACE, ' ')
+        assertTrue("The date \"$date\" is not on day $PICKED_DAY", Regex("\\b$PICKED_DAY\\b").containsMatchIn(date))
+        assertTrue(
+            "The date \"$date\" doesn't end at $LATER_HOUR:00",
+            date.endsWith("$LATER_HOUR:00") || date.endsWith("${LATER_HOUR - HALF_DAY}:00 PM")
+        )
+    }
+
+    @Test
+    fun aPhotoRemovedWhileEditingIsGoneOnceSaved() {
+        val trip = TestData.memory(VIENNA)
+        TestData.photo(trip, Color.RED, order = 0)
+        TestData.photo(trip, Color.BLUE, order = 1)
+        openForEditing(VIENNA)
+        AddScreen.assertSelectedCount(2)
+
+        AddScreen.removeFirstPhoto()
+        AddScreen.assertSelectedCount(1)
+        AddScreen.save()
+
+        MemoryScreen.assertShowing(VIENNA)
+        MemoryScreen.assertPhotoCount(1)
+        MemoryScreen.assertPhotoColors(Color.BLUE)
+    }
+
     private fun openAdd() {
         app.launch()
         BottomNav.open(Tab.ADD)
@@ -241,5 +295,9 @@ class AddMemoryTest {
         const val VIENNA_RENAMED = "Vienna weekend"
         const val DISCARD_DRAFT = "Discard the new memory?"
         const val PICKED_DAY = 15
+        const val LATE_HOUR = 20
+        const val LATER_HOUR = 22
+        const val HALF_DAY = 12
+        const val NARROW_SPACE = ' '
     }
 }

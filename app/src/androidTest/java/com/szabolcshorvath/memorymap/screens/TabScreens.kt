@@ -41,6 +41,11 @@ object MapScreen : TabScreen {
 
     fun assertOverlayGone() = Ui.assertGone("The map overlay") { hasId("tv_memoryTitle") }
 
+    /** The overlay card is about the place [name]: the selected marker's place, which heads the card. */
+    fun assertOverlayPlace(name: String) = Ui.assertShown("The map overlay for \"$name\"") {
+        hasId("tv_overlayLocationTitle") && hasText(name)
+    }
+
     /** Opens memory [title] from the overlay card. */
     fun openFromOverlay(title: String) {
         Ui.find { hasId("tv_memoryTitle") && hasText(title) }.click()
@@ -363,28 +368,44 @@ object AddScreen : TabScreen {
         Ui.device.waitForIdle()
     }
 
-    fun startDateText(): String? {
+    fun openEndDatePicker() = tapInDateSection("bt_endDate")
+
+    fun openEndTimePicker() = tapInDateSection("bt_endTime")
+
+    private fun tapInDateSection(id: String) {
         expandDateSection()
-        return Ui.find { hasId("bt_startDate") }.text
+        Ui.scrollTo { hasId(id) }
+        Ui.find { hasId(id) }.click()
+        Ui.device.waitForIdle()
     }
 
-    fun startTimeText(): String? {
+    fun startDateText(): String? = dateSectionText("bt_startDate")
+
+    fun startTimeText(): String? = dateSectionText("bt_startTime")
+
+    private fun dateSectionText(id: String): String? {
         expandDateSection()
-        return Ui.find { hasId("bt_startTime") }.text
+        Ui.scrollTo { hasId(id) }
+        return Ui.find { hasId(id) }.text
     }
 
     /** The start date shows [day] as its day of the month (for example "Sep 15, 2026" for 15). */
-    fun assertStartDay(day: Int) {
-        val text = startDateText().orEmpty()
-        assertTrue("The start date \"$text\" is not on day $day", Regex("\\b$day\\b").containsMatchIn(text))
-    }
+    fun assertStartDay(day: Int) = assertDay("The start date", dateSectionText("bt_startDate"), day)
+
+    fun assertEndDay(day: Int) = assertDay("The end date", dateSectionText("bt_endDate"), day)
+
+    private fun assertDay(what: String, text: String?, day: Int) =
+        assertTrue("$what \"$text\" is not on day $day", Regex("\\b$day\\b").containsMatchIn(text.orEmpty()))
 
     /** The start time shows [hour] (0-23), in the 24-hour or the 12-hour clock ("21:05" or "9:05 PM" for 21). */
-    fun assertStartHour(hour: Int) {
-        val text = startTimeText().orEmpty()
-        val shown = text.substringBefore(':').trim().toIntOrNull()
+    fun assertStartHour(hour: Int) = assertHour("The start time", dateSectionText("bt_startTime"), hour)
+
+    fun assertEndHour(hour: Int) = assertHour("The end time", dateSectionText("bt_endTime"), hour)
+
+    private fun assertHour(what: String, text: String?, hour: Int) {
+        val shown = text.orEmpty().substringBefore(':').trim().toIntOrNull()
         val twelveHour = (hour % HALF_DAY).let { if (it == 0) HALF_DAY else it }
-        assertTrue("The start time \"$text\" is not at hour $hour", shown == hour || shown == twelveHour)
+        assertTrue("$what \"$text\" is not at hour $hour", shown == hour || shown == twelveHour)
     }
 
     /**
@@ -489,6 +510,17 @@ object AddScreen : TabScreen {
         tapInFragmentCard(By.text(DATE_AND_TIME))
         tapInFragmentCard(By.text("Use specific time for this fragment"))
         tapInFragmentCard(By.res(Ui.device.currentPackageName, "bt_startDate"))
+    }
+
+    /**
+     * Gives the first fragment dates of its own, makes it all day, and opens the calendar for its range of days
+     * ([DateRangePickerDialog]).
+     */
+    fun openFragmentAllDayRangePicker() {
+        tapInFragmentCard(By.text(DATE_AND_TIME))
+        tapInFragmentCard(By.text("Use specific time for this fragment"))
+        tapInFragmentCard(By.text("All Day?"))
+        tapInFragmentCard(By.res(Ui.device.currentPackageName, "bt_dateRange")) // It shows the days picked so far.
     }
 
     /** Picks [color] from the first fragment's own presets. */
@@ -865,9 +897,14 @@ object TimePickerDialog {
     /** Picks the hour after the one shown, so the time always changes, and returns it (0-23). */
     fun pickNextHour(): Int {
         val hour = (Ui.find { hasId("material_hour_tv") }.text.toInt() + 1) % HOURS_PER_DAY
+        pickHour(hour)
+        return hour
+    }
+
+    /** Picks [hour] (0-23) on the 24-hour clock. */
+    fun pickHour(hour: Int) {
         Ui.find { hasDescription("$hour hours") }.click()
         Ui.device.waitForIdle()
-        return hour
     }
 
     private const val HOURS_PER_DAY = 24
