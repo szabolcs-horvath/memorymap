@@ -92,6 +92,12 @@ object TestData {
             dao.insertGroup(group).toInt()
         }
 
+    /** Gives memory [groupId] the marker colour [color] (every memory starts red, hue 0). */
+    fun markerColor(groupId: Int, color: Hsv) = runBlocking {
+        val group = checkNotNull(dao.getGroupWithMedia(groupId)) { "No memory $groupId" }.group
+        dao.updateGroup(group.copy(markerHue = color.hue, markerSaturation = color.saturation, markerBrightness = color.brightness))
+    }
+
     /**
      * Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. With
      * [linkedToThisPhone] false, it is saved as a restored backup brings it from another phone: the file is here,
@@ -104,8 +110,16 @@ object TestData {
         linkedToThisPhone: Boolean = true,
         order: Int = 0,
         rightHalf: Int = color,
-    ): Uri = runBlocking {
-        val uri = createGalleryImage(color, rightHalf)
+    ): Uri = createGalleryImage(color, rightHalf).also { insertMedia(groupId, it, MediaType.IMAGE, linkedToThisPhone, order) }
+
+    /** Adds a five-second video of [color] (a generated MP4 in the phone's gallery, owned by the app) to memory [groupId]. */
+    fun video(groupId: Int, color: Int, order: Int = 0): Uri =
+        createGalleryVideo(color).also { insertMedia(groupId, it, MediaType.VIDEO, linkedToThisPhone = true, order) }
+
+    /** Adds a video of [color] to the phone's gallery only, in no memory: one for the fake photo picker to return. */
+    fun galleryVideo(color: Int): Uri = createGalleryVideo(color)
+
+    private fun insertMedia(groupId: Int, uri: Uri, type: MediaType, linkedToThisPhone: Boolean, order: Int) = runBlocking {
         val size = context.contentResolver.openFileDescriptor(uri, "r")!!.use { it.statSize }
         val thisPhone = InstallationIdentifier.getInstallationIdentifier(context)
         dao.insertMediaItems(
@@ -114,7 +128,7 @@ object TestData {
                     groupId = groupId,
                     uri = uri.toString(),
                     deviceId = if (linkedToThisPhone) thisPhone else ANOTHER_DEVICE,
-                    type = MediaType.IMAGE,
+                    type = type,
                     mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                     fileSize = size,
                     dateTaken = 0,
@@ -122,7 +136,6 @@ object TestData {
                 )
             )
         )
-        uri
     }
 
     /**
@@ -260,21 +273,35 @@ object TestData {
         shellPhotos.clear()
     }
 
-    private fun createGalleryImage(color: Int, rightHalf: Int = color): Uri {
+    private fun createGalleryImage(color: Int, rightHalf: Int = color): Uri = createGalleryFile(
+        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+        "jpg",
+        "image/jpeg",
+        "Pictures/MemoryMapUiTests",
+        jpeg(color, rightHalf)
+    )
+
+    private fun createGalleryVideo(color: Int): Uri = createGalleryFile(
+        MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+        "mp4",
+        "video/mp4",
+        "Movies/MemoryMapUiTests",
+        TestVideos.mp4(color, context.cacheDir)
+    )
+
+    /** Saves [bytes] as a new file in the gallery's [collection], owned by the app, and returns its URI. */
+    private fun createGalleryFile(collection: Uri, extension: String, mimeType: String, folder: String, bytes: ByteArray): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "memorymap_ui_test_${System.nanoTime()}.jpg")
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/MemoryMapUiTests")
-            put(MediaStore.Images.Media.IS_PENDING, 1)
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "memorymap_ui_test_${System.nanoTime()}.$extension")
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, folder)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val uri = checkNotNull(resolver.insert(collection, values)) { "Could not add a test image" }
+        val uri = checkNotNull(resolver.insert(collection, values)) { "Could not add a test $mimeType file" }
         createdPhotos += uri
-
-        resolver.openOutputStream(uri)!!.use { it.write(jpeg(color, rightHalf)) }
-
-        resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
+        resolver.openOutputStream(uri)!!.use { it.write(bytes) }
+        resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
         return uri
     }
 

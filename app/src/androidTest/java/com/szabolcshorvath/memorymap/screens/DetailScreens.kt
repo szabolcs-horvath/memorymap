@@ -8,6 +8,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.textAsString
@@ -54,14 +55,25 @@ object MemoryScreen {
     }
 
     /** Waits until the memory shows [count] photo thumbnails. */
-    fun assertPhotoCount(count: Int) {
+    fun assertPhotoCount(count: Int) = assertThumbnailCount(OPEN_PHOTO, count)
+
+    /** Waits until the memory shows [count] video thumbnails (marked with a play icon). */
+    fun assertVideoCount(count: Int) = assertThumbnailCount(OPEN_VIDEO, count)
+
+    fun openFirstVideo() {
+        Ui.scrollTo { hasDescription(OPEN_VIDEO) }
+        tap { hasDescription(OPEN_VIDEO) }
+    }
+
+    private fun assertThumbnailCount(description: String, count: Int) {
+        if (count > 0) Ui.scrollTo { hasDescription(description) }
         val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
-        var found = Ui.device.findObjects(By.desc("Open photo")).size
+        var found = Ui.device.findObjects(By.desc(description)).size
         while (found != count && SystemClock.uptimeMillis() < end) {
             SystemClock.sleep(POLL_MS)
-            found = Ui.device.findObjects(By.desc("Open photo")).size
+            found = Ui.device.findObjects(By.desc(description)).size
         }
-        assertEquals("Photo thumbnails", count, found)
+        assertEquals("Thumbnails described \"$description\"", count, found)
     }
 
     /** Opens the "Memory Fragments" section if it is closed, and waits until it lists [count] fragments. */
@@ -199,6 +211,7 @@ object MemoryScreen {
     private const val POLL_MS = 200L
     private const val FRAGMENTS = "Memory Fragments"
     private const val OPEN_PHOTO = "Open photo"
+    private const val OPEN_VIDEO = "Open video"
     private const val CROSSFADE_MS = 600L
     private const val EDGE_INSET = 2
     private const val DRAG_SPEED = 600 // Pixels per second.
@@ -230,6 +243,63 @@ object MediaViewerScreen {
     fun assertShowingPhoto() = Ui.assertShown("The full-screen photo") { hasDescription("Photo") }
 
     fun assertGone() = Ui.assertGone("The full-screen viewer") { hasDescription("Photo") }
+
+    /** A video shows, ready to play: its first frame and the Play button. */
+    fun assertShowingVideo() {
+        Ui.assertShown("The full-screen video") { hasDescription("Video") }
+        Ui.assertShown("The Play button") { hasDescription(PLAY) }
+    }
+
+    fun play() = whilePlaying { Ui.find { hasDescription(PLAY) }.click() }
+
+    fun pause() {
+        whilePlaying { Ui.find { hasDescription(PAUSE) }.click() }
+        Ui.device.waitForIdle()
+    }
+
+    /** The video plays: the button offers Pause, and the position bar moves on. */
+    fun assertPlaying() = whilePlaying {
+        Ui.assertShown("The Pause button") { hasDescription(PAUSE) }
+        val start = videoPosition()
+        Ui.assertShown("The video moving on from ${start}ms") { hasId(SCRUBBER) && position() > start }
+    }
+
+    /**
+     * Runs [block] without waiting for the screen to settle first, as UI Automator does before every tap and lookup.
+     * While a video plays, its position bar moves all the time, so the screen settles only once the video ends.
+     */
+    private fun <T> whilePlaying(block: () -> T): T {
+        val configurator = Configurator.getInstance()
+        val settleTimeout = configurator.waitForIdleTimeout
+        configurator.waitForIdleTimeout = 0
+        try {
+            return block()
+        } finally {
+            configurator.waitForIdleTimeout = settleTimeout
+        }
+    }
+
+    /** The video is paused: the button offers Play again, and the position bar stays where it is. */
+    fun assertPaused() {
+        Ui.assertShown("The Play button") { hasDescription(PLAY) }
+        val position = videoPosition()
+        SystemClock.sleep(PAUSE_CHECK_MS)
+        assertEquals("The video's position while paused", position, videoPosition())
+    }
+
+    /** Where the video is, in milliseconds, as its position bar reports it (found by id: nothing on screen names it). */
+    private fun videoPosition(): Float {
+        var position = 0f
+        Ui.find { hasId(SCRUBBER).also { found -> if (found) position = position() } }
+        return position
+    }
+
+    private fun AccessibilityNodeInfo.position(): Float = rangeInfo?.current ?: 0f
+
+    private const val PLAY = "Play"
+    private const val PAUSE = "Pause"
+    private const val SCRUBBER = "videoScrubber"
+    private const val PAUSE_CHECK_MS = 1_000L
 
     /**
      * The photo on screen has [color] at [across] of the screen's width (0 is the left edge, 1 the right), half-way

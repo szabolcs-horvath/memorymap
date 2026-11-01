@@ -1,0 +1,69 @@
+package com.szabolcshorvath.memorymap.memory
+
+import android.graphics.Color
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.szabolcshorvath.memorymap.fakes.FakeMediaPicker
+import com.szabolcshorvath.memorymap.screens.AddScreen
+import com.szabolcshorvath.memorymap.screens.BottomNav
+import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.MediaViewerScreen
+import com.szabolcshorvath.memorymap.screens.MemoryScreen
+import com.szabolcshorvath.memorymap.screens.TimelineScreen
+import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
+import com.szabolcshorvath.memorymap.testing.TestData
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * Videos in a memory: picking one on the Add form, its thumbnail, and playing it in the full-screen viewer. The
+ * videos are five seconds of one colour, made on the phone (`TestData.video`, `TestData.galleryVideo`).
+ */
+@RunWith(AndroidJUnit4::class)
+class VideoTest {
+    @get:Rule
+    val app = MemoryMapAppRule()
+
+    @Test
+    fun aPickedVideoIsSavedAsAVideo() {
+        TestData.memory(TRIP)
+        FakeMediaPicker.nextPick = listOf(TestData.galleryVideo(GREEN))
+        openMemory()
+        MemoryScreen.edit()
+
+        AddScreen.addPhotos()
+        AddScreen.assertVideoSelected()
+        AddScreen.save()
+
+        MemoryScreen.assertShowing(TRIP)
+        MemoryScreen.assertVideoCount(1)
+        MemoryScreen.assertPhotoCount(0)
+    }
+
+    @Test
+    fun aVideoPlaysAndPausesInTheViewer() {
+        TestData.video(TestData.memory(TRIP), GREEN)
+        openMemory()
+
+        MemoryScreen.openFirstVideo()
+        MediaViewerScreen.assertShowingVideo()
+        MediaViewerScreen.assertColorAt(GREEN)
+
+        MediaViewerScreen.play()
+        MediaViewerScreen.assertPlaying()
+        MediaViewerScreen.pause()
+        MediaViewerScreen.assertPaused()
+    }
+
+    private fun openMemory() {
+        app.launch()
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.openMemory(TRIP)
+        MemoryScreen.assertShowing(TRIP)
+    }
+
+    private companion object {
+        const val TRIP = "Lake trip"
+        val GREEN = Color.rgb(40, 200, 60)
+    }
+}
