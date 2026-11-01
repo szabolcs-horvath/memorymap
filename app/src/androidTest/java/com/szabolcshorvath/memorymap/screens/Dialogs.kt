@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.screens
 
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.textAsString
+import org.junit.Assert.assertTrue
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -39,10 +40,30 @@ object Dialog {
 object DatePickerDialog {
     /** Picks [day] of the month before the one shown, which always differs from the date it opened with. */
     fun pickDayInPreviousMonth(day: Int) {
+        val shownMonth = shownMonth()
         Ui.find { hasDescription("Change to previous month") }.click()
-        Ui.find { isClickable && hasText(day.toString()) }.click()
-        Ui.device.waitForIdle()
+        // The calendar slides to that month, and for a moment both months' days are on screen: tap the day only once
+        // the calendar says it shows the new month and the day has stopped moving.
+        assertTrue("The calendar did not go to the previous month", Ui.waitUntil { shownMonth().let { it != null && it != shownMonth } })
+        repeat(MAX_TRIES) { attempt ->
+            try {
+                Ui.findSettled { isClickable && hasText(day.toString()) }.click()
+                Ui.device.waitForIdle()
+                return
+            } catch (e: StaleObjectException) {
+                if (attempt == MAX_TRIES - 1) throw e
+            }
+        }
     }
+
+    /** The month and year the calendar shows, above its days (null while it is being replaced). */
+    private fun shownMonth(): String? = try {
+        Ui.findOrNull { hasId("month_navigation_fragment_toggle") }?.text
+    } catch (_: StaleObjectException) {
+        null
+    }
+
+    private const val MAX_TRIES = 3
 }
 
 /**
