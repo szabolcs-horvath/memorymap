@@ -11,6 +11,7 @@ import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
+import com.szabolcshorvath.memorymap.testing.TestData.Place
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,11 +52,14 @@ class MemoryScreenTest {
     }
 
     @Test
-    fun undoBringsADeletedMemoryBackWithItsPhoto() {
-        TestData.photo(TestData.memory(MIDDLE))
+    fun undoBringsADeletedMemoryBackWithItsPhotoAndFragment() {
+        val memory = TestData.memory(MIDDLE)
+        TestData.photo(memory)
+        TestData.fragment(memory, Place.VIENNA)
         TestData.memory(NEWEST, daysAgo = 0)
         open(MIDDLE)
         MemoryScreen.assertPhotoLoaded()
+        MemoryScreen.assertFragmentCount(1)
 
         deleteOpenMemory()
         TimelineScreen.assertMemoryGone(MIDDLE)
@@ -65,6 +69,7 @@ class MemoryScreenTest {
         TimelineScreen.openMemory(MIDDLE)
         MemoryScreen.assertShowing(MIDDLE)
         MemoryScreen.assertPhotoLoaded()
+        MemoryScreen.assertFragmentCount(1)
     }
 
     @Test
