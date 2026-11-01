@@ -98,12 +98,21 @@ object MemoryScreen {
         assertTrue("The fragment's dates \"$text\" don't start on $day", text.startsWith(day))
     }
 
-    /** The (only) fragment shows the marker colour [color], in the strip along its left edge. */
+    /**
+     * The (only) fragment shows the marker colour [color], in the strip along its left edge. Waits for it, in case
+     * the fragments section is still opening.
+     */
     fun assertFragmentColor(color: Int) {
         val strip = checkNotNull(fragmentCard().findObject(By.res(Ui.device.currentPackageName, "colorIndicator"))) {
             "The fragment has no colour strip"
         }
-        val shown = ScreenColors.at(listOf(strip.visibleCenter)).single()
+        val spot = strip.visibleCenter
+        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        var shown = ScreenColors.at(listOf(spot)).single()
+        while (!ScreenColors.isClose(shown, color) && SystemClock.uptimeMillis() < end) {
+            SystemClock.sleep(POLL_MS)
+            shown = ScreenColors.at(listOf(spot)).single()
+        }
         assertTrue(
             "The fragment's colour ${ScreenColors.hex(shown)} is not ${ScreenColors.hex(color)}",
             ScreenColors.isClose(shown, color)
