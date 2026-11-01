@@ -18,6 +18,7 @@ import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -85,11 +86,13 @@ object MapScreen : TabScreen {
 
     fun assertClusterShown() = Ui.assertShown("A cluster of memories", Ui.SLOW_TIMEOUT_MS) { isCluster() }
 
-    /** Taps a cluster, which zooms the map in on it, and waits for the map to settle. */
+    /** Taps a cluster, which zooms the map in on it, and waits until the map shows other markers. */
     fun tapCluster() {
+        val before = markerTitles()
         Ui.find { isCluster() }.click()
         Ui.device.waitForIdle()
-        SystemClock.sleep(CAMERA_MOVE_MS)
+        val end = SystemClock.uptimeMillis() + CAMERA_MOVE_TIMEOUT_MS
+        while (markerTitles() == before && SystemClock.uptimeMillis() < end) SystemClock.sleep(POLL_MS)
     }
 
     /** No markers or clusters are on the map. */
@@ -177,7 +180,7 @@ object MapScreen : TabScreen {
     private const val POLL_MS = 200L
     private const val EMPTY_SPOT_DIVISOR = 10
     private const val CHART_GRID = 12
-    private const val CAMERA_MOVE_MS = 1_000L
+    private const val CAMERA_MOVE_TIMEOUT_MS = 3_000L
 }
 
 /** The Timeline tab. */
@@ -196,7 +199,8 @@ object TimelineScreen : TabScreen {
     /**
      * Runs [action] (such as Show on Timeline) and checks that memory [title]'s card then flashes: its colour changes
      * for a moment. The flash is short, so this doesn't wait for the screen to settle first, and it reads the
-     * card's colour from screenshots, near its right edge on the title's line, once the list has stopped moving.
+     * card's colour from screenshots, near its right edge on the title's line, once the list has stopped moving. It
+     * stops watching as soon as the card has shown two clearly different colours.
      */
     fun assertFlashesAfter(title: String, action: () -> Unit) = Ui.withoutSettling {
         action()
@@ -207,16 +211,14 @@ object TimelineScreen : TabScreen {
             val line = Ui.findOrNull(timeoutMs = 0) { hasId("tv_memoryTitle") && hasText(title) }?.visibleBounds
             if (line != null && line.top == lastTop) {
                 val spot = Point(Ui.device.displayWidth * CARD_SPOT_PERCENT / 100, line.centerY())
-                samples += ScreenColors.at(listOf(spot)).single()
+                val color = ScreenColors.at(listOf(spot)).single()
+                if (samples.any { !ScreenColors.isClose(it, color, FLASH_TOLERANCE) }) return@withoutSettling
+                samples += color
             }
             lastTop = line?.top
         }
-        val settled = samples.lastOrNull()
-        assertTrue("\"$title\" did not show in the timeline", settled != null)
-        assertTrue(
-            "\"$title\" did not flash: its card stayed ${samples.distinct().map(ScreenColors::hex)}",
-            samples.any { !ScreenColors.isClose(it, settled!!, FLASH_TOLERANCE) }
-        )
+        assertTrue("\"$title\" did not show in the timeline", samples.isNotEmpty())
+        fail("\"$title\" did not flash: its card stayed ${samples.distinct().map(ScreenColors::hex)}")
     }
 
     fun assertMemoryShown(title: String) = Ui.assertShown("\"$title\" in the timeline") {

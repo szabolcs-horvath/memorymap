@@ -9,6 +9,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.textAsString
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
@@ -109,10 +110,13 @@ object MemoryScreen {
         )
     }
 
-    /** The first fragment's card, on screen, with the fragments section opened. */
+    /**
+     * The first fragment's card, on screen, with the fragments section opened. It looks for the card's location line,
+     * which every card shows (its Show on Map button shows only while fragment markers are turned on).
+     */
     private fun fragmentCard(): UiObject2 {
         openFragments()
-        Ui.scrollTo { hasText("Show on Map") && isInFragmentCard() }
+        Ui.scrollTo { hasId("tv_location") && isInFragmentCard() }
         return Ui.find { hasId("fragmentCard") }
     }
 
@@ -132,16 +136,27 @@ object MemoryScreen {
 
     /**
      * The photos are, from left to right, of these colours (the tests' photos are a single colour each). The
-     * thumbnails all read "Open photo", so the colours are read from a screenshot, at each thumbnail's centre.
+     * thumbnails all read "Open photo", so the colours are read from a screenshot, at each thumbnail's centre. Waits
+     * for the thumbnails to load and fade in.
      */
     fun assertPhotoColors(vararg colors: Int) {
         Ui.scrollTo { hasDescription(OPEN_PHOTO) }
-        SystemClock.sleep(CROSSFADE_MS) // Thumbnails fade in.
-        val shown = ScreenColors.at(thumbnails().map { it.visibleCenter })
-        val matches = shown.size == colors.size && shown.zip(colors.toList()).all { (a, b) -> ScreenColors.isClose(a, b) }
+        // A thumbnail that is bound again while it is read is gone: read them all again next time.
+        fun read() = try {
+            ScreenColors.at(thumbnails().map { it.visibleCenter })
+        } catch (_: StaleObjectException) {
+            emptyList()
+        }
+        fun List<Int>.matches() = size == colors.size && zip(colors.toList()).all { (a, b) -> ScreenColors.isClose(a, b) }
+        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        var shown = read()
+        while (!shown.matches() && SystemClock.uptimeMillis() < end) {
+            SystemClock.sleep(POLL_MS)
+            shown = read()
+        }
         assertTrue(
             "The photos' colours ${shown.map(ScreenColors::hex)} are not ${colors.map(ScreenColors::hex)}",
-            matches
+            shown.matches()
         )
     }
 
@@ -210,7 +225,6 @@ object MemoryScreen {
     private const val FRAGMENTS = "Memory Fragments"
     private const val OPEN_PHOTO = "Open photo"
     private const val OPEN_VIDEO = "Open video"
-    private const val CROSSFADE_MS = 600L
     private const val EDGE_INSET = 2
     private const val DRAG_SPEED = 600 // Pixels per second.
     private const val SWIPE_SPEED = 2500 // Pixels per second.

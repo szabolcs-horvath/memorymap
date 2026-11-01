@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.screens
 import android.graphics.Color
 import android.graphics.Point
 import android.os.SystemClock
+import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction
 import androidx.test.platform.app.InstrumentationRegistry
@@ -85,7 +86,8 @@ object Ui {
      * Scrolls the page until [condition] matches: back to the top first (a page can come back scrolled after a
      * rotation), then down. If it reaches the bottom without a match, it starts again from the top, which waits for
      * content that loads later, such as the backup list. A page only scrolls when it is taller than the screen. If
-     * nothing matches in time, the caller's check fails.
+     * nothing matches in time, the caller's check fails. Giving up costs [SCROLL_TIMEOUT_MS], so it is logged with
+     * where it was called from: a lookup that can never match shows up in the test's logcat.
      */
     fun scrollTo(condition: AccessibilityNodeInfo.() -> Boolean) {
         val end = SystemClock.uptimeMillis() + SCROLL_TIMEOUT_MS
@@ -98,6 +100,9 @@ object Ui {
                 // the new page and start again from the top.
                 false
             }
+        }
+        if (!isShown(timeoutMs = 0, condition = condition)) {
+            Log.w(TAG, "Scrolled for ${SCROLL_TIMEOUT_MS / MS_PER_SECOND} s without finding the element", Throwable())
         }
     }
 
@@ -153,6 +158,8 @@ object Ui {
     }
 
     private const val SCROLL_TIMEOUT_MS = 30_000L
+    private const val MS_PER_SECOND = 1_000L
+    private const val TAG = "UiTestScroll"
     private const val NUDGE_PERCENT = 0.3f
     private const val SCROLL_PERCENT = 0.7f
 
