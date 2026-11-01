@@ -7,9 +7,9 @@ import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.DatePickerDialog
 import com.szabolcshorvath.memorymap.screens.DateRangePickerDialog
 import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
-import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import com.szabolcshorvath.memorymap.testing.TestData.Hsv
@@ -56,11 +56,7 @@ class FragmentsAndColorTest {
         AddScreen.typeTitle(PICNIC)
         AddScreen.addFragment()
         AddScreen.assertFragmentHasNoLocation()
-        AddScreen.selectLocation()
-        LocationPickerScreen.tapMap()
-        LocationPickerScreen.assertLocationPicked()
-        LocationPickerScreen.confirm()
-        AddScreen.assertHasLocation()
+        Flows.pickLocationOnMap()
 
         AddScreen.save()
         AddScreen.assertShown()
@@ -124,11 +120,7 @@ class FragmentsAndColorTest {
 
     private fun openForEditing() {
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(VIENNA)
-        MemoryScreen.edit()
-        AddScreen.assertTitle(VIENNA)
-        AddScreen.assertEditing()
+        Flows.editMemory(VIENNA)
     }
 
     private companion object {

@@ -2,11 +2,9 @@ package com.szabolcshorvath.memorymap.memory
 
 import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.szabolcshorvath.memorymap.screens.BottomNav
-import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MediaViewerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
-import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import org.junit.Rule
@@ -55,9 +53,7 @@ class MediaViewerTest {
 
     private fun openMemory() {
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TRIP)
-        MemoryScreen.assertShowing(TRIP)
+        Flows.openMemory(TRIP)
     }
 
     private companion object {

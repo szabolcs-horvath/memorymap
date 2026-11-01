@@ -2,9 +2,8 @@ package com.szabolcshorvath.memorymap.memory
 
 import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.szabolcshorvath.memorymap.screens.BottomNav
-import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
@@ -109,9 +108,7 @@ class MemoryScreenTest {
 
     private fun open(title: String) {
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(title)
-        MemoryScreen.assertShowing(title)
+        Flows.openMemory(title)
     }
 
     /** Deletes the open memory, which goes back to the timeline with an Undo message. */

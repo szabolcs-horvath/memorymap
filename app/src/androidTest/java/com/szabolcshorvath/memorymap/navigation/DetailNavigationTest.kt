@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MediaViewerScreen
@@ -158,9 +159,7 @@ class DetailNavigationTest {
 
     private fun openFromTimeline(title: String, launch: Boolean = true) {
         if (launch) app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(title)
-        MemoryScreen.assertShowing(title)
+        Flows.openMemory(title)
     }
 
     private companion object {

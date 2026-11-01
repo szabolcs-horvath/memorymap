@@ -5,9 +5,9 @@ import com.szabolcshorvath.memorymap.fakes.FakePlaceSearch
 import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
-import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.ToastMessage
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
@@ -45,8 +45,7 @@ class LocationPickerTest {
     fun leavingTheSearchOrGoingBackKeepsThePlaceTheMemoryHad() {
         TestData.memory(TRIP, place = Place.VIENNA)
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TRIP)
+        Flows.openMemory(TRIP)
         MemoryScreen.edit()
 
         AddScreen.selectLocation()

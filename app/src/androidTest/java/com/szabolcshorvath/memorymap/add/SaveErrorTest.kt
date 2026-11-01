@@ -5,6 +5,7 @@ import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
@@ -37,13 +38,11 @@ class SaveErrorTest {
         val id = TestData.memory(TRIP)
         if (withPhoto) TestData.photo(id)
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TRIP)
+        Flows.openMemory(TRIP)
         MemoryScreen.edit()
         AddScreen.typeTitle(RENAMED)
 
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TRIP)
+        Flows.openMemory(TRIP)
         MemoryScreen.delete()
         Dialog.tap("Delete")
         Snackbar.assertShown("Memory deleted")
