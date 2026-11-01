@@ -18,14 +18,6 @@ class TabNavigationTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun opensOnTheMap() {
-        app.launch()
-
-        MapScreen.assertShown()
-        BottomNav.assertSelected(Tab.MAP)
-    }
-
-    @Test
     fun switchesFromEveryTabToEveryOtherTab() {
         app.launch()
         MapScreen.assertShown()
@@ -46,8 +38,10 @@ class TabNavigationTest {
     }
 
     @Test
-    fun backFromAnotherTabGoesToTheMap() {
+    fun opensOnTheMapWhichBackFromAnotherTabReturnsToAndBackThenLeaves() {
         app.launch()
+        MapScreen.assertShown()
+        BottomNav.assertSelected(Tab.MAP)
 
         for (tab in listOf(Tab.TIMELINE, Tab.ADD, Tab.SETTINGS)) {
             BottomNav.open(tab)
@@ -58,15 +52,8 @@ class TabNavigationTest {
             BottomNav.screenOf(tab).assertGone()
             BottomNav.assertSelected(Tab.MAP)
         }
-    }
-
-    @Test
-    fun backOnTheMapLeavesTheApp() {
-        app.launch()
-        MapScreen.assertShown()
 
         Ui.pressBack()
-
         assertTrue("The app is still in front", Ui.isGone { packageName == APP_PACKAGE })
     }
 

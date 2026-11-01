@@ -38,14 +38,7 @@ class TimelineTest {
     }
 
     @Test
-    fun noMemoriesShowsAMessage() {
-        openTimeline()
-
-        TimelineScreen.assertEmpty()
-    }
-
-    @Test
-    fun searchFindsTitlesDescriptionsPlacesAndAddresses() {
+    fun searchFindsTitlesDescriptionsPlacesAndAddressesOrSaysNothingMatchesUntilCleared() {
         TestData.memory(PICNIC, description = "Sunny afternoon by the lake")
         TestData.memory(CONCERT, place = Place(48.2030, 16.3690, "Vienna", "Opernring 2"))
         TestData.memory(DINNER)
@@ -55,39 +48,27 @@ class TimelineTest {
         expectMatches("opernring", CONCERT) // address
         expectMatches("budapest", PICNIC, DINNER) // place
         expectMatches("  dinner ", DINNER) // title, spaces around ignored
-    }
 
-    @Test
-    fun searchWithoutMatchesShowsAMessageUntilCleared() {
-        TestData.memory(PICNIC)
-        openTimeline()
-
-        TimelineScreen.search("Atlantis")
+        expectMatches("Atlantis")
         TimelineScreen.assertNoMatches("Atlantis")
-        TimelineScreen.assertMemoryGone(PICNIC)
-
-        TimelineScreen.search("")
-        TimelineScreen.assertMemoryShown(PICNIC)
+        expectMatches("", *ALL.toTypedArray())
     }
 
     @Test
-    fun scrollToTopButtonAppearsOnceScrolledAndGoesBackToTheNewest() {
-        addManyMemories()
-        openTimeline()
+    fun showOnTimelineScrollsToAMemoryFarDownAndScrollToTopGoesBackToTheNewest() {
+        showOnTimelineScrollsTo(FAR_DOWN)
+
+        TimelineScreen.assertScrollToTopShown()
+        TimelineScreen.scrollToTop()
+        TimelineScreen.assertMemoryShown(memoryTitle(1))
         TimelineScreen.assertScrollToTopGone()
 
+        // Scrolled by hand, the button comes back.
         TimelineScreen.scrollDown()
         TimelineScreen.scrollDown()
         TimelineScreen.assertMemoryGone(memoryTitle(1))
         TimelineScreen.assertScrollToTopShown()
-
-        TimelineScreen.scrollToTop()
-        TimelineScreen.assertMemoryShown(memoryTitle(1))
-        TimelineScreen.assertScrollToTopGone()
     }
-
-    @Test
-    fun showOnTimelineScrollsToAMemoryFarDown() = showOnTimelineScrollsTo(FAR_DOWN)
 
     @Test
     @Ignore("The oldest memories stay below the screen while the search bar shows (BUG-17). Turn this on with the fix.")

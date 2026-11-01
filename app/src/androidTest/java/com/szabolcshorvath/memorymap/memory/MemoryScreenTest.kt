@@ -16,7 +16,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** An opened memory: swiping between memories, deleting with undo, and its photos. */
+/**
+ * An opened memory: swiping between memories, deleting with Cancel, Undo and for good, and reordering its photos and
+ * fragments. (A photo from another phone is in `MediaAccessTest`, which re-links it.)
+ */
 @RunWith(AndroidJUnit4::class)
 class MemoryScreenTest {
     @get:Rule
@@ -39,20 +42,7 @@ class MemoryScreenTest {
     }
 
     @Test
-    fun deleteAsksFirstAndCancelKeepsTheMemory() {
-        TestData.memory(MIDDLE)
-        open(MIDDLE)
-
-        MemoryScreen.delete()
-        Dialog.assertShown(DELETE_TITLE)
-        Dialog.tap("Cancel")
-
-        Dialog.assertGone(DELETE_TITLE)
-        MemoryScreen.assertShowing(MIDDLE)
-    }
-
-    @Test
-    fun undoBringsADeletedMemoryBackWithItsPhotoAndFragment() {
+    fun deleteAsksFirstAndUndoBringsTheMemoryBackWithItsPhotoAndFragment() {
         // "Memory deleted" stays about 3 seconds, which a busy emulator can spend before the tap on Undo arrives.
         app.allowTimeToTakeAction(UNDO_SECONDS)
         val memory = TestData.memory(MIDDLE)
@@ -62,6 +52,12 @@ class MemoryScreenTest {
         open(MIDDLE)
         MemoryScreen.assertPhotoLoaded()
         MemoryScreen.assertFragmentCount(1)
+
+        MemoryScreen.delete()
+        Dialog.assertShown(DELETE_TITLE)
+        Dialog.tap("Cancel")
+        Dialog.assertGone(DELETE_TITLE)
+        MemoryScreen.assertShowing(MIDDLE)
 
         deleteOpenMemory()
         TimelineScreen.assertMemoryGone(MIDDLE)
@@ -87,46 +83,27 @@ class MemoryScreenTest {
     }
 
     @Test
-    fun aPhotoFromAnotherPhoneShowsItsDetailsInsteadOfThePicture() {
-        TestData.photoFromAnotherDevice(TestData.memory(MIDDLE))
-        open(MIDDLE)
-
-        MemoryScreen.assertPhotoFromAnotherDevice()
-    }
-
-    @Test
-    fun draggingAPhotoChangesTheirOrderForGood() {
+    fun draggingAPhotoOrAFragmentChangesTheirOrderForGood() {
         val memory = TestData.memory(MIDDLE)
         TestData.photo(memory, Color.RED, order = 0)
         TestData.photo(memory, Color.BLUE, order = 1)
-        open(MIDDLE)
-        MemoryScreen.assertPhotoCount(2)
-        MemoryScreen.assertPhotoColors(Color.RED, Color.BLUE)
-
-        MemoryScreen.dragPhoto(from = 1, onto = 0)
-        MemoryScreen.assertPhotoColors(Color.BLUE, Color.RED)
-
-        Ui.pressBack()
-        TimelineScreen.openMemory(MIDDLE)
-        MemoryScreen.assertShowing(MIDDLE)
-        MemoryScreen.assertPhotoCount(2)
-        MemoryScreen.assertPhotoColors(Color.BLUE, Color.RED)
-    }
-
-    @Test
-    fun draggingAFragmentChangesTheirOrderForGood() {
-        val memory = TestData.memory(MIDDLE)
         TestData.fragment(memory, Place.VIENNA, order = 0)
         TestData.fragment(memory, Place.ATHENS, order = 1)
         open(MIDDLE)
+        MemoryScreen.assertPhotoCount(2)
+        MemoryScreen.assertPhotoColors(Color.RED, Color.BLUE)
         MemoryScreen.assertFragmentsTopToBottom(VIENNA, ATHENS)
 
+        MemoryScreen.dragPhoto(from = 1, onto = 0)
+        MemoryScreen.assertPhotoColors(Color.BLUE, Color.RED)
         MemoryScreen.dragFragment(ATHENS, onto = VIENNA)
         MemoryScreen.assertFragmentsTopToBottom(ATHENS, VIENNA)
 
         Ui.pressBack()
         TimelineScreen.openMemory(MIDDLE)
         MemoryScreen.assertShowing(MIDDLE)
+        MemoryScreen.assertPhotoCount(2)
+        MemoryScreen.assertPhotoColors(Color.BLUE, Color.RED)
         MemoryScreen.assertFragmentsTopToBottom(ATHENS, VIENNA)
     }
 

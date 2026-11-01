@@ -29,36 +29,24 @@ class ColorPresetsTest {
     }
 
     @Test
-    fun selectingAPresetShowsItInTheSliders() {
+    fun aSelectedPresetShowsInTheSlidersWhereUndoPutsItBackAndASavedChangeStays() {
         ColorPresetsSection.select(GREEN)
-
         ColorPresetsSection.assertSelected(GREEN)
         ColorPresetsSection.assertSlidersShow(GREEN)
-    }
 
-    @Test
-    fun aSavedChangeStays() {
         ColorPresetsSection.select(RED)
         val hue = ColorPresetsSection.tapHue(HALF_WAY)
         assertNotEquals("The hue slider did not move", RED.hue.toInt(), hue)
-
-        ColorPresetsSection.save()
-        leaveAndComeBack()
-
-        ColorPresetsSection.assertShown(Hsv(hue.toFloat()))
-        ColorPresetsSection.assertGone(RED)
-    }
-
-    @Test
-    fun undoPutsThePresetBack() {
-        ColorPresetsSection.select(RED)
-        val hue = ColorPresetsSection.tapHue(HALF_WAY)
         ColorPresetsSection.assertShown(Hsv(hue.toFloat())) // The swatch follows the sliders.
-
         ColorPresetsSection.undo()
-
         ColorPresetsSection.assertShown(RED)
         ColorPresetsSection.assertSlidersShow(RED)
+
+        ColorPresetsSection.tapHue(HALF_WAY)
+        ColorPresetsSection.save()
+        leaveAndComeBack()
+        ColorPresetsSection.assertShown(Hsv(hue.toFloat()))
+        ColorPresetsSection.assertGone(RED)
     }
 
     @Test

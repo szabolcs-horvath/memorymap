@@ -17,7 +17,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Opening a memory, the media viewer and the location picker, and getting back from them. */
+/**
+ * Opening a memory, the media viewer and the location picker, and getting back from them. (Show on Timeline from a
+ * timeline that was opened before is in `TimelineTest`, Edit from a form that wasn't in `AddMemoryTest`.)
+ */
 @RunWith(AndroidJUnit4::class)
 class DetailNavigationTest {
     @get:Rule
@@ -31,7 +34,7 @@ class DetailNavigationTest {
     }
 
     @Test
-    fun backFromAMemoryReturnsToTheTimeline() {
+    fun backFromAMemoryReturnsToTheTimelineAndATabOpenedFromAMemoryClosesIt() {
         openFromTimeline(OLDER)
 
         Ui.pressBack()
@@ -40,24 +43,7 @@ class DetailNavigationTest {
         TimelineScreen.assertMemoryShown(OLDER)
         MemoryScreen.assertGone()
         BottomNav.assertSelected(Tab.TIMELINE)
-    }
 
-    @Test
-    fun backFromTheViewerReturnsToTheSameMemory() {
-        openFromTimeline(NEWER)
-        MemoryScreen.openFirstPhoto()
-        MediaViewerScreen.assertShowingPhoto()
-        MemoryScreen.assertGone()
-
-        Ui.pressBack()
-
-        MemoryScreen.assertShowing(NEWER)
-        MediaViewerScreen.assertGone()
-    }
-
-    @Test
-    fun aTabOpenedFromAMemoryClosesIt() {
-        app.launch()
         for (tab in Tab.entries) {
             openFromTimeline(OLDER, launch = false)
 
@@ -70,11 +56,19 @@ class DetailNavigationTest {
     }
 
     @Test
-    fun aTabOpenedFromTheViewerClosesIt() {
+    fun backFromTheViewerReturnsToTheSameMemoryAndATabOpenedFromTheViewerClosesBoth() {
         openFromTimeline(NEWER)
         MemoryScreen.openFirstPhoto()
         MediaViewerScreen.assertShowingPhoto()
+        MemoryScreen.assertGone()
 
+        Ui.pressBack()
+
+        MemoryScreen.assertShowing(NEWER)
+        MediaViewerScreen.assertGone()
+
+        MemoryScreen.openFirstPhoto()
+        MediaViewerScreen.assertShowingPhoto()
         BottomNav.select(Tab.MAP)
 
         MapScreen.assertShown()
@@ -98,45 +92,38 @@ class DetailNavigationTest {
     }
 
     @Test
-    fun showOnTimelineOpensTheTimelineAtTheMemory() {
-        openFromTimeline(OLDER)
-
-        MemoryScreen.showOnTimeline()
-
-        TimelineScreen.assertShown()
-        BottomNav.assertSelected(Tab.TIMELINE)
-        TimelineScreen.assertMemoryShown(OLDER)
-    }
-
-    @Test
-    fun showOnTimelineWhenTheTimelineWasNotOpenedYet() {
-        // Saving a memory opens it, so the timeline is never opened before "Show on Timeline".
+    fun theLocationPickerFillsTheFormOnlyWhenConfirmedAndShowOnTimelineWorksBeforeTheTimelineWasOpened() {
         app.launch()
         BottomNav.open(Tab.ADD)
-        AddScreen.typeTitle("Picnic")
+        AddScreen.typeTitle(PICNIC)
+
+        AddScreen.selectLocation()
+        LocationPickerScreen.assertShown()
+        Ui.pressBack()
+
+        AddScreen.assertShown()
+        LocationPickerScreen.assertGone()
+        AddScreen.assertTitle(PICNIC)
+        AddScreen.assertNoLocation()
+
         AddScreen.selectLocation()
         LocationPickerScreen.tapMap()
         LocationPickerScreen.assertLocationPicked()
         LocationPickerScreen.confirm()
-        AddScreen.save()
-        MemoryScreen.assertShowing("Picnic")
 
+        AddScreen.assertShown()
+        LocationPickerScreen.assertGone()
+        AddScreen.assertTitle(PICNIC)
+        AddScreen.assertHasLocation()
+
+        // Saving a memory opens it, so the timeline was never opened before "Show on Timeline".
+        AddScreen.save()
+        MemoryScreen.assertShowing(PICNIC)
         MemoryScreen.showOnTimeline()
 
         TimelineScreen.assertShown()
         BottomNav.assertSelected(Tab.TIMELINE)
-        TimelineScreen.assertMemoryShown("Picnic")
-    }
-
-    @Test
-    fun editOpensTheFormWithTheMemory() {
-        openFromTimeline(OLDER)
-
-        MemoryScreen.edit()
-
-        AddScreen.assertShown()
-        BottomNav.assertSelected(Tab.ADD)
-        AddScreen.assertTitle(OLDER)
+        TimelineScreen.assertMemoryShown(PICNIC)
     }
 
     @Test
@@ -148,41 +135,8 @@ class DetailNavigationTest {
         MemoryScreen.edit()
 
         AddScreen.assertShown()
+        BottomNav.assertSelected(Tab.ADD)
         AddScreen.assertTitle(NEWER)
-    }
-
-    @Test
-    fun backFromTheLocationPickerKeepsTheForm() {
-        app.launch()
-        BottomNav.open(Tab.ADD)
-        AddScreen.typeTitle("Picnic")
-        AddScreen.selectLocation()
-        LocationPickerScreen.assertShown()
-
-        Ui.pressBack()
-
-        AddScreen.assertShown()
-        LocationPickerScreen.assertGone()
-        AddScreen.assertTitle("Picnic")
-        AddScreen.assertNoLocation()
-    }
-
-    @Test
-    fun confirmingALocationFillsItIntoTheForm() {
-        app.launch()
-        BottomNav.open(Tab.ADD)
-        AddScreen.typeTitle("Picnic")
-        AddScreen.selectLocation()
-        LocationPickerScreen.assertShown()
-
-        LocationPickerScreen.tapMap()
-        LocationPickerScreen.assertLocationPicked()
-        LocationPickerScreen.confirm()
-
-        AddScreen.assertShown()
-        LocationPickerScreen.assertGone()
-        AddScreen.assertTitle("Picnic")
-        AddScreen.assertHasLocation()
     }
 
     @Test
@@ -212,5 +166,6 @@ class DetailNavigationTest {
     private companion object {
         const val NEWER = "Danube walk"
         const val OLDER = "Vienna trip"
+        const val PICNIC = "Picnic"
     }
 }

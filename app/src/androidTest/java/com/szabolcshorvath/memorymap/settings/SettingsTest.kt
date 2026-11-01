@@ -30,54 +30,27 @@ class SettingsTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun signingInShowsTheAccountAndItsBackups() {
+    fun aFailedSignInStaysSignedOutThenSigningInShowsTheBackupsAndSigningOutHidesThem() {
         addBackup(MANUAL_BACKUP)
-        openSettings()
-        SettingsScreen.assertSignedOut()
-
-        SettingsScreen.signIn()
-
-        SettingsScreen.assertSignedIn(DEFAULT_EMAIL)
-        SettingsScreen.assertBackupShown(MANUAL)
-    }
-
-    @Test
-    fun aFailedSignInStaysSignedOut() {
         FakeAccountService.signInError = NoCredentialException()
         openSettings()
+        SettingsScreen.assertSignedOut()
 
         SettingsScreen.signIn()
-
         SettingsScreen.assertSignedOut()
-    }
 
-    @Test
-    fun signingOutHidesTheBackups() {
-        TestData.signIn()
-        addBackup(MANUAL_BACKUP)
-        openSettings()
+        FakeAccountService.signInError = null // The user tries again, and it works.
+        SettingsScreen.signIn()
+        SettingsScreen.assertSignedIn(DEFAULT_EMAIL)
         SettingsScreen.assertBackupShown(MANUAL)
 
         SettingsScreen.signOut()
-
         SettingsScreen.assertSignedOut()
         SettingsScreen.assertBackupGone(MANUAL)
     }
 
     @Test
-    fun backupNowAddsABackup() {
-        TestData.memory(KEPT)
-        TestData.signIn()
-        openSettings()
-
-        SettingsScreen.backUpNow()
-
-        SettingsScreen.assertResult("Backup successful")
-        SettingsScreen.assertBackupShown(MANUAL)
-    }
-
-    @Test
-    fun restoringABackupBringsBackWhatItHolds() {
+    fun backupNowAddsABackupThatRestoresWhatItHolds() {
         backUpThenRestore()
 
         SettingsScreen.waitUntilIdle()
@@ -107,6 +80,7 @@ class SettingsTest {
         openSettings()
         SettingsScreen.backUpNow()
         SettingsScreen.assertResult("Backup successful")
+        SettingsScreen.assertBackupShown(MANUAL)
         TestData.memory(ADDED_AFTER_THE_BACKUP)
 
         SettingsScreen.tapRestoreOnFirstBackup()
