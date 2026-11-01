@@ -112,7 +112,6 @@ class ProcessDeathTest {
     }
 
     @Test
-    @Ignore("Plain AlertDialogs don't come back when Android rebuilds the screen (UX-16). Turn this on with the fix.")
     fun restoreConfirmationStaysOpen() {
         TestData.signIn()
         FakeBackupStorage.add(FakeAccountService.DEFAULT_EMAIL, MANUAL_BACKUP, modifiedMillis = System.currentTimeMillis())

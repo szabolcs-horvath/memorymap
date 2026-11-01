@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.app.AlertDialog
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -26,6 +25,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaRelinker
@@ -102,6 +102,7 @@ class MemoryFragment : Fragment() {
         arguments?.let {
             memoryId = it.getInt(MemoryFragmentViewModel.ARG_MEMORY_ID)
         }
+        ConfirmDialog.listen(this, DELETE_REQUEST) { deleteMemory() }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -409,15 +410,14 @@ class MemoryFragment : Fragment() {
     }
 
     private fun showDeleteConfirmationDialog() {
-        val context = context ?: return
-        AlertDialog.Builder(context)
-            .setTitle("Delete Memory")
-            .setMessage("Are you sure you want to delete this memory?")
-            .setPositiveButton("Delete") { _, _ ->
-                deleteMemory()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        ConfirmDialog.show(
+            childFragmentManager,
+            DELETE_REQUEST,
+            title = "Delete Memory",
+            message = "Are you sure you want to delete this memory?",
+            confirm = "Delete",
+            cancel = "Cancel"
+        )
     }
 
     private fun deleteMemory() {
@@ -440,6 +440,7 @@ class MemoryFragment : Fragment() {
 
     companion object {
         private const val MEDIA_GRID_SPAN_COUNT = 3
+        private const val DELETE_REQUEST = "delete_memory"
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
 

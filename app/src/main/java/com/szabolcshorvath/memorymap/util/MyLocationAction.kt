@@ -1,15 +1,16 @@
 package com.szabolcshorvath.memorymap.util
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import androidx.annotation.StringRes
 import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.maps.model.LatLng
 import com.szabolcshorvath.memorymap.AppServices
@@ -41,6 +42,16 @@ class MyLocationAction(private val fragment: Fragment, private val onLocation: (
         if (isGranted) fetchLocation()
     }
 
+    init {
+        // The questions are DialogFragments, so they come back after a rotation; their answers need the fragment created.
+        fragment.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onCreate(owner: LifecycleOwner) {
+                ConfirmDialog.listen(fragment, EXPLAIN_REQUEST) { permissionLauncher.launch(LOCATION_PERMISSIONS) }
+                ConfirmDialog.listen(fragment, SETTINGS_REQUEST) { openAppSettings() }
+            }
+        })
+    }
+
     /** Called when the user taps the button. */
     fun start() {
         val context = fragment.context ?: return
@@ -52,31 +63,39 @@ class MyLocationAction(private val fragment: Fragment, private val onLocation: (
                     if (wasDenied) rememberDenial(false) // Allowed in Settings since: Android may ask again if it is revoked.
                     fetchLocation()
                 }
-                Step.EXPLAIN_THEN_ASK -> explainThenAsk(context)
-                Step.OFFER_SETTINGS -> offerSettings(context)
+                Step.EXPLAIN_THEN_ASK -> ask(
+                    EXPLAIN_REQUEST,
+                    R.string.location_rationale_title,
+                    R.string.location_rationale_message,
+                    R.string.location_rationale_continue
+                )
+                Step.OFFER_SETTINGS -> ask(
+                    SETTINGS_REQUEST,
+                    R.string.location_settings_title,
+                    R.string.location_settings_message,
+                    R.string.open_settings
+                )
             }
         }
     }
 
-    private fun explainThenAsk(context: Context) {
-        AlertDialog.Builder(context)
-            .setTitle(R.string.location_rationale_title)
-            .setMessage(R.string.location_rationale_message)
-            .setPositiveButton(R.string.location_rationale_continue) { _, _ -> permissionLauncher.launch(LOCATION_PERMISSIONS) }
-            .setNegativeButton(R.string.not_now, null)
-            .show()
+    /** Asks question [requestKey]; the answer goes to the listener registered in `init`. */
+    private fun ask(requestKey: String, @StringRes title: Int, @StringRes message: Int, @StringRes confirm: Int) {
+        if (!fragment.isAdded || fragment.isStateSaved) return
+        ConfirmDialog.show(
+            fragment.childFragmentManager,
+            requestKey,
+            title = fragment.getString(title),
+            message = fragment.getString(message),
+            confirm = fragment.getString(confirm),
+            cancel = fragment.getString(R.string.not_now)
+        )
     }
 
-    private fun offerSettings(context: Context) {
-        AlertDialog.Builder(context)
-            .setTitle(R.string.location_settings_title)
-            .setMessage(R.string.location_settings_message)
-            .setPositiveButton(R.string.open_settings) { _, _ ->
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
-                context.startActivity(intent)
-            }
-            .setNegativeButton(R.string.not_now, null)
-            .show()
+    private fun openAppSettings() {
+        val context = fragment.context ?: return
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+        context.startActivity(intent)
     }
 
     private fun rememberDenial(isDenied: Boolean) {
@@ -104,6 +123,8 @@ class MyLocationAction(private val fragment: Fragment, private val onLocation: (
 
     companion object {
         private val LOCATION_PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        private const val EXPLAIN_REQUEST = "my_location_explain"
+        private const val SETTINGS_REQUEST = "my_location_settings"
 
         /**
          * With permission, use the location. Otherwise explain and ask, unless the user said no before and Android

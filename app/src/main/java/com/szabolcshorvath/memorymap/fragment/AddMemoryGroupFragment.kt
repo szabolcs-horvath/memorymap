@@ -15,7 +15,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import androidx.core.os.bundleOf
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -40,6 +40,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
@@ -79,7 +80,6 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private var addMemoryGroupListener: AddMemoryGroupListener? = null
-    private var discardForEditDialog: AlertDialog? = null
     private lateinit var mediaAdapter: SelectedMediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentEditAdapter
     private lateinit var colorPresetAdapter: ColorPresetAdapter
@@ -138,6 +138,18 @@ class AddMemoryGroupFragment : Fragment() {
         super.onAttach(context)
         if (context is AddMemoryGroupListener) {
             addMemoryGroupListener = context
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // The questions come back after a rotation or process death, so what they act on comes with the answer.
+        ConfirmDialog.listen(this, CLEAR_REQUEST) { clearFields() }
+        ConfirmDialog.listen(this, DISCARD_FOR_EDIT_REQUEST, onCancel = { dropPendingEdit(it.getInt(MEMORY_ID)) }) { extras ->
+            val memoryId = extras.getInt(MEMORY_ID)
+            val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@listen
+            viewModel.pendingEditMemoryId = memoryId // After process death, the new ViewModel no longer has it.
+            loadForEditing(memoryId, viewLifecycleOwner)
         }
     }
 
@@ -455,18 +467,19 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun showClearConfirmationDialog() {
-        val context = context ?: return
-        AlertDialog.Builder(context)
-            .setTitle(if (viewModel.editingMemoryId != null) "Discard Changes" else "Clear Fields")
-            .setMessage(
-                if (viewModel.editingMemoryId != null) {
-                    "Are you sure you want to discard your changes?"
-                } else {
-                    "Are you sure you want to clear all fields? This action cannot be undone."
-                }
-            )
-            .setPositiveButton(if (viewModel.editingMemoryId != null) "Discard" else "Clear") { _, _ -> clearFields() }
-            .setNegativeButton("Cancel", null).show()
+        val isEditing = viewModel.editingMemoryId != null
+        ConfirmDialog.show(
+            childFragmentManager,
+            CLEAR_REQUEST,
+            title = if (isEditing) "Discard Changes" else "Clear Fields",
+            message = if (isEditing) {
+                "Are you sure you want to discard your changes?"
+            } else {
+                "Are you sure you want to clear all fields? This action cannot be undone."
+            },
+            confirm = if (isEditing) "Discard" else "Clear",
+            cancel = "Cancel"
+        )
     }
 
     private fun clearFields() {
@@ -545,22 +558,21 @@ class AddMemoryGroupFragment : Fragment() {
 
     /**
      * Asks whether the edit request may replace the unsaved changes. The request stays pending while the question is
-     * shown, so it is asked again if the view is recreated (the dialog is dismissed with the view).
+     * shown, and the question comes back after a rotation or process death. A recreated view asks it again, replacing
+     * the open one.
      */
     private fun confirmDiscardForEdit(memoryId: Int) {
-        val context = context ?: return
+        if (isStateSaved) return
         val isEditing = viewModel.editingMemoryId != null
-        discardForEditDialog?.dismiss()
-        discardForEditDialog = AlertDialog.Builder(context)
-            .setTitle(if (isEditing) R.string.discard_edit_title else R.string.discard_draft_title)
-            .setMessage(if (isEditing) R.string.discard_edit_message else R.string.discard_draft_message)
-            .setPositiveButton(R.string.discard) { _, _ ->
-                val viewLifecycleOwner = viewLifecycleOwnerLiveData.value
-                if (viewLifecycleOwner != null && viewModel.pendingEditMemoryId == memoryId) loadForEditing(memoryId, viewLifecycleOwner)
-            }
-            .setNegativeButton(R.string.keep_editing) { _, _ -> dropPendingEdit(memoryId) }
-            .setOnCancelListener { dropPendingEdit(memoryId) }
-            .show()
+        ConfirmDialog.show(
+            childFragmentManager,
+            DISCARD_FOR_EDIT_REQUEST,
+            title = getString(if (isEditing) R.string.discard_edit_title else R.string.discard_draft_title),
+            message = getString(if (isEditing) R.string.discard_edit_message else R.string.discard_draft_message),
+            confirm = getString(R.string.discard),
+            cancel = getString(R.string.keep_editing),
+            extras = bundleOf(MEMORY_ID to memoryId)
+        )
     }
 
     private fun dropPendingEdit(memoryId: Int) {
@@ -758,8 +770,6 @@ class AddMemoryGroupFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        discardForEditDialog?.dismiss()
-        discardForEditDialog = null
         _binding = null
     }
 
@@ -775,5 +785,8 @@ class AddMemoryGroupFragment : Fragment() {
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
         private const val COLOR_CHANGE_ANIMATION_DURATION = 300L
+        private const val CLEAR_REQUEST = "clear_form"
+        private const val DISCARD_FOR_EDIT_REQUEST = "discard_for_edit"
+        private const val MEMORY_ID = "memory_id"
     }
 }
