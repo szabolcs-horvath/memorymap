@@ -53,6 +53,8 @@ class MemoryScreenTest {
 
     @Test
     fun undoBringsADeletedMemoryBackWithItsPhotoAndFragment() {
+        // "Memory deleted" stays about 3 seconds, which a busy emulator can spend before the tap on Undo arrives.
+        app.allowTimeToTakeAction(UNDO_SECONDS)
         val memory = TestData.memory(MIDDLE)
         TestData.photo(memory)
         TestData.fragment(memory, Place.VIENNA)
@@ -133,5 +135,6 @@ class MemoryScreenTest {
         const val OLDEST = "Lake day"
         const val DELETE_TITLE = "Delete Memory"
         const val DELETED = "Memory deleted"
+        const val UNDO_SECONDS = 15
     }
 }

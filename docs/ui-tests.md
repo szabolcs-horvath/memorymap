@@ -94,6 +94,8 @@ the Windows SDK, so use Git Bash.
 
 The script:
 - finds the running `MemoryMap_UI_Tests` emulator by name, or starts it and waits until it has booted;
+- turns off the emulator's animations (window, transition and animator scales), as the tests expect; they stay off
+  afterwards;
 - runs `connectedDebugAndroidTest` with `ANDROID_SERIAL` set to it, so **no other phone or emulator is touched**
   (AGP's own `--serial` option fails in AGP 9.4.1 with an `UnsupportedOperationException`);
 - prints a table of the results (failed tests, tests without a result, skipped tests).

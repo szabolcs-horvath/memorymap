@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.settings
 
+import android.graphics.Color
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
@@ -184,13 +185,12 @@ class SettingsTest {
 
     @Test
     fun reLinkingFindsAPhotoBroughtFromAnotherPhone() {
-        TestData.grantMediaAccess()
-        val memory = TestData.memory(KEPT)
+        // Saved by another app, so the re-link that runs when the app starts can't see it yet: that needs photo access.
+        TestData.photoSavedByAnotherApp(TestData.memory(KEPT), PHOTO_COLOR)
         openSettings()
-        // Added after the start, so the re-link that runs when the app starts doesn't link it.
-        TestData.photo(memory, linkedToThisPhone = false)
         openMemoryFromTimeline(KEPT)
         MemoryScreen.assertPhotoFromAnotherDevice()
+        TestData.grantMediaAccess() // As "Allow all" on the app's page in Android's settings.
 
         BottomNav.open(Tab.SETTINGS)
         SettingsScreen.relinkMedia()
@@ -236,6 +236,7 @@ class SettingsTest {
         const val RESTORE_TITLE = "Restore Backup"
         const val DELETE_TITLE = "Delete backup?"
         const val MINUTE_MS = 60_000L
+        val PHOTO_COLOR = Color.rgb(150, 60, 170)
 
         const val AUTOMATIC_BACKUP_DELAY_SECONDS = 5L
         const val AUTOMATIC_BACKUP_TIMEOUT_MS = 30_000L

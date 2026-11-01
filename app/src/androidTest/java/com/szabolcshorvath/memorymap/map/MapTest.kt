@@ -97,6 +97,7 @@ class MapTest {
         TestData.memory(CAPE_TOWN_TRIP, place = Place.CAPE_TOWN)
         openMap()
         MapScreen.assertMarkerShown(CAPE_TOWN_TRIP)
+        MapScreen.assertClusterShown()
         nearby.forEach { MapScreen.assertMarkerGone(it) }
 
         BottomNav.open(Tab.SETTINGS)

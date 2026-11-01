@@ -81,6 +81,12 @@ fi
 booted() { [ "$("$ADB" -s "$serial" shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')" = "1" ]; }
 wait_for "$AVD ($serial) to finish booting" booted
 
+# Every test starts with animations off, as on the Gradle managed emulators: a test that watches one turns them on
+# for itself (MemoryMapAppRule.useAnimations). Gradle's animationsDisabled only turns off window animations here.
+for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
+    "$ADB" -s "$serial" shell settings put global "$scale" 0
+done
+
 JAVA_HOME="$(find_java_home)"
 if [ -n "$JAVA_HOME" ]; then export JAVA_HOME; JAVA="$JAVA_HOME/bin/java"; else JAVA="java"; fi
 

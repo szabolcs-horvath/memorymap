@@ -43,13 +43,35 @@ class MemoryMapAppRule : TestRule {
     private var animationScaleBefore: String? = null
 
     /**
-     * Turns animations on for this test: the test phones run with them off (`animationsDisabled`), so an animation
-     * such as the timeline's flash would end at once. A [slowdown] above 1 makes them last that many times longer, so
-     * a slow phone can't miss a short one. The rule puts the old setting back after the test.
+     * Turns animations on for this test: the test phones run with them off (`scripts/ui-tests.sh` turns them off on
+     * the test emulator, `animationsDisabled` on the managed ones), so an animation such as the timeline's flash would
+     * end at once. A [slowdown] above 1 makes them last that many times longer, so a slow phone can't miss a short
+     * one. The rule puts the old setting back after the test, or removes it if it wasn't set ("null").
      */
     fun useAnimations(slowdown: Int = 1) {
         animationScaleBefore = Ui.device.executeShellCommand("settings get global $ANIMATOR_SCALE").trim()
         Ui.device.executeShellCommand("settings put global $ANIMATOR_SCALE $slowdown")
+    }
+
+    private var interactiveTimeoutBefore: String? = null
+
+    /**
+     * Sets Android's accessibility setting "Time to take action" to [seconds], as a user who needs longer does. A
+     * message with an action, such as "Memory deleted" with Undo, then stays at least that long, so a slow phone
+     * doesn't close it before the test taps its action. The rule puts the old setting back after the test.
+     */
+    fun allowTimeToTakeAction(seconds: Int) {
+        interactiveTimeoutBefore = Ui.device.executeShellCommand("settings get secure $INTERACTIVE_TIMEOUT").trim()
+        Ui.device.executeShellCommand("settings put secure $INTERACTIVE_TIMEOUT ${seconds * MS_PER_SECOND}")
+    }
+
+    /** Puts a setting back to [before], as `settings get` printed it: "null" when it wasn't set. */
+    private fun restoreSetting(namespace: String, key: String, before: String) {
+        if (before.isEmpty() || before == "null") {
+            Ui.device.executeShellCommand("settings delete $namespace $key")
+        } else {
+            Ui.device.executeShellCommand("settings put $namespace $key $before")
+        }
     }
 
     private var isOffline = false
@@ -173,10 +195,8 @@ class MemoryMapAppRule : TestRule {
             Ui.device.unfreezeRotation()
         }
         if (isDarkModeOn) runCatching { Ui.device.executeShellCommand("cmd uimode night no") }
-        animationScaleBefore?.let { before ->
-            val scale = before.takeUnless { it.isEmpty() || it == "null" } ?: "0"
-            runCatching { Ui.device.executeShellCommand("settings put global $ANIMATOR_SCALE $scale") }
-        }
+        animationScaleBefore?.let { before -> runCatching { restoreSetting("global", ANIMATOR_SCALE, before) } }
+        interactiveTimeoutBefore?.let { before -> runCatching { restoreSetting("secure", INTERACTIVE_TIMEOUT, before) } }
         if (isOffline) {
             runCatching {
                 Ui.device.executeShellCommand("svc wifi enable")
@@ -229,6 +249,8 @@ class MemoryMapAppRule : TestRule {
         const val POLL_MS = 100L
         const val NETWORK_TIMEOUT_MS = 30_000L
         const val ANIMATOR_SCALE = "animator_duration_scale"
+        const val INTERACTIVE_TIMEOUT = "accessibility_interactive_ui_timeout_ms"
+        const val MS_PER_SECOND = 1_000
         const val SET_ALWAYS_FINISH = "android.permission.SET_ALWAYS_FINISH"
     }
 }
