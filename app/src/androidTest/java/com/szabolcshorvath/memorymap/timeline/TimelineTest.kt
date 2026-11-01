@@ -8,7 +8,6 @@ import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import com.szabolcshorvath.memorymap.testing.TestData.Place
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -71,7 +70,6 @@ class TimelineTest {
     }
 
     @Test
-    @Ignore("The oldest memories stay below the screen while the search bar shows (BUG-17). Turn this on with the fix.")
     fun showOnTimelineScrollsToTheOldestMemory() = showOnTimelineScrollsTo(MANY)
 
     @Test

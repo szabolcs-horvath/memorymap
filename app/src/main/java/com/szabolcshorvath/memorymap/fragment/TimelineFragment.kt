@@ -135,6 +135,8 @@ class TimelineFragment : Fragment() {
         val binding = _binding ?: return
         val position = adapter.getPositionForId(memoryId)
         if (position != -1) {
+            // Hide the search bar, as scrolling by hand does: while it shows, the end of the list is below the screen.
+            binding.appBar.setExpanded(false, false)
             (binding.rvTimeline.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, SCROLL_TO_POSITION_OFFSET)
 
             binding.rvTimeline.post {
