@@ -19,7 +19,6 @@ import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,7 +61,6 @@ class ProcessDeathTest {
     }
 
     @Test
-    @Ignore("The Add form keeps only what its text fields show (UX-7). Turn this on with the fix.")
     fun addFormKeepsTheTitleAndLocation() {
         app.launch()
         BottomNav.open(Tab.ADD)
@@ -82,7 +80,6 @@ class ProcessDeathTest {
     }
 
     @Test
-    @Ignore("The Add form forgets which memory it was editing (UX-7). Turn this on with the fix.")
     fun editKeepsEditingTheSameMemory() {
         TestData.memory(TITLE)
         app.launch()
@@ -152,7 +149,6 @@ class ProcessDeathTest {
     }
 
     @Test
-    @Ignore("The location picker forgets the picked spot (UX-7). Turn this on with the fix.")
     fun locationPickerKeepsThePickedSpot() {
         app.launch()
         BottomNav.open(Tab.ADD)

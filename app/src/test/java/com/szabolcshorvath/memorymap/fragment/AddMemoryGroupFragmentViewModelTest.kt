@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
@@ -22,7 +23,7 @@ class AddMemoryGroupFragmentViewModelTest {
     // Created on first use: the Robolectric application only exists once a test runs.
     private val viewModel by lazy { newForm() }
 
-    private fun newForm() = AddMemoryGroupFragmentViewModel(RuntimeEnvironment.getApplication())
+    private fun newForm() = AddMemoryGroupFragmentViewModel(RuntimeEnvironment.getApplication(), SavedStateHandle())
 
     @Test
     fun `a new form has no unsaved changes`() {
