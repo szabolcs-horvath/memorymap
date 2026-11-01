@@ -8,7 +8,7 @@ import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.DatePickerDialog
 import com.szabolcshorvath.memorymap.screens.Dialog
-import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.TimePickerDialog
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
@@ -48,7 +48,7 @@ class AddMemoryTest {
         AddScreen.assertTitle(PICNIC)
 
         AddScreen.typeDescription("By the lake")
-        pickALocation()
+        Flows.pickLocationOnMap()
         AddScreen.addPhotos()
         AddScreen.assertSelectedCount(2)
         AddScreen.save()
@@ -114,8 +114,7 @@ class AddMemoryTest {
         openAdd()
         AddScreen.typeTitle(DRAFT)
 
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(VIENNA)
+        Flows.openMemory(VIENNA)
         MemoryScreen.edit()
         Dialog.assertShown(DISCARD_DRAFT)
         Dialog.tap("Keep editing")
@@ -123,8 +122,7 @@ class AddMemoryTest {
         AddScreen.assertTitle(DRAFT)
         AddScreen.assertNew()
 
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(VIENNA)
+        Flows.openMemory(VIENNA)
         MemoryScreen.edit()
         Dialog.tap("Discard")
 
@@ -144,8 +142,7 @@ class AddMemoryTest {
         AddScreen.assertNew()
 
         // Changed: the edit is still there.
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(VIENNA)
+        Flows.openMemory(VIENNA)
         MemoryScreen.edit()
         AddScreen.assertTitle(VIENNA)
         AddScreen.typeTitle(VIENNA_RENAMED)
@@ -214,20 +211,7 @@ class AddMemoryTest {
 
     private fun openForEditing(title: String) {
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(title)
-        MemoryScreen.edit() // The form was never opened before.
-        BottomNav.assertSelected(Tab.ADD)
-        AddScreen.assertTitle(title)
-        AddScreen.assertEditing()
-    }
-
-    private fun pickALocation() {
-        AddScreen.selectLocation()
-        LocationPickerScreen.tapMap()
-        LocationPickerScreen.assertLocationPicked()
-        LocationPickerScreen.confirm()
-        AddScreen.assertHasLocation()
+        Flows.editMemory(title)
     }
 
     private companion object {

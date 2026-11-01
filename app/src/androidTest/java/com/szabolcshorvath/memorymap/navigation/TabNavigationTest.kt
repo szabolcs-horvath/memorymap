@@ -54,10 +54,6 @@ class TabNavigationTest {
         }
 
         Ui.pressBack()
-        assertTrue("The app is still in front", Ui.isGone { packageName == APP_PACKAGE })
-    }
-
-    private companion object {
-        const val APP_PACKAGE = "com.szabolcshorvath.memorymap"
+        assertTrue("The app is still in front", Ui.isGone { packageName == Ui.APP_PACKAGE })
     }
 }

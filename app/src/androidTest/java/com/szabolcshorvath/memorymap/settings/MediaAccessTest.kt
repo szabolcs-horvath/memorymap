@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.PermissionDialog
 import com.szabolcshorvath.memorymap.screens.SettingsScreen
@@ -29,7 +30,7 @@ class MediaAccessTest {
     fun reLinkingFromTheMemoryAsksForAccessAndThenShowsThePhoto() {
         TestData.photoSavedByAnotherApp(TestData.memory(TRIP), PHOTO_COLOR)
         app.launch()
-        openMemory()
+        Flows.openMemory(TRIP)
         MemoryScreen.assertPhotoFromAnotherDevice()
 
         MemoryScreen.relinkMedia()
@@ -80,7 +81,7 @@ class MediaAccessTest {
         Dialog.assertGone(MORE_ACCESS_TITLE)
         SettingsScreen.waitUntilIdle()
 
-        openMemory()
+        Flows.openMemory(TRIP)
         MemoryScreen.assertPhotoFromAnotherDevice()
 
         BottomNav.open(Tab.SETTINGS)
@@ -88,7 +89,7 @@ class MediaAccessTest {
         PermissionDialog.allowAll()
         SettingsScreen.waitForRelinkToFinish()
 
-        openMemory()
+        Flows.openMemory(TRIP)
         MemoryScreen.assertPhotoLoaded()
     }
 
@@ -107,12 +108,6 @@ class MediaAccessTest {
         SettingsScreen.tapRestoreOnFirstBackup()
         Dialog.tap("Restore")
         Dialog.assertShown(ACCESS_TITLE)
-    }
-
-    private fun openMemory() {
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TRIP)
-        MemoryScreen.assertShowing(TRIP)
     }
 
     private companion object {

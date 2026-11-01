@@ -28,16 +28,46 @@ import kotlin.math.abs
 object Ui {
     const val TIMEOUT_MS = 10_000L
 
-    /**
-     * For what the CI emulators (no GPU, few CPUs) can be much slower to show than a local one: the map's first
-     * markers, and the end of a re-link.
-     */
+    /** For what a busy emulator can be much slower to show: the map's first markers, and the end of a re-link. */
     const val SLOW_TIMEOUT_MS = 30_000L
     private const val POLL_MS = 100L
     private const val SETTLE_TIMEOUT_MS = 2_000L
     private const val SETTLE_CHECK_MS = 150L
 
     val device: UiDevice get() = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+
+    /** The app's package, for elements found by resource id (`By.res`) and for telling the app's windows apart. */
+    val APP_PACKAGE: String get() = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+
+    /** Checks [condition] every [pollMs] until it holds or [timeoutMs] has passed, and returns whether it held. */
+    fun waitUntil(timeoutMs: Long = TIMEOUT_MS, pollMs: Long = POLL_MS, condition: () -> Boolean): Boolean {
+        val end = SystemClock.uptimeMillis() + timeoutMs
+        while (!condition()) {
+            if (SystemClock.uptimeMillis() >= end) return false
+            SystemClock.sleep(pollMs)
+        }
+        return true
+    }
+
+    /**
+     * Reads a value with [read] every [pollMs] until it [matches] or [timeoutMs] has passed, and returns the last one
+     * read, for the caller's check and its message (such as the colours that were on screen instead).
+     */
+    fun <T> eventually(
+        timeoutMs: Long = TIMEOUT_MS,
+        pollMs: Long = POLL_MS,
+        read: () -> T,
+        matches: (T) -> Boolean,
+    ): T {
+        var value = read()
+        var first = true
+        waitUntil(timeoutMs, pollMs) {
+            if (!first) value = read()
+            first = false
+            matches(value)
+        }
+        return value
+    }
 
     /** The first visible element matching [condition] in the active window; fails after [timeoutMs]. */
     fun find(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): UiObject2 =
@@ -67,14 +97,8 @@ object Ui {
         findOrNull(timeoutMs, condition) != null
 
     /** Waits up to [timeoutMs] until no visible element matches [condition]. */
-    fun isGone(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): Boolean {
-        val end = SystemClock.uptimeMillis() + timeoutMs
-        while (true) {
-            if (findOrNull(timeoutMs = 0, condition) == null) return true
-            if (SystemClock.uptimeMillis() >= end) return false
-            SystemClock.sleep(POLL_MS)
-        }
-    }
+    fun isGone(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): Boolean =
+        waitUntil(timeoutMs) { findOrNull(timeoutMs = 0, condition) == null }
 
     fun assertShown(what: String, timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean) =
         assertTrue("$what is not shown", isShown(timeoutMs, condition))
@@ -245,8 +269,16 @@ const val GOOGLE_MAP = "Google Map"
  */
 fun AccessibilityNodeInfo.mapMarkerTitle(): String? {
     if (parent?.contentDescription?.toString() != GOOGLE_MAP) return null
-    return contentDescription?.toString()?.trimEnd()?.removeSuffix(".")?.takeIf { it.isNotEmpty() }
+    return markerTitle(contentDescription)
 }
+
+/** The titles of the markers on the map on screen, read from the map's own element (none if no map shows). */
+fun mapMarkerTitles(): List<String> =
+    Ui.findOrNull(timeoutMs = 0) { hasDescription(GOOGLE_MAP) }?.children?.mapNotNull { markerTitle(it.contentDescription) }
+        .orEmpty()
+
+private fun markerTitle(description: CharSequence?): String? =
+    description?.toString()?.trimEnd()?.removeSuffix(".")?.takeIf { it.isNotEmpty() }
 
 fun AccessibilityNodeInfo.hasText(text: String): Boolean = textAsString() == text
 

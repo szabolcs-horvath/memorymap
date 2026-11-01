@@ -8,6 +8,7 @@ import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.DatePickerDialog
 import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MediaViewerScreen
@@ -85,11 +86,7 @@ class ProcessDeathTest {
     fun editKeepsEditingTheSameMemory() {
         TestData.memory(TITLE)
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TITLE)
-        MemoryScreen.edit()
-        AddScreen.assertTitle(TITLE)
-        AddScreen.assertEditing()
+        Flows.editMemory(TITLE)
 
         app.simulateProcessDeath()
 
@@ -136,9 +133,7 @@ class ProcessDeathTest {
         TestData.memory(OTHER_TITLE, daysAgo = 1)
         TestData.photo(TestData.memory(TITLE, daysAgo = 5))
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TITLE)
-        MemoryScreen.assertShowing(TITLE)
+        Flows.openMemory(TITLE)
         app.simulateProcessDeath()
         MemoryScreen.assertShowing(TITLE)
 

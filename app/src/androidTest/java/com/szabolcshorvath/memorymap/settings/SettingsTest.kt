@@ -10,6 +10,7 @@ import com.szabolcshorvath.memorymap.fakes.FakeBackupStorage
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.SettingsScreen
@@ -162,7 +163,7 @@ class SettingsTest {
         // Saved by another app, so the re-link that runs when the app starts can't see it yet: that needs photo access.
         TestData.photoSavedByAnotherApp(TestData.memory(KEPT), PHOTO_COLOR)
         openSettings()
-        openMemoryFromTimeline(KEPT)
+        Flows.openMemory(KEPT)
         MemoryScreen.assertPhotoFromAnotherDevice()
         TestData.grantMediaAccess() // As "Allow all" on the app's page in Android's settings.
 
@@ -170,7 +171,7 @@ class SettingsTest {
         SettingsScreen.relinkMedia()
         SettingsScreen.waitForRelinkToFinish()
 
-        openMemoryFromTimeline(KEPT)
+        Flows.openMemory(KEPT)
         MemoryScreen.assertPhotoLoaded()
     }
 
@@ -188,12 +189,6 @@ class SettingsTest {
     private fun openSettings() {
         app.launch()
         BottomNav.open(Tab.SETTINGS)
-    }
-
-    private fun openMemoryFromTimeline(title: String) {
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(title)
-        MemoryScreen.assertShowing(title)
     }
 
     private fun addBackup(name: String, minutesAgo: Long = 0) {

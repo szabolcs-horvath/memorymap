@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.ScreenColors
@@ -28,10 +29,7 @@ class EdgeCaseTest {
         val description = "We walked and talked until the sun went down. ".repeat(LONG_DESCRIPTION_REPEATS).trim()
         TestData.memory(title, description = description)
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-
-        TimelineScreen.openMemory(title)
-        MemoryScreen.assertShowing(title)
+        Flows.openMemory(title)
         MemoryScreen.assertDescription(description)
 
         MemoryScreen.edit()

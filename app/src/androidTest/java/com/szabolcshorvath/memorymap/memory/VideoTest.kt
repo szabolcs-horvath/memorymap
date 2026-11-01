@@ -4,11 +4,9 @@ import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.fakes.FakeMediaPicker
 import com.szabolcshorvath.memorymap.screens.AddScreen
-import com.szabolcshorvath.memorymap.screens.BottomNav
-import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MediaViewerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
-import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import org.junit.Rule
@@ -29,8 +27,7 @@ class VideoTest {
         TestData.memory(TRIP)
         FakeMediaPicker.nextPick = listOf(TestData.galleryVideo(GREEN))
         app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TRIP)
+        Flows.openMemory(TRIP)
         MemoryScreen.edit()
 
         AddScreen.addPhotos()

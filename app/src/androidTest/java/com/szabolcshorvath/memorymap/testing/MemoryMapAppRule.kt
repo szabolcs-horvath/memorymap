@@ -9,7 +9,6 @@ import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
-import android.os.SystemClock
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
@@ -84,7 +83,7 @@ class MemoryMapAppRule : TestRule {
         isOffline = true
         Ui.device.executeShellCommand("svc wifi disable")
         Ui.device.executeShellCommand("svc data disable")
-        assertTrue("The phone still has a network", waitUntil { !hasWorkingNetwork() })
+        assertTrue("The phone still has a network", Ui.waitUntil { !hasWorkingNetwork() })
     }
 
     private fun hasWorkingNetwork(): Boolean {
@@ -97,7 +96,7 @@ class MemoryMapAppRule : TestRule {
     fun launch() {
         Ui.device.setOrientationNatural()
         startFromLauncher(clearTask = true)
-        assertTrue("The app did not open", waitUntil { activities.isMainActivityResumed })
+        assertTrue("The app did not open", Ui.waitUntil { activities.isMainActivityResumed })
     }
 
     /**
@@ -110,10 +109,10 @@ class MemoryMapAppRule : TestRule {
         setDontKeepActivities(true)
         try {
             Ui.device.pressHome()
-            assertTrue("Android did not close the app's screens in the background", waitUntil { activities.noneAlive })
+            assertTrue("Android did not close the app's screens in the background", Ui.waitUntil { activities.noneAlive })
             activities.forgetLastCreated()
             startFromLauncher(clearTask = false)
-            assertTrue("The app did not come back", waitUntil { activities.isMainActivityResumed })
+            assertTrue("The app did not come back", Ui.waitUntil { activities.isMainActivityResumed })
             assertTrue("The app started over instead of restoring its screens", activities.lastCreatedFromSavedState)
         } finally {
             setDontKeepActivities(false)
@@ -166,15 +165,6 @@ class MemoryMapAppRule : TestRule {
         }
     }
 
-    private fun waitUntil(timeoutMs: Long = Ui.TIMEOUT_MS, condition: () -> Boolean): Boolean {
-        val end = SystemClock.uptimeMillis() + timeoutMs
-        while (!condition()) {
-            if (SystemClock.uptimeMillis() >= end) return false
-            SystemClock.sleep(POLL_MS)
-        }
-        return true
-    }
-
     private fun saveScreen(name: String) {
         val storage = TestStorage()
         runCatching {
@@ -202,7 +192,7 @@ class MemoryMapAppRule : TestRule {
                 Ui.device.executeShellCommand("svc wifi enable")
                 Ui.device.executeShellCommand("svc data enable")
             }
-            if (!waitUntil(NETWORK_TIMEOUT_MS) { hasWorkingNetwork() }) Log.w(TAG, "The network did not come back")
+            if (!Ui.waitUntil(NETWORK_TIMEOUT_MS) { hasWorkingNetwork() }) Log.w(TAG, "The network did not come back")
         }
         TestData.deleteCreatedPhotos()
     }
@@ -246,7 +236,6 @@ class MemoryMapAppRule : TestRule {
         const val TAG = "UiTestScreen"
         const val NOT_RESPONDING_WATCHER = "notResponding"
         const val PNG_QUALITY = 100 // Ignored for PNG, which is lossless.
-        const val POLL_MS = 100L
         const val NETWORK_TIMEOUT_MS = 30_000L
         const val ANIMATOR_SCALE = "animator_duration_scale"
         const val INTERACTIVE_TIMEOUT = "accessibility_interactive_ui_timeout_ms"
