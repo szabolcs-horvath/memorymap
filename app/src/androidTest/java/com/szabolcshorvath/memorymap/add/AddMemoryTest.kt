@@ -11,8 +11,10 @@ import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
+import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
+import com.szabolcshorvath.memorymap.testing.TestData.Place
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -166,6 +168,19 @@ class AddMemoryTest {
 
         AddScreen.assertTitle(VIENNA_RENAMED)
         AddScreen.assertEditing()
+    }
+
+    @Test
+    fun backFromThePickerKeepsTheLocationTheMemoryHad() {
+        TestData.memory(VIENNA, place = Place.VIENNA)
+        openForEditing(VIENNA)
+
+        AddScreen.selectLocation()
+        LocationPickerScreen.tapMap()
+        Ui.pressBack()
+
+        AddScreen.assertShown()
+        AddScreen.assertLocationIs(Place.VIENNA)
     }
 
     @Test

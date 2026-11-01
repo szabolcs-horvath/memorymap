@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import androidx.datastore.preferences.core.edit
 import androidx.test.platform.app.InstrumentationRegistry
@@ -19,12 +20,14 @@ import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
 import com.szabolcshorvath.memorymap.fakes.FakeLocationService
+import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.runBlocking
+import java.io.ByteArrayOutputStream
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -37,6 +40,7 @@ object TestData {
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val dao get() = MemoryMapDatabase.getDatabase(context).memoryGroupDao()
     private val createdPhotos = mutableListOf<Uri>()
+    private val shellPhotos = mutableListOf<String>()
 
     /** Where a memory is: its coordinates, the place name and the address the location picker would store. */
     data class Place(val latitude: Double, val longitude: Double, val name: String?, val address: String? = null) {
@@ -131,7 +135,26 @@ object TestData {
      * Adds a photo to memory [groupId] as a restored backup brings it from another phone: a different installation
      * id, and a file that doesn't exist here, so re-linking finds nothing to link it to.
      */
-    fun photoFromAnotherDevice(groupId: Int, fileSize: Long = FOREIGN_PHOTO_SIZE) = runBlocking {
+    fun photoFromAnotherDevice(groupId: Int, fileSize: Long = FOREIGN_PHOTO_SIZE) =
+        insertPhotoFromAnotherDevice(groupId, fileSize, "${fileSize}_00000000000000000000000000000000")
+
+    /**
+     * Adds a photo to memory [groupId] as a restored backup brings it from another phone, and puts the same photo in
+     * this phone's gallery, saved there by another app (the shell). The app can see a file it didn't save only with
+     * access to photos, so re-linking finds this one only once that is granted.
+     */
+    fun photoSavedByAnotherApp(groupId: Int, color: Int) {
+        val bytes = jpeg(color, color)
+        val path = "$SHELL_PHOTOS_DIR/memorymap_ui_test_shell_${System.nanoTime()}.jpg"
+        shell("mkdir -p $SHELL_PHOTOS_DIR")
+        writeAsShell(path, bytes)
+        shell("content call --uri content://media --method scan_file --arg $path")
+        shellPhotos += path
+        val size = bytes.size.toLong()
+        insertPhotoFromAnotherDevice(groupId, size, MediaHasher.signatureOf(bytes.inputStream(), size))
+    }
+
+    private fun insertPhotoFromAnotherDevice(groupId: Int, fileSize: Long, signature: String) = runBlocking {
         dao.insertMediaItems(
             listOf(
                 MediaItem(
@@ -139,7 +162,7 @@ object TestData {
                     uri = "content://media/external/images/media/$MISSING_MEDIA_ID",
                     deviceId = ANOTHER_DEVICE,
                     type = MediaType.IMAGE,
-                    mediaSignature = "${fileSize}_00000000000000000000000000000000",
+                    mediaSignature = signature,
                     fileSize = fileSize,
                     dateTaken = 0,
                     order = 0,
@@ -147,6 +170,16 @@ object TestData {
             )
         )
     }
+
+    /** Writes [bytes] into the file at [path] as the shell does (`dd` copies what it reads into the file). */
+    private fun writeAsShell(path: String, bytes: ByteArray) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val (output, input) = automation.executeShellCommandRw("dd of=$path")
+        ParcelFileDescriptor.AutoCloseOutputStream(input).use { it.write(bytes) }
+        ParcelFileDescriptor.AutoCloseInputStream(output).use { it.readBytes() } // Waits until dd is done.
+    }
+
+    private fun shell(command: String): String = Ui.device.executeShellCommand(command)
 
     /** Adds a fragment at [place] to memory [groupId], with no dates of its own. */
     fun fragment(groupId: Int, place: Place) = runBlocking {
@@ -217,6 +250,14 @@ object TestData {
     fun deleteCreatedPhotos() {
         createdPhotos.forEach { runCatching { context.contentResolver.delete(it, null, null) } }
         createdPhotos.clear()
+        // The app may not delete what the shell saved: the shell removes it, and a scan drops it from the gallery.
+        shellPhotos.forEach { path ->
+            runCatching {
+                shell("rm -f $path")
+                shell("content call --uri content://media --method scan_file --arg $path")
+            }
+        }
+        shellPhotos.clear()
     }
 
     private fun createGalleryImage(color: Int, rightHalf: Int = color): Uri {
@@ -231,17 +272,26 @@ object TestData {
         val uri = checkNotNull(resolver.insert(collection, values)) { "Could not add a test image" }
         createdPhotos += uri
 
+        resolver.openOutputStream(uri)!!.use { it.write(jpeg(color, rightHalf)) }
+
+        resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
+        return uri
+    }
+
+    /** A JPEG of [color], with its right half in [rightHalf]. */
+    private fun jpeg(color: Int, rightHalf: Int): ByteArray {
         val bitmap = Bitmap.createBitmap(IMAGE_WIDTH, IMAGE_HEIGHT, Bitmap.Config.ARGB_8888)
         Canvas(bitmap).apply {
             drawColor(color)
             clipRect(IMAGE_WIDTH / 2, 0, IMAGE_WIDTH, IMAGE_HEIGHT)
             drawColor(rightHalf)
         }
-        resolver.openOutputStream(uri)!!.use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
+        val bytes = ByteArrayOutputStream().use { stream ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
+            stream.toByteArray()
+        }
         bitmap.recycle()
-
-        resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
-        return uri
+        return bytes
     }
 
     private const val IMAGE_WIDTH = 640
@@ -250,4 +300,5 @@ object TestData {
     private const val FOREIGN_PHOTO_SIZE = 2_345_678L
     private const val MISSING_MEDIA_ID = 987_654_321L
     private const val ANOTHER_DEVICE = "another-device"
+    private const val SHELL_PHOTOS_DIR = "/storage/emulated/0/Pictures/MemoryMapUiTests"
 }
