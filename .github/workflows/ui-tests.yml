@@ -1,10 +1,12 @@
 name: UI tests
 
+# Only started by hand (Actions tab > UI tests > Run workflow), not on pushes or pull requests. The CI emulators
+# are fresh every run and never set up with a Google account, so Google Play services never downloads the latest
+# map renderer and the map falls back to the legacy one: it doesn't support the app's markers and sometimes draws
+# nothing (https://issuetracker.google.com/issues/327248427). The UI tests run locally instead, on an emulator that is
+# set up once (docs/ui-tests.md).
 on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
   ui-tests:
