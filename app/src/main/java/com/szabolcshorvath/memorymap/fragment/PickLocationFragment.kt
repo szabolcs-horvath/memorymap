@@ -11,7 +11,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
@@ -24,12 +23,6 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.api.model.AutocompleteSessionToken
-import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.net.kotlin.awaitFetchPlace
-import com.google.android.libraries.places.widget.PlaceAutocomplete
-import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
@@ -53,69 +46,46 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         selectLocation(latLng)
     }
 
-    private val autocompleteLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val intent = result.data
-            if (intent != null) {
-                when (result.resultCode) {
-                    PlaceAutocompleteActivity.RESULT_OK -> {
-                        val prediction = PlaceAutocomplete.getPredictionFromIntent(intent) ?: run {
-                            Log.e(TAG, "Autocomplete returned no place")
-                            return@registerForActivityResult
-                        }
-                        val requestedPlaceId = prediction.placeId
-                        val sessionTokenFromIntent = PlaceAutocomplete.getSessionTokenFromIntent(intent)
-                        val context = context ?: return@registerForActivityResult
-                        val placesClient = Places.createClient(context)
-                        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
+    private val autocompleteLauncher = registerForActivityResult(AppServices.placeSearch.screen) { chosen ->
+        chosen ?: return@registerForActivityResult // The user left the search screen, or it failed.
+        val requestedPlaceId = chosen.placeId
+        val context = context ?: return@registerForActivityResult
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
 
-                        // Invalidate any ongoing map/POI selection or other autocomplete requests
-                        viewModel.activeAutocompletePlaceId = requestedPlaceId
-                        viewModel.selectedLat = null
-                        viewModel.selectedLng = null
-                        viewModel.selectedPlaceName = null
-                        viewModel.selectedAddress = null
-                        mMap?.clear()
+        // Invalidate any ongoing map/POI selection or other autocomplete requests
+        viewModel.activeAutocompletePlaceId = requestedPlaceId
+        viewModel.selectedLat = null
+        viewModel.selectedLng = null
+        viewModel.selectedPlaceName = null
+        viewModel.selectedAddress = null
+        mMap?.clear()
 
-                        viewLifecycleOwner.lifecycleScope.launch {
-                            try {
-                                setConfirmButtonLoading(true)
-                                val response = placesClient.awaitFetchPlace(requestedPlaceId, placeFields) {
-                                    sessionToken = sessionTokenFromIntent
-                                }
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                setConfirmButtonLoading(true)
+                val place = AppServices.placeSearch.details(context, requestedPlaceId, chosen.session)
 
-                                // Race condition check: Only proceed if this is still the active request
-                                if (viewModel.activeAutocompletePlaceId != requestedPlaceId) return@launch
+                // Race condition check: Only proceed if this is still the active request
+                if (viewModel.activeAutocompletePlaceId != requestedPlaceId) return@launch
 
-                                val place = response.place
-                                val latLng = place.location
-                                if (latLng != null) {
-                                    viewModel.selectedPlaceName = place.displayName
-                                    viewModel.selectedAddress = place.formattedAddress
-                                    updateSelectedLocation(latLng, viewModel.selectedPlaceName)
-                                    mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
-                                } else {
-                                    Log.e(TAG, "Fetched place has no location")
-                                    if (viewModel.activeAutocompletePlaceId == requestedPlaceId) {
-                                        setConfirmButtonLoading(false)
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error fetching place details: ${e.message}", e)
-                                if (viewModel.activeAutocompletePlaceId == requestedPlaceId) {
-                                    setConfirmButtonLoading(false)
-                                }
-                            }
-                        }
-                    }
-
-                    PlaceAutocompleteActivity.RESULT_ERROR -> {
-                        val status = PlaceAutocomplete.getResultStatusFromIntent(intent)
-                        Log.e(TAG, "Autocomplete error: ${status?.statusMessage}")
-                    }
+                if (place != null) {
+                    val latLng = LatLng(place.latitude, place.longitude)
+                    viewModel.selectedPlaceName = place.name
+                    viewModel.selectedAddress = place.address
+                    updateSelectedLocation(latLng, viewModel.selectedPlaceName)
+                    mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
+                } else {
+                    Log.e(TAG, "Fetched place has no location")
+                    setConfirmButtonLoading(false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching place details: ${e.message}", e)
+                if (viewModel.activeAutocompletePlaceId == requestedPlaceId) {
+                    setConfirmButtonLoading(false)
                 }
             }
         }
+    }
 
     interface PickLocationListener {
         fun onLocationConfirmed(lat: Double, lng: Double, placeName: String?, address: String?)
@@ -158,16 +128,12 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun startAutocomplete() {
         val context = context ?: return
-        if (!Places.isInitialized()) {
+        if (!AppServices.placeSearch.isAvailable()) {
             // Places is not initialized without a Maps API key, and the search screen needs it.
             Toast.makeText(context, R.string.place_search_unavailable, Toast.LENGTH_LONG).show()
             return
         }
-        val sessionToken = AutocompleteSessionToken.newInstance()
-        val intent = PlaceAutocomplete.createIntent(context) {
-            setAutocompleteSessionToken(sessionToken)
-        }
-        autocompleteLauncher.launch(intent)
+        autocompleteLauncher.launch(Unit)
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -198,17 +164,15 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
             googleMap.animateCamera(CameraUpdateFactory.newLatLng(poiLatLng))
 
             val context = context
-            if (context != null && Places.isInitialized()) {
-                val placesClient = Places.createClient(context)
+            if (context != null && AppServices.placeSearch.isAvailable()) {
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        val response = placesClient.awaitFetchPlace(placeId, placeFields)
-                        val place = response.place
+                        val place = AppServices.placeSearch.details(context, placeId, session = null)
 
                         // Race condition check: Only update if the user hasn't clicked elsewhere
                         if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
-                            viewModel.selectedPlaceName = place.displayName
-                            viewModel.selectedAddress = place.formattedAddress
+                            viewModel.selectedPlaceName = place?.name
+                            viewModel.selectedAddress = place?.address
                             updateSelectedLocation(poiLatLng, viewModel.selectedPlaceName)
                         }
                     } catch (e: Exception) {
@@ -396,11 +360,5 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     companion object {
         const val TAG = "PickLocationFragment"
         const val CAMERA_ZOOM = 15f
-        private val placeFields = listOf(
-            Place.Field.ID,
-            Place.Field.DISPLAY_NAME,
-            Place.Field.LOCATION,
-            Place.Field.FORMATTED_ADDRESS
-        )
     }
 }

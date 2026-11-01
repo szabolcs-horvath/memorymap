@@ -10,7 +10,9 @@ import com.szabolcshorvath.memorymap.auth.GoogleAccountService
 import com.szabolcshorvath.memorymap.backup.BackupStorage
 import com.szabolcshorvath.memorymap.backup.DriveBackupStorage
 import com.szabolcshorvath.memorymap.util.FusedLocationService
+import com.szabolcshorvath.memorymap.util.GooglePlaceSearch
 import com.szabolcshorvath.memorymap.util.LocationService
+import com.szabolcshorvath.memorymap.util.PlaceSearch
 
 /**
  * The outside services the app talks to through an interface. UI tests replace them with fakes before the app
@@ -38,4 +40,9 @@ object AppServices {
     @Volatile
     @set:VisibleForTesting
     var location: LocationService = FusedLocationService
+
+    /** Searching for places by name in the location picker, and looking up a place's details. */
+    @Volatile
+    @set:VisibleForTesting
+    var placeSearch: PlaceSearch = GooglePlaceSearch
 }
