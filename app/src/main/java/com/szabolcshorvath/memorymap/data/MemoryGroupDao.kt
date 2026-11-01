@@ -14,8 +14,9 @@ interface MemoryGroupDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGroup(group: MemoryGroup): Long
 
+    /** Returns the number of rows updated: 0 if the group no longer exists. */
     @Update
-    suspend fun updateGroup(group: MemoryGroup)
+    suspend fun updateGroup(group: MemoryGroup): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMediaItems(items: List<MediaItem>)
