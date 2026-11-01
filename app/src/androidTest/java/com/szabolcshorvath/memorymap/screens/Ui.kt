@@ -26,6 +26,12 @@ import kotlin.math.abs
  */
 object Ui {
     const val TIMEOUT_MS = 10_000L
+
+    /**
+     * For what the CI emulators (no GPU, few CPUs) can be much slower to show than a local one: the map's first
+     * markers, and the end of a re-link.
+     */
+    const val SLOW_TIMEOUT_MS = 30_000L
     private const val POLL_MS = 100L
     private const val SETTLE_TIMEOUT_MS = 2_000L
     private const val SETTLE_CHECK_MS = 150L
@@ -69,8 +75,8 @@ object Ui {
         }
     }
 
-    fun assertShown(what: String, condition: AccessibilityNodeInfo.() -> Boolean) =
-        assertTrue("$what is not shown", isShown(condition = condition))
+    fun assertShown(what: String, timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean) =
+        assertTrue("$what is not shown", isShown(timeoutMs, condition))
 
     fun assertGone(what: String, condition: AccessibilityNodeInfo.() -> Boolean) =
         assertTrue("$what is still shown", isGone(condition = condition))

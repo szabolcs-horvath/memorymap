@@ -403,7 +403,7 @@ object LocationPickerScreen {
      * Location" when the address lookup finds nothing (as on emulators without network to Google).
      */
     fun assertLocationPicked() =
-        assertTrue("A picked location is not shown", waitUntil(Ui.TIMEOUT_MS) { markers().isNotEmpty() })
+        assertTrue("A picked location is not shown", waitUntil(Ui.SLOW_TIMEOUT_MS) { markers().isNotEmpty() })
 
     /** The descriptions of the markers on the map (the picked spot's). The map describes one as "<title>. ". */
     private fun markers(): Set<String> =
@@ -437,7 +437,7 @@ object LocationPickerScreen {
     /** The spot named [name] is picked: its marker shows on the map. */
     fun assertPicked(name: String) = assertTrue(
         "The place \"$name\" is not picked",
-        waitUntil(Ui.TIMEOUT_MS) { markers().any { it.trimEnd() == "$name." } }
+        waitUntil(Ui.SLOW_TIMEOUT_MS) { markers().any { it.trimEnd() == "$name." } }
     )
 
     /** Taps the "my location" button, which picks where the phone is (asking for access first). */
