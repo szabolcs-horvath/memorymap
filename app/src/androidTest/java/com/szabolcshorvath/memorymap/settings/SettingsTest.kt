@@ -8,6 +8,7 @@ import com.szabolcshorvath.memorymap.fakes.FakeBackupStorage
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.Dialog
+import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.SettingsScreen
 import com.szabolcshorvath.memorymap.screens.ShareSheet
@@ -81,6 +82,10 @@ class SettingsTest {
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.assertMemoryShown(KEPT)
         TimelineScreen.assertMemoryGone(ADDED_AFTER_THE_BACKUP)
+        // Both memories are in Budapest: before the restore, the map showed one marker for the two.
+        BottomNav.open(Tab.MAP)
+        MapScreen.assertMarkerShown(KEPT)
+        MapScreen.assertMarkerGone("2 Memories")
     }
 
     @Test

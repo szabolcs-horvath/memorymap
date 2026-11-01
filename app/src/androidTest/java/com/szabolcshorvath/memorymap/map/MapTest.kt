@@ -14,6 +14,7 @@ import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.testing.TestData.Place
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateFilterOption
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -103,6 +104,39 @@ class MapTest {
         BottomNav.open(Tab.MAP)
 
         nearby.forEach { MapScreen.assertMarkerShown(it) }
+    }
+
+    @Test
+    fun tappingAClusterZoomsInUntilItsMemoriesShow() {
+        // Four memories north of Budapest, about 30 km apart: one cluster on the map's first view of Europe, which
+        // splits up a few zoom levels in. Zoomed in on them, Cape Town is off the map.
+        val spread = (1..NEARBY).map { "Danube bend $it" }
+        spread.forEachIndexed { index, title ->
+            val offset = (index + 1) * SPREAD_STEP_DEGREES
+            TestData.memory(title, place = Place(Place.BUDAPEST.latitude + offset, Place.BUDAPEST.longitude, "Hungary"))
+        }
+        TestData.memory(CAPE_TOWN_TRIP, place = Place.CAPE_TOWN)
+        openMap()
+        MapScreen.assertMarkerShown(CAPE_TOWN_TRIP)
+        MapScreen.assertClusterShown()
+
+        var taps = 0
+        while (MapScreen.isClusterShown(timeoutMs = CLUSTER_WAIT_MS) && taps < MAX_CLUSTER_TAPS) {
+            MapScreen.tapCluster()
+            taps++
+        }
+
+        MapScreen.assertMarkerGone(CAPE_TOWN_TRIP)
+        assertTrue("No memory of the cluster showed after $taps taps", spread.any { MapScreen.isMarkerShown(it) })
+    }
+
+    @Test
+    fun aMapWithoutMemoriesHasNoMarkers() {
+        openMap()
+
+        MapScreen.assertNoMarkers()
+        MapScreen.toggleColorStatistics()
+        MapScreen.assertColorStatisticsShown()
     }
 
     @Test
@@ -237,5 +271,8 @@ class MapTest {
         val RED = Hsv(0f)
         val BLUE = Hsv(240f)
         const val NEARBY_STEP_DEGREES = 0.0005 // About 55 metres.
+        const val SPREAD_STEP_DEGREES = 0.27 // About 30 km.
+        const val MAX_CLUSTER_TAPS = 12
+        const val CLUSTER_WAIT_MS = 2_000L
     }
 }
