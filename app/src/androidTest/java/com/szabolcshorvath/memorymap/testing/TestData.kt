@@ -91,15 +91,17 @@ object TestData {
     /**
      * Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. With
      * [linkedToThisPhone] false, it is saved as a restored backup brings it from another phone: the file is here,
-     * but re-linking has yet to find it. A memory shows its photos by [order], lowest first.
+     * but re-linking has yet to find it. A memory shows its photos by [order], lowest first. With [rightHalf], the
+     * right half of the photo has that colour instead of [color], so a zoom can be seen.
      */
     fun photo(
         groupId: Int,
         color: Int = Color.rgb(30, 120, 200),
         linkedToThisPhone: Boolean = true,
         order: Int = 0,
+        rightHalf: Int = color,
     ): Uri = runBlocking {
-        val uri = createGalleryImage(color)
+        val uri = createGalleryImage(color, rightHalf)
         val size = context.contentResolver.openFileDescriptor(uri, "r")!!.use { it.statSize }
         val thisPhone = InstallationIdentifier.getInstallationIdentifier(context)
         dao.insertMediaItems(
@@ -217,7 +219,7 @@ object TestData {
         createdPhotos.clear()
     }
 
-    private fun createGalleryImage(color: Int): Uri {
+    private fun createGalleryImage(color: Int, rightHalf: Int = color): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "memorymap_ui_test_${System.nanoTime()}.jpg")
@@ -230,7 +232,11 @@ object TestData {
         createdPhotos += uri
 
         val bitmap = Bitmap.createBitmap(IMAGE_WIDTH, IMAGE_HEIGHT, Bitmap.Config.ARGB_8888)
-        Canvas(bitmap).drawColor(color)
+        Canvas(bitmap).apply {
+            drawColor(color)
+            clipRect(IMAGE_WIDTH / 2, 0, IMAGE_WIDTH, IMAGE_HEIGHT)
+            drawColor(rightHalf)
+        }
         resolver.openOutputStream(uri)!!.use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
         bitmap.recycle()
 

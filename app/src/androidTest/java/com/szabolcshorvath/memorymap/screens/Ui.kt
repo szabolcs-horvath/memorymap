@@ -1,5 +1,7 @@
 package com.szabolcshorvath.memorymap.screens
 
+import android.graphics.Color
+import android.graphics.Point
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction
@@ -13,6 +15,8 @@ import androidx.test.uiautomator.onElementOrNull
 import androidx.test.uiautomator.simpleViewResourceName
 import androidx.test.uiautomator.textAsString
 import org.junit.Assert.assertTrue
+import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Finds things on screen the way a user sees them: by text, content description or hint, and by a resource id
@@ -164,6 +168,27 @@ object Ui {
         device.setOrientationNatural()
         device.waitForIdle()
     }
+}
+
+/**
+ * Colours read from a screenshot. The tests' photos are plain colours, which nothing on screen names (every
+ * thumbnail reads "Open photo"), so this is how a test tells them apart.
+ */
+object ScreenColors {
+    private const val TOLERANCE = 60
+
+    /** The colours on screen at [points], from one screenshot. */
+    fun at(points: List<Point>): List<Int> {
+        val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        return points.map { screenshot.getPixel(it.x, it.y) }.also { screenshot.recycle() }
+    }
+
+    /** Whether [a] and [b] are the same colour, give or take what JPEG and scaling do to it. */
+    fun isClose(a: Int, b: Int) = abs(Color.red(a) - Color.red(b)) < TOLERANCE &&
+        abs(Color.green(a) - Color.green(b)) < TOLERANCE &&
+        abs(Color.blue(a) - Color.blue(b)) < TOLERANCE
+
+    fun hex(color: Int): String = String.format(Locale.ROOT, "#%06X", color and 0xFFFFFF)
 }
 
 fun AccessibilityNodeInfo.hasText(text: String): Boolean = textAsString() == text

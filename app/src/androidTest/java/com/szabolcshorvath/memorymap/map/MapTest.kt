@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.map
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.DateRangePickerDialog
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.SettingsScreen
@@ -14,6 +15,7 @@ import com.szabolcshorvath.memorymap.util.DateFilterOption
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDate
 
 /**
  * The Map tab: markers, the overlay that lists a marker's memories, clustering, fragment markers, the date filters
@@ -141,6 +143,25 @@ class MapTest {
             MapScreen.assertMarkerShown(TODAY)
             MapScreen.assertMarkerGone(TWO_YEARS_AGO)
         }
+    }
+
+    @Test
+    fun pickedDatesShowOnlyTheMemoriesBetweenThem() {
+        TestData.markerClustering(false)
+        TestData.memory(TODAY, daysAgo = 0, place = Place.MADRID)
+        TestData.memory(TWENTY_DAYS_AGO, daysAgo = 20, place = Place.PARIS)
+        TestData.memory(TWO_HUNDRED_DAYS_AGO, daysAgo = 200, place = Place.ROME)
+        openMap()
+        val start = LocalDate.now().minusDays(30)
+        val end = LocalDate.now().minusDays(10)
+
+        MapScreen.openDateRangePicker()
+        DateRangePickerDialog.pick(start, end)
+
+        MapScreen.assertFilter(start, end)
+        MapScreen.assertMarkerShown(TWENTY_DAYS_AGO)
+        MapScreen.assertMarkerGone(TODAY)
+        MapScreen.assertMarkerGone(TWO_HUNDRED_DAYS_AGO)
     }
 
     @Test
