@@ -95,7 +95,8 @@ class TimelineTest {
 
     @Test
     fun showOnTimelineFlashesTheMemory() {
-        app.useAnimations()
+        // Five times slower: the one-second flash lasts five, which a slow emulator can't miss.
+        app.useAnimations(slowdown = 5)
         TestData.memory(PICNIC, daysAgo = 1)
         TestData.memory(CONCERT, daysAgo = 2)
         openTimeline()

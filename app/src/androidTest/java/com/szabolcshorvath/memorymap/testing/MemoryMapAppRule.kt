@@ -44,11 +44,12 @@ class MemoryMapAppRule : TestRule {
 
     /**
      * Turns animations on for this test: the test phones run with them off (`animationsDisabled`), so an animation
-     * such as the timeline's flash would end at once. The rule puts the old setting back after the test.
+     * such as the timeline's flash would end at once. A [slowdown] above 1 makes them last that many times longer, so
+     * a slow phone can't miss a short one. The rule puts the old setting back after the test.
      */
-    fun useAnimations() {
+    fun useAnimations(slowdown: Int = 1) {
         animationScaleBefore = Ui.device.executeShellCommand("settings get global $ANIMATOR_SCALE").trim()
-        Ui.device.executeShellCommand("settings put global $ANIMATOR_SCALE 1")
+        Ui.device.executeShellCommand("settings put global $ANIMATOR_SCALE $slowdown")
     }
 
     private var isOffline = false

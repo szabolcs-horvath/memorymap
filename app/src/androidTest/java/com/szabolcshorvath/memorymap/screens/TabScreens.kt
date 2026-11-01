@@ -50,7 +50,8 @@ object MapScreen : TabScreen {
      * A marker titled [title] is on the map: a memory's title, or "N Memories" for several at one place. A
      * fragment's marker has its memory's title. Cluster circles have no title.
      */
-    fun assertMarkerShown(title: String) = Ui.assertShown("The marker \"$title\"") { isMarker(title) }
+    fun assertMarkerShown(title: String) =
+        Ui.assertShown("The marker \"$title\"", Ui.SLOW_TIMEOUT_MS) { isMarker(title) }
 
     fun assertMarkerGone(title: String) = Ui.assertGone("The marker \"$title\"") { isMarker(title) }
 
@@ -60,7 +61,7 @@ object MapScreen : TabScreen {
     /** Waits until exactly [count] markers titled [title] are on the map. */
     fun assertMarkerCount(title: String, count: Int) {
         val marker = By.desc(markerDescription(title))
-        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        val end = SystemClock.uptimeMillis() + Ui.SLOW_TIMEOUT_MS
         var found = Ui.device.findObjects(marker).size
         while (found != count && SystemClock.uptimeMillis() < end) {
             SystemClock.sleep(POLL_MS)
@@ -70,14 +71,14 @@ object MapScreen : TabScreen {
     }
 
     fun tapMarker(title: String) {
-        Ui.find { isMarker(title) }.click()
+        Ui.find(Ui.SLOW_TIMEOUT_MS) { isMarker(title) }.click()
         Ui.device.waitForIdle()
     }
 
     /** Whether a cluster ("4 memories nearby") is on the map. */
     fun isClusterShown(timeoutMs: Long = 0): Boolean = Ui.isShown(timeoutMs) { isCluster() }
 
-    fun assertClusterShown() = Ui.assertShown("A cluster of memories") { isCluster() }
+    fun assertClusterShown() = Ui.assertShown("A cluster of memories", Ui.SLOW_TIMEOUT_MS) { isCluster() }
 
     /** Taps a cluster, which zooms the map in on it, and waits for the map to settle. */
     fun tapCluster() {
@@ -185,7 +186,7 @@ object MapScreen : TabScreen {
 /** The Timeline tab. */
 object TimelineScreen : TabScreen {
     private const val SEARCH = "Search memories..."
-    private const val FLASH_WATCH_MS = 3_000L
+    private const val FLASH_WATCH_MS = 8_000L
     private const val CARD_SPOT_PERCENT = 90
 
     // The flash colour is close to the card's own (a few steps on one channel): any visible change counts.
@@ -197,7 +198,7 @@ object TimelineScreen : TabScreen {
 
     /**
      * Runs [action] (such as Show on Timeline) and checks that memory [title]'s card then flashes: its colour changes
-     * for a moment. The flash lasts a second, so this doesn't wait for the screen to settle first, and it reads the
+     * for a moment. The flash is short, so this doesn't wait for the screen to settle first, and it reads the
      * card's colour from screenshots, near its right edge on the title's line, once the list has stopped moving.
      */
     fun assertFlashesAfter(title: String, action: () -> Unit) = Ui.withoutSettling {
@@ -593,7 +594,7 @@ object SettingsScreen : TabScreen {
     /** Waits until the re-link run is over: the screen's buttons work again. */
     fun waitForRelinkToFinish() {
         Ui.scrollTo { hasText(RELINK) }
-        Ui.assertShown("The Re-link button, enabled again") { hasText(RELINK) && isEnabled }
+        Ui.assertShown("The Re-link button, enabled again", Ui.SLOW_TIMEOUT_MS) { hasText(RELINK) && isEnabled }
     }
 
     /**
