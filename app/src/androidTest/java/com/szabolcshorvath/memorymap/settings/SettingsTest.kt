@@ -19,7 +19,6 @@ import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,7 +64,6 @@ class SettingsTest {
     }
 
     @Test
-    @Ignore("The re-link after a restore hides \"Restore successful\" at once (UX-18). Turn this on with the fix.")
     fun aRestoreSaysThatItSucceeded() {
         backUpThenRestore()
 

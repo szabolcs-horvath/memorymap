@@ -171,11 +171,12 @@ class SettingsFragment : Fragment() {
                             result.message?.let { showBackupStatus(it, false) }
 
                             // The restore replaced the database contents in place; re-link its media to this device.
+                            // The result line stays meanwhile, so the user still sees that the restore worked.
                             viewLifecycleOwner.lifecycleScope.launch {
-                                setLoadingState(true, "Scanning local media library...", hideBackupStatus = true)
+                                setLoadingState(true, "Scanning local media library...", hideBackupStatus = false)
                                 try {
                                     MediaRelinker.relink(context) { status ->
-                                        setLoadingState(true, status, hideBackupStatus = true)
+                                        setLoadingState(true, status, hideBackupStatus = false)
                                     }
                                 } finally {
                                     setLoadingState(false, hideBackupStatus = false)
