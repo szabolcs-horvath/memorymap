@@ -38,7 +38,9 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     sealed class SaveResult {
         data class Success(val groupId: Int) : SaveResult()
-        data class Error(val message: String) : SaveResult()
+
+        /** The save failed; the cause is logged, and the user gets a plain message instead of the database's text. */
+        data object Error : SaveResult()
     }
 
     private val _saveResult = Channel<SaveResult>(Channel.BUFFERED)
@@ -103,6 +105,7 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         val snapshotEditingId = editingMemoryId
 
         viewModelScope.launch(Dispatchers.IO) {
+            var savedAsNew = false
             try {
                 val effectiveStart = calculateEffectiveStartTime(snapshotIsAllDay, snapshotStart)
                 val effectiveEnd = calculateEffectiveEndTime(snapshotIsAllDay, snapshotEnd)
@@ -119,14 +122,13 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
                     var removedUris: Set<String> = emptySet()
                     val savedId = database.withTransaction("save_memory_group") {
-                        val groupId = if (snapshotEditingId != null) {
-                            dao.updateGroup(group)
-                            snapshotEditingId.toLong()
-                        } else {
-                            dao.insertGroup(group)
-                        }
+                        // An edit of a memory deleted meanwhile (from its own screen) updates nothing:
+                        // it is saved as a new memory, so the user's changes aren't lost.
+                        val updatedId = snapshotEditingId?.takeIf { dao.updateGroup(group) > 0 }
+                        savedAsNew = snapshotEditingId != null && updatedId == null
+                        val groupId = updatedId?.toLong() ?: dao.insertGroup(group.copy(id = 0))
 
-                        removedUris = saveMediaItems(dao, groupId.toInt(), preparedMedia, snapshotEditingId)
+                        removedUris = saveMediaItems(dao, groupId.toInt(), preparedMedia, updatedId)
                         saveMemoryFragments(dao, groupId, snapshotFragments)
                         groupId.toInt()
                     }
@@ -136,10 +138,10 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
                 }
                 // In the background: saving no longer waits for the upload.
                 AutomaticBackups.schedule(getApplication())
-                withContext(Dispatchers.Main) { onSaved(groupIdResult) }
+                withContext(Dispatchers.Main) { onSaved(groupIdResult, savedAsNew) }
             } catch (e: Exception) {
                 Log.e("AddMemoryVM", "Error saving memory group", e)
-                _saveResult.send(SaveResult.Error(e.localizedMessage ?: "Unknown error"))
+                _saveResult.send(SaveResult.Error)
             } finally {
                 _isSaving.value = false
             }
@@ -149,12 +151,16 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
     /**
      * Clears the form here, so it is empty whenever the screen is shown next. Opens the saved memory only
      * if the Add screen is on screen: a save that finishes after the user left must not jump there later.
+     * [savedAsNew]: an edit whose memory was deleted meanwhile was saved as a new memory, which the user is told.
      */
-    private suspend fun onSaved(groupId: Int) {
+    private suspend fun onSaved(groupId: Int, savedAsNew: Boolean) {
         resetForm()
+        if (savedAsNew) {
+            Toast.makeText(getApplication(), R.string.memory_saved_as_new, Toast.LENGTH_LONG).show()
+        }
         if (isScreenShown) {
             _saveResult.send(SaveResult.Success(groupId))
-        } else {
+        } else if (!savedAsNew) {
             Toast.makeText(getApplication(), R.string.memory_saved, Toast.LENGTH_SHORT).show()
         }
     }

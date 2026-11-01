@@ -274,10 +274,8 @@ class AddMemoryGroupFragment : Fragment() {
                                 showClearedForm()
                             }
 
-                            is AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
-                                context.let {
-                                    Toast.makeText(it, "Failed to save: ${result.message}", Toast.LENGTH_LONG).show()
-                                }
+                            AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
+                                Toast.makeText(context, R.string.memory_save_failed, Toast.LENGTH_LONG).show()
                             }
                         }
                     }
@@ -567,6 +565,12 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun dropPendingEdit(memoryId: Int) {
         if (viewModel.pendingEditMemoryId == memoryId) viewModel.pendingEditMemoryId = null
+    }
+
+    /** The URIs of the media in the form (a draft or an edit), which a save may still store. */
+    fun mediaUrisInForm(): Set<String> {
+        if (!isAdded) return emptySet() // A detached fragment has no ViewModel to read.
+        return viewModel.selectedMedia.mapTo(HashSet()) { it.uri.toString() }
     }
 
     /** Called when another tab is selected: an edit without changes is closed, so this tab offers a new memory next time. */

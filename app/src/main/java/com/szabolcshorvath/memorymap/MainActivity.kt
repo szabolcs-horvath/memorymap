@@ -362,9 +362,12 @@ class MainActivity :
         snackbar.addCallback(object : Snackbar.Callback() {
             override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                 if (event == DISMISS_EVENT_ACTION) return // Undone; the undo above backs up.
-                // The delete is final now: the media grants can't be needed for an undo any more.
+                // The delete is final now: the media grants can't be needed for an undo any more. An edit of the
+                // memory still open on the Add tab saves it again as a new memory, so its media keep their grants.
+                val keptByForm = addMemoryFragment?.mediaUrisInForm().orEmpty()
+                val released = deleted.mediaItems.map { it.uri }.filterNot { it in keptByForm }
                 app.applicationScope.launch {
-                    LocalMediaUtil.releaseUriGrantsIfUnused(app, db.memoryGroupDao(), deleted.mediaItems.map { it.uri })
+                    LocalMediaUtil.releaseUriGrantsIfUnused(app, db.memoryGroupDao(), released)
                     AutomaticBackups.schedule(app)
                 }
             }
