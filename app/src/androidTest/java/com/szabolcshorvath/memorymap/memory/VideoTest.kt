@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 
 /**
  * Videos in a memory: picking one on the Add form, its thumbnail, and playing it in the full-screen viewer. The
- * videos are five seconds of one colour, made on the phone (`TestData.video`, `TestData.galleryVideo`).
+ * videos are five seconds of one colour, made on the phone (`TestData.galleryVideo`).
  */
 @RunWith(AndroidJUnit4::class)
 class VideoTest {
@@ -25,10 +25,12 @@ class VideoTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun aPickedVideoIsSavedAsAVideo() {
+    fun aPickedVideoIsSavedAsAVideoAndPlaysAndPausesInTheViewer() {
         TestData.memory(TRIP)
         FakeMediaPicker.nextPick = listOf(TestData.galleryVideo(GREEN))
-        openMemory()
+        app.launch()
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.openMemory(TRIP)
         MemoryScreen.edit()
 
         AddScreen.addPhotos()
@@ -38,12 +40,6 @@ class VideoTest {
         MemoryScreen.assertShowing(TRIP)
         MemoryScreen.assertVideoCount(1)
         MemoryScreen.assertPhotoCount(0)
-    }
-
-    @Test
-    fun aVideoPlaysAndPausesInTheViewer() {
-        TestData.video(TestData.memory(TRIP), GREEN)
-        openMemory()
 
         MemoryScreen.openFirstVideo()
         MediaViewerScreen.assertShowingVideo()
@@ -53,13 +49,6 @@ class VideoTest {
         MediaViewerScreen.assertPlaying()
         MediaViewerScreen.pause()
         MediaViewerScreen.assertPaused()
-    }
-
-    private fun openMemory() {
-        app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TRIP)
-        MemoryScreen.assertShowing(TRIP)
     }
 
     private companion object {

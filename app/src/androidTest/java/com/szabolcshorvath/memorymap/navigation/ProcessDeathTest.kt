@@ -33,32 +33,31 @@ class ProcessDeathTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun map() {
-        app.launch()
-        MapScreen.assertShown()
-
-        app.simulateProcessDeath()
-
-        MapScreen.assertShown()
-        BottomNav.assertSelected(Tab.MAP)
-    }
-
-    @Test
-    fun timelineKeepsTheSearch() {
+    fun theMapTheTimelineWithItsSearchAndSettingsSignedOut() {
         TestData.memory(OTHER_TITLE, daysAgo = 1)
         TestData.memory(TITLE, daysAgo = 5)
         app.launch()
+        MapScreen.assertShown()
+        app.simulateProcessDeath()
+        MapScreen.assertShown()
+        BottomNav.assertSelected(Tab.MAP)
+
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.search("Vienna")
         TimelineScreen.assertMemoryGone(OTHER_TITLE)
-
         app.simulateProcessDeath()
-
         TimelineScreen.assertShown()
         BottomNav.assertSelected(Tab.TIMELINE)
         TimelineScreen.assertSearch("Vienna")
         TimelineScreen.assertMemoryShown(TITLE)
         TimelineScreen.assertMemoryGone(OTHER_TITLE)
+
+        BottomNav.open(Tab.SETTINGS)
+        SettingsScreen.assertSignedOut()
+        app.simulateProcessDeath()
+        SettingsScreen.assertShown()
+        BottomNav.assertSelected(Tab.SETTINGS)
+        SettingsScreen.assertSignedOut()
     }
 
     @Test
@@ -101,19 +100,6 @@ class ProcessDeathTest {
     }
 
     @Test
-    fun settingsSignedOut() {
-        app.launch()
-        BottomNav.open(Tab.SETTINGS)
-        SettingsScreen.assertSignedOut()
-
-        app.simulateProcessDeath()
-
-        SettingsScreen.assertShown()
-        BottomNav.assertSelected(Tab.SETTINGS)
-        SettingsScreen.assertSignedOut()
-    }
-
-    @Test
     fun settingsSignedInWithBackups() {
         TestData.signIn()
         FakeBackupStorage.add(FakeAccountService.DEFAULT_EMAIL, MANUAL_BACKUP, modifiedMillis = System.currentTimeMillis())
@@ -146,39 +132,29 @@ class ProcessDeathTest {
     }
 
     @Test
-    fun memoryStaysOnTheSameMemoryAndBackStillWorks() {
+    fun aMemoryAndTheViewerStayAsTheyWereAndBackStillWorks() {
         TestData.memory(OTHER_TITLE, daysAgo = 1)
-        TestData.memory(TITLE, daysAgo = 5)
+        TestData.photo(TestData.memory(TITLE, daysAgo = 5))
         app.launch()
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.openMemory(TITLE)
         MemoryScreen.assertShowing(TITLE)
-
         app.simulateProcessDeath()
+        MemoryScreen.assertShowing(TITLE)
 
+        MemoryScreen.openFirstPhoto()
+        MediaViewerScreen.assertShowingPhoto()
+        app.simulateProcessDeath()
+        MediaViewerScreen.assertShowingPhoto()
+        MemoryScreen.assertGone()
+
+        Ui.pressBack()
+        MediaViewerScreen.assertGone()
         MemoryScreen.assertShowing(TITLE)
         Ui.pressBack()
         MemoryScreen.assertGone()
         TimelineScreen.assertShown()
         BottomNav.assertSelected(Tab.TIMELINE)
-    }
-
-    @Test
-    fun viewerKeepsThePhotoAndBackStillWorks() {
-        TestData.photo(TestData.memory(TITLE))
-        app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TITLE)
-        MemoryScreen.openFirstPhoto()
-        MediaViewerScreen.assertShowingPhoto()
-
-        app.simulateProcessDeath()
-
-        MediaViewerScreen.assertShowingPhoto()
-        MemoryScreen.assertGone()
-        Ui.pressBack()
-        MediaViewerScreen.assertGone()
-        MemoryScreen.assertShowing(TITLE)
     }
 
     @Test

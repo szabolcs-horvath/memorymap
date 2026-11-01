@@ -32,7 +32,7 @@ class MapTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun everyMemoryHasAMarker() {
+    fun everyMemoryHasAMarkerThatListsItsMemoryWhichOpensFromThere() {
         TestData.markerClustering(false)
         TestData.memory(MADRID_TRIP, place = Place.MADRID)
         TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
@@ -43,33 +43,17 @@ class MapTest {
         MapScreen.assertMarkerShown(MADRID_TRIP)
         MapScreen.assertMarkerShown(ATHENS_TRIP)
         MapScreen.assertMarkerShown(PARIS_TRIP)
-    }
 
-    @Test
-    fun tappingAMarkerListsItsMemoryWhichOpensFromThere() {
-        TestData.markerClustering(false)
-        TestData.memory(MADRID_TRIP, place = Place.MADRID)
-        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
-        openMap()
+        // A tap on a marker zooms in on it, so the later taps are on the same marker.
+        MapScreen.tapMarker(ATHENS_TRIP)
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.tapEmptyMap()
+        MapScreen.assertOverlayGone()
 
         MapScreen.tapMarker(ATHENS_TRIP)
         MapScreen.assertOverlayShows(ATHENS_TRIP)
         MapScreen.openFromOverlay(ATHENS_TRIP)
-
         MemoryScreen.assertShowing(ATHENS_TRIP)
-    }
-
-    @Test
-    fun tappingTheMapClosesTheOverlay() {
-        TestData.markerClustering(false)
-        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
-        openMap()
-        MapScreen.tapMarker(ATHENS_TRIP)
-        MapScreen.assertOverlayShows(ATHENS_TRIP)
-
-        MapScreen.tapEmptyMap()
-
-        MapScreen.assertOverlayGone()
     }
 
     @Test
@@ -201,25 +185,14 @@ class MapTest {
             MapScreen.assertMarkerShown(TODAY)
             MapScreen.assertMarkerGone(TWO_YEARS_AGO)
         }
-    }
 
-    @Test
-    fun pickedDatesShowOnlyTheMemoriesBetweenThem() {
-        TestData.markerClustering(false)
-        TestData.memory(TODAY, daysAgo = 0, place = Place.MADRID)
-        TestData.memory(TWENTY_DAYS_AGO, daysAgo = 20, place = Place.PARIS)
-        TestData.memory(TWO_HUNDRED_DAYS_AGO, daysAgo = 200, place = Place.ROME)
-        openMap()
+        // Picked dates: from 30 to 10 days ago.
         val start = LocalDate.now().minusDays(30)
         val end = LocalDate.now().minusDays(10)
-
         MapScreen.openDateRangePicker()
         DateRangePickerDialog.pick(start, end)
-
         MapScreen.assertFilter(start, end)
-        MapScreen.assertMarkerShown(TWENTY_DAYS_AGO)
-        MapScreen.assertMarkerGone(TODAY)
-        MapScreen.assertMarkerGone(TWO_HUNDRED_DAYS_AGO)
+        expectMarkersNow(all, TWENTY_DAYS_AGO, LONG_TRIP)
     }
 
     @Test
@@ -237,29 +210,21 @@ class MapTest {
     }
 
     @Test
-    fun colorStatisticsOpenAndCloseWhenTheMapIsTapped() {
-        TestData.memory(MADRID_TRIP, place = Place.MADRID)
-        openMap()
-
-        MapScreen.toggleColorStatistics()
-        MapScreen.assertColorStatisticsShown()
-
-        MapScreen.tapEmptyMap()
-        MapScreen.assertColorStatisticsGone()
-    }
-
-    @Test
-    fun colorStatisticsShowTheColorsOfTheMemoriesOnTheMap() {
+    fun colorStatisticsShowTheColorsOfTheMemoriesOnTheMapUntilTheMapIsTapped() {
         TestData.markerClustering(false)
         TestData.memory(TODAY, daysAgo = 0, place = Place.MADRID) // Red, as every memory starts.
         TestData.markerColor(TestData.memory(TWENTY_DAYS_AGO, daysAgo = 20, place = Place.PARIS), BLUE)
         openMap()
 
         MapScreen.toggleColorStatistics()
+        MapScreen.assertColorStatisticsShown()
         MapScreen.assertColorStatisticsShow(listOf(color(RED), color(BLUE)))
 
         MapScreen.pickQuickFilter("Last 7 Days")
         MapScreen.assertColorStatisticsShow(listOf(color(RED)), absent = listOf(color(BLUE)))
+
+        MapScreen.tapEmptyMap()
+        MapScreen.assertColorStatisticsGone()
     }
 
     private fun color(hsv: Hsv) = ColorUtil.hsvToColor(hsv.hue, hsv.saturation, hsv.brightness)
@@ -272,6 +237,11 @@ class MapTest {
     private fun expectMarkers(filter: String, all: List<String>, vararg shown: String) {
         MapScreen.pickQuickFilter(filter)
         MapScreen.assertFilter(filter)
+        expectMarkersNow(all, *shown)
+    }
+
+    /** Of [all] the memories, only those [shown] have a marker. */
+    private fun expectMarkersNow(all: List<String>, vararg shown: String) {
         shown.forEach { MapScreen.assertMarkerShown(it) }
         (all - shown.toSet()).forEach { MapScreen.assertMarkerGone(it) }
         Ui.device.waitForIdle()

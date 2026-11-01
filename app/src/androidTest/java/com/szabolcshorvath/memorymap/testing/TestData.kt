@@ -99,36 +99,29 @@ object TestData {
     }
 
     /**
-     * Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. With
-     * [linkedToThisPhone] false, it is saved as a restored backup brings it from another phone: the file is here,
-     * but re-linking has yet to find it. A memory shows its photos by [order], lowest first. With [rightHalf], the
-     * right half of the photo has that colour instead of [color], so a zoom can be seen.
+     * Adds a photo (a generated image in the phone's gallery, owned by the app) to memory [groupId]. A memory shows
+     * its photos by [order], lowest first. With [rightHalf], the right half of the photo has that colour instead of
+     * [color], so a zoom can be seen.
      */
     fun photo(
         groupId: Int,
         color: Int = Color.rgb(30, 120, 200),
-        linkedToThisPhone: Boolean = true,
         order: Int = 0,
         rightHalf: Int = color,
-    ): Uri = createGalleryImage(color, rightHalf).also { insertMedia(groupId, it, MediaType.IMAGE, linkedToThisPhone, order) }
-
-    /** Adds a five-second video of [color] (a generated MP4 in the phone's gallery, owned by the app) to memory [groupId]. */
-    fun video(groupId: Int, color: Int, order: Int = 0): Uri =
-        createGalleryVideo(color).also { insertMedia(groupId, it, MediaType.VIDEO, linkedToThisPhone = true, order) }
+    ): Uri = createGalleryImage(color, rightHalf).also { insertMedia(groupId, it, order) }
 
     /** Adds a video of [color] to the phone's gallery only, in no memory: one for the fake photo picker to return. */
     fun galleryVideo(color: Int): Uri = createGalleryVideo(color)
 
-    private fun insertMedia(groupId: Int, uri: Uri, type: MediaType, linkedToThisPhone: Boolean, order: Int) = runBlocking {
+    private fun insertMedia(groupId: Int, uri: Uri, order: Int) = runBlocking {
         val size = context.contentResolver.openFileDescriptor(uri, "r")!!.use { it.statSize }
-        val thisPhone = InstallationIdentifier.getInstallationIdentifier(context)
         dao.insertMediaItems(
             listOf(
                 MediaItem(
                     groupId = groupId,
                     uri = uri.toString(),
-                    deviceId = if (linkedToThisPhone) thisPhone else ANOTHER_DEVICE,
-                    type = type,
+                    deviceId = InstallationIdentifier.getInstallationIdentifier(context),
+                    type = MediaType.IMAGE,
                     mediaSignature = MediaHasher.calculateMediaSignature(context, uri),
                     fileSize = size,
                     dateTaken = 0,
@@ -143,13 +136,6 @@ object TestData {
      * one colour are the same file to the app, which keeps only one of them in a memory.
      */
     fun galleryPhoto(color: Int = Color.rgb(200, 80, 40)): Uri = createGalleryImage(color)
-
-    /**
-     * Adds a photo to memory [groupId] as a restored backup brings it from another phone: a different installation
-     * id, and a file that doesn't exist here, so re-linking finds nothing to link it to.
-     */
-    fun photoFromAnotherDevice(groupId: Int, fileSize: Long = FOREIGN_PHOTO_SIZE) =
-        insertPhotoFromAnotherDevice(groupId, fileSize, "${fileSize}_00000000000000000000000000000000")
 
     /**
      * Adds a photo to memory [groupId] as a restored backup brings it from another phone, and puts the same photo in
@@ -330,7 +316,6 @@ object TestData {
     private const val IMAGE_WIDTH = 640
     private const val IMAGE_HEIGHT = 480
     private const val JPEG_QUALITY = 90
-    private const val FOREIGN_PHOTO_SIZE = 2_345_678L
     private const val MISSING_MEDIA_ID = 987_654_321L
     private const val ANOTHER_DEVICE = "another-device"
     private const val SHELL_PHOTOS_DIR = "/storage/emulated/0/Pictures/MemoryMapUiTests"

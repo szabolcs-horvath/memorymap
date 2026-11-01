@@ -22,8 +22,8 @@ import java.time.LocalDate
 
 /**
  * A memory's fragments and marker colour on the Add form: a fragment's own place, dates and colour. The tests edit
- * an existing memory, which already has a location, so only a fragment's location needs the map. (Fragments keep
- * the order they were added in; the form has no way to reorder them.)
+ * an existing memory, which already has a location, so only a fragment's location needs the map. (The form keeps
+ * fragments in the order they were added; `MemoryScreenTest` reorders them on the memory screen.)
  */
 @RunWith(AndroidJUnit4::class)
 class FragmentsAndColorTest {
@@ -31,28 +31,16 @@ class FragmentsAndColorTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun aFragmentWithItsOwnPlaceIsSavedWithTheMemory() {
+    fun aFragmentStartsAtTheMemorysPlaceAndIsSavedWithAPlaceOfItsOwn() {
         TestData.memory(VIENNA)
         openForEditing()
 
         AddScreen.addFragment()
+        AddScreen.assertFragmentHasLocation() // The memory's place.
         AddScreen.selectFragmentLocation()
         LocationPickerScreen.tapMap()
         LocationPickerScreen.assertLocationPicked()
         LocationPickerScreen.confirm()
-        AddScreen.assertFragmentHasLocation()
-        AddScreen.save()
-
-        MemoryScreen.assertShowing(VIENNA)
-        MemoryScreen.assertFragmentCount(1)
-    }
-
-    @Test
-    fun aFragmentStartsAtTheMemorysPlace() {
-        TestData.memory(VIENNA)
-        openForEditing()
-
-        AddScreen.addFragment()
         AddScreen.assertFragmentHasLocation()
         AddScreen.save()
 
@@ -82,21 +70,6 @@ class FragmentsAndColorTest {
         AddScreen.assertNoFragments()
         AddScreen.save()
         MemoryScreen.assertShowing(PICNIC)
-    }
-
-    @Test
-    fun aPickedColorIsSaved() {
-        TestData.colorPresets(RED, GREEN, BLUE)
-        TestData.memory(VIENNA)
-        openForEditing()
-
-        AddScreen.pickColor(GREEN)
-        AddScreen.assertColor(GREEN)
-        AddScreen.save()
-        MemoryScreen.assertShowing(VIENNA)
-
-        MemoryScreen.edit()
-        AddScreen.assertColor(GREEN)
     }
 
     @Test
@@ -132,11 +105,12 @@ class FragmentsAndColorTest {
     }
 
     @Test
-    fun aFragmentKeepsAColorOfItsOwn() {
+    fun aPickedColorIsSavedAndAFragmentKeepsAColorOfItsOwn() {
         TestData.colorPresets(RED, GREEN, BLUE)
-        TestData.memory(VIENNA)
+        TestData.memory(VIENNA) // Red, as every memory starts.
         openForEditing()
-        AddScreen.pickColor(RED)
+        AddScreen.pickColor(GREEN)
+        AddScreen.assertColor(GREEN)
 
         AddScreen.addFragment() // It starts with the memory's colour.
         AddScreen.pickFragmentColor(BLUE)
@@ -145,7 +119,7 @@ class FragmentsAndColorTest {
         MemoryScreen.assertShowing(VIENNA)
         MemoryScreen.assertFragmentColor(ColorUtil.hsvToColor(BLUE.hue, BLUE.saturation, BLUE.brightness))
         MemoryScreen.edit()
-        AddScreen.assertColor(RED)
+        AddScreen.assertColor(GREEN)
     }
 
     private fun openForEditing() {

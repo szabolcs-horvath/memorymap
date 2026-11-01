@@ -9,6 +9,7 @@ import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.ToastMessage
+import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import com.szabolcshorvath.memorymap.testing.TestData.Place
@@ -18,9 +19,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The location picker's own behaviour: place search, and a spot picked offline. (Getting to it and back is in
- * `DetailNavigationTest`, the "my location" button in `MyLocationTest`.) The place search is a fake
- * (`FakePlaceSearch`): it returns the place a test chose, as if the user had searched for it.
+ * The location picker's own behaviour: place search, leaving it without a new place, and a spot picked offline.
+ * (Getting to it and back from a new memory is in `DetailNavigationTest`, the "my location" button in
+ * `MyLocationTest`.) The place search is a fake (`FakePlaceSearch`): it returns the place a test chose, as if the user
+ * had searched for it.
  */
 @RunWith(AndroidJUnit4::class)
 class LocationPickerTest {
@@ -40,17 +42,23 @@ class LocationPickerTest {
     }
 
     @Test
-    fun leavingTheSearchKeepsThePlaceTheMemoryHad() {
+    fun leavingTheSearchOrGoingBackKeepsThePlaceTheMemoryHad() {
         TestData.memory(TRIP, place = Place.VIENNA)
         app.launch()
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.openMemory(TRIP)
         MemoryScreen.edit()
-        AddScreen.selectLocation()
 
+        AddScreen.selectLocation()
         LocationPickerScreen.search() // FakePlaceSearch.nextPick is null: the user leaves the search.
         LocationPickerScreen.confirm()
+        AddScreen.assertLocationIs(Place.VIENNA)
 
+        // A spot tapped on the map, then Back instead of Confirm.
+        AddScreen.selectLocation()
+        LocationPickerScreen.tapMap()
+        Ui.pressBack()
+        AddScreen.assertShown()
         AddScreen.assertLocationIs(Place.VIENNA)
     }
 

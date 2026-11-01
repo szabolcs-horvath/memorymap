@@ -31,48 +31,24 @@ class RotationTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun map() {
+    fun theMapTheTimelineAndSettingsSignedOut() {
+        TestData.memory(TITLE)
         app.launch()
         MapScreen.assertShown()
-
         rotateAndBack {
             MapScreen.assertShown()
             BottomNav.assertSelected(Tab.MAP)
         }
-    }
 
-    @Test
-    fun timeline() {
-        TestData.memory(TITLE)
-        app.launch()
         BottomNav.open(Tab.TIMELINE)
-
         rotateAndBack {
             TimelineScreen.assertShown()
             TimelineScreen.assertMemoryShown(TITLE)
             BottomNav.assertSelected(Tab.TIMELINE)
         }
-    }
 
-    @Test
-    fun addFormKeepsWhatWasTyped() {
-        app.launch()
-        BottomNav.open(Tab.ADD)
-        AddScreen.typeTitle("Picnic")
-
-        rotateAndBack {
-            AddScreen.assertShown()
-            AddScreen.assertTitle("Picnic")
-            BottomNav.assertSelected(Tab.ADD)
-        }
-    }
-
-    @Test
-    fun settingsSignedOut() {
-        app.launch()
         BottomNav.open(Tab.SETTINGS)
         SettingsScreen.assertSignedOut()
-
         rotateAndBack {
             SettingsScreen.assertShown()
             SettingsScreen.assertSignedOut()
@@ -107,33 +83,25 @@ class RotationTest {
         rotateAndBack {
             Dialog.assertShown(RESTORE_TITLE)
         }
+
         Dialog.tap("Cancel")
         Dialog.assertGone(RESTORE_TITLE)
     }
 
     @Test
-    fun memoryStaysOnTheSameMemory() {
+    fun aMemoryStaysOnTheSameMemoryAndTheViewerKeepsThePhoto() {
         TestData.memory("Newer", daysAgo = 1)
-        TestData.memory(TITLE, daysAgo = 5)
+        TestData.photo(TestData.memory(TITLE, daysAgo = 5))
         app.launch()
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.openMemory(TITLE)
         MemoryScreen.assertShowing(TITLE)
-
         rotateAndBack {
             MemoryScreen.assertShowing(TITLE)
         }
-    }
 
-    @Test
-    fun viewerKeepsThePhoto() {
-        TestData.photo(TestData.memory(TITLE))
-        app.launch()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.openMemory(TITLE)
         MemoryScreen.openFirstPhoto()
         MediaViewerScreen.assertShowingPhoto()
-
         rotateAndBack {
             MediaViewerScreen.assertShowingPhoto()
             MemoryScreen.assertGone()
@@ -161,41 +129,39 @@ class RotationTest {
     }
 
     @Test
-    fun datePickerStaysOpenAndStillWorks() {
+    fun theAddFormKeepsWhatWasTypedAndItsDateAndTimePickersStayOpenAndStillWork() {
         app.launch()
         BottomNav.open(Tab.ADD)
-        val before = AddScreen.startDateText()
+        AddScreen.typeTitle("Picnic")
+        rotateAndBack {
+            AddScreen.assertShown()
+            AddScreen.assertTitle("Picnic")
+            BottomNav.assertSelected(Tab.ADD)
+        }
+
+        val dateBefore = AddScreen.startDateText()
         AddScreen.openStartDatePicker()
         Dialog.assertShown(DATE_PICKER_TITLE)
-
         rotateAndBack {
             Dialog.assertShown(DATE_PICKER_TITLE)
         }
-
         DatePickerDialog.pickDayInPreviousMonth(15)
         Dialog.tap("OK")
         Dialog.assertGone(DATE_PICKER_TITLE)
         AddScreen.assertShown()
-        assertNotEquals("The picked date was not applied", before, AddScreen.startDateText())
-    }
+        assertNotEquals("The picked date was not applied", dateBefore, AddScreen.startDateText())
 
-    @Test
-    fun timePickerStaysOpenAndStillWorks() {
-        app.launch()
-        BottomNav.open(Tab.ADD)
-        val before = AddScreen.startTimeText()
+        val timeBefore = AddScreen.startTimeText()
         AddScreen.openStartTimePicker()
         Dialog.assertShown(TIME_PICKER_TITLE)
-
         rotateAndBack {
             Dialog.assertShown(TIME_PICKER_TITLE)
         }
-
         TimePickerDialog.pickNextHour()
         Dialog.tap("OK")
         Dialog.assertGone(TIME_PICKER_TITLE)
         AddScreen.assertShown()
-        assertNotEquals("The picked time was not applied", before, AddScreen.startTimeText())
+        assertNotEquals("The picked time was not applied", timeBefore, AddScreen.startTimeText())
     }
 
     /** Turns the phone to landscape and back, checking [expectations] in both. */

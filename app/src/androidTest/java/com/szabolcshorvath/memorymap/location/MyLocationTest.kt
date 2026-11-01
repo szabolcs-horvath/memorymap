@@ -29,7 +29,7 @@ class MyLocationTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun theMapAsksForLocationOnlyWhenMyLocationIsTapped() {
+    fun theMapAsksForLocationOnlyWhenMyLocationIsTappedAndAllowingItMovesTheMap() {
         TestData.phoneAt(Place.BUDAPEST)
         openMapWithMemories()
         LocationAccess.assertNotAsked()
@@ -40,12 +40,6 @@ class MyLocationTest {
 
         LocationAccess.assertNotAsked()
         MapScreen.assertMarkerShown(ROME_TRIP)
-    }
-
-    @Test
-    fun allowingAccessMovesTheMapToWhereThePhoneIs() {
-        TestData.phoneAt(Place.BUDAPEST)
-        openMapWithMemories()
 
         MapScreen.tapMyLocation()
         LocationAccess.assertExplained()
@@ -97,19 +91,6 @@ class MyLocationTest {
     }
 
     @Test
-    fun withoutAccessThePickerPicksNothingAndAsksNothing() {
-        TestData.phoneAt(Place.BUDAPEST)
-        app.launch()
-        BottomNav.open(Tab.ADD)
-
-        AddScreen.selectLocation()
-
-        LocationPickerScreen.assertShown()
-        LocationAccess.assertNotAsked()
-        LocationPickerScreen.assertNothingPicked()
-    }
-
-    @Test
     fun withAccessThePickerStartsWhereThePhoneIs() {
         TestData.phoneAt(Place.BUDAPEST)
         TestData.grantLocationAccess()
@@ -124,11 +105,15 @@ class MyLocationTest {
     }
 
     @Test
-    fun thePickersMyLocationButtonAsksThenPicksWhereThePhoneIs() {
+    fun withoutAccessThePickerPicksNothingUntilItsMyLocationButtonAsks() {
         TestData.phoneAt(Place.BUDAPEST)
         app.launch()
         BottomNav.open(Tab.ADD)
+
         AddScreen.selectLocation()
+        LocationPickerScreen.assertShown()
+        LocationAccess.assertNotAsked()
+        LocationPickerScreen.assertNothingPicked()
 
         LocationPickerScreen.tapMyLocation()
         LocationAccess.assertExplained()

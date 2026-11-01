@@ -26,22 +26,6 @@ class MediaAccessTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun reLinkingAsksForAccessAndThenFindsThePhoto() {
-        TestData.photoSavedByAnotherApp(TestData.memory(TRIP), PHOTO_COLOR)
-        app.launch()
-        openMemory()
-        MemoryScreen.assertPhotoFromAnotherDevice()
-
-        BottomNav.open(Tab.SETTINGS)
-        SettingsScreen.relinkMedia()
-        PermissionDialog.allowAll()
-        SettingsScreen.waitForRelinkToFinish()
-
-        openMemory()
-        MemoryScreen.assertPhotoLoaded()
-    }
-
-    @Test
     fun reLinkingFromTheMemoryAsksForAccessAndThenShowsThePhoto() {
         TestData.photoSavedByAnotherApp(TestData.memory(TRIP), PHOTO_COLOR)
         app.launch()
@@ -56,10 +40,17 @@ class MediaAccessTest {
     }
 
     @Test
-    fun aRestoreWithoutAccessStillRestoresThenOffersAccessForTheUnlinkedPhoto() {
+    fun aRestoreCancelledAtTheExplanationRestoresNothingAndOneWithoutAccessOffersAccessAfterwards() {
         TestData.photoSavedByAnotherApp(TestData.memory(TRIP), PHOTO_COLOR)
         backUpThenAddAMemory()
 
+        startRestore()
+        Dialog.tap("Cancel")
+        Dialog.assertGone(ACCESS_TITLE)
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.assertMemoryShown(ADDED_AFTER_THE_BACKUP)
+
+        BottomNav.open(Tab.SETTINGS)
         startRestore()
         Dialog.tap("Continue")
         PermissionDialog.refuse()
@@ -77,7 +68,7 @@ class MediaAccessTest {
     }
 
     @Test
-    fun notNowLeavesThePhotoUnlinked() {
+    fun notNowLeavesThePhotoUnlinkedUntilReLinkingInSettingsAsksAgain() {
         TestData.photoSavedByAnotherApp(TestData.memory(TRIP), PHOTO_COLOR)
         backUpThenAddAMemory()
         startRestore()
@@ -91,19 +82,14 @@ class MediaAccessTest {
 
         openMemory()
         MemoryScreen.assertPhotoFromAnotherDevice()
-    }
 
-    @Test
-    fun cancellingTheExplanationRestoresNothing() {
-        TestData.memory(TRIP)
-        backUpThenAddAMemory()
+        BottomNav.open(Tab.SETTINGS)
+        SettingsScreen.relinkMedia()
+        PermissionDialog.allowAll()
+        SettingsScreen.waitForRelinkToFinish()
 
-        startRestore()
-        Dialog.tap("Cancel")
-        Dialog.assertGone(ACCESS_TITLE)
-
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.assertMemoryShown(ADDED_AFTER_THE_BACKUP)
+        openMemory()
+        MemoryScreen.assertPhotoLoaded()
     }
 
     /** Backs up what the app holds, then adds a memory that a restore of that backup removes. */
