@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.settings
 
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService.DEFAULT_EMAIL
 import com.szabolcshorvath.memorymap.fakes.FakeBackupStorage
@@ -155,6 +156,8 @@ class SettingsTest {
 
     @Test
     fun aChangeIsBackedUpAutomatically() {
+        // Long enough to see that a backup is on its way, without waiting the app's 15 seconds.
+        AutomaticBackups.debounceSeconds = AUTOMATIC_BACKUP_DELAY_SECONDS
         TestData.signIn()
         openSettings()
 
@@ -234,7 +237,7 @@ class SettingsTest {
         const val DELETE_TITLE = "Delete backup?"
         const val MINUTE_MS = 60_000L
 
-        // Automatic backups start 15 seconds after the last change.
-        const val AUTOMATIC_BACKUP_TIMEOUT_MS = 60_000L
+        const val AUTOMATIC_BACKUP_DELAY_SECONDS = 5L
+        const val AUTOMATIC_BACKUP_TIMEOUT_MS = 30_000L
     }
 }

@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.backup
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -23,10 +24,15 @@ import java.util.concurrent.TimeUnit
 /**
  * Automatic backups run in the background through WorkManager, so they survive the screen (and the
  * process) that asked for them. Every change calls [schedule]; a burst of changes (reordering, several
- * saves) leads to a single upload [DEBOUNCE_SECONDS] after the last one, once there is a network.
+ * saves) leads to a single upload [debounceSeconds] after the last one, once there is a network.
  */
 object AutomaticBackups {
     const val UNIQUE_WORK_NAME = "automatic_backup"
+
+    /** How long after the last change the backup starts. A UI test shortens it, so it doesn't wait 15 seconds. */
+    @VisibleForTesting
+    @Volatile
+    internal var debounceSeconds = DEBOUNCE_SECONDS
 
     private const val DEBOUNCE_SECONDS = 15L
     private const val RETRY_BACKOFF_MINUTES = 1L
@@ -51,7 +57,7 @@ object AutomaticBackups {
             .distinctUntilChanged()
 
     internal fun request(): OneTimeWorkRequest = OneTimeWorkRequestBuilder<AutomaticBackupWorker>()
-        .setInitialDelay(DEBOUNCE_SECONDS, TimeUnit.SECONDS)
+        .setInitialDelay(debounceSeconds, TimeUnit.SECONDS)
         .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, RETRY_BACKOFF_MINUTES, TimeUnit.MINUTES)
         .build()

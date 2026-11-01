@@ -29,18 +29,19 @@ class TabNavigationTest {
     fun switchesFromEveryTabToEveryOtherTab() {
         app.launch()
         MapScreen.assertShown()
+        BottomNav.open(Tab.MAP) // Tapping the tab that is already open changes nothing.
 
-        for (from in Tab.entries) {
-            for (to in Tab.entries) {
-                if (from == to) continue
-                BottomNav.open(from) // Tapping the tab that is already open changes nothing.
+        // A route that makes each of the 12 switches between two tabs exactly once.
+        val route = listOf(
+            Tab.MAP, Tab.TIMELINE, Tab.MAP, Tab.ADD, Tab.MAP, Tab.SETTINGS, Tab.TIMELINE,
+            Tab.ADD, Tab.TIMELINE, Tab.SETTINGS, Tab.ADD, Tab.SETTINGS, Tab.MAP,
+        )
+        for ((from, to) in route.zipWithNext()) {
+            BottomNav.select(to)
 
-                BottomNav.select(to)
-
-                BottomNav.screenOf(to).assertShown()
-                BottomNav.screenOf(from).assertGone()
-                BottomNav.assertSelected(to)
-            }
+            BottomNav.screenOf(to).assertShown()
+            BottomNav.screenOf(from).assertGone()
+            BottomNav.assertSelected(to)
         }
     }
 
