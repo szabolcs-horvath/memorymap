@@ -8,7 +8,6 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.textAsString
@@ -264,20 +263,8 @@ object MediaViewerScreen {
         Ui.assertShown("The video moving on from ${start}ms") { hasId(SCRUBBER) && position() > start }
     }
 
-    /**
-     * Runs [block] without waiting for the screen to settle first, as UI Automator does before every tap and lookup.
-     * While a video plays, its position bar moves all the time, so the screen settles only once the video ends.
-     */
-    private fun <T> whilePlaying(block: () -> T): T {
-        val configurator = Configurator.getInstance()
-        val settleTimeout = configurator.waitForIdleTimeout
-        configurator.waitForIdleTimeout = 0
-        try {
-            return block()
-        } finally {
-            configurator.waitForIdleTimeout = settleTimeout
-        }
-    }
+    // While a video plays, its position bar moves all the time, so the screen settles only once the video ends.
+    private fun <T> whilePlaying(block: () -> T): T = Ui.withoutSettling(block)
 
     /** The video is paused: the button offers Play again, and the position bar stays where it is. */
     fun assertPaused() {
@@ -433,8 +420,9 @@ object LocationPickerScreen {
 
     private const val POLL_MS = 200L
 
+    /** Taps "Confirm Location" once it works: it is turned off while the picked spot's address is looked up. */
     fun confirm() {
-        Ui.find { hasText(CONFIRM) }.click()
+        Ui.find { hasText(CONFIRM) && isEnabled }.click()
         Ui.device.waitForIdle()
     }
 

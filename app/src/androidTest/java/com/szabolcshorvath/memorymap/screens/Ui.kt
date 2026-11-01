@@ -6,6 +6,7 @@ import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
@@ -154,6 +155,21 @@ object Ui {
     private const val SCROLL_PAUSE_MS = 300L
     private const val MAX_FLINGS = 10
 
+    /**
+     * Runs [block] without waiting for the screen to settle first, as UI Automator does before every tap and lookup.
+     * For screens that keep changing (a playing video) or changes that would be over by then (a short flash).
+     */
+    fun <T> withoutSettling(block: () -> T): T {
+        val configurator = Configurator.getInstance()
+        val settleTimeout = configurator.waitForIdleTimeout
+        configurator.waitForIdleTimeout = 0
+        try {
+            return block()
+        } finally {
+            configurator.waitForIdleTimeout = settleTimeout
+        }
+    }
+
     fun pressBack() {
         device.pressBack()
         device.waitForIdle()
@@ -183,10 +199,10 @@ object ScreenColors {
         return points.map { screenshot.getPixel(it.x, it.y) }.also { screenshot.recycle() }
     }
 
-    /** Whether [a] and [b] are the same colour, give or take what JPEG and scaling do to it. */
-    fun isClose(a: Int, b: Int) = abs(Color.red(a) - Color.red(b)) < TOLERANCE &&
-        abs(Color.green(a) - Color.green(b)) < TOLERANCE &&
-        abs(Color.blue(a) - Color.blue(b)) < TOLERANCE
+    /** Whether [a] and [b] are the same colour, give or take [tolerance] per channel (what JPEG and scaling do). */
+    fun isClose(a: Int, b: Int, tolerance: Int = TOLERANCE) = abs(Color.red(a) - Color.red(b)) < tolerance &&
+        abs(Color.green(a) - Color.green(b)) < tolerance &&
+        abs(Color.blue(a) - Color.blue(b)) < tolerance
 
     fun hex(color: Int): String = String.format(Locale.ROOT, "#%06X", color and 0xFFFFFF)
 

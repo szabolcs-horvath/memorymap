@@ -93,6 +93,18 @@ class TimelineTest {
     @Ignore("The oldest memories stay below the screen while the search bar shows (BUG-17). Turn this on with the fix.")
     fun showOnTimelineScrollsToTheOldestMemory() = showOnTimelineScrollsTo(MANY)
 
+    @Test
+    fun showOnTimelineFlashesTheMemory() {
+        app.useAnimations()
+        TestData.memory(PICNIC, daysAgo = 1)
+        TestData.memory(CONCERT, daysAgo = 2)
+        openTimeline()
+        TimelineScreen.openMemory(CONCERT)
+        MemoryScreen.assertShowing(CONCERT)
+
+        TimelineScreen.assertFlashesAfter(CONCERT) { MemoryScreen.showOnTimeline() }
+    }
+
     /** Opens the newest memory, swipes to memory [n], and checks that Show on Timeline scrolls the list to it. */
     private fun showOnTimelineScrollsTo(n: Int) {
         addManyMemories()
