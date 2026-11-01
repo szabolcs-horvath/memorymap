@@ -11,6 +11,7 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
@@ -27,7 +28,6 @@ import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.color.MaterialColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
@@ -42,6 +42,7 @@ import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateTimeFormatter
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
@@ -118,6 +119,21 @@ class SettingsFragment : Fragment() {
                 Toast.makeText(ctx, "Media re-linking complete", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // The questions come back after a rotation or process death, so what they act on comes with the answer.
+        ConfirmDialog.listen(this, DELETE_PRESET_REQUEST) { extras ->
+            allPresets.firstOrNull { it.id == extras.getInt(PRESET_ID) }?.let(::deletePreset)
+        }
+        ConfirmDialog.listen(this, RESTORE_REQUEST) { extras ->
+            val file = driveFileOf(extras)
+            if (PermissionUtil.hasAllMediaPermissions(requireContext())) executeRestore(file) else showPermissionInfoDialog(file)
+        }
+        ConfirmDialog.listen(this, RESTORE_ACCESS_REQUEST) { launchPermissionRequest(driveFileOf(it)) }
+        ConfirmDialog.listen(this, MORE_ACCESS_REQUEST) { relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions()) }
+        ConfirmDialog.listen(this, DELETE_BACKUP_REQUEST) { executeDeleteBackup(driveFileOf(it)) }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -451,16 +467,16 @@ class SettingsFragment : Fragment() {
     }
 
     private fun showDeletePresetConfirmation() {
-        val context = context ?: return
         val presetToDelete = viewModel.editingPreset ?: return
-        MaterialAlertDialogBuilder(context)
-            .setTitle("Delete Preset")
-            .setMessage("Are you sure you want to delete this color preset?")
-            .setPositiveButton("Delete") { _, _ ->
-                deletePreset(presetToDelete)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        ConfirmDialog.show(
+            childFragmentManager,
+            DELETE_PRESET_REQUEST,
+            title = "Delete Preset",
+            message = "Are you sure you want to delete this color preset?",
+            confirm = "Delete",
+            cancel = "Cancel",
+            extras = bundleOf(PRESET_ID to presetToDelete.id)
+        )
     }
 
     private fun deletePreset(preset: HSVPreset) {
@@ -954,33 +970,28 @@ class SettingsFragment : Fragment() {
     }
 
     private fun onRestoreBackup(file: DriveFile) {
-        val context = context ?: return
-        MaterialAlertDialogBuilder(context)
-            .setTitle("Restore Backup")
-            .setMessage(
-                "Are you sure you want to restore from the backup '${file.name}'?\n\nThis action will overwrite all your current data and it cannot be undone!"
-            )
-            .setPositiveButton("Restore") { _, _ ->
-                if (PermissionUtil.hasAllMediaPermissions(context)) {
-                    executeRestore(file)
-                } else {
-                    showPermissionInfoDialog(file)
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        ConfirmDialog.show(
+            childFragmentManager,
+            RESTORE_REQUEST,
+            title = "Restore Backup",
+            message = "Are you sure you want to restore from the backup '${file.name}'?\n\n" +
+                "This action will overwrite all your current data and it cannot be undone!",
+            confirm = "Restore",
+            cancel = "Cancel",
+            extras = extrasOf(file)
+        )
     }
 
     private fun showPermissionInfoDialog(file: DriveFile) {
-        val context = context ?: return
-        MaterialAlertDialogBuilder(context)
-            .setTitle(R.string.restore_media_access_title)
-            .setMessage(R.string.restore_media_access_message)
-            .setPositiveButton(R.string.restore_media_access_continue) { _, _ ->
-                launchPermissionRequest(file)
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        ConfirmDialog.show(
+            childFragmentManager,
+            RESTORE_ACCESS_REQUEST,
+            title = getString(R.string.restore_media_access_title),
+            message = getString(R.string.restore_media_access_message),
+            confirm = getString(R.string.restore_media_access_continue),
+            cancel = getString(android.R.string.cancel),
+            extras = extrasOf(file)
+        )
     }
 
     /**
@@ -994,15 +1005,15 @@ class SettingsFragment : Fragment() {
             val hasMissingMedia = withContext(Dispatchers.IO) {
                 LocalMediaUtil.hasMissingMedia(ctx, commonViewModel.getMemoryGroupDao().getAllMediaItems())
             }
-            if (!hasMissingMedia || _binding == null) return@launch
-            MaterialAlertDialogBuilder(ctx)
-                .setTitle(R.string.relink_more_title)
-                .setMessage(R.string.relink_more_message)
-                .setPositiveButton(R.string.relink_more_allow) { _, _ ->
-                    relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
-                }
-                .setNegativeButton(R.string.relink_more_not_now, null)
-                .show()
+            if (!hasMissingMedia || _binding == null || isStateSaved) return@launch
+            ConfirmDialog.show(
+                childFragmentManager,
+                MORE_ACCESS_REQUEST,
+                title = getString(R.string.relink_more_title),
+                message = getString(R.string.relink_more_message),
+                confirm = getString(R.string.relink_more_allow),
+                cancel = getString(R.string.relink_more_not_now)
+            )
         }
     }
 
@@ -1017,19 +1028,26 @@ class SettingsFragment : Fragment() {
     }
 
     private fun onDeleteBackup(file: DriveFile) {
-        val context = context ?: return
-        MaterialAlertDialogBuilder(context)
-            .setTitle(R.string.delete_backup_title)
-            .setMessage(getString(R.string.delete_backup_message, file.name))
-            .setPositiveButton(R.string.delete_backup_confirm) { _, _ -> executeDeleteBackup(file) }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        ConfirmDialog.show(
+            childFragmentManager,
+            DELETE_BACKUP_REQUEST,
+            title = getString(R.string.delete_backup_title),
+            message = getString(R.string.delete_backup_message, file.name),
+            confirm = getString(R.string.delete_backup_confirm),
+            cancel = getString(android.R.string.cancel),
+            extras = extrasOf(file)
+        )
     }
 
     private fun executeDeleteBackup(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
         viewModel.deleteBackup(email, file.id, backupManager)
     }
+
+    /** What a question about backup [file] needs to act on it, kept with the question (see [driveFileOf]). */
+    private fun extrasOf(file: DriveFile) = bundleOf(FILE_ID to file.id, FILE_NAME to file.name)
+
+    private fun driveFileOf(extras: Bundle): DriveFile = DriveFile().setId(extras.getString(FILE_ID)).setName(extras.getString(FILE_NAME))
 
     override fun onDestroyView() {
         super.onDestroyView()
@@ -1041,5 +1059,13 @@ class SettingsFragment : Fragment() {
         private const val ANIMATION_DURATION = 300L
         private const val FACING_RIGHT_ROTATION = 0f
         private const val FACING_DOWN_ROTATION = 90f
+        private const val DELETE_PRESET_REQUEST = "delete_preset"
+        private const val RESTORE_REQUEST = "restore_backup"
+        private const val RESTORE_ACCESS_REQUEST = "restore_media_access"
+        private const val MORE_ACCESS_REQUEST = "more_media_access"
+        private const val DELETE_BACKUP_REQUEST = "delete_backup"
+        private const val PRESET_ID = "preset_id"
+        private const val FILE_ID = "file_id"
+        private const val FILE_NAME = "file_name"
     }
 }

@@ -20,7 +20,6 @@ import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import org.junit.Assert.assertNotEquals
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -72,7 +71,6 @@ class RotationTest {
     }
 
     @Test
-    @Ignore("Plain AlertDialogs close when the phone is turned (UX-16). Turn this on with the fix.")
     fun restoreConfirmationStaysOpen() {
         TestData.signIn()
         FakeBackupStorage.add(FakeAccountService.DEFAULT_EMAIL, MANUAL_BACKUP, modifiedMillis = System.currentTimeMillis())
