@@ -329,7 +329,10 @@ object AddScreen : TabScreen {
         assertTrue("The location \"$text\" is not just coordinates", text.startsWith("Coordinates: "))
     }
 
-    /** The memory's location is [place]: its name, found by the address lookup, or its coordinates if that failed. */
+    /**
+     * The memory's location is [place]: its name (found by the address lookup) or its coordinates if that failed,
+     * and its address if it has one.
+     */
     fun assertLocationIs(place: Place) {
         val text = locationText().orEmpty()
         val coordinates = "${place.latitude}, ${place.longitude}"
@@ -337,6 +340,7 @@ object AddScreen : TabScreen {
             "The location \"$text\" is not ${place.name}",
             place.name?.let { it in text } == true || coordinates in text
         )
+        place.address?.let { assertTrue("The location \"$text\" doesn't show the address \"$it\"", it in text) }
     }
 
     fun assertHasLocation() = assertNotEquals("No location was picked", NO_LOCATION, locationText())
