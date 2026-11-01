@@ -2,11 +2,13 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.app.Application
 import android.content.Context
+import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
@@ -34,7 +36,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewModel(application) {
+class AddMemoryGroupFragmentViewModel(application: Application, savedState: SavedStateHandle) : AndroidViewModel(application) {
 
     sealed class SaveResult {
         data class Success(val groupId: Int) : SaveResult()
@@ -83,6 +85,12 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
 
     /** The form's content when it was last cleared or loaded for editing. Declared after the fields it reads. */
     private var unchangedContent = currentContent()
+
+    init {
+        // The draft survives process death: Android asks for it when it saves the app's state, and it is read back here.
+        savedState.get<Bundle>(FORM_STATE)?.let(::restoreState)
+        savedState.setSavedStateProvider(FORM_STATE, ::saveState)
+    }
 
     fun saveMemoryGroup(database: MemoryMapDatabase) {
         if (_isSaving.value) return
@@ -180,23 +188,47 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
         fragments.map { it.copy(isDateExpanded = false, isColorExpanded = false) }
     )
 
-    /** What a save would store, to compare the form with how it was. */
-    private data class FormContent(
-        val title: String?,
-        val description: String?,
-        val lat: Double?,
-        val lng: Double?,
-        val placeName: String?,
-        val address: String?,
-        val startDateTime: ZonedDateTime,
-        val endDateTime: ZonedDateTime,
-        val isAllDay: Boolean,
-        val markerHue: Float,
-        val markerSaturation: Float,
-        val markerBrightness: Float,
-        val media: List<AddMemoryGroupFragment.SelectedMedia>,
-        val fragments: List<MemoryFragmentEditAdapter.FragmentEditState>
-    )
+    /** The draft and what it is for (a new memory or an edit), for the saved state. Read back by [restoreState]. */
+    private fun saveState() = Bundle().apply {
+        val form = FormContent(
+            title, description, lat, lng, placeName, address, startDateTime, endDateTime, isAllDay,
+            markerHue, markerSaturation, markerBrightness, selectedMedia.toList(), fragments.toList()
+        )
+        putBundle(FORM, form.toBundle())
+        putBundle(UNCHANGED_FORM, unchangedContent.toBundle())
+        editingMemoryId?.let { putInt(EDITING_MEMORY_ID, it) }
+        pendingEditMemoryId?.let { putInt(PENDING_EDIT_MEMORY_ID, it) }
+        putInt(ACTIVE_PICKING_INDEX, activePickingIndex)
+        putBoolean(FRAGMENTS_EXPANDED, fragmentsExpanded)
+        putBoolean(COLOR_EXPANDED, colorExpanded)
+        putBoolean(DATE_EXPANDED, dateExpanded)
+    }
+
+    private fun restoreState(state: Bundle) {
+        state.getBundle(FORM)?.toFormContent()?.let { form ->
+            title = form.title
+            description = form.description
+            lat = form.lat
+            lng = form.lng
+            placeName = form.placeName
+            address = form.address
+            startDateTime = form.startDateTime
+            endDateTime = form.endDateTime
+            isAllDay = form.isAllDay
+            markerHue = form.markerHue
+            markerSaturation = form.markerSaturation
+            markerBrightness = form.markerBrightness
+            selectedMedia.addAll(form.media)
+            fragments.addAll(form.fragments)
+        }
+        state.getBundle(UNCHANGED_FORM)?.let { unchangedContent = it.toFormContent() }
+        editingMemoryId = state.getInt(EDITING_MEMORY_ID).takeIf { state.containsKey(EDITING_MEMORY_ID) }
+        pendingEditMemoryId = state.getInt(PENDING_EDIT_MEMORY_ID).takeIf { state.containsKey(PENDING_EDIT_MEMORY_ID) }
+        activePickingIndex = state.getInt(ACTIVE_PICKING_INDEX, -1)
+        fragmentsExpanded = state.getBoolean(FRAGMENTS_EXPANDED, true)
+        colorExpanded = state.getBoolean(COLOR_EXPANDED)
+        dateExpanded = state.getBoolean(DATE_EXPANDED, true)
+    }
 
     /** Fills the form with [data], a memory opened for editing. */
     fun fillForEditing(data: MemoryGroupWithMedia) {
@@ -423,6 +455,18 @@ class AddMemoryGroupFragmentViewModel(application: Application) : AndroidViewMod
             )
         }
         dao.insertFragments(fragmentEntities)
+    }
+
+    private companion object {
+        const val FORM_STATE = "add_memory_form"
+        const val FORM = "form"
+        const val UNCHANGED_FORM = "unchanged_form"
+        const val EDITING_MEMORY_ID = "editing_memory_id"
+        const val PENDING_EDIT_MEMORY_ID = "pending_edit_memory_id"
+        const val ACTIVE_PICKING_INDEX = "active_picking_index"
+        const val FRAGMENTS_EXPANDED = "fragments_expanded"
+        const val COLOR_EXPANDED = "color_expanded"
+        const val DATE_EXPANDED = "date_expanded"
     }
 }
 
