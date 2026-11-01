@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.screens
 
 import android.graphics.Point
 import android.os.SystemClock
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.uiautomator.Direction
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
@@ -18,9 +19,12 @@ object TimelineScreen : TabScreen {
     // The flash colour is close to the card's own (a few steps on one channel): any visible change counts.
     private const val FLASH_TOLERANCE = 8
 
-    override fun assertShown() = Ui.assertShown("The timeline") { hasHint(SEARCH) }
+    // By the list or the text shown instead of an empty one: the search bar scrolls away with the list.
+    override fun assertShown() = Ui.assertShown("The timeline") { isTimeline() }
 
-    override fun assertGone() = Ui.assertGone("The timeline") { hasHint(SEARCH) }
+    override fun assertGone() = Ui.assertGone("The timeline") { isTimeline() }
+
+    private fun AccessibilityNodeInfo.isTimeline() = hasId("rv_timeline") || hasId("emptyView")
 
     /**
      * Runs [action] (such as Show on Timeline) and checks that memory [title]'s card then flashes: its colour changes
