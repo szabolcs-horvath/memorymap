@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
@@ -16,7 +17,10 @@ import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import java.text.DateFormat
+import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.regex.Pattern
 
@@ -81,6 +85,18 @@ object MapScreen : TabScreen {
 
     /** The date filter button shows [label]: a quick filter's name, or the picked dates. */
     fun assertFilter(label: String) = Ui.assertShown("The date filter \"$label\"") { hasId(DATE_RANGE) && hasText(label) }
+
+    /** The date filter button shows the dates from [start] to [end], as the app writes them. */
+    fun assertFilter(start: LocalDate, end: LocalDate) {
+        val formatter = DateTimeFormatterUtil.dateFormatter()
+        assertFilter("${start.format(formatter)} - ${end.format(formatter)}")
+    }
+
+    /** Opens the calendar for picking the dates to show ([DateRangePickerDialog]). */
+    fun openDateRangePicker() {
+        Ui.find { hasId(DATE_RANGE) }.click()
+        Ui.device.waitForIdle()
+    }
 
     fun toggleColorStatistics() {
         Ui.find { hasDescription(STATS) }.click()
@@ -355,20 +371,40 @@ object AddScreen : TabScreen {
     fun assertNoFragments() = Ui.assertGone("A fragment") { hasDescription(REMOVE_FRAGMENT) }
 
     /**
-     * The first fragment's card, with its location part on screen. Scrolling stops as soon as its remove button
-     * (at the top of the card) shows, so this nudges the page down until the card's "Select on Map" shows too.
+     * Gives the first fragment dates of its own ("Use specific time for this fragment") and opens the picker for its
+     * start date.
      */
-    private fun fragmentCard(): UiObject2 {
+    fun openFragmentStartDatePicker() {
+        tapInFragmentCard(By.text(DATE_AND_TIME))
+        tapInFragmentCard(By.text("Use specific time for this fragment"))
+        tapInFragmentCard(By.res(Ui.device.currentPackageName, "bt_startDate"))
+    }
+
+    /** Picks [color] from the first fragment's own presets. */
+    fun pickFragmentColor(color: Hsv) = tapInFragmentCard(By.desc(ColorPresetsSection.describe(color)))
+
+    // The card's "Date & Time" part and colour presets are named like the memory's own: look inside the card.
+    private fun tapInFragmentCard(element: BySelector) {
+        checkNotNull(fragmentCard(element).findObject(element)) { "The fragment has no $element on screen" }.click()
+        Ui.device.waitForIdle()
+    }
+
+    /**
+     * The first fragment's card, with [part] on screen (by default its location part). Scrolling stops as soon as
+     * its remove button (at the top of the card) shows, so this nudges the page down until [part] shows too.
+     */
+    private fun fragmentCard(part: BySelector = By.text(SELECT_LOCATION)): UiObject2 {
         Ui.scrollTo { hasDescription(REMOVE_FRAGMENT) }
         repeat(MAX_NUDGES) {
             val card = Ui.find { hasId("fragmentEditCard") }
-            if (card.findObject(By.text(SELECT_LOCATION)) != null) return card
+            if (card.findObject(part) != null) return card
             Ui.scrollDownALittle()
         }
         return Ui.find { hasId("fragmentEditCard") }
     }
 
     private const val MAX_NUDGES = 5
+    private const val DATE_AND_TIME = "Date & Time"
     private const val MARKER_COLOR = "Marker Color"
     private const val REMOVE_FRAGMENT = "Remove fragment"
 
@@ -617,7 +653,8 @@ object ColorPresetsSection {
 
     private fun AccessibilityNodeInfo.isSwatch(color: Hsv) = hasDescription(describe(color))
 
-    private fun describe(color: Hsv): String = InstrumentationRegistry.getInstrumentation().targetContext.getString(
+    /** How the app describes the swatch of [color] to screen readers. */
+    fun describe(color: Hsv): String = InstrumentationRegistry.getInstrumentation().targetContext.getString(
         R.string.color_preset_description,
         color.hue.toInt(),
         color.saturation,
@@ -667,6 +704,34 @@ object DatePickerDialog {
         Ui.find { hasDescription("Change to previous month") }.click()
         Ui.find { isClickable && hasText(day.toString()) }.click()
         Ui.device.waitForIdle()
+    }
+}
+
+/**
+ * The calendar for picking a range of dates. It types the dates in its text mode, which needs no scrolling through
+ * months, in the format the calendar expects for the phone's language.
+ */
+object DateRangePickerDialog {
+    fun pick(start: LocalDate, end: LocalDate) {
+        Ui.find { hasDescription("Switch to text input mode") }.click()
+        Ui.find { hasHint("Start date") && isEditable }.text = start.format(inputFormat())
+        Ui.find { hasHint("End date") && isEditable }.text = end.format(inputFormat())
+        Ui.device.waitForIdle()
+        // Full-screen, the calendar confirms with "Save"; as a dialog, with "OK".
+        val confirm = Ui.find { isClickable && (hasText("Save") || hasText("OK")) && window?.isFocused != false }
+        confirm.click()
+        Ui.device.waitForIdle()
+    }
+
+    /** The calendar's text format: the phone's short date format with two-digit days and months, and four-digit years. */
+    private fun inputFormat(): DateTimeFormatter {
+        val short = (DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault()) as SimpleDateFormat).toPattern()
+        val pattern = short.replace(Regex("[^dMy/\\-.]"), "")
+            .replace(Regex("d{1,2}"), "dd")
+            .replace(Regex("M{1,2}"), "MM")
+            .replace(Regex("y{1,4}"), "yyyy")
+            .removeSuffix(".")
+        return DateTimeFormatter.ofPattern(pattern, Locale.getDefault())
     }
 }
 

@@ -1,8 +1,9 @@
 package com.szabolcshorvath.memorymap.screens
 
-import android.graphics.Color
 import android.graphics.Point
 import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
@@ -10,13 +11,13 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.textAsString
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import java.util.Locale
+import java.time.LocalDate
 import java.util.concurrent.TimeoutException
 import java.util.regex.Pattern
-import kotlin.math.abs
 
 /** A memory opened from the map or the timeline (one page of the memory pager). */
 object MemoryScreen {
@@ -65,8 +66,7 @@ object MemoryScreen {
 
     /** Opens the "Memory Fragments" section if it is closed, and waits until it lists [count] fragments. */
     fun assertFragmentCount(count: Int) {
-        Ui.scrollTo { hasText(FRAGMENTS) }
-        if (!Ui.isShown(timeoutMs = 0) { hasId("fragmentCard") }) Ui.find { hasText(FRAGMENTS) }.click()
+        openFragments()
         val cards = By.res(Ui.device.currentPackageName, "fragmentCard")
         val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
         var found = Ui.device.findObjects(cards).size
@@ -78,18 +78,68 @@ object MemoryScreen {
     }
 
     /**
+     * The (only) fragment has dates of its own, starting on [date] (its dates read like "Sep 10, 2026 9:00 AM - …").
+     * A fragment without dates of its own shows none.
+     */
+    fun assertFragmentStartsOn(date: LocalDate) {
+        val text = fragmentCard().findObject(By.res(Ui.device.currentPackageName, "tv_time"))?.text.orEmpty()
+        val day = date.format(DateTimeFormatterUtil.dateFormatter())
+        assertTrue("The fragment's dates \"$text\" don't start on $day", text.startsWith(day))
+    }
+
+    /** The (only) fragment shows the marker colour [color], in the strip along its left edge. */
+    fun assertFragmentColor(color: Int) {
+        val strip = checkNotNull(fragmentCard().findObject(By.res(Ui.device.currentPackageName, "colorIndicator"))) {
+            "The fragment has no colour strip"
+        }
+        val shown = ScreenColors.at(listOf(strip.visibleCenter)).single()
+        assertTrue(
+            "The fragment's colour ${ScreenColors.hex(shown)} is not ${ScreenColors.hex(color)}",
+            ScreenColors.isClose(shown, color)
+        )
+    }
+
+    /** The first fragment's card, on screen, with the fragments section opened. */
+    private fun fragmentCard(): UiObject2 {
+        openFragments()
+        Ui.scrollTo { hasText("Show on Map") && isInFragmentCard() }
+        return Ui.find { hasId("fragmentCard") }
+    }
+
+    private fun AccessibilityNodeInfo.isInFragmentCard(): Boolean {
+        var node = parent
+        while (node != null) {
+            if (node.viewIdResourceName?.endsWith(":id/fragmentCard") == true) return true
+            node = node.parent
+        }
+        return false
+    }
+
+    private fun openFragments() {
+        Ui.scrollTo { hasText(FRAGMENTS) }
+        if (!Ui.isShown(timeoutMs = 0) { hasId("fragmentCard") }) Ui.find { hasText(FRAGMENTS) }.click()
+    }
+
+    /**
      * The photos are, from left to right, of these colours (the tests' photos are a single colour each). The
      * thumbnails all read "Open photo", so the colours are read from a screenshot, at each thumbnail's centre.
      */
     fun assertPhotoColors(vararg colors: Int) {
         Ui.scrollTo { hasDescription(OPEN_PHOTO) }
         SystemClock.sleep(CROSSFADE_MS) // Thumbnails fade in.
-        val shown = thumbnails().let { thumbs ->
-            val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-            thumbs.map { screenshot.getPixel(it.visibleCenter.x, it.visibleCenter.y) }.also { screenshot.recycle() }
-        }
-        val matches = shown.size == colors.size && shown.zip(colors.toList()).all { (a, b) -> isClose(a, b) }
-        assertTrue("The photos' colours ${shown.map(::hex)} are not ${colors.map(::hex)}", matches)
+        val shown = ScreenColors.at(thumbnails().map { it.visibleCenter })
+        val matches = shown.size == colors.size && shown.zip(colors.toList()).all { (a, b) -> ScreenColors.isClose(a, b) }
+        assertTrue(
+            "The photos' colours ${shown.map(ScreenColors::hex)} are not ${colors.map(ScreenColors::hex)}",
+            matches
+        )
+    }
+
+    /** Opens photo [index] (0 is the first) in the full-screen viewer. */
+    fun openPhoto(index: Int) {
+        Ui.scrollTo { hasDescription(OPEN_PHOTO) }
+        thumbnails()[index].click()
+        Ui.device.waitForIdle()
     }
 
     /** Long-presses photo [from] (0 is the first) and drags it into the place of photo [onto]. */
@@ -105,12 +155,6 @@ object MemoryScreen {
 
     private fun thumbnails(): List<UiObject2> = Ui.device.findObjects(By.desc(OPEN_PHOTO))
         .sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left }))
-
-    private fun isClose(a: Int, b: Int) = abs(Color.red(a) - Color.red(b)) < COLOR_TOLERANCE &&
-        abs(Color.green(a) - Color.green(b)) < COLOR_TOLERANCE &&
-        abs(Color.blue(a) - Color.blue(b)) < COLOR_TOLERANCE
-
-    private fun hex(color: Int) = String.format(Locale.ROOT, "#%06X", color and 0xFFFFFF)
 
     /** The photo shows as a thumbnail, without the could-not-load warning. */
     fun assertPhotoLoaded() {
@@ -156,7 +200,6 @@ object MemoryScreen {
     private const val FRAGMENTS = "Memory Fragments"
     private const val OPEN_PHOTO = "Open photo"
     private const val CROSSFADE_MS = 600L
-    private const val COLOR_TOLERANCE = 60
     private const val EDGE_INSET = 2
     private const val DRAG_SPEED = 600 // Pixels per second.
     private const val SWIPE_SPEED = 2500 // Pixels per second.
@@ -187,6 +230,85 @@ object MediaViewerScreen {
     fun assertShowingPhoto() = Ui.assertShown("The full-screen photo") { hasDescription("Photo") }
 
     fun assertGone() = Ui.assertGone("The full-screen viewer") { hasDescription("Photo") }
+
+    /**
+     * The photo on screen has [color] at [across] of the screen's width (0 is the left edge, 1 the right), half-way
+     * down. The tests' photos are wider than tall, so they fill the width of an upright screen. Waits for the photo
+     * to load and fade in.
+     */
+    fun assertColorAt(color: Int, across: Float = CENTER) {
+        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        var shown = colorAt(across)
+        while (!ScreenColors.isClose(shown, color) && SystemClock.uptimeMillis() < end) {
+            SystemClock.sleep(POLL_MS)
+            shown = colorAt(across)
+        }
+        assertTrue(
+            "The photo is ${ScreenColors.hex(shown)} at $across across, not ${ScreenColors.hex(color)}",
+            ScreenColors.isClose(shown, color)
+        )
+    }
+
+    fun swipeToNext() = swipe(Direction.LEFT)
+
+    fun swipeToPrevious() = swipe(Direction.RIGHT)
+
+    /**
+     * Double-taps the photo at [across] of the screen's width, which zooms in around that spot. Two separate clicks
+     * come too far apart to count as a double tap (each holds the finger down for a while), so this sends the four
+     * touches itself, a short moment apart.
+     */
+    fun doubleTapAt(across: Float) {
+        val spot = spot(across)
+        tap(spot)
+        SystemClock.sleep(TAP_MS)
+        tap(spot)
+        Ui.device.waitForIdle()
+    }
+
+    /** A quick tap: the finger down at [spot] and up again [TAP_MS] later. */
+    private fun tap(spot: Point) {
+        val down = SystemClock.uptimeMillis()
+        inject(down, down, MotionEvent.ACTION_DOWN, spot)
+        SystemClock.sleep(TAP_MS)
+        inject(down, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, spot)
+    }
+
+    private fun inject(downTime: Long, eventTime: Long, action: Int, spot: Point) {
+        val event = MotionEvent.obtain(downTime, eventTime, action, spot.x.toFloat(), spot.y.toFloat(), 0)
+        event.source = InputDevice.SOURCE_TOUCHSCREEN
+        InstrumentationRegistry.getInstrumentation().uiAutomation.injectInputEvent(event, true)
+        event.recycle()
+    }
+
+    /**
+     * Swipes slowly across most of the screen, so the page turns by distance, not speed. A busy emulator can deliver
+     * a swipe so late that the page doesn't turn, so this swipes again (a few times) until another photo shows.
+     */
+    private fun swipe(direction: Direction) {
+        val before = colorAt(CENTER)
+        repeat(MAX_SWIPES) {
+            Ui.find { hasId("mediaViewPager") }.swipe(direction, SWIPE_PERCENT, SWIPE_SPEED)
+            Ui.device.waitForIdle()
+            val end = SystemClock.uptimeMillis() + SWIPE_TIMEOUT_MS
+            while (SystemClock.uptimeMillis() < end) {
+                if (!ScreenColors.isClose(colorAt(CENTER), before)) return
+                SystemClock.sleep(POLL_MS)
+            }
+        }
+    }
+
+    private fun colorAt(across: Float): Int = ScreenColors.at(listOf(spot(across))).single()
+
+    private fun spot(across: Float) = Point((Ui.device.displayWidth * across).toInt(), Ui.device.displayHeight / 2)
+
+    private const val CENTER = 0.5f
+    private const val TAP_MS = 50L
+    private const val POLL_MS = 200L
+    private const val SWIPE_PERCENT = 0.8f
+    private const val SWIPE_SPEED = 2500 // Pixels per second.
+    private const val MAX_SWIPES = 3
+    private const val SWIPE_TIMEOUT_MS = 3_000L
 }
 
 /** The location picker opened from the Add form. */
