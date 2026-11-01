@@ -6,6 +6,8 @@ import android.app.Application
 import android.content.Intent.ACTION_MAIN
 import android.content.Intent.CATEGORY_LAUNCHER
 import android.graphics.Bitmap
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
@@ -36,6 +38,36 @@ class MemoryMapAppRule : TestRule {
     fun useDarkMode() {
         isDarkModeOn = true
         Ui.device.executeShellCommand("cmd uimode night yes")
+    }
+
+    private var animationScaleBefore: String? = null
+
+    /**
+     * Turns animations on for this test: the test phones run with them off (`animationsDisabled`), so an animation
+     * such as the timeline's flash would end at once. The rule puts the old setting back after the test.
+     */
+    fun useAnimations() {
+        animationScaleBefore = Ui.device.executeShellCommand("settings get global $ANIMATOR_SCALE").trim()
+        Ui.device.executeShellCommand("settings put global $ANIMATOR_SCALE 1")
+    }
+
+    private var isOffline = false
+
+    /**
+     * Turns off Wi-Fi and mobile data and waits until the phone has no network. The rule turns them on again after the
+     * test and waits until the network works, so the next test (and its map) starts online.
+     */
+    fun goOffline() {
+        isOffline = true
+        Ui.device.executeShellCommand("svc wifi disable")
+        Ui.device.executeShellCommand("svc data disable")
+        assertTrue("The phone still has a network", waitUntil { !hasWorkingNetwork() })
+    }
+
+    private fun hasWorkingNetwork(): Boolean {
+        val connectivity = application.getSystemService(ConnectivityManager::class.java)
+        val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     /** Starts the app the way its launcher icon does, in a new task, and waits until it is open. */
@@ -111,8 +143,8 @@ class MemoryMapAppRule : TestRule {
         }
     }
 
-    private fun waitUntil(condition: () -> Boolean): Boolean {
-        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+    private fun waitUntil(timeoutMs: Long = Ui.TIMEOUT_MS, condition: () -> Boolean): Boolean {
+        val end = SystemClock.uptimeMillis() + timeoutMs
         while (!condition()) {
             if (SystemClock.uptimeMillis() >= end) return false
             SystemClock.sleep(POLL_MS)
@@ -140,6 +172,17 @@ class MemoryMapAppRule : TestRule {
             Ui.device.unfreezeRotation()
         }
         if (isDarkModeOn) runCatching { Ui.device.executeShellCommand("cmd uimode night no") }
+        animationScaleBefore?.let { before ->
+            val scale = before.takeUnless { it.isEmpty() || it == "null" } ?: "0"
+            runCatching { Ui.device.executeShellCommand("settings put global $ANIMATOR_SCALE $scale") }
+        }
+        if (isOffline) {
+            runCatching {
+                Ui.device.executeShellCommand("svc wifi enable")
+                Ui.device.executeShellCommand("svc data enable")
+            }
+            if (!waitUntil(NETWORK_TIMEOUT_MS) { hasWorkingNetwork() }) Log.w(TAG, "The network did not come back")
+        }
         TestData.deleteCreatedPhotos()
     }
 
@@ -183,6 +226,8 @@ class MemoryMapAppRule : TestRule {
         const val NOT_RESPONDING_WATCHER = "notResponding"
         const val PNG_QUALITY = 100 // Ignored for PNG, which is lossless.
         const val POLL_MS = 100L
+        const val NETWORK_TIMEOUT_MS = 30_000L
+        const val ANIMATOR_SCALE = "animator_duration_scale"
         const val SET_ALWAYS_FINISH = "android.permission.SET_ALWAYS_FINISH"
     }
 }

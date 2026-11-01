@@ -185,10 +185,41 @@ object MapScreen : TabScreen {
 /** The Timeline tab. */
 object TimelineScreen : TabScreen {
     private const val SEARCH = "Search memories..."
+    private const val FLASH_WATCH_MS = 3_000L
+    private const val CARD_SPOT_PERCENT = 90
+
+    // The flash colour is close to the card's own (a few steps on one channel): any visible change counts.
+    private const val FLASH_TOLERANCE = 8
 
     override fun assertShown() = Ui.assertShown("The timeline") { hasHint(SEARCH) }
 
     override fun assertGone() = Ui.assertGone("The timeline") { hasHint(SEARCH) }
+
+    /**
+     * Runs [action] (such as Show on Timeline) and checks that memory [title]'s card then flashes: its colour changes
+     * for a moment. The flash lasts a second, so this doesn't wait for the screen to settle first, and it reads the
+     * card's colour from screenshots, near its right edge on the title's line, once the list has stopped moving.
+     */
+    fun assertFlashesAfter(title: String, action: () -> Unit) = Ui.withoutSettling {
+        action()
+        val samples = mutableListOf<Int>()
+        var lastTop: Int? = null
+        val end = SystemClock.uptimeMillis() + FLASH_WATCH_MS
+        while (SystemClock.uptimeMillis() < end) {
+            val line = Ui.findOrNull(timeoutMs = 0) { hasId("tv_memoryTitle") && hasText(title) }?.visibleBounds
+            if (line != null && line.top == lastTop) {
+                val spot = Point(Ui.device.displayWidth * CARD_SPOT_PERCENT / 100, line.centerY())
+                samples += ScreenColors.at(listOf(spot)).single()
+            }
+            lastTop = line?.top
+        }
+        val settled = samples.lastOrNull()
+        assertTrue("\"$title\" did not show in the timeline", settled != null)
+        assertTrue(
+            "\"$title\" did not flash: its card stayed ${samples.distinct().map(ScreenColors::hex)}",
+            samples.any { !ScreenColors.isClose(it, settled!!, FLASH_TOLERANCE) }
+        )
+    }
 
     fun assertMemoryShown(title: String) = Ui.assertShown("\"$title\" in the timeline") {
         hasId("tv_memoryTitle") && hasText(title)
@@ -291,6 +322,12 @@ object AddScreen : TabScreen {
     }
 
     fun assertNoLocation() = assertEquals(NO_LOCATION, locationText())
+
+    /** The memory's location has no name or address, only its coordinates (as when the address lookup failed). */
+    fun assertLocationIsCoordinates() {
+        val text = locationText().orEmpty()
+        assertTrue("The location \"$text\" is not just coordinates", text.startsWith("Coordinates: "))
+    }
 
     /** The memory's location is [place]: its name, found by the address lookup, or its coordinates if that failed. */
     fun assertLocationIs(place: Place) {
