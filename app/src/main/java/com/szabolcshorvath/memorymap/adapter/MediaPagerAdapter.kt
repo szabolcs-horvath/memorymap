@@ -51,7 +51,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 binding.fullImageView.isZoomable = false
                 binding.fullVideoView.visibility = View.GONE
                 binding.videoControlsContainer.visibility = View.VISIBLE
-                binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
+                showPlayButton(isPlaying = false)
 
                 binding.fullVideoView.setZOrderMediaOverlay(true)
 
@@ -112,7 +112,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 binding.btnPlayPause.setOnClickListener {
                     if (binding.fullVideoView.isPlaying) {
                         binding.fullVideoView.pause()
-                        binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
+                        showPlayButton(isPlaying = false)
                         stopProgressUpdates()
                     } else {
                         if (!binding.fullVideoView.isVisible) {
@@ -120,7 +120,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                             binding.fullVideoView.alpha = 0f
                         }
                         binding.fullVideoView.start()
-                        binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_pause)
+                        showPlayButton(isPlaying = true)
                         startProgressUpdates()
                     }
                 }
@@ -130,7 +130,7 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 binding.fullVideoView.setOnCompletionListener {
                     binding.fullVideoView.visibility = View.GONE
                     binding.fullImageView.visibility = View.VISIBLE
-                    binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
+                    showPlayButton(isPlaying = false)
                     binding.videoScrubber.progress = 0
                     binding.fullVideoView.seekTo(0)
                     stopProgressUpdates()
@@ -165,13 +165,21 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
                 binding.fullVideoView.visibility = View.GONE
                 binding.fullVideoView.alpha = 1f
                 binding.fullImageView.visibility = View.VISIBLE
-                binding.btnPlayPause.setIconResource(android.R.drawable.ic_media_play)
+                showPlayButton(isPlaying = false)
                 if (binding.fullVideoView.isPlaying) {
                     binding.fullVideoView.pause()
                 }
                 binding.fullVideoView.seekTo(0)
             }
             stopProgressUpdates()
+        }
+
+        /** Shows "Pause" while the video plays and "Play" while it doesn't, as an icon with a matching description. */
+        private fun showPlayButton(isPlaying: Boolean) {
+            val icon = if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+            binding.btnPlayPause.setIconResource(icon)
+            binding.btnPlayPause.contentDescription =
+                binding.root.context.getString(if (isPlaying) R.string.pause_video else R.string.play_video)
         }
 
         fun startProgressUpdates() {
