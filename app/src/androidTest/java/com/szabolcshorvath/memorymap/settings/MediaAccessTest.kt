@@ -42,6 +42,20 @@ class MediaAccessTest {
     }
 
     @Test
+    fun reLinkingFromTheMemoryAsksForAccessAndThenShowsThePhoto() {
+        TestData.photoSavedByAnotherApp(TestData.memory(TRIP), PHOTO_COLOR)
+        app.launch()
+        openMemory()
+        MemoryScreen.assertPhotoFromAnotherDevice()
+
+        MemoryScreen.relinkMedia()
+        PermissionDialog.allowAll()
+
+        // The memory shows the photo as soon as it is linked, without being opened again.
+        MemoryScreen.assertPhotoLoaded()
+    }
+
+    @Test
     fun aRestoreWithoutAccessStillRestoresThenOffersAccessForTheUnlinkedPhoto() {
         TestData.photoSavedByAnotherApp(TestData.memory(TRIP), PHOTO_COLOR)
         backUpThenAddAMemory()

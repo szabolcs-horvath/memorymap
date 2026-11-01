@@ -113,6 +113,23 @@ class MemoryScreenTest {
         MemoryScreen.assertPhotoColors(Color.BLUE, Color.RED)
     }
 
+    @Test
+    fun draggingAFragmentChangesTheirOrderForGood() {
+        val memory = TestData.memory(MIDDLE)
+        TestData.fragment(memory, Place.VIENNA, order = 0)
+        TestData.fragment(memory, Place.ATHENS, order = 1)
+        open(MIDDLE)
+        MemoryScreen.assertFragmentsTopToBottom(VIENNA, ATHENS)
+
+        MemoryScreen.dragFragment(ATHENS, onto = VIENNA)
+        MemoryScreen.assertFragmentsTopToBottom(ATHENS, VIENNA)
+
+        Ui.pressBack()
+        TimelineScreen.openMemory(MIDDLE)
+        MemoryScreen.assertShowing(MIDDLE)
+        MemoryScreen.assertFragmentsTopToBottom(ATHENS, VIENNA)
+    }
+
     private fun open(title: String) {
         app.launch()
         BottomNav.open(Tab.TIMELINE)
@@ -136,5 +153,7 @@ class MemoryScreenTest {
         const val DELETE_TITLE = "Delete Memory"
         const val DELETED = "Memory deleted"
         const val UNDO_SECONDS = 15
+        val VIENNA = Place.VIENNA.name!!
+        val ATHENS = Place.ATHENS.name!!
     }
 }

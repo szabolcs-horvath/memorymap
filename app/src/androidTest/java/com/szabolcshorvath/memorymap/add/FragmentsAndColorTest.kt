@@ -5,6 +5,7 @@ import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.DatePickerDialog
+import com.szabolcshorvath.memorymap.screens.DateRangePickerDialog
 import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
@@ -13,6 +14,7 @@ import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -113,6 +115,23 @@ class FragmentsAndColorTest {
     }
 
     @Test
+    fun anAllDayFragmentKeepsItsOwnDays() {
+        TestData.memory(VIENNA)
+        openForEditing()
+        val start = LocalDate.now().minusDays(ALL_DAY_START_DAYS_AGO)
+        val end = LocalDate.now().minusDays(ALL_DAY_END_DAYS_AGO)
+
+        AddScreen.addFragment()
+        AddScreen.openFragmentAllDayRangePicker()
+        DateRangePickerDialog.pick(start, end)
+        AddScreen.save()
+
+        MemoryScreen.assertShowing(VIENNA)
+        val format = DateTimeFormatterUtil.dateFormatter()
+        MemoryScreen.assertFragmentDates("${start.format(format)} - ${end.format(format)}")
+    }
+
+    @Test
     fun aFragmentKeepsAColorOfItsOwn() {
         TestData.colorPresets(RED, GREEN, BLUE)
         TestData.memory(VIENNA)
@@ -142,6 +161,8 @@ class FragmentsAndColorTest {
         const val VIENNA = "Vienna trip"
         const val PICNIC = "Picnic"
         const val PICKED_DAY = 10
+        const val ALL_DAY_START_DAYS_AGO = 20L
+        const val ALL_DAY_END_DAYS_AGO = 18L
         val RED = Hsv(0f)
         val GREEN = Hsv(120f)
         val BLUE = Hsv(240f)
