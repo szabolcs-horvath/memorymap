@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import androidx.test.uiautomator.textAsString
@@ -107,6 +108,32 @@ object MapScreen : TabScreen {
 
     fun assertColorStatisticsGone() = Ui.assertGone("The colour statistics") { hasId(PIE_CHART) }
 
+    /**
+     * The colour statistics' chart has a slice of each of [colors] and none of [absent]. The chart is drawn, with
+     * nothing a screen reader can read, so its colours are read from a screenshot, on a grid across the chart.
+     */
+    fun assertColorStatisticsShow(colors: List<Int>, absent: List<Int> = emptyList()) {
+        val chart = Ui.find { hasId(PIE_CHART) }.visibleBounds
+        val grid = (1 until CHART_GRID).flatMap { i ->
+            (1 until CHART_GRID).map { j ->
+                Point(chart.left + chart.width() * i / CHART_GRID, chart.top + chart.height() * j / CHART_GRID)
+            }
+        }
+        val end = SystemClock.uptimeMillis() + Ui.TIMEOUT_MS
+        var shown = ScreenColors.at(grid)
+        fun matches() = colors.all { color -> shown.any { ScreenColors.isClose(it, color) } } &&
+            absent.none { color -> shown.any { ScreenColors.isClose(it, color) } }
+        while (!matches() && SystemClock.uptimeMillis() < end) {
+            SystemClock.sleep(POLL_MS)
+            shown = ScreenColors.at(grid)
+        }
+        assertTrue(
+            "The chart shows ${shown.distinct().map(ScreenColors::hex)}, " +
+                "expected ${colors.map(ScreenColors::hex)} and not ${absent.map(ScreenColors::hex)}",
+            matches()
+        )
+    }
+
     /** Taps the "my location" button, which moves the map to where the phone is (asking for access first). */
     fun tapMyLocation() {
         Ui.find { hasDescription(MY_LOCATION) }.click()
@@ -125,6 +152,7 @@ object MapScreen : TabScreen {
     private const val PIE_CHART = "pieChart"
     private const val POLL_MS = 200L
     private const val EMPTY_SPOT_DIVISOR = 10
+    private const val CHART_GRID = 12
 }
 
 /** The Timeline tab. */
@@ -291,9 +319,18 @@ object AddScreen : TabScreen {
         assertTrue("The start time \"$text\" is not at hour $hour", shown == hour || shown == twelveHour)
     }
 
+    /**
+     * Opens the memory's "Date & Time" section if it is closed. Just after a date or time dialog closes, the section's
+     * buttons can be off screen for a moment, or a tap can land on the closing dialog, so this checks again after
+     * each tap on the header and taps again (a few times) until the section is open.
+     */
     private fun expandDateSection() {
-        if (Ui.isShown(timeoutMs = 0) { hasId("bt_startDate") }) return
-        Ui.find { hasText("Date & Time") }.click()
+        var wait = 0L
+        repeat(EXPAND_TRIES) {
+            if (Ui.isShown(timeoutMs = wait) { hasId("bt_startDate") }) return
+            Ui.find { hasText(DATE_AND_TIME) }.click()
+            wait = EXPAND_WAIT_MS
+        }
         Ui.find { hasId("bt_startDate") }
     }
 
@@ -325,6 +362,12 @@ object AddScreen : TabScreen {
     }
 
     fun removeFirstPhoto() = tap { hasDescription("Remove photo") }
+
+    /** A picked video shows among the picked items (with its own remove button). */
+    fun assertVideoSelected() {
+        Ui.scrollTo { hasDescription("Remove video") }
+        Ui.assertShown("A picked video") { hasDescription("Remove video") }
+    }
 
     /** Taps Clear, which asks first ([Dialog] "Clear Fields", or "Discard Changes" while editing). */
     fun clear() = tap("Clear")
@@ -405,6 +448,8 @@ object AddScreen : TabScreen {
 
     private const val MAX_NUDGES = 5
     private const val DATE_AND_TIME = "Date & Time"
+    private const val EXPAND_TRIES = 3
+    private const val EXPAND_WAIT_MS = 2_000L
     private const val MARKER_COLOR = "Marker Color"
     private const val REMOVE_FRAGMENT = "Remove fragment"
 
@@ -688,13 +733,25 @@ object Dialog {
 
     fun assertGone(title: String) = Ui.assertGone("The dialog \"$title\"") { hasText(title) }
 
-    /** Taps [button] in the dialog, not a button with the same text on the screen behind it ("Clear"). */
+    /**
+     * Taps [button] in the dialog, not a button with the same text on the screen behind it ("Clear"). A dialog that
+     * is still opening can replace its button between finding and tapping it, so this finds it again (a few times).
+     */
     fun tap(button: String) {
-        Ui.find {
-            isClickable && textAsString().equals(button, ignoreCase = true) && window?.isFocused != false
-        }.click()
-        Ui.device.waitForIdle()
+        repeat(MAX_TRIES) { attempt ->
+            try {
+                Ui.find {
+                    isClickable && textAsString().equals(button, ignoreCase = true) && window?.isFocused != false
+                }.click()
+                Ui.device.waitForIdle()
+                return
+            } catch (e: StaleObjectException) {
+                if (attempt == MAX_TRIES - 1) throw e
+            }
+        }
     }
+
+    private const val MAX_TRIES = 3
 }
 
 /** The calendar dialog for picking a date. */

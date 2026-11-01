@@ -10,7 +10,9 @@ import com.szabolcshorvath.memorymap.screens.SettingsScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
+import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.testing.TestData.Place
+import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import org.junit.Rule
 import org.junit.Test
@@ -190,6 +192,22 @@ class MapTest {
         MapScreen.assertColorStatisticsGone()
     }
 
+    @Test
+    fun colorStatisticsShowTheColorsOfTheMemoriesOnTheMap() {
+        TestData.markerClustering(false)
+        TestData.memory(TODAY, daysAgo = 0, place = Place.MADRID) // Red, as every memory starts.
+        TestData.markerColor(TestData.memory(TWENTY_DAYS_AGO, daysAgo = 20, place = Place.PARIS), BLUE)
+        openMap()
+
+        MapScreen.toggleColorStatistics()
+        MapScreen.assertColorStatisticsShow(listOf(color(RED), color(BLUE)))
+
+        MapScreen.pickQuickFilter("Last 7 Days")
+        MapScreen.assertColorStatisticsShow(listOf(color(RED)), absent = listOf(color(BLUE)))
+    }
+
+    private fun color(hsv: Hsv) = ColorUtil.hsvToColor(hsv.hue, hsv.saturation, hsv.brightness)
+
     private fun openMap() {
         app.launch()
         MapScreen.assertShown()
@@ -216,6 +234,8 @@ class MapTest {
         const val TWO_YEARS_AGO = "Two years ago"
         const val LONG_TRIP = "Long trip"
         const val NEARBY = 4
+        val RED = Hsv(0f)
+        val BLUE = Hsv(240f)
         const val NEARBY_STEP_DEGREES = 0.0005 // About 55 metres.
     }
 }
