@@ -30,6 +30,14 @@ class MemoryMapAppRule : TestRule {
     private val application: Application get() = ApplicationProvider.getApplicationContext()
     private val activities = ActivityTracker()
 
+    private var isDarkModeOn = false
+
+    /** Turns on dark mode for the whole phone (before [launch]); the rule turns it off again after the test. */
+    fun useDarkMode() {
+        isDarkModeOn = true
+        Ui.device.executeShellCommand("cmd uimode night yes")
+    }
+
     /** Starts the app the way its launcher icon does, in a new task, and waits until it is open. */
     fun launch() {
         Ui.device.setOrientationNatural()
@@ -131,6 +139,7 @@ class MemoryMapAppRule : TestRule {
             Ui.device.setOrientationNatural()
             Ui.device.unfreezeRotation()
         }
+        if (isDarkModeOn) runCatching { Ui.device.executeShellCommand("cmd uimode night no") }
         TestData.deleteCreatedPhotos()
     }
 

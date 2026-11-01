@@ -189,6 +189,21 @@ object ScreenColors {
         abs(Color.blue(a) - Color.blue(b)) < TOLERANCE
 
     fun hex(color: Int): String = String.format(Locale.ROOT, "#%06X", color and 0xFFFFFF)
+
+    /** [what] is shown in a dark theme: on average, the screen below the status bar is dark. */
+    fun assertDark(what: String) {
+        val width = Ui.device.displayWidth
+        val height = Ui.device.displayHeight
+        val grid = (1 until GRID).flatMap { i ->
+            (1 until GRID).map { j -> Point(width * i / GRID, height * j / GRID) }
+        }
+        val brightness = at(grid).map { (Color.red(it) + Color.green(it) + Color.blue(it)) / RGB_CHANNELS }.average()
+        assertTrue("$what is not dark: its average brightness is ${brightness.toInt()} of 255", brightness < DARK)
+    }
+
+    private const val GRID = 10
+    private const val RGB_CHANNELS = 3
+    private const val DARK = 100
 }
 
 fun AccessibilityNodeInfo.hasText(text: String): Boolean = textAsString() == text

@@ -54,6 +54,9 @@ object MapScreen : TabScreen {
 
     fun assertMarkerGone(title: String) = Ui.assertGone("The marker \"$title\"") { isMarker(title) }
 
+    /** Whether a marker titled [title] is on the map, without waiting for one. */
+    fun isMarkerShown(title: String): Boolean = Ui.isShown(timeoutMs = 0) { isMarker(title) }
+
     /** Waits until exactly [count] markers titled [title] are on the map. */
     fun assertMarkerCount(title: String, count: Int) {
         val marker = By.desc(markerDescription(title))
@@ -71,8 +74,31 @@ object MapScreen : TabScreen {
         Ui.device.waitForIdle()
     }
 
+    /** Whether a cluster ("4 memories nearby") is on the map. */
+    fun isClusterShown(timeoutMs: Long = 0): Boolean = Ui.isShown(timeoutMs) { isCluster() }
+
+    fun assertClusterShown() = Ui.assertShown("A cluster of memories") { isCluster() }
+
+    /** Taps a cluster, which zooms the map in on it, and waits for the map to settle. */
+    fun tapCluster() {
+        Ui.find { isCluster() }.click()
+        Ui.device.waitForIdle()
+        SystemClock.sleep(CAMERA_MOVE_MS)
+    }
+
+    /** No markers or clusters are on the map (the status bar's "Wifi signal full." and the like don't count). */
+    fun assertNoMarkers() = Ui.assertGone("A marker") {
+        packageName?.toString() == APP && MARKER.matcher(contentDescription ?: "").matches()
+    }
+
+    private fun AccessibilityNodeInfo.isCluster() = CLUSTER.matcher(contentDescription ?: "").matches()
+
     private fun AccessibilityNodeInfo.isMarker(title: String) =
         markerDescription(title).matcher(contentDescription ?: "").matches()
+
+    private val CLUSTER = Pattern.compile("\\d+ memories nearby\\.\\s*")
+    private val MARKER = Pattern.compile("(?s).+\\.\\s*")
+    private val APP = InstrumentationRegistry.getInstrumentation().targetContext.packageName
 
     // The map describes a marker as its title and snippet: "Paris trip. " (the app sets no snippet).
     private fun markerDescription(title: String): Pattern = Pattern.compile(Pattern.quote(title) + "\\.\\s*")
@@ -153,6 +179,7 @@ object MapScreen : TabScreen {
     private const val POLL_MS = 200L
     private const val EMPTY_SPOT_DIVISOR = 10
     private const val CHART_GRID = 12
+    private const val CAMERA_MOVE_MS = 1_000L
 }
 
 /** The Timeline tab. */
