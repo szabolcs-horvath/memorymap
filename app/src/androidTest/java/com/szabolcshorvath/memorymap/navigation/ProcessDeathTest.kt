@@ -171,7 +171,6 @@ class ProcessDeathTest {
     }
 
     @Test
-    @Ignore("A date picker restored after process death ignores the picked date (UX-17). Turn this on with the fix.")
     fun datePickerStaysOpenAndStillWorks() {
         app.launch()
         BottomNav.open(Tab.ADD)

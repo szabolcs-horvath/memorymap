@@ -43,8 +43,8 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
-import com.szabolcshorvath.memorymap.util.findDatePicker
 import com.szabolcshorvath.memorymap.util.findTimePicker
+import com.szabolcshorvath.memorymap.util.reattachDatePicker
 import com.szabolcshorvath.memorymap.util.setOnPicked
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -711,10 +711,9 @@ class AddMemoryGroupFragment : Fragment() {
     /** Attaches the listeners of the memory's date and time pickers that are still open after the view was recreated. */
     private fun reattachPickerListeners() {
         val manager = childFragmentManager
-        manager.findDatePicker<androidx.core.util.Pair<Long, Long>>(DATE_RANGE_PICKER_TAG)
-            ?.setOnPicked(::applyPickedDateRange)
-        manager.findDatePicker<Long>(START_DATE_PICKER_TAG)?.setOnPicked { applyPickedDate(it, isStart = true) }
-        manager.findDatePicker<Long>(END_DATE_PICKER_TAG)?.setOnPicked { applyPickedDate(it, isStart = false) }
+        manager.reattachDatePicker(DATE_RANGE_PICKER_TAG, ::applyPickedDateRange)
+        manager.reattachDatePicker<Long>(START_DATE_PICKER_TAG) { applyPickedDate(it, isStart = true) }
+        manager.reattachDatePicker<Long>(END_DATE_PICKER_TAG) { applyPickedDate(it, isStart = false) }
         manager.findTimePicker(START_TIME_PICKER_TAG)?.setOnPicked { applyPickedTime(it, isStart = true) }
         manager.findTimePicker(END_TIME_PICKER_TAG)?.setOnPicked { applyPickedTime(it, isStart = false) }
     }

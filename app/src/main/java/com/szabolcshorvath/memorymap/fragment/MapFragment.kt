@@ -53,7 +53,7 @@ import com.szabolcshorvath.memorymap.util.MyLocationAction
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
-import com.szabolcshorvath.memorymap.util.findDatePicker
+import com.szabolcshorvath.memorymap.util.reattachDatePicker
 import com.szabolcshorvath.memorymap.util.setOnPicked
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.flow.collectLatest
@@ -123,8 +123,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         mapLoadTrace = PerfUtil.startTrace("map_full_load")
 
         binding.btDateRange.setOnClickListener { showDateRangePicker() }
-        childFragmentManager.findDatePicker<androidx.core.util.Pair<Long, Long>>(DATE_FILTER_PICKER_TAG)
-            ?.setOnPicked(::applyPickedDateFilter)
+        childFragmentManager.reattachDatePicker(DATE_FILTER_PICKER_TAG, ::applyPickedDateFilter)
         binding.btQuickFilter.setOnClickListener { showQuickFilterMenu() }
         binding.btStats.setOnClickListener { toggleStatsOverlay() }
         binding.btMyLocation.setOnClickListener {

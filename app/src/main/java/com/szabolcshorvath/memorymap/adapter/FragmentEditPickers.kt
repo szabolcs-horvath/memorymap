@@ -6,8 +6,8 @@ import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
-import com.szabolcshorvath.memorymap.util.findDatePicker
 import com.szabolcshorvath.memorymap.util.findTimePicker
+import com.szabolcshorvath.memorymap.util.reattachDatePicker
 import com.szabolcshorvath.memorymap.util.setOnPicked
 import java.time.Instant
 import java.time.LocalTime
@@ -85,12 +85,11 @@ class FragmentEditPickers(
     fun reattachListeners() {
         val manager = getChildFragmentManager()
         for (localId in fragments.map { it.localId }) {
-            manager.findDatePicker<androidx.core.util.Pair<Long, Long>>(pickerTag(DATE_RANGE_PICKER, localId))
-                ?.setOnPicked { applyPickedDateRange(localId, it) }
-            manager.findDatePicker<Long>(pickerTag(START_DATE_PICKER, localId))
-                ?.setOnPicked { applyPickedDate(localId, it, isStart = true) }
-            manager.findDatePicker<Long>(pickerTag(END_DATE_PICKER, localId))
-                ?.setOnPicked { applyPickedDate(localId, it, isStart = false) }
+            manager.reattachDatePicker<androidx.core.util.Pair<Long, Long>>(pickerTag(DATE_RANGE_PICKER, localId)) {
+                applyPickedDateRange(localId, it)
+            }
+            manager.reattachDatePicker<Long>(pickerTag(START_DATE_PICKER, localId)) { applyPickedDate(localId, it, isStart = true) }
+            manager.reattachDatePicker<Long>(pickerTag(END_DATE_PICKER, localId)) { applyPickedDate(localId, it, isStart = false) }
             manager.findTimePicker(pickerTag(START_TIME_PICKER, localId))
                 ?.setOnPicked { applyPickedTime(localId, it, isStart = true) }
             manager.findTimePicker(pickerTag(END_TIME_PICKER, localId))
