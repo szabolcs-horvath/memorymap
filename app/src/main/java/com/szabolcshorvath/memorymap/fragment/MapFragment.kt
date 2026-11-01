@@ -743,6 +743,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
             advancedMarkerOptions.icon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
             advancedMarkerOptions.anchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
+            // A title names the cluster for screen readers (a tap zooms in, so it opens no info window).
+            advancedMarkerOptions.title(clusterTitle(allItems.size))
         }
 
         override fun onClusterUpdated(
@@ -760,7 +762,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
             marker.setIcon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
             marker.setAnchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
+            marker.title = clusterTitle(allItems.size)
         }
+
+        private fun clusterTitle(count: Int) = resources.getString(R.string.cluster_title, count)
     }
 
     companion object {
