@@ -47,12 +47,15 @@ fun FragmentManager.findTimePicker(tag: String): MaterialTimePicker? = findFragm
 private fun <S> FragmentManager.findDatePicker(tag: String): MaterialDatePicker<S>? =
     findFragmentByTag(tag) as? MaterialDatePicker<S>
 
-/** Closes this restored picker and shows a new one in its place, built from the same options (its arguments). */
+/**
+ * Closes this restored picker and shows a new one in its place, built from the same options (its arguments). Both happen
+ * at once, while the screen's view is being created, so the old picker never shows and nobody can tap it as it closes.
+ */
 private fun <S> MaterialDatePicker<S>.reopened(): MaterialDatePicker<S> {
     val manager = parentFragmentManager
     val replacement = MaterialDatePicker<S>().also { it.arguments = arguments }
-    dismiss()
-    replacement.show(manager, tag)
+    dismissNow()
+    replacement.showNow(manager, tag)
     return replacement
 }
 
