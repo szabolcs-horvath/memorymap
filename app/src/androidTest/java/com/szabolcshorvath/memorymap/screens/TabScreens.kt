@@ -48,7 +48,7 @@ object MapScreen : TabScreen {
 
     /**
      * A marker titled [title] is on the map: a memory's title, or "N Memories" for several at one place. A
-     * fragment's marker has its memory's title. Cluster circles have no title.
+     * fragment's marker has its memory's title. A cluster circle is titled "N memories nearby".
      */
     fun assertMarkerShown(title: String) =
         Ui.assertShown("The marker \"$title\"", Ui.SLOW_TIMEOUT_MS) { isMarker(title) }
@@ -60,15 +60,20 @@ object MapScreen : TabScreen {
 
     /** Waits until exactly [count] markers titled [title] are on the map. */
     fun assertMarkerCount(title: String, count: Int) {
-        val marker = By.desc(markerDescription(title))
         val end = SystemClock.uptimeMillis() + Ui.SLOW_TIMEOUT_MS
-        var found = Ui.device.findObjects(marker).size
+        var found = markerTitles().count { it == title }
         while (found != count && SystemClock.uptimeMillis() < end) {
             SystemClock.sleep(POLL_MS)
-            found = Ui.device.findObjects(marker).size
+            found = markerTitles().count { it == title }
         }
         assertEquals("Markers titled \"$title\"", count, found)
     }
+
+    /** The titles of the markers on the map, read from the map's own element. */
+    private fun markerTitles(): List<String> =
+        Ui.findOrNull(timeoutMs = 0) { hasDescription(GOOGLE_MAP) }?.children
+            ?.mapNotNull { it.contentDescription?.trimEnd()?.removeSuffix(".")?.takeIf { title -> title.isNotEmpty() } }
+            .orEmpty()
 
     fun tapMarker(title: String) {
         Ui.find(Ui.SLOW_TIMEOUT_MS) { isMarker(title) }.click()
@@ -87,22 +92,14 @@ object MapScreen : TabScreen {
         SystemClock.sleep(CAMERA_MOVE_MS)
     }
 
-    /** No markers or clusters are on the map (the status bar's "Wifi signal full." and the like don't count). */
-    fun assertNoMarkers() = Ui.assertGone("A marker") {
-        packageName?.toString() == APP && MARKER.matcher(contentDescription ?: "").matches()
-    }
+    /** No markers or clusters are on the map. */
+    fun assertNoMarkers() = Ui.assertGone("A marker") { mapMarkerTitle() != null }
 
-    private fun AccessibilityNodeInfo.isCluster() = CLUSTER.matcher(contentDescription ?: "").matches()
+    private fun AccessibilityNodeInfo.isCluster() = mapMarkerTitle()?.let { CLUSTER.matches(it) } == true
 
-    private fun AccessibilityNodeInfo.isMarker(title: String) =
-        markerDescription(title).matcher(contentDescription ?: "").matches()
+    private fun AccessibilityNodeInfo.isMarker(title: String) = mapMarkerTitle() == title
 
-    private val CLUSTER = Pattern.compile("\\d+ memories nearby\\.\\s*")
-    private val MARKER = Pattern.compile("(?s).+\\.\\s*")
-    private val APP = InstrumentationRegistry.getInstrumentation().targetContext.packageName
-
-    // The map describes a marker as its title and snippet: "Paris trip. " (the app sets no snippet).
-    private fun markerDescription(title: String): Pattern = Pattern.compile(Pattern.quote(title) + "\\.\\s*")
+    private val CLUSTER = Regex("""\d+ memories nearby""")
 
     /** Picks a date filter from the quick filter menu ("Last 7 Days", ..., "All Time"). */
     fun pickQuickFilter(label: String) {
@@ -169,7 +166,7 @@ object MapScreen : TabScreen {
 
     /** Taps an empty spot of the map: the top left corner, away from the markers and the buttons. */
     fun tapEmptyMap() {
-        val map = Ui.find { hasDescription("Google Map") }.visibleBounds
+        val map = Ui.find { hasDescription(GOOGLE_MAP) }.visibleBounds
         Ui.device.click(map.left + map.width() / EMPTY_SPOT_DIVISOR, map.top + map.height() / 2)
         Ui.device.waitForIdle()
     }

@@ -228,6 +228,19 @@ object ScreenColors {
     private const val DARK = 100
 }
 
+/** How a Google map describes itself to accessibility. */
+const val GOOGLE_MAP = "Google Map"
+
+/**
+ * The title of the map marker this element is, or null if it isn't one. A map shows its markers as elements inside
+ * its own ([GOOGLE_MAP]). The latest map renderer describes a marker by its title ("Paris trip"); the legacy renderer
+ * (on devices without it, see docs/ui-tests.md) adds the snippet, which the app leaves empty ("Paris trip. ").
+ */
+fun AccessibilityNodeInfo.mapMarkerTitle(): String? {
+    if (parent?.contentDescription?.toString() != GOOGLE_MAP) return null
+    return contentDescription?.toString()?.trimEnd()?.removeSuffix(".")?.takeIf { it.isNotEmpty() }
+}
+
 fun AccessibilityNodeInfo.hasText(text: String): Boolean = textAsString() == text
 
 fun AccessibilityNodeInfo.hasDescription(description: String): Boolean = contentDescription?.toString() == description

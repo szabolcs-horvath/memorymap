@@ -17,7 +17,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import java.time.LocalDate
 import java.util.concurrent.TimeoutException
-import java.util.regex.Pattern
 
 /** A memory opened from the map or the timeline (one page of the memory pager). */
 object MemoryScreen {
@@ -371,7 +370,6 @@ object MediaViewerScreen {
 /** The location picker opened from the Add form. */
 object LocationPickerScreen {
     private const val CONFIRM = "Confirm Location"
-    private const val MAP = "Google Map"
     private const val MAX_TAPS = 3
     private const val MARKER_TIMEOUT_MS = 5_000L
     private const val DEFAULT_ACROSS = 0.5f
@@ -389,7 +387,7 @@ object LocationPickerScreen {
      * marker shows (a few times).
      */
     fun tapMap(across: Float = DEFAULT_ACROSS, down: Float = DEFAULT_DOWN) {
-        val bounds = Ui.find { hasDescription(MAP) }.visibleBounds
+        val bounds = Ui.find { hasDescription(GOOGLE_MAP) }.visibleBounds
         val before = markers()
         repeat(MAX_TAPS) {
             Ui.device.click(bounds.left + (bounds.width() * across).toInt(), bounds.top + (bounds.height() * down).toInt())
@@ -405,11 +403,12 @@ object LocationPickerScreen {
     fun assertLocationPicked() =
         assertTrue("A picked location is not shown", waitUntil(Ui.SLOW_TIMEOUT_MS) { markers().isNotEmpty() })
 
-    /** The descriptions of the markers on the map (the picked spot's). The map describes one as "<title>. ". */
+    /** The titles of the markers on the map (the picked spot's), read from the map's own element. */
     private fun markers(): Set<String> =
-        Ui.device.findObjects(By.desc(MARKER_DESCRIPTION)).mapNotNull { it.contentDescription }.toSet()
-
-    private val MARKER_DESCRIPTION = Pattern.compile("(?s).+\\.\\s+")
+        Ui.findOrNull(timeoutMs = 0) { hasDescription(GOOGLE_MAP) }?.children
+            ?.mapNotNull { it.contentDescription?.trimEnd()?.removeSuffix(".")?.takeIf { title -> title.isNotEmpty() } }
+            .orEmpty()
+            .toSet()
 
     private fun waitUntil(timeoutMs: Long, condition: () -> Boolean): Boolean {
         val end = SystemClock.uptimeMillis() + timeoutMs
@@ -437,7 +436,7 @@ object LocationPickerScreen {
     /** The spot named [name] is picked: its marker shows on the map. */
     fun assertPicked(name: String) = assertTrue(
         "The place \"$name\" is not picked",
-        waitUntil(Ui.SLOW_TIMEOUT_MS) { markers().any { it.trimEnd() == "$name." } }
+        waitUntil(Ui.SLOW_TIMEOUT_MS) { name in markers() }
     )
 
     /** Taps the "my location" button, which picks where the phone is (asking for access first). */
