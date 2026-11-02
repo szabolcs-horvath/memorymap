@@ -7,7 +7,7 @@ class DriveBackupStorageTest {
 
     @Test
     fun `collects every page in order`() {
-        val pages = mapOf<String?, Pair<List<Int>, String?>>(
+        val pages = mapOf(
             null to (listOf(1, 2) to "page2"),
             "page2" to (listOf(3, 4) to "page3"),
             "page3" to (listOf(5) to null)

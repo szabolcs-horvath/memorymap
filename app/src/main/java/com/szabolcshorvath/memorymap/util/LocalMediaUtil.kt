@@ -345,7 +345,7 @@ object LocalMediaUtil {
      */
     internal fun closeOrderGaps(items: List<MediaItem>): Map<Int, Int> {
         if (items.any { it.order == null }) return emptyMap()
-        return items.sortedWith(compareBy<MediaItem>({ it.order }, { it.id }))
+        return items.sortedWith(compareBy({ it.order }, { it.id }))
             .mapIndexedNotNull { index, item -> (item.id to index + 1).takeIf { item.order != index + 1 } }
             .toMap()
     }
