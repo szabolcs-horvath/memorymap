@@ -30,6 +30,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/titleInput"
+                    android:saveEnabled="false"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="textCapSentences"
@@ -46,6 +47,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/descriptionInput"
+                    android:saveEnabled="false"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="top|start"
@@ -154,6 +156,7 @@
 
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/switch_allDay"
+                            android:saveEnabled="false"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:minHeight="48dp"
@@ -361,6 +364,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/slider_hue"
+                            android:saveEnabled="false"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -404,6 +408,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/slider_saturation"
+                            android:saveEnabled="false"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -447,6 +452,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/slider_brightness"
+                            android:saveEnabled="false"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"

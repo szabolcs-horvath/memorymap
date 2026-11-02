@@ -147,11 +147,11 @@ object AddScreen : TabScreen {
     private fun expandDateSection() {
         var wait = 0L
         repeat(EXPAND_TRIES) {
-            if (Ui.isShown(timeoutMs = wait) { hasId("bt_startDate") }) return
+            if (Ui.isShown(timeoutMs = wait) { hasText(ALL_DAY) }) return
             Ui.find { hasText(DATE_AND_TIME) }.click()
             wait = EXPAND_WAIT_MS
         }
-        Ui.find { hasId("bt_startDate") }
+        Ui.find { hasText(ALL_DAY) }
     }
 
     fun typeDescription(text: String) {
@@ -195,9 +195,14 @@ object AddScreen : TabScreen {
     /** Turns the All Day switch on or off. */
     fun setAllDay(on: Boolean) {
         expandDateSection()
-        val switch = Ui.find { hasText("All Day?") }
+        val switch = Ui.find { hasText(ALL_DAY) }
         if (switch.isChecked != on) switch.click()
-        Ui.assertShown("All Day ${if (on) "on" else "off"}") { hasText("All Day?") && isChecked == on }
+        assertAllDay(on)
+    }
+
+    fun assertAllDay(on: Boolean) {
+        expandDateSection()
+        Ui.assertShown("All Day ${if (on) "on" else "off"}") { hasText(ALL_DAY) && isChecked == on }
     }
 
     /** Opens the marker colour's sliders and picks the preset [color], which moves them to it. */
@@ -250,7 +255,7 @@ object AddScreen : TabScreen {
     fun openFragmentAllDayRangePicker() {
         tapInFragmentCard(By.text(DATE_AND_TIME))
         tapInFragmentCard(By.text("Use specific time for this fragment"))
-        tapInFragmentCard(By.text("All Day?"))
+        tapInFragmentCard(By.text(ALL_DAY))
         tapInFragmentCard(By.res(Ui.APP_PACKAGE, "bt_dateRange")) // It shows the days picked so far.
     }
 
@@ -279,6 +284,7 @@ object AddScreen : TabScreen {
 
     private const val MAX_NUDGES = 5
     private const val DATE_AND_TIME = "Date & Time"
+    private const val ALL_DAY = "All Day?"
     private const val EXPAND_TRIES = 3
     private const val EXPAND_WAIT_MS = 2_000L
     private const val MARKER_COLOR = "Marker Color"

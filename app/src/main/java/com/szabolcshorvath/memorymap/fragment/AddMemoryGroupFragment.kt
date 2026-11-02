@@ -181,8 +181,8 @@ class AddMemoryGroupFragment : Fragment() {
             }
             mediaAdapter.updateCurrentDeviceId(viewModel.currentDeviceId)
 
-            // Ensure UI matches ViewModel state (both on first load and after rotation)
-            updateTitleAndDescription()
+            // The form shows what the ViewModel holds: on first load, after a rotation and after process death.
+            updateInputs()
             updateLocationText()
             updateDateTimeButtons()
             updateColorUI()
@@ -607,9 +607,15 @@ class AddMemoryGroupFragment : Fragment() {
         viewModel.markUnchanged() // Last, after the views have written back what they show.
     }
 
-    private fun updateTitleAndDescription() {
+    /**
+     * Shows the title, description and all-day switch the ViewModel holds. Android doesn't restore these inputs itself
+     * (`saveEnabled="false"`): the text they had when the view was last destroyed would overwrite a form that was
+     * cleared meanwhile, such as by a save that finished while another tab was shown.
+     */
+    private fun updateInputs() {
         binding.titleInput.setText(viewModel.title)
         binding.descriptionInput.setText(viewModel.description)
+        binding.switchAllDay.isChecked = viewModel.isAllDay
     }
 
     private fun updateLocationText() {

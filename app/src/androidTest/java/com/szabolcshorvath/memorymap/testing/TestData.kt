@@ -30,6 +30,9 @@ import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 /**
  * Puts data in the app before a test opens it: memories, photos and a signed-in account. It writes through the
@@ -251,6 +254,32 @@ object TestData {
     fun signIn(email: String = FakeAccountService.DEFAULT_EMAIL) = runBlocking {
         context.dataStore.edit { it[PreferencesKeys.USER_EMAIL_KEY] = email }
     }
+
+    /**
+     * Keeps the app's database busy with a write until [DatabaseHold.release], so a save started meanwhile waits for
+     * it (reading still works). Release it in a `finally`, or the app's writes wait for good.
+     */
+    fun holdDatabaseWrites(): DatabaseHold {
+        val hold = DatabaseHold()
+        thread(name = "TestDatabaseHold") {
+            MemoryMapDatabase.getDatabase(context).runInTransaction {
+                hold.held.countDown()
+                hold.released.await()
+            }
+        }
+        check(hold.held.await(HOLD_TIMEOUT_SECONDS, TimeUnit.SECONDS)) { "The test could not get the database" }
+        return hold
+    }
+
+    /** A write that [holdDatabaseWrites] keeps open. */
+    class DatabaseHold internal constructor() {
+        internal val held = CountDownLatch(1)
+        internal val released = CountDownLatch(1)
+
+        fun release() = released.countDown()
+    }
+
+    private const val HOLD_TIMEOUT_SECONDS = 10L
 
     fun deleteCreatedPhotos() {
         createdPhotos.forEach { runCatching { context.contentResolver.delete(it, null, null) } }
