@@ -9,9 +9,11 @@ import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.DatePickerDialog
 import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.Flows
+import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.TimePickerDialog
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
+import com.szabolcshorvath.memorymap.screens.ToastMessage
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import org.junit.Assert.assertFalse
@@ -153,6 +155,33 @@ class AddMemoryTest {
     }
 
     @Test
+    fun aSaveThatFinishesAfterLeavingTheTabSaysSoWithoutOpeningTheMemory() {
+        openAdd()
+        AddScreen.typeTitle(PICNIC)
+        AddScreen.setAllDay(true)
+        Flows.pickLocationOnMap()
+
+        // The database is busy, so the save waits while the user goes to the map.
+        val database = TestData.holdDatabaseWrites()
+        try {
+            AddScreen.save()
+            BottomNav.open(Tab.MAP)
+            ToastMessage.assertShownAfter(MEMORY_SAVED) { database.release() }
+        } finally {
+            database.release()
+        }
+
+        MapScreen.assertShown()
+        MemoryScreen.assertGone()
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.assertMemoryShown(PICNIC)
+        BottomNav.open(Tab.ADD)
+        AddScreen.assertNoTitle()
+        AddScreen.assertAllDay(false)
+        AddScreen.assertNew()
+    }
+
+    @Test
     fun pickedDatesAndTimesAreSavedWithTheEndAfterTheStartAndAllDayDropsTheTimes() {
         TestData.memory(VIENNA) // Yesterday from 12:00 to 14:00.
         openForEditing(VIENNA)
@@ -220,6 +249,7 @@ class AddMemoryTest {
         const val VIENNA = "Vienna trip"
         const val VIENNA_RENAMED = "Vienna weekend"
         const val DISCARD_DRAFT = "Discard the new memory?"
+        const val MEMORY_SAVED = "Memory saved"
 
         // Days and hours that can't be mistaken for one another in the date line ("Aug 5, 2026 8:00 PM - ...").
         const val END_DAY = 15

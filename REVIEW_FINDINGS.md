@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 57 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 23 open
+✅ 58 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 23 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ✅ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 
-**BUG — Functional bugs** · 18 of 18 fixed
+**BUG — Functional bugs** · 19 of 19 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -91,6 +91,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-16](#bug-16) | Low | Timeline flash can leave the wrong colour |
 | ✅ | [BUG-17](#bug-17) | Low | Show on Timeline can leave a memory below the screen |
 | ✅ | [BUG-18](#bug-18) | Medium | Saving an edit of a deleted memory loses the edit |
+| ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
 
 **PERF — Performance** · 7 of 10 fixed
 
@@ -395,6 +396,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** An edit with unsaved changes stays open on the Add tab while the user is on another tab. If the memory is deleted meanwhile (from its own screen, and the Undo Snackbar closes), nothing tells the Add tab. Saving then updates a row that no longer exists. Without photos, `updateGroup` changes nothing and the save reports success, so the changes are lost without a word. With photos, inserting them breaks the foreign key, and the user gets "Failed to save: FOREIGN KEY constraint failed (code 787 SQLITE_CONSTRAINT_FOREIGNKEY)". Found by the UI tests (TEST-3); `SaveErrorTest` is skipped until this is fixed.
 - **Fix:** In the save, check how many rows `updateGroup` changed (Room's `@Update` can return it). When none, the memory is gone: save the form as a new memory, so the user's work is kept (or ask first: "This memory was deleted. Save it as a new memory?"). Show a plain message instead of the database's text when a save fails for other reasons. `SaveErrorTest` expects the edit to end up in the timeline; adjust it if the fix asks first.
 - **Status:** Fixed. `updateGroup` returns how many rows it changed; when none, the memory is gone and the save inserts the form as a new memory, with its photos and fragments, and says so ("This memory was deleted meanwhile, so your changes were saved as a new memory"). The final delete keeps the photo grants of media the Add form still holds (`AddMemoryGroupFragment.mediaUrisInForm`), so the new memory can still show them. Other save errors show a plain message instead of the database's text. `SaveErrorTest` runs again, and also checks that the photo comes through.
+
+### <a id="bug-19"></a>✅ BUG-19 · Low · A save finished on another tab leaves the old title in the Add form
+- **Where:** `AddMemoryGroupFragment.onViewCreated`, `res/layout/fragment_add_memory_group.xml`
+- **What:** A hidden tab has no view, and Android keeps the state its views had: the title and description text, the All Day switch and the colour sliders. When the tab is shown again, `onViewCreated` fills the form from the ViewModel, and then Android restores that kept state over it. Normally both hold the same, but a save that finishes while another tab is shown clears only the ViewModel. Back on the Add tab, the form had no location but still the old title (and All Day, if it was on), and the title field and the switch wrote them back into the ViewModel, so they went into the next memory. Found by the UI tests (TEST-3), with `AddMemoryTest.aSaveThatFinishesAfterLeavingTheTabSaysSoWithoutOpeningTheMemory`.
+- **Fix:** Turn off Android's own state saving on these inputs (`android:saveEnabled="false"`) and fill them from the ViewModel alone, which keeps the form through a rotation and process death.
+- **Status:** Fixed. The title, description, All Day switch and colour sliders have `saveEnabled="false"`, and `onViewCreated` sets the switch from the ViewModel too (`updateInputs`). The test above checks that the form is empty and All Day off after such a save.
 
 [↑ Back to index](#index)
 
