@@ -135,7 +135,9 @@ It is built when the user sends logs, not during re-link runs, so cold start pay
 ## 4. Known limits
 * **Different bytes on the new device are not re-linked.** Google Photos "Storage saver", re-encoding,
   EXIF rewrites or edits make the signature differ. Only exact copies (for example device transfer)
-  can be matched.
+  can be matched. Planned in `REVIEW_FINDINGS.md`: BUG-20 (a picked photo edited later, found by its
+  gallery id), UX-19 (the user picks a replacement taken around the same time, or removes the item) and
+  DATA-10 (more stored per item, such as a thumbnail, to recognise it).
 * **Signatures depend on redaction state.** If the app ever gains `ACCESS_MEDIA_LOCATION`, or the
   photo picker's per-app "Include location info?" option is enabled, new reads would be unredacted
   and no longer match signatures stored from redacted reads. Not tested.

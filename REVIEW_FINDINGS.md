@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 59 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 23 open
+✅ 59 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 27 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -55,7 +55,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [SEC-7](#sec-7) | Low | Auto Backup enabled with empty rules |
 | ✅ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
 
-**DATA — Data loss / integrity** · 8 of 9 fixed
+**DATA — Data loss / integrity** · 8 of 11 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -68,8 +68,10 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-7](#data-7) | Medium | Deleting a memory never releases URI grants and never backs up |
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ✅ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
+| ⬜ | [DATA-10](#data-10) | Medium | Too little is stored about each photo to re-link it once its bytes change |
+| ⬜ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
 
-**BUG — Functional bugs** · 19 of 19 fixed
+**BUG — Functional bugs** · 19 of 20 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -92,6 +94,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-17](#bug-17) | Low | Show on Timeline can leave a memory below the screen |
 | ✅ | [BUG-18](#bug-18) | Medium | Saving an edit of a deleted memory loses the edit |
 | ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
+| ⬜ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
 
 **PERF — Performance** · 7 of 10 fixed
 
@@ -108,7 +111,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 12 of 18 fixed
+**UX — User experience** · 12 of 19 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -130,6 +133,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
 | ✅ | [UX-17](#ux-17) | Low | A date picker ignores the picked date after process death |
 | ✅ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
+| ⬜ | [UX-19](#ux-19) | Medium | A photo that can't be re-linked can only stay broken |
 
 **ARCH — Structure / maintainability** · 1 of 10 fixed
 
@@ -285,6 +289,26 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Rewrite them as create-new-table, copy, drop, rename, or drop support for schema versions below 5.
 - **Status:** Fixed differently. `minSdk` is now 34 (every user has Android 14 or newer), and Android 14 ships SQLite 3.39, so the migrations run unchanged on every supported device.
 
+### <a id="data-10"></a>⬜ DATA-10 · Medium · Too little is stored about each photo to re-link it once its bytes change
+- **Where:** `data/MediaItem.kt`, `AddMemoryGroupFragment.readPickedMedia`, `AddMemoryGroupFragmentViewModel.prepareMediaItems`, `util/LocalMediaUtil.kt`
+- **What:** A media item stores only its URI, size, date taken and signature (size + hash of the first and last 4 KB). Re-linking needs the exact same bytes, so any edit, re-encoding (Google Photos "Storage saver", a messenger) or metadata rewrite makes the photo unfindable. A missing photo also shows only its type, size and date, so neither the app nor the user can tell what it looked like. Raised by the owner after the main user's logs (2026-11-01): 52 of 1,788 items unlinked; see [UX-19](#ux-19) and [BUG-20](#bug-20).
+- **Fix (proposed, not decided):** Store more about each item, but only fields that a matching rule or the [UX-19](#ux-19) chooser uses. Each extra field means a schema change, and a field that nothing reads only adds risk. Most of these can be read from the picked file itself when it is picked (the app already opens it to compute the signature), so they don't need full media access:
+  - **Small thumbnail** (about 128 px JPEG, 3–6 KB). This is the most useful field: a missing tile can show what the photo was, and [UX-19](#ux-19) can show it next to the candidates. Cost: about 10 MB for 2,000 items, in the database and in every Drive backup (backups are never pruned, [DATA-4](#data-4)). Decide the size, and whether thumbnails belong in the backup (keeping them out loses them on a new phone, where they help most).
+  - **Original file name, width, height, MIME type, video duration.** These come from the picker URI or MediaStore. They are labels and filters for the chooser and a check for [BUG-20](#bug-20), but too weak to link anything on their own (an edit changes the size, a crop changes the dimensions).
+  - **Unique ids written into the file:** EXIF `ImageUniqueID`, XMP `DocumentID` / `OriginalDocumentID` (MediaStore also has them as `DOCUMENT_ID` / `ORIGINAL_DOCUMENT_ID`). They are the only fields that could link an edited copy automatically with confidence. First check on a Samsung phone that its camera writes them and that its Gallery keeps them when it edits or copies a photo; if not, don't store them.
+  - **Perceptual hash** (64-bit hash of a tiny greyscale copy). It survives re-encoding and resizing but not crops. Use it only to rank candidates in [UX-19](#ux-19), never to link on its own: shots taken seconds apart of the same scene look alike to it, and those are the ones a user keeps and deletes.
+  - **Leave out:** GPS (the picker strips it, the app has no `ACCESS_MEDIA_LOCATION`, and per-photo locations add privacy weight for no matching gain); folder, owner app and MediaStore id (they change on a move or copy, and need full access).
+- **Things to keep in mind:**
+  - Full media access isn't the gate: it adds only the fields left out above. Read everything at pick time for every user.
+  - Backfill existing items while their file is still readable: the re-link run already visits every item, so it can fill in missing fields once. Items whose file is already gone (like the 50 in those logs) can't be backfilled.
+  - Columns on `media_items`, not a separate table: editing a memory deletes and re-inserts its media rows (new ids), so the values must travel through `SelectedMedia` and `prepareMediaItems` the way the signature does. Follow the schema rules in `data/AGENTS.md`; older backups restore with the new columns empty.
+  - A matching rule that uses a new field must be mirrored in `RelinkDiagnostics`.
+
+### <a id="data-11"></a>⬜ DATA-11 · Medium · Picker grants are kept after re-linking, so the 512 cap pushes out live ones
+- **Where:** `util/LocalMediaUtil.kt` (`verifyAndFixMediaItems`, the `updateMediaLink` branch)
+- **What:** When re-linking moves an item from a photo picker URI to a MediaStore URI, the picker URI's persisted grant is kept. Android keeps at most 512 grants per app and drops the oldest when a new one is taken, so stale grants push out the grants of items that still use picker URIs. The main user's logs (2026-11-01) show 512 grants held, while their two unlinked picker items had none. Those items only work again through re-linking, which needs full media access. It is not yet known how many of the 512 are stale.
+- **Fix:** After `updateMediaLink` succeeds, release the old URI's grant if no other item uses it (`releaseUriGrantsIfUnused`). This is not the forbidden "sweep": an older backup that still has the picker URI re-links the same way after a restore, because the photo was just found through MediaStore. Have `RelinkDiagnostics` count the stored URI kinds of all items and how many grants no item uses, to measure the leak first.
+
 [↑ Back to index](#index)
 
 ---
@@ -402,6 +426,18 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** A hidden tab has no view, and Android keeps the state its views had: the title and description text, the All Day switch and the colour sliders. When the tab is shown again, `onViewCreated` fills the form from the ViewModel, and then Android restores that kept state over it. Normally both hold the same, but a save that finishes while another tab is shown clears only the ViewModel. Back on the Add tab, the form had no location but still the old title (and All Day, if it was on), and the title field and the switch wrote them back into the ViewModel, so they went into the next memory. Found by the UI tests (TEST-3), with `AddMemoryTest.aSaveThatFinishesAfterLeavingTheTabSaysSoWithoutOpeningTheMemory`.
 - **Fix:** Turn off Android's own state saving on these inputs (`android:saveEnabled="false"`) and fill them from the ViewModel alone, which keeps the form through a rotation and process death.
 - **Status:** Fixed. The title, description, All Day switch and colour sliders have `saveEnabled="false"`, and `onViewCreated` sets the switch from the ViewModel too (`updateInputs`). The test above checks that the form is empty and All Day off after such a save.
+
+### <a id="bug-20"></a>⬜ BUG-20 · Low · A picked photo edited afterwards can't be re-linked
+- **Where:** `util/LocalMediaUtil.kt` (`verifyAndFixMediaItems`), `util/RelinkDiagnostics.kt`
+- **What:** Editing a photo in the gallery (a crop, for example) rewrites the file under the same MediaStore id and keeps its date taken, but its size and signature change. An item with a MediaStore URI still opens and shows the edited photo. An item with a photo picker URI breaks once its grant is gone ([DATA-11](#data-11)), and the signature can't find the edited file. Seen in the main user's logs (2026-11-01): item 1913's picker URI ends in `1000021632`, the file with that id has the same name and date taken (to the millisecond), and it was cropped two days after being picked (2.81 MB → 2.48 MB).
+- **Fix:** When the signature finds nothing for a local picker URI (`content://media/picker/…/com.android.providers.media.photopicker/media/<id>`), look up `<id>` in MediaStore and link to it if all of these hold:
+  - the item was saved by this installation (`deviceId == installationId`); on another phone the id means nothing;
+  - the file is of the same type (image or video);
+  - its date taken is known (> 0) and equals the stored one to the millisecond. This also guards against Android ever numbering picker ids differently from MediaStore, which is how it behaves but isn't documented.
+
+  Cloud picker URIs (`com.google.android.apps.photos.cloudpicker`) are skipped: their ids aren't MediaStore ids. Count these links separately in the re-link report ("linked to an edited version"), and mirror the rule in `RelinkDiagnostics`.
+- **Open question:** after such a link, keep the old signature and size (the current rule: computed once, kept) or replace them with the edited file's? Replacing them lets backups find the photo as it is now, since the old bytes no longer exist on this phone.
+- **Rejected:** matching any file with the same date taken to the millisecond, regardless of id (it would also catch "save as copy" edits). It was rejected as too risky: dates with only whole seconds (videos, messenger images) collide for shots taken in the same second, and two different edits share a date. A wrong link is worse than a missing one; [UX-19](#ux-19) leaves such cases to the user.
 
 [↑ Back to index](#index)
 
@@ -585,6 +621,21 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** After a successful restore, Settings shows "Restore successful" and right away starts re-linking media. The re-link shows the loading overlay with `hideBackupStatus = true`, which hides the result line again, and nothing shows it afterwards. So the user gets no lasting sign that the restore worked. After a backup the line stays: the list reload that follows passes `hideBackupStatus = false`. Found by the Settings UI tests (TEST-3); `SettingsTest.aRestoreSaysThatItSucceeded` is skipped until this is fixed.
 - **Fix:** Keep the result line during the re-link after a restore (`hideBackupStatus = false`), or show it again when the re-link is done.
 - **Status:** Fixed. The re-link that follows a restore keeps the result line (`hideBackupStatus = false`), so "Restore successful" stays. `SettingsTest.aRestoreSaysThatItSucceeded` runs again.
+
+### <a id="ux-19"></a>⬜ UX-19 · Medium · A photo that can't be re-linked can only stay broken
+- **Where:** `adapter/MediaAdapter.kt` (the error tile; a tap opens the media viewer), the memory screen, `SettingsFragment` (Re-link)
+- **What:** When re-linking can't find a photo's file, the memory shows an error tile forever. The user can't point the app to the right photo, replace it, or remove it without editing the whole memory. The main user's logs (2026-11-01): 52 items unlinked, 50 of them because the file was deleted from the phone. In most of those cases a shot of the same scene taken seconds before or after is still there: the user took two or three shots and deleted the one the memory used. Of the 40 items the diagnostics describe in detail, 18 have a photo of the same type within 1 minute, 20 within 5 minutes, 25 within 10 and 34 within 30.
+- **Fix (proposed by the owner):** Tapping a missing tile opens a sheet for that one item:
+  1. **Re-link just this item** first: the signature rule and [BUG-20](#bug-20), queued through `MediaRelinker` like every other run. If it finds the file, the tile shows the photo and the sheet says so.
+  2. **Otherwise, suggest photos taken around the same time:** same type only, within ±5 minutes of the stored date taken, nearest first, each with its thumbnail, how much earlier or later it was taken, and its size. Leave out photos that are already in this memory (the de-duplication would remove them again). A "Show more" button widens the window once (to ±1 hour?), because nearby shots in the logs are often 10–30 minutes apart. If nothing is in the window, or the date taken is unknown, show no suggestions.
+  3. **Actions:** "Use this photo" (replaces the item), "Choose another photo…" (the system photo picker, for any photo), "Remove from memory" (asks first), "Not now".
+- **Details to settle:**
+  - Listing candidates needs full media access. Without it, the sheet offers "Allow access" and "Choose another photo…".
+  - "Use this photo" replaces the item rather than re-linking it: it writes a new URI, signature, size, date taken and device id (unlike `updateMediaLink`), keeps its position in the memory, and releases the old URI's grant if nothing else uses it. A matching DAO method is needed. Since the user chose the photo, there is no false-positive risk, but the sheet should say plainly that it is a different photo ("taken 7 s later").
+  - With [DATA-10](#data-10)'s thumbnail, the sheet can show the lost photo next to the candidates. Without it, the user picks from the times alone. The perceptual hash can put the most similar candidate first.
+  - Going through the memories one by one to fix 52 tiles is slow, so Settings could also offer "Review unlinked photos (52)", which steps through them with the same sheet.
+  - Optionally, include photos in Android's trash (`MATCH_TRASHED`) with a "Restore from trash" action (`MediaStore.createTrashRequest`). It's not clear that Samsung's Gallery uses Android's trash.
+  - Build the sheet as a DialogFragment that gets the item id in its arguments, so it survives rotation and process death (as `ConfirmDialog` does). UI tests can add gallery photos at chosen times through `TestData`, and the picker path uses `FakeMediaPicker`.
 
 [↑ Back to index](#index)
 
