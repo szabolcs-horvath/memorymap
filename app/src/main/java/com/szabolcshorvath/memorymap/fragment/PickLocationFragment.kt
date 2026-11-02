@@ -11,7 +11,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -23,6 +22,7 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapColorScheme
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.material.color.MaterialColors
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
@@ -280,7 +280,6 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
 
     private fun setConfirmButtonLoading(isLoading: Boolean) {
         val binding = _binding ?: return
-        val context = context ?: return
         binding.btConfirm.isEnabled = !isLoading
         binding.btConfirm.text = if (isLoading) {
             "Fetching location..."
@@ -289,10 +288,12 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
 
         // Use solid colors to avoid transparency over the map when disabled
-        val colorRes = if (isLoading) R.color.md_theme_surfaceVariant else R.color.md_theme_primary
-        binding.btConfirm.backgroundTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(context, colorRes)
-        )
+        val colorAttr = if (isLoading) {
+            com.google.android.material.R.attr.colorSurfaceVariant
+        } else {
+            androidx.appcompat.R.attr.colorPrimary
+        }
+        binding.btConfirm.backgroundTintList = ColorStateList.valueOf(MaterialColors.getColor(binding.btConfirm, colorAttr))
     }
 
     @SuppressLint("MissingPermission")
