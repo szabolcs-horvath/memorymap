@@ -222,7 +222,10 @@ class BackupManager(private val context: Context) {
 
                         Result.success(Unit)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Restore failed", e)
+                        val versions = (e as? BackupTooNewException)
+                            ?.let { " (backup database version ${it.backupVersion}, app ${MemoryMapDatabase.DB_VERSION})" }
+                            .orEmpty()
+                        Log.e(TAG, "Restore failed$versions", e)
                         Result.failure(e)
                     } finally {
                         tempDir?.deleteRecursively()
