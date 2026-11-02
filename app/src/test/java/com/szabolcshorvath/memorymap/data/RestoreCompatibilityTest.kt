@@ -37,7 +37,6 @@ class RestoreCompatibilityTest {
         // The user's current data, which a restore must replace (or, on failure, leave alone).
         live.memoryGroupDao().insertGroup(LIVE_GROUP)
         live.databaseContentsDao().insertPresets(listOf(HSVPreset(id = 70, hue = 10f, saturation = 1f, brightness = 1f)))
-        Unit
     }
 
     @AfterEach
@@ -95,7 +94,7 @@ class RestoreCompatibilityTest {
     }
 
     @Test
-    fun `a corrupt backup is rejected and the live data is kept`() {
+    fun `a corrupt backup is rejected and the live data is kept`() = runBlocking {
         val file = SchemaDatabases.create(context, "corrupt.db", MemoryMapDatabase.DB_VERSION)
         RandomAccessFile(file, "rw").use { raf ->
             // Keep the header and schema page, overwrite every table page.
@@ -103,23 +102,23 @@ class RestoreCompatibilityTest {
             raf.write(ByteArray((raf.length() - PAGE_SIZE).toInt()) { 0x55 })
         }
 
-        assertThrows<SQLiteException> { runBlocking { restore(file.name) } }
+        assertThrows<SQLiteException> { restore(file.name) }
         assertLiveDataUnchanged()
     }
 
     @Test
-    fun `a file that is not a database is rejected instead of being read as an empty backup`() {
+    fun `a file that is not a database is rejected instead of being read as an empty backup`() = runBlocking {
         context.getDatabasePath("junk.db").apply { parentFile?.mkdirs() }.writeText("this is not a database".repeat(100))
 
-        assertThrows<SQLiteException> { runBlocking { restore("junk.db") } }
+        assertThrows<SQLiteException> { restore("junk.db") }
         assertLiveDataUnchanged()
     }
 
     @Test
-    fun `an empty file is rejected instead of being read as an empty backup`() {
+    fun `an empty file is rejected instead of being read as an empty backup`() = runBlocking {
         context.getDatabasePath("empty.db").apply { parentFile?.mkdirs() }.writeBytes(ByteArray(0))
 
-        assertThrows<SQLiteException> { runBlocking { restore("empty.db") } }
+        assertThrows<SQLiteException> { restore("empty.db") }
         assertLiveDataUnchanged()
     }
 
@@ -128,7 +127,7 @@ class RestoreCompatibilityTest {
         val group = LIVE_GROUP.copy(id = 1, title = "Backup")
         val broken = DatabaseContents(groups = listOf(group, group), mediaItems = emptyList(), fragments = emptyList(), presets = emptyList())
 
-        assertThrows<SQLiteException> { runBlocking { broken.replaceAllIn(live.databaseContentsDao()) } }
+        assertThrows<SQLiteException> { broken.replaceAllIn(live.databaseContentsDao()) }
         assertLiveDataUnchanged()
     }
 
@@ -161,7 +160,7 @@ class RestoreCompatibilityTest {
         contents.replaceAllIn(live.databaseContentsDao())
     }
 
-    private fun assertLiveDataUnchanged() = runBlocking {
+    private suspend fun assertLiveDataUnchanged() {
         assertEquals(listOf(LIVE_GROUP), live.databaseContentsDao().getAllGroups())
         assertEquals(listOf(70), live.databaseContentsDao().getAllPresets().map { it.id })
         assertNull(live.memoryGroupDao().getGroupWithMedia(1))
