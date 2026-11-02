@@ -6,7 +6,7 @@
 #
 # It starts the emulator if it isn't running, waits until it has booted, and runs connectedDebugAndroidTest with
 # ANDROID_SERIAL set to it: Gradle otherwise runs the tests on every connected device, and every test clears the debug
-# app's data. (AGP's own --serial option doesn't work in AGP 9.4.1: it fails with an UnsupportedOperationException.)
+# app's data. (AGP's own --serial option doesn't work in AGP 9.4.1 or 9.5.0: it fails with an UnsupportedOperationException.)
 # Afterwards it prints a table of the results. Works on macOS, Linux and Windows (Git Bash).
 set -euo pipefail
 
