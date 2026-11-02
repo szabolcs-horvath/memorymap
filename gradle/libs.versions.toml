@@ -3,7 +3,7 @@
 kotlinGradlePlugin = "2.4.21"
 agp = "9.5.0"
 googleServices = "4.5.0"
-ksp = "2.3.12"
+ksp = "2.3.13"
 detekt = "1.23.8"
 
 # Core & UI
@@ -38,7 +38,7 @@ googleid = "1.2.1"
 playServicesAuth = "22.0.0"
 
 # Drive
-googleApiServicesDrive = "v3-rev20261011-2.0.0"
+googleApiServicesDrive = "v3-rev20261023-2.9.2"
 
 # JSON
 googleHttpClient = "2.2.0"
