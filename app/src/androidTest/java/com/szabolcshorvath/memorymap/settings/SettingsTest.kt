@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.settings
 import android.graphics.Color
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService.DEFAULT_EMAIL
@@ -16,6 +17,7 @@ import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.SettingsScreen
 import com.szabolcshorvath.memorymap.screens.ShareSheet
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
+import com.szabolcshorvath.memorymap.screens.ToastMessage
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
@@ -47,6 +49,16 @@ class SettingsTest {
         SettingsScreen.signOut()
         SettingsScreen.assertSignedOut()
         SettingsScreen.assertBackupGone(MANUAL)
+    }
+
+    @Test
+    fun signingInToABuildWithoutAnOAuthClientIdSaysSoAndStaysSignedOut() {
+        FakeAccountService.signInError = SignInNotConfiguredException()
+        openSettings()
+
+        ToastMessage.assertShownAfter(NOT_SET_UP) { SettingsScreen.signIn() }
+        SettingsScreen.waitUntilIdle()
+        SettingsScreen.assertSignedOut()
     }
 
     @Test
@@ -202,6 +214,7 @@ class SettingsTest {
         const val AUTOMATIC_BACKUP = "MemoryMap_Automatic_Backup_20261019_080000.zip"
         const val RESTORE_TITLE = "Restore Backup"
         const val DELETE_TITLE = "Delete backup?"
+        const val NOT_SET_UP = "Google sign-in isn't set up in this build (missing OAuth client ID)."
         const val MINUTE_MS = 60_000L
         val PHOTO_COLOR = Color.rgb(150, 60, 170)
 
