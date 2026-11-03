@@ -23,6 +23,15 @@ class MediaAdapter(
 
     private val items = mutableListOf<MediaItem>()
 
+    /** Items known to need re-linking (`LocalMediaUtil.hasMissingMedia`): their tiles show as missing without loading. */
+    private var missingIds: Set<Int> = emptySet()
+
+    fun updateMissing(newMissingIds: Set<Int>) {
+        if (newMissingIds == missingIds) return
+        missingIds = newMissingIds
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     init {
         setHasStableIds(true)
     }
@@ -36,12 +45,13 @@ class MediaAdapter(
         binding.root
     ) {
         fun bind(mediaItem: MediaItem) {
-            val isFromOtherDevice = currentDeviceId != null && mediaItem.deviceId != currentDeviceId
+            // Known to be missing: shown as missing even if an image of it is still in the memory cache.
+            val showAsMissing = currentDeviceId != null && mediaItem.deviceId != currentDeviceId || mediaItem.id in missingIds
             binding.root.contentDescription = binding.root.context.getString(
                 if (mediaItem.type == MediaType.VIDEO) R.string.open_video else R.string.open_photo
             )
 
-            if (isFromOtherDevice) {
+            if (showAsMissing) {
                 // Cancel a load still running for the item this view showed before.
                 binding.thumbnailImage.dispose()
                 binding.thumbnailImage.setImageDrawable(null)
