@@ -103,6 +103,7 @@ class AddMemoryGroupFragment : Fragment() {
                     val deviceId = knownDeviceId ?: InstallationIdentifier.getInstallationIdentifier(context)
                     uris.map { uri -> readPickedMedia(contentResolver, uri, deviceId) }
                 }
+                viewModel.onMediaPicked(uris.map { it.toString() })
                 val newItems = pickedItems.filter { picked -> viewModel.selectedMedia.none { it.uri == picked.uri } }
                 // New media items should be first in the list
                 viewModel.selectedMedia.addAll(0, newItems)
@@ -298,7 +299,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun setupRecyclerViews() {
         mediaAdapter = SelectedMediaAdapter(viewModel.currentDeviceId) { item ->
-            viewModel.selectedMedia.remove(item)
+            viewModel.removeMedia(item)
             updateMediaUI()
         }
         mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {

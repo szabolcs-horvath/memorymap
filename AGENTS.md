@@ -45,7 +45,7 @@ Local setup needs files that are **not** in git:
 - Preferences: a single DataStore named `"googleAuthDatastore"` (it holds all app prefs, not just auth). Keys and defaults are in `util/PreferencesKeys.kt`; the default map filter is in `util/DateFilterOption.kt` (stored by enum `name`).
 
 ### Media handling and re-linking (read `SIGNATURE_FIX_PLAN.md`)
-- Picked media keep their **photo picker URI**, with `takePersistableUriPermission` (survives reboots, no `READ_MEDIA_*` needed). Android caps persisted grants at 512 and drops the oldest beyond that, so call `LocalMediaUtil.releaseUriGrantsIfUnused` when media is removed or re-linked to another URI.
+- Picked media keep their **photo picker URI**, with `takePersistableUriPermission` (survives reboots, no `READ_MEDIA_*` needed). Android caps persisted grants at 512 and drops the oldest beyond that, so call `LocalMediaUtil.releaseUriGrantsIfUnused` when media is removed or re-linked to another URI. The Add form does it for photos picked in it that leave the form unsaved (removed, cleared, replaced by an edit), but never for media loaded for editing.
 - The Add form opens the photo picker through `AppServices.mediaPicker` (the system's `PickMultipleVisualMedia`), so UI tests can replace it. A screen registers its launcher with it once, when it is created.
 - Each `MediaItem` stores `deviceId` (the installation id), `fileSize`, `dateTaken` and `mediaSignature` = `"{size}_{md5(first 4 KB + last 4 KB)}"` (`MediaHasher`). The signature is computed once and kept on later saves; only re-linking to an edited version (below) replaces it.
 - `InstallationIdentifier` lives in `noBackupFilesDir` on purpose, so Auto Backup and device transfer don't copy it. Don't move it back into DataStore.

@@ -6,10 +6,12 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.VisibleForTesting
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.szabolcshorvath.memorymap.MemoryMapApplication
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
@@ -52,6 +54,14 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
     val isSaving = _isSaving.asStateFlow()
 
     var selectedMedia = mutableListOf<AddMemoryGroupFragment.SelectedMedia>()
+
+    /**
+     * Photos and videos picked in this form, whose persisted grant the pick took. One that leaves the form unsaved
+     * (removed, cleared or replaced by an edit) has its grant released ([releaseDroppedPicks]), or it would count
+     * toward Android's cap of 512 and push out grants that saved media still need.
+     */
+    private val pickedUris = HashSet<String>()
+
     var fragments = mutableListOf<MemoryFragmentEditAdapter.FragmentEditState>()
 
     var title: String? = null
@@ -152,8 +162,41 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
                 _saveResult.send(SaveResult.Error)
             } finally {
                 _isSaving.value = false
+                withContext(Dispatchers.Main) { releaseDroppedPicks() }
             }
         }
+    }
+
+    /** Remembers [uris], just picked, whose persisted grant the pick took. */
+    fun onMediaPicked(uris: Collection<String>) {
+        pickedUris += uris
+    }
+
+    /** Removes [item] from the form, and releases its grant if this form took it and nothing saved uses it. */
+    fun removeMedia(item: AddMemoryGroupFragment.SelectedMedia) {
+        selectedMedia.remove(item)
+        releaseDroppedPicks()
+    }
+
+    /**
+     * Releases the grants of picked media that are no longer in the form, unless a saved memory uses them. Waits
+     * while a save runs (it calls this again when done): the save may be storing them. Only grants this form took
+     * are released: media loaded for editing may belong to a memory whose delete can still be undone.
+     */
+    private fun releaseDroppedPicks() {
+        if (_isSaving.value) return
+        val inForm = selectedMedia.mapTo(HashSet()) { it.uri.toString() }
+        val dropped = pickedUris.filterNotTo(HashSet()) { it in inForm }
+        if (dropped.isEmpty()) return
+        pickedUris -= dropped
+        getApplication<MemoryMapApplication>().applicationScope.launch { releaseGrants(dropped) }
+    }
+
+    /** Releases the grants of [uris] that no saved media item uses. Tests replace it to see what the form releases. */
+    @VisibleForTesting
+    internal var releaseGrants: suspend (Set<String>) -> Unit = { uris ->
+        val app = getApplication<Application>()
+        LocalMediaUtil.releaseUriGrantsIfUnused(app, MemoryMapDatabase.getDatabase(app).memoryGroupDao(), uris)
     }
 
     /**
@@ -198,6 +241,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         putBundle(UNCHANGED_FORM, unchangedContent.toBundle())
         editingMemoryId?.let { putInt(EDITING_MEMORY_ID, it) }
         pendingEditMemoryId?.let { putInt(PENDING_EDIT_MEMORY_ID, it) }
+        putStringArrayList(PICKED_URIS, ArrayList(pickedUris))
         putInt(ACTIVE_PICKING_INDEX, activePickingIndex)
         putBoolean(FRAGMENTS_EXPANDED, fragmentsExpanded)
         putBoolean(COLOR_EXPANDED, colorExpanded)
@@ -222,6 +266,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
             fragments.addAll(form.fragments)
         }
         state.getBundle(UNCHANGED_FORM)?.let { unchangedContent = it.toFormContent() }
+        state.getStringArrayList(PICKED_URIS)?.let { pickedUris += it }
         editingMemoryId = state.getInt(EDITING_MEMORY_ID).takeIf { state.containsKey(EDITING_MEMORY_ID) }
         pendingEditMemoryId = state.getInt(PENDING_EDIT_MEMORY_ID).takeIf { state.containsKey(PENDING_EDIT_MEMORY_ID) }
         activePickingIndex = state.getInt(ACTIVE_PICKING_INDEX, -1)
@@ -278,6 +323,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
             }
         )
         fragmentsExpanded = true
+        releaseDroppedPicks()
     }
 
     /** Clears the form: after a successful save, or when the user clears it. */
@@ -301,6 +347,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         fragmentsExpanded = true
         colorExpanded = false
         markUnchanged()
+        releaseDroppedPicks()
     }
 
     private fun calculateEffectiveStartTime(isAllDay: Boolean, startDateTime: ZonedDateTime): ZonedDateTime = if (isAllDay) {
@@ -464,6 +511,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         const val EDITING_MEMORY_ID = "editing_memory_id"
         const val PENDING_EDIT_MEMORY_ID = "pending_edit_memory_id"
         const val ACTIVE_PICKING_INDEX = "active_picking_index"
+        const val PICKED_URIS = "picked_uris"
         const val FRAGMENTS_EXPANDED = "fragments_expanded"
         const val COLOR_EXPANDED = "color_expanded"
         const val DATE_EXPANDED = "date_expanded"
