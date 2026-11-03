@@ -11,11 +11,13 @@ import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.robolectric.RuntimeEnvironment
 import tech.apter.junit.jupiter.robolectric.RobolectricExtension
 import java.time.ZonedDateTime
+import java.util.concurrent.ConcurrentLinkedQueue
 
 @ExtendWith(RobolectricExtension::class)
 class AddMemoryGroupFragmentViewModelTest {
@@ -24,6 +26,14 @@ class AddMemoryGroupFragmentViewModelTest {
     private val viewModel by lazy { newForm() }
 
     private fun newForm() = AddMemoryGroupFragmentViewModel(RuntimeEnvironment.getApplication(), SavedStateHandle())
+
+    /** The URIs the form asked to release, in the background. (Grants that saved media use: `UriGrantReleaseTest`.) */
+    private val released = ConcurrentLinkedQueue<String>()
+
+    @BeforeEach
+    fun recordReleases() {
+        viewModel.releaseGrants = { released += it }
+    }
 
     @Test
     fun `a new form has no unsaved changes`() {
@@ -96,6 +106,59 @@ class AddMemoryGroupFragmentViewModelTest {
         assertFalse(viewModel.hasUnsavedChanges())
     }
 
+    @Test
+    fun `removing a picked photo releases its grant, and the photo left in the form keeps it`() {
+        pick(PICKED_1, PICKED_2)
+
+        viewModel.removeMedia(viewModel.selectedMedia.single { it.uri.toString() == PICKED_1 })
+
+        awaitReleased(PICKED_1)
+    }
+
+    @Test
+    fun `clearing the form releases the grants of the photos picked in it`() {
+        pick(PICKED_1, PICKED_2)
+
+        viewModel.resetForm()
+
+        awaitReleased(PICKED_1, PICKED_2)
+    }
+
+    @Test
+    fun `loading a memory for editing releases the grants of the photos picked before`() {
+        pick(PICKED_1)
+
+        viewModel.fillForEditing(loadedMemory())
+
+        awaitReleased(PICKED_1)
+    }
+
+    @Test
+    fun `media loaded for editing are never released by the form`() {
+        // They may belong to a memory whose delete can still be undone; a save releases what an edit removed.
+        viewModel.fillForEditing(loadedMemory())
+        viewModel.removeMedia(viewModel.selectedMedia.first())
+        viewModel.resetForm()
+        pick(PICKED_1)
+
+        viewModel.removeMedia(viewModel.selectedMedia.single { it.uri.toString() == PICKED_1 })
+
+        awaitReleased(PICKED_1) // and nothing before it
+    }
+
+    /** Picks [uris] as the photo picker does (the pick takes a persisted grant of each). */
+    private fun pick(vararg uris: String) {
+        viewModel.onMediaPicked(uris.toList())
+        viewModel.selectedMedia += uris.map { AddMemoryGroupFragment.SelectedMedia(Uri.parse(it), MediaType.IMAGE, "device") }
+    }
+
+    /** Waits until the form has asked to release exactly [expected]: the release runs in the background. */
+    private fun awaitReleased(vararg expected: String) {
+        val deadline = System.currentTimeMillis() + RELEASE_TIMEOUT_MS
+        while (released.size < expected.size && System.currentTimeMillis() < deadline) Thread.sleep(POLL_MS)
+        assertEquals(expected.sorted(), released.sorted())
+    }
+
     private fun loadedMemory() = MemoryGroupWithMedia(
         group = MemoryGroup(
             id = 7,
@@ -138,6 +201,10 @@ class AddMemoryGroupFragmentViewModelTest {
     )
 
     private companion object {
+        const val PICKED_1 = "content://media/picker/0/com.android.providers.media.photopicker/media/31"
+        const val PICKED_2 = "content://media/picker/0/com.android.providers.media.photopicker/media/32"
+        const val RELEASE_TIMEOUT_MS = 5_000L
+        const val POLL_MS = 20L
         val START: ZonedDateTime = ZonedDateTime.parse("2026-01-04T10:00:00+01:00[Europe/Budapest]")
     }
 }

@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 61 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
+✅ 62 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -55,7 +55,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [SEC-7](#sec-7) | Low | Auto Backup enabled with empty rules |
 | ✅ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
 
-**DATA — Data loss / integrity** · 9 of 11 fixed
+**DATA — Data loss / integrity** · 10 of 12 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -70,6 +70,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 | ⬜ | [DATA-10](#data-10) | Medium | Too little is stored about each photo to re-link it once its bytes change |
 | ✅ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
+| ✅ | [DATA-12](#data-12) | Low | Photos picked and then dropped from the Add form keep their grants |
 
 **BUG — Functional bugs** · 20 of 20 fixed
 
@@ -308,7 +309,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `util/LocalMediaUtil.kt` (`verifyAndFixMediaItems`, the `updateMediaLink` branch)
 - **What:** When re-linking moves an item from a photo picker URI to a MediaStore URI, the picker URI's persisted grant is kept. Android keeps at most 512 grants per app and drops the oldest when a new one is taken, so stale grants push out the grants of items that still use picker URIs. The main user's logs (2026-11-01) show 512 grants held, while their two unlinked picker items had none. Those items only work again through re-linking, which needs full media access. It is not yet known how many of the 512 are stale.
 - **Fix:** After `updateMediaLink` succeeds, release the old URI's grant if no other item uses it (`releaseUriGrantsIfUnused`). This is not the forbidden "sweep": an older backup that still has the picker URI re-links the same way after a restore, because the photo was just found through MediaStore. Have `RelinkDiagnostics` count the stored URI kinds of all items and how many grants no item uses, to measure the leak first.
-- **Status:** Fixed. After a re-link run, the old URIs of the items it moved are passed to `releaseUriGrantsIfUnused`, which releases each grant no item still uses (covered by `UriGrantReleaseTest`). Grants left over from earlier runs are not released (that would be a sweep); they drop out as new picks push them past the cap. The "Send logs" diagnostics now list the stored URI kinds of all items, how many photo picker items still have their grant (and how many distinct picker URIs there are: more than 512 can't all keep theirs), and how many grants no item uses, by kind (`grantUsage`, covered by `RelinkReportTest`). Not covered here: photos picked in the Add form and then removed before saving, or left in a draft that is cleared, keep their grants too; the diagnostics' count of unused grants includes them.
+- **Status:** Fixed. After a re-link run, the old URIs of the items it moved are passed to `releaseUriGrantsIfUnused`, which releases each grant no item still uses (covered by `UriGrantReleaseTest`). Grants left over from earlier runs are not released (that would be a sweep); they drop out as new picks push them past the cap. The "Send logs" diagnostics now list the stored URI kinds of all items, how many photo picker items still have their grant (and how many distinct picker URIs there are: more than 512 can't all keep theirs), and how many grants no item uses, by kind (`grantUsage`, covered by `RelinkReportTest`). Photos picked in the Add form and then dropped unsaved kept their grants too: [DATA-12](#data-12).
+
+### <a id="data-12"></a>✅ DATA-12 · Low · Photos picked and then dropped from the Add form keep their grants
+- **Where:** `fragment/AddMemoryGroupFragment.kt` (the pick launcher, removing a selected photo), `fragment/AddMemoryGroupFragmentViewModel.kt` (`resetForm`, `fillForEditing`)
+- **What:** A pick takes a persisted grant of every picked photo or video at once. Only a save released grants (of media an edit removed). A photo removed from the form before saving, a draft cleared or discarded, or a draft replaced by an Edit request kept its grants, which count toward Android's cap of 512 ([DATA-11](#data-11)). Found while fixing DATA-11 (2026-11-03).
+- **Status:** Fixed. The form remembers the URIs it picked (`pickedUris`, kept through process death). When one leaves the form (removed, form cleared or replaced by an edit), its grant is released unless a saved media item uses it. While a save runs, releases wait until it ends, so a photo being saved keeps its grant. Media loaded for editing are never released by the form: they may belong to a memory whose delete can still be undone, and a save already releases what an edit removed. Covered by `AddMemoryGroupFragmentViewModelTest` (what the form releases) and `UriGrantReleaseTest` (grants that saved media use stay). Left as is: if the same photo is in a memory deleted while its Undo is still offered, and is picked and then dropped from the form, its grant is released and Undo brings it back without one.
 
 [↑ Back to index](#index)
 
