@@ -65,6 +65,7 @@ object RelinkDiagnostics {
                 hasGrant = item.uri in grants,
                 storedUriSignature = if (stored is StoredUriState.Readable) library.signature(item.uri) else null,
                 sameSize = sameSizeCheck(item, sameSizeFiles, library),
+                editedVersion = editedVersionCheck(item, installationId, library),
                 nearby = if (index < RelinkReportFormatter.DETAILED_ITEMS) library.nearby(item) else null
             )
         }
@@ -89,6 +90,17 @@ object RelinkDiagnostics {
         val files = filesBySize[item.fileSize].orEmpty()
         val matches = if (item.mediaSignature.isEmpty()) 0 else files.count { library.signature(it) == item.mediaSignature }
         return SameSizeCheck(files.size, matches)
+    }
+
+    /** What `LocalMediaUtil.findEditedVersion` would find for [item], or null when its rule doesn't apply. */
+    private fun editedVersionCheck(item: MediaItem, installationId: String, library: PhoneLibrary): EditedVersionCheck? {
+        val id = EditedPhotoRule.mediaStoreId(item, installationId) ?: return null
+        val uri = EditedPhotoRule.mediaStoreUri(item.type, id).toString()
+        val state = library.storedState(uri)
+        val wouldLink = state is StoredUriState.Readable &&
+            EditedPhotoRule.isSameCapture(item, LocalMediaUtil.MediaMetadata(state.size, state.dateTaken)) &&
+            library.signature(uri) != null
+        return EditedVersionCheck(uri, state, wouldLink)
     }
 
     private fun installationInfo(context: Context, installationId: String): InstallationInfo {

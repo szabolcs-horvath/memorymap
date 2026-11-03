@@ -105,12 +105,26 @@ class MemoryGroupDaoTest {
 
         // A restore during the run put another photo under the same id.
         dao.updateMediaItems(listOf(seen.copy(uri = "content://restored/7", mediaSignature = "2048_def")))
-        assertEquals(0, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/42", "this-phone"))
+        assertEquals(0, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/42", "this-phone", seen.mediaSignature, seen.fileSize))
         assertEquals("content://restored/7", dao.getAllMediaItems().single().uri)
 
         dao.updateMediaItems(listOf(seen))
-        assertEquals(1, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/42", "this-phone"))
+        assertEquals(1, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/42", "this-phone", seen.mediaSignature, seen.fileSize))
         assertEquals(seen.copy(uri = "content://media/42", deviceId = "this-phone"), dao.getAllMediaItems().single())
+    }
+
+    @Test
+    fun `re-linking to an edited version takes its size and signature`() = runBlocking {
+        val groupId = dao.insertGroup(group()).toInt()
+        dao.insertMediaItems(listOf(media(groupId, "content://picker/1", order = 3)))
+        val seen = dao.getAllMediaItems().single()
+
+        assertEquals(1, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/1", "this-phone", "900_fed", 900))
+
+        assertEquals(
+            seen.copy(uri = "content://media/1", deviceId = "this-phone", mediaSignature = "900_fed", fileSize = 900),
+            dao.getAllMediaItems().single()
+        )
     }
 
     private fun media(groupId: Int, uri: String, order: Int) = MediaItem(

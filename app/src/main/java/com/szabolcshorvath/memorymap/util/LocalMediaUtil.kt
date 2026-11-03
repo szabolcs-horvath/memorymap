@@ -184,15 +184,17 @@ object LocalMediaUtil {
         val candidatePool = queryCandidatesForSizes(context, targetSizes)
         val sigs = SignatureCache { signatureOrNull(context, it) }
         var relinkedCount = 0
+        var editedCount = 0
         val stillMissing = HashSet<Int>()
         val replacedUris = mutableListOf<String>()
 
         for ((index, item) in itemsNeedingFix.withIndex()) {
             onProgress?.invoke("Re-linking photo ${index + 1} of ${itemsNeedingFix.size}...")
 
-            val match = findBySignature(item, candidatePool, sigs)
+            val link = findBySignature(item, candidatePool, sigs)?.let { Link(it.uri, item.fileSize, item.mediaSignature) }
+                ?: findEditedVersion(context, item, installationIdentifier)
             when {
-                match == null -> {
+                link == null -> {
                     stillMissing += item.id
                     Log.w(
                         TAG,
@@ -202,17 +204,16 @@ object LocalMediaUtil {
                     )
                 }
 
-                // Updates only the link columns, so a concurrent edit (e.g. reordering) is not overwritten, and only
-                // if the row still holds the photo this run read: a restore during the run can reuse its id.
-                dao.updateMediaLink(item.id, item.uri, item.mediaSignature, match.uri, installationIdentifier) == 1 -> {
+                saveLink(dao, item, link, installationIdentifier) -> {
                     Log.i(
                         TAG,
-                        "RE-LINK SUCCESS [Exact Signature]: item id=${item.id} " +
-                            "(size=${item.fileSize}, sig=${item.mediaSignature}) -> matched MediaStore uri=${match.uri}"
+                        "RE-LINK SUCCESS [${if (link.isEdited(item)) "Edited Version" else "Exact Signature"}]: item id=${item.id} " +
+                            "(size=${item.fileSize}, sig=${item.mediaSignature}) -> uri=${link.uri} (size=${link.size}, sig=${link.signature})"
                     )
-                    relinkNeeded[item.copy(uri = match.uri, deviceId = installationIdentifier).linkKey] = false
+                    relinkNeeded[item.copy(uri = link.uri, deviceId = installationIdentifier, fileSize = link.size).linkKey] = false
                     relinkedCount++
-                    if (item.uri != match.uri) replacedUris += item.uri
+                    if (link.isEdited(item)) editedCount++
+                    if (item.uri != link.uri) replacedUris += item.uri
                 }
 
                 else -> Log.w(TAG, "RE-LINK SKIPPED [Changed]: item id=${item.id} changed during the run (restore or edit).")
@@ -220,7 +221,7 @@ object LocalMediaUtil {
         }
 
         if (relinkedCount > 0) {
-            Log.i(TAG, "RE-LINK COMPLETE: Successfully updated $relinkedCount media items in Room DB.")
+            Log.i(TAG, "RE-LINK COMPLETE: Successfully updated $relinkedCount media items in Room DB ($editedCount to an edited version).")
         }
         // The old URIs' grants would otherwise count toward Android's cap of 512 and push out grants still in use.
         // Not a sweep: an older backup that still has one of these URIs finds the same photo again through MediaStore.
@@ -228,11 +229,46 @@ object LocalMediaUtil {
         val removedDuplicates = deduplicateMediaItems(context, dao)
         stillMissing -= removedDuplicates.mapTo(HashSet()) { it.id }
 
-        val summary = if (relinkedCount > 0) "Media re-linking complete. Re-linked $relinkedCount items." else "No matching photos found to re-link."
-        return RelinkResult(
-            missingCount = stillMissing.size,
-            summary = if (removedDuplicates.isNotEmpty()) "$summary Removed ${removedDuplicates.size} duplicate photos." else summary
-        )
+        return RelinkResult(stillMissing.size, relinkSummary(relinkedCount, editedCount, removedDuplicates.size))
+    }
+
+    /** The file an item is re-linked to. Its size and signature differ from the item's only for an edited version. */
+    private data class Link(val uri: String, val size: Long, val signature: String) {
+        fun isEdited(item: MediaItem) = signature != item.mediaSignature
+    }
+
+    /**
+     * Writes [link], but only the link columns (and the size and signature, which change only for an edited version),
+     * so a concurrent edit such as reordering is not overwritten, and only if the row still holds the photo this run
+     * read: a restore during the run can reuse its id. Returns whether the row was updated.
+     */
+    private suspend fun saveLink(dao: MemoryGroupDao, item: MediaItem, link: Link, installationIdentifier: String): Boolean =
+        dao.updateMediaLink(
+            id = item.id,
+            seenUri = item.uri,
+            signature = item.mediaSignature,
+            uri = link.uri,
+            deviceId = installationIdentifier,
+            newSignature = link.signature,
+            newSize = link.size
+        ) == 1
+
+    /** The file [EditedPhotoRule] links [item] to, if any. */
+    private fun findEditedVersion(context: Context, item: MediaItem, installationIdentifier: String): Link? {
+        val id = EditedPhotoRule.mediaStoreId(item, installationIdentifier) ?: return null
+        val uri = EditedPhotoRule.mediaStoreUri(item.type, id)
+        val metadata = queryMetadata(context, uri)?.takeIf { EditedPhotoRule.isSameCapture(item, it) }
+        val signature = metadata?.let { signatureOrNull(context, uri) }
+        return if (metadata != null && signature != null) Link(uri.toString(), metadata.size, signature) else null
+    }
+
+    private fun relinkSummary(relinkedCount: Int, editedCount: Int, duplicateCount: Int): String {
+        val summary = when {
+            relinkedCount == 0 -> "No matching photos found to re-link."
+            editedCount == 0 -> "Media re-linking complete. Re-linked $relinkedCount items."
+            else -> "Media re-linking complete. Re-linked $relinkedCount items, $editedCount of them to an edited version."
+        }
+        return if (duplicateCount > 0) "$summary Removed $duplicateCount duplicate photos." else summary
     }
 
     private fun findBySignature(

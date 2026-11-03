@@ -94,6 +94,12 @@ internal fun nearest(files: List<PhoneFile>, dateTaken: Long, limit: Int): List<
 /** MediaStore files with the item's exact size, and how many of them have its signature (what re-linking needs). */
 internal data class SameSizeCheck(val files: Int, val signatureMatches: Int)
 
+/**
+ * The MediaStore file that a photo picker URI's id names (`EditedPhotoRule.mediaStoreId`), and whether re-linking
+ * would link to it as an edited version: readable, same date taken, and a signature it can compute.
+ */
+internal data class EditedVersionCheck(val uri: String, val state: StoredUriState, val wouldLink: Boolean)
+
 internal data class ItemDiagnosis(
     val item: MediaItem,
     val reasons: List<RelinkReason>,
@@ -103,6 +109,8 @@ internal data class ItemDiagnosis(
     val storedUriSignature: String?,
     /** Null when not searched (no media access, or no stored size). */
     val sameSize: SameSizeCheck?,
+    /** Null when the edited-version rule doesn't apply to the item. */
+    val editedVersion: EditedVersionCheck?,
     /** Null when not searched (no media access, no stored date, or beyond the detailed items). */
     val nearby: List<PhoneFile>?
 )
@@ -203,6 +211,8 @@ internal object RelinkReportFormatter {
         val searched = diagnoses.mapNotNull { it.sameSize }
         appendLine("Same-size file on this phone: ${searched.count { it.files > 0 }} of ${searched.size} searched")
         appendLine("Same size and signature (would re-link): ${searched.count { it.signatureMatches > 0 }}")
+        val edited = diagnoses.mapNotNull { it.editedVersion }
+        appendLine("Edited version under the picker id (would re-link): ${edited.count { it.wouldLink }} of ${edited.size} checked")
     }
 
     private fun StringBuilder.appendItemLines(diagnoses: List<ItemDiagnosis>, zone: ZoneId) {
@@ -215,6 +225,7 @@ internal object RelinkReportFormatter {
                 "#${item.id}  group ${item.groupId}  ${item.type}  ${uriKind(item.uri)}  size ${item.fileSize}  " +
                     "taken ${time(item.dateTaken, zone)}  grant ${yesNo(d.hasGrant)}  " +
                     "same size ${d.sameSize?.files ?: "-"}  signature ${d.sameSize?.signatureMatches ?: "-"}  " +
+                    "edited ${d.editedVersion?.let { yesNo(it.wouldLink) } ?: "-"}  " +
                     "[${d.reasons.joinToString("; ") { it.label }}]"
             )
         }
@@ -251,6 +262,7 @@ internal object RelinkReportFormatter {
             d.sameSize?.let { "Same-size files: ${it.files}, with the stored signature: ${it.signatureMatches}" }
                 ?: "Same-size files: not searched (${if (canSearch) "no stored size" else "no media access"})"
         )
+        appendLine(editedVersionLine(d, zone))
         appendNearby(d, canSearch, zone)
     }
 
@@ -281,6 +293,16 @@ internal object RelinkReportFormatter {
         val flags = listOfNotNull("trashed".takeIf { file.isTrashed }, "pending".takeIf { file.isPending })
         appendLine("     owner ${file.ownerPackage ?: "unknown"}${flags.joinToString("") { ", $it" }}")
         appendLine("     signature ${file.signature?.let { signatureNote(it, item) } ?: "(can't be read)"}")
+    }
+
+    private fun editedVersionLine(d: ItemDiagnosis, zone: ZoneId): String {
+        val check = d.editedVersion
+            ?: return "Edited version: not checked (needs a local photo picker URI saved by this installation, with a date taken)"
+        val state = when (val s = check.state) {
+            is StoredUriState.Readable -> "size ${s.size}, taken ${time(s.dateTaken, zone)} (${timeDelta(s.dateTaken, d.item.dateTaken)})"
+            is StoredUriState.Unreadable -> "can't be read (${s.error})"
+        }
+        return "Edited version: ${check.uri}: $state, ${if (check.wouldLink) "would re-link" else "would not re-link"}"
     }
 
     private fun signatureNote(signature: String, item: MediaItem): String =
