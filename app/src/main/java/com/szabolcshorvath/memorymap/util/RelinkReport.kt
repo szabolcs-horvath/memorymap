@@ -34,10 +34,36 @@ internal fun relinkReasons(item: MediaItem, installationId: String, stored: Stor
     }
 }
 
+private const val PICKER_KIND = "photo picker"
+
 internal fun uriKind(uri: String): String = when {
-    uri.startsWith("content://media/picker") -> "photo picker"
+    uri.startsWith("content://media/picker") -> PICKER_KIND
     uri.startsWith("content://media/") -> "MediaStore"
     else -> "other"
+}
+
+/** How the app's persisted grants line up with the stored URIs of all media items. */
+internal data class GrantUsage(
+    /** URI kind to how many items store a URI of that kind. */
+    val itemUriKinds: Map<String, Int>,
+    val pickerItems: Int,
+    val pickerItemsWithGrant: Int,
+    /** Each distinct picker URI needs a grant of its own, so more than 512 can't all keep theirs. */
+    val distinctPickerUris: Int,
+    /** URI kind to how many grants no media item uses. */
+    val unusedGrants: Map<String, Int>
+)
+
+internal fun grantUsage(items: List<MediaItem>, grants: Set<String>): GrantUsage {
+    val used = items.mapTo(HashSet()) { it.uri }
+    val pickerItems = items.filter { uriKind(it.uri) == PICKER_KIND }
+    return GrantUsage(
+        itemUriKinds = items.groupingBy { uriKind(it.uri) }.eachCount(),
+        pickerItems = pickerItems.size,
+        pickerItemsWithGrant = pickerItems.count { it.uri in grants },
+        distinctPickerUris = pickerItems.distinctBy { it.uri }.size,
+        unusedGrants = grants.filterNot { it in used }.groupingBy { uriKind(it) }.eachCount()
+    )
 }
 
 /** A photo or video in this phone's MediaStore. Times are in milliseconds; 0 means unknown. */
@@ -92,6 +118,7 @@ internal data class MediaAccessInfo(
     /** Permission name to whether it is granted. */
     val permissions: List<Pair<String, Boolean>>,
     val persistedGrants: Int,
+    val grantUsage: GrantUsage,
     /** Null when the app can't read them. */
     val visibleImages: Int?,
     val visibleVideos: Int?
@@ -145,6 +172,13 @@ internal object RelinkReportFormatter {
             appendLine("${name.substringAfterLast('.')}: ${if (granted) "granted" else "not granted"}")
         }
         appendLine("Persisted URI grants: ${access.persistedGrants} (Android keeps at most 512)")
+        val usage = access.grantUsage
+        appendLine("Stored URI kinds (all items): ${counts(usage.itemUriKinds)}")
+        appendLine(
+            "Photo picker items with a grant: ${usage.pickerItemsWithGrant} of ${usage.pickerItems} " +
+                "(${usage.distinctPickerUris} distinct URIs)"
+        )
+        appendLine("Grants no item uses: ${usage.unusedGrants.values.sum()} (${counts(usage.unusedGrants)})")
         appendLine("Photos visible in MediaStore: ${access.visibleImages ?: "not readable"}")
         appendLine("Videos visible in MediaStore: ${access.visibleVideos ?: "not readable"}")
     }
@@ -163,8 +197,7 @@ internal object RelinkReportFormatter {
 
         appendLine("Reasons (an item can have several):")
         RelinkReason.entries.forEach { reason -> appendLine("  ${reason.label}: ${diagnoses.count { reason in it.reasons }}") }
-        val kinds = diagnoses.groupingBy { uriKind(it.item.uri) }.eachCount()
-        appendLine("Stored URI kinds: ${kinds.entries.joinToString { "${it.key} ${it.value}" }}")
+        appendLine("Stored URI kinds: ${counts(diagnoses.groupingBy { uriKind(it.item.uri) }.eachCount())}")
         appendLine("With a persisted grant: ${diagnoses.count { it.hasGrant }}")
         appendLine("Without a stored signature: ${diagnoses.count { it.item.mediaSignature.isEmpty() }}")
         val searched = diagnoses.mapNotNull { it.sameSize }
@@ -272,4 +305,7 @@ internal object RelinkReportFormatter {
         }
 
     private fun yesNo(value: Boolean) = if (value) "yes" else "no"
+
+    private fun counts(byKind: Map<String, Int>): String =
+        byKind.entries.joinToString { "${it.key} ${it.value}" }.ifEmpty { "none" }
 }
