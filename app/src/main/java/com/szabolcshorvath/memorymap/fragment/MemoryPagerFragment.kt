@@ -108,7 +108,12 @@ class MemoryPagerFragment : Fragment() {
 
         override fun getItemId(position: Int): Long = memoryIds[position].toLong()
 
-        override fun containsItem(itemId: Long): Boolean = memoryIds.contains(itemId.toInt())
+        /**
+         * Until the memories have loaded, every page counts as known. After process death Android gives the pager back
+         * its pages' saved state before the list arrives, and the adapter drops the pages it doesn't know, with what
+         * they had open (the sheet of a missing photo, a question).
+         */
+        override fun containsItem(itemId: Long): Boolean = memoryIds.isEmpty() || memoryIds.contains(itemId.toInt())
     }
 
     companion object {
