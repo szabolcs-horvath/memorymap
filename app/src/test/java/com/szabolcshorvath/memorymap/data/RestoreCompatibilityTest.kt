@@ -74,6 +74,16 @@ class RestoreCompatibilityTest {
         assertEquals(MediaType.VIDEO, media.type)
         assertEquals(3L, media.fileSize)
         assertEquals(if ("order" in columns.getValue("media_items")) 3 else null, media.order)
+        val hasDetails = "perceptualHash" in columns.getValue("media_items")
+        assertEquals(if (hasDetails) "media_items.displayName" else null, media.displayName)
+        assertEquals(if (hasDetails) 3L else null, media.perceptualHash)
+
+        val thumbnails = live.databaseContentsDao().getAllThumbnails()
+        if ("media_thumbnails" in columns) {
+            assertEquals(listOf(MediaThumbnail("media_items.mediaSignature", SchemaDatabases.SAMPLE_BLOB)), thumbnails)
+        } else {
+            assertEquals(emptyList<MediaThumbnail>(), thumbnails)
+        }
 
         val fragments = live.databaseContentsDao().getAllFragments()
         if ("memory_fragments" in columns) {

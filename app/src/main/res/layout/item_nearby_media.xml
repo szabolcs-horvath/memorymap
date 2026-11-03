@@ -35,6 +35,15 @@
             android:textAppearance="?attr/textAppearanceBodyLarge" />
 
         <TextView
+            android:id="@+id/tvNearbyAlike"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/nearby_looks_alike"
+            android:textAppearance="?attr/textAppearanceLabelLarge"
+            android:textColor="?attr/colorPrimary"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/tvNearbySize"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

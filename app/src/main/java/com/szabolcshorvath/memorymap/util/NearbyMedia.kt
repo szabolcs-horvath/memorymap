@@ -11,7 +11,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import kotlin.math.abs
 
 /** A photo or video on this phone, from MediaStore. Times are in milliseconds. */
-data class NearbyFile(val uri: String, val size: Long, val dateTaken: Long)
+data class NearbyFile(val uri: String, val size: Long, val dateTaken: Long, val looksAlike: Boolean = false)
 
 /**
  * Finds the photos or videos taken around the time of a media item that can't be re-linked: usually the user took
@@ -27,12 +27,26 @@ internal object NearbyMedia {
 
     /**
      * Up to [LIMIT] files of [item]'s type taken within [windowMs] of its date taken, nearest first, without the ones
-     * already in its memory ([memoryItems]). Empty when the date taken is unknown.
+     * already in its memory ([memoryItems]). The ones that look like it come first ([rankByLooks]). Empty when the date
+     * taken is unknown.
      */
     fun find(context: Context, item: MediaItem, memoryItems: List<MediaItem>, windowMs: Long): List<NearbyFile> {
         if (item.dateTaken <= 0) return emptyList()
         val files = query(context, collection(item.type), item.dateTaken - windowMs, item.dateTaken + windowMs)
-        return pick(item, files, memoryItems, LIMIT) { LocalMediaUtil.signatureOrNull(context, it.toUri()) }
+        val nearest = pick(item, files, memoryItems, LIMIT) { LocalMediaUtil.signatureOrNull(context, it.toUri()) }
+        return rankByLooks(item, nearest) { MediaDetails.hashOf(context, it.toUri()) }
+    }
+
+    /**
+     * [nearest] with the files whose perceptual hash is within [MediaDetails.LOOKS_ALIKE_DISTANCE] of [item]'s marked
+     * and moved to the top, each group keeping its order. Unchanged when [item] has no hash (saved before hashes were
+     * stored, and never readable since). [hashOf] runs once per file.
+     */
+    fun rankByLooks(item: MediaItem, nearest: List<NearbyFile>, hashOf: (String) -> Long?): List<NearbyFile> {
+        val hash = item.perceptualHash ?: return nearest
+        return nearest
+            .map { file -> file.copy(looksAlike = hashOf(file.uri)?.let { MediaDetails.hashDistance(it, hash) <= MediaDetails.LOOKS_ALIKE_DISTANCE } == true) }
+            .sortedBy { !it.looksAlike }
     }
 
     /**

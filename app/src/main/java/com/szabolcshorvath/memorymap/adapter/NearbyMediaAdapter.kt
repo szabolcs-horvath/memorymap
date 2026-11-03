@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.adapter
 import android.content.Context
 import android.text.format.Formatter
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -32,7 +33,8 @@ internal class NearbyMediaAdapter(private val onPick: (NearbyFile) -> Unit) :
             val taken = whenTaken(context, file.dateTaken - dateTaken)
             binding.tvNearbyWhen.text = taken.replaceFirstChar { it.titlecase() }
             binding.tvNearbySize.text = Formatter.formatFileSize(context, file.size)
-            binding.root.contentDescription = context.getString(R.string.nearby_use, taken)
+            binding.tvNearbyAlike.visibility = if (file.looksAlike) View.VISIBLE else View.GONE
+            binding.root.contentDescription = context.getString(if (file.looksAlike) R.string.nearby_use_alike else R.string.nearby_use, taken)
             binding.nearbyThumbnail.load(file.uri) {
                 crossfade(true)
                 if (type == MediaType.VIDEO) {

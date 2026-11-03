@@ -13,7 +13,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [MemoryGroup::class, MediaItem::class, MemoryFragment::class, HSVPreset::class],
+    entities = [MemoryGroup::class, MediaItem::class, MemoryFragment::class, HSVPreset::class, MediaThumbnail::class],
     version = MemoryMapDatabase.DB_VERSION,
     autoMigrations = [
         AutoMigration(from = 3, to = 4),
@@ -28,7 +28,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 13, to = 14),
         AutoMigration(from = 14, to = 15, spec = AutoMigrationSpecFrom14To15::class),
         AutoMigration(from = 15, to = 16),
-        AutoMigration(from = 16, to = 17)
+        AutoMigration(from = 16, to = 17),
+        AutoMigration(from = 18, to = 19)
     ],
     exportSchema = true
 )
@@ -38,12 +39,14 @@ abstract class MemoryMapDatabase : RoomDatabase() {
 
     abstract fun mediaItemDao(): MediaItemDao
 
+    abstract fun mediaThumbnailDao(): MediaThumbnailDao
+
     abstract fun hsvPresetDao(): HSVPresetDao
 
     abstract fun databaseContentsDao(): DatabaseContentsDao
 
     companion object {
-        const val DB_VERSION = 18
+        const val DB_VERSION = 19
 
         @Volatile
         private var INSTANCE: MemoryMapDatabase? = null

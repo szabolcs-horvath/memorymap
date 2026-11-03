@@ -4,6 +4,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.StaleObjectException
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import java.util.regex.Pattern
 
 /**
@@ -36,6 +37,17 @@ object MissingPhotoSheet {
         val shown = Ui.eventually(read = ::suggestions) { it == expected }
         assertEquals("The suggestions", expected, shown)
     }
+
+    /** The sheet shows how the lost photo looked: its stored thumbnail, of [color] (the tests' thumbnails are one colour). */
+    fun assertThumbnail(color: Int) {
+        Ui.assertShown("How the lost photo looked") { hasDescription("How it looked") }
+        val center = Ui.find { hasDescription("How it looked") }.visibleCenter
+        val shown = Ui.eventually(read = { ScreenColors.at(listOf(center)).single() }) { ScreenColors.isClose(it, color) }
+        assertTrue("The thumbnail is ${ScreenColors.hex(shown)}, not ${ScreenColors.hex(color)}", ScreenColors.isClose(shown, color))
+    }
+
+    /** The sheet names the lost file: [text], such as "IMG_1.jpg · 640 × 480". */
+    fun assertFile(text: String) = Ui.assertShown("The file \"$text\"") { hasId("tvMissingFile") && hasText(text) }
 
     /** Taps the suggestion taken [whenTaken], which asks first ([USE_TITLE]). */
     fun pick(whenTaken: String) = tap { hasDescription(USE_PREFIX + whenTaken) }

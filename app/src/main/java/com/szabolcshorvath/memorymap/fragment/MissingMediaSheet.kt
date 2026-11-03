@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import coil3.load
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -150,6 +151,29 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
         }
         val size = if (item.fileSize > 0) Formatter.formatFileSize(context, item.fileSize) else getString(R.string.missing_media_unknown_size)
         binding.tvMissingDetails.text = getString(R.string.missing_media_details, date, size)
+        showFile(binding, item)
+        showThumbnail(binding, viewModel.thumbnail)
+    }
+
+    /** The file's name and size in pixels, as far as they were stored. */
+    private fun showFile(binding: SheetMissingMediaBinding, item: MediaItem) {
+        val name = item.displayName
+        val width = item.width
+        val height = item.height
+        binding.tvMissingFile.text = when {
+            name != null && width != null && height != null -> getString(R.string.missing_media_file, name, width, height)
+            else -> name
+        }
+        binding.tvMissingFile.visibility = if (name != null) View.VISIBLE else View.GONE
+    }
+
+    /** How the lost photo looked, if its thumbnail was stored. Loaded once: the sheet renders on every state. */
+    private fun showThumbnail(binding: SheetMissingMediaBinding, thumbnail: ByteArray?) {
+        binding.ivMissingThumbnail.visibility = if (thumbnail != null) View.VISIBLE else View.GONE
+        if (thumbnail != null && binding.ivMissingThumbnail.tag !== thumbnail) {
+            binding.ivMissingThumbnail.tag = thumbnail
+            binding.ivMissingThumbnail.load(thumbnail)
+        }
     }
 
     private fun showOutcome(outcome: Outcome) {

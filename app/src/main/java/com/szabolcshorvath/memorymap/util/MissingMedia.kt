@@ -4,10 +4,13 @@ import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
+import androidx.core.net.toUri
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MediaThumbnail
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.util.MediaDetails.withDetails
 
 /**
  * What the user can do with a media item that can't be re-linked: replace it with another file, or remove it from its
@@ -45,6 +48,7 @@ object MissingMedia {
      */
     suspend fun replace(context: Context, item: MediaItem, file: MediaFile): Boolean {
         val db = MemoryMapDatabase.getDatabase(context)
+        val details = MediaDetails.read(context, file.uri.toUri(), file.type)
         val replacement = MediaItem(
             groupId = item.groupId,
             uri = file.uri,
@@ -53,8 +57,9 @@ object MissingMedia {
             mediaSignature = file.signature,
             fileSize = file.size,
             dateTaken = file.dateTaken
-        )
+        ).withDetails(details)
         if (!db.mediaItemDao().replaceMedia(item, replacement)) return false
+        details.thumbnail?.let { db.mediaThumbnailDao().insert(MediaThumbnail(file.signature, it)) }
         Log.i(TAG, "Replaced media item ${item.id} (${item.uri}) with ${file.uri}")
         if (item.uri != file.uri) LocalMediaUtil.releaseUriGrantsIfUnused(context, db.memoryGroupDao(), listOf(item.uri))
         AutomaticBackups.schedule(context)

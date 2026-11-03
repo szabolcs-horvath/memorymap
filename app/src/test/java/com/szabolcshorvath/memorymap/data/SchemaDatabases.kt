@@ -16,6 +16,7 @@ internal object SchemaDatabases {
     const val SAMPLE_DATE = "2026-01-04T10:00:00+01:00[Europe/Budapest]"
     const val SAMPLE_INT = 3L
     const val SAMPLE_REAL = 0.5
+    val SAMPLE_BLOB = byteArrayOf(1, 2, 3)
 
     /** The first schema version a backup can have: backups were introduced at version 6. */
     const val OLDEST_BACKUP_VERSION = 6
@@ -74,10 +75,13 @@ internal object SchemaDatabases {
         "id", "groupId" -> 1L
         "startDate", "endDate" -> SAMPLE_DATE
         "type" -> "VIDEO"
+        // A thumbnail belongs to the sample media item, by its signature.
+        "signature" -> sampleText("media_items", "mediaSignature")
         else -> when (affinity) {
             "TEXT" -> sampleText(table, column)
             "INTEGER" -> SAMPLE_INT
             "REAL" -> SAMPLE_REAL
+            "BLOB" -> SAMPLE_BLOB
             else -> error("Unexpected affinity $affinity for $table.$column")
         }
     }

@@ -21,18 +21,29 @@ interface DatabaseContentsDao {
     @Query("SELECT * FROM hsv_presets")
     suspend fun getAllPresets(): List<HSVPreset>
 
+    @Query("SELECT * FROM media_thumbnails")
+    suspend fun getAllThumbnails(): List<MediaThumbnail>
+
     /** Deletes every row of every table and inserts the given rows, all in one transaction. */
     @Transaction
-    suspend fun replaceAll(groups: List<MemoryGroup>, mediaItems: List<MediaItem>, fragments: List<MemoryFragment>, presets: List<HSVPreset>) {
+    suspend fun replaceAll(
+        groups: List<MemoryGroup>,
+        mediaItems: List<MediaItem>,
+        fragments: List<MemoryFragment>,
+        presets: List<HSVPreset>,
+        thumbnails: List<MediaThumbnail>
+    ) {
         deleteAllMediaItems()
         deleteAllFragments()
         deleteAllGroups()
         deleteAllPresets()
+        deleteAllThumbnails()
 
         insertGroups(groups)
         insertMediaItems(mediaItems)
         insertFragments(fragments)
         insertPresets(presets)
+        insertThumbnails(thumbnails)
     }
 
     @Query("DELETE FROM memory_groups")
@@ -47,6 +58,9 @@ interface DatabaseContentsDao {
     @Query("DELETE FROM hsv_presets")
     suspend fun deleteAllPresets()
 
+    @Query("DELETE FROM media_thumbnails")
+    suspend fun deleteAllThumbnails()
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertGroups(groups: List<MemoryGroup>)
 
@@ -58,4 +72,7 @@ interface DatabaseContentsDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertPresets(presets: List<HSVPreset>)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertThumbnails(thumbnails: List<MediaThumbnail>)
 }

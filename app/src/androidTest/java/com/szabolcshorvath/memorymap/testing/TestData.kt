@@ -15,6 +15,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.test.platform.app.InstrumentationRegistry
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MediaThumbnail
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -25,6 +26,7 @@ import com.szabolcshorvath.memorymap.fakes.FakeLocationService
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
+import com.szabolcshorvath.memorymap.util.MediaDetails
 import com.szabolcshorvath.memorymap.util.MediaHasher
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
@@ -209,16 +211,45 @@ object TestData {
      * Adds a photo of [color] to the phone's gallery only, taken [secondsAfter] seconds after the others this test adds
      * this way (a negative number: before), and returns its date taken as the gallery read it.
      */
-    fun photoTakenAt(color: Int, secondsAfter: Long): Long {
-        val uri = createGalleryImageFrom(withDateTaken(jpeg(color, color), BASE_TIME.plusSeconds(secondsAfter).format(EXIF_FORMAT)))
+    fun photoTakenAt(color: Int, secondsAfter: Long): Long =
+        photoTakenAt(jpeg(color, color), secondsAfter)
+
+    /** As [photoTakenAt], with vertical [stripes] instead of one colour, for photos that look alike or not. */
+    fun photoTakenAt(stripes: Stripes, secondsAfter: Long): Long =
+        photoTakenAt(compress(stripes.bitmap()), secondsAfter)
+
+    private fun photoTakenAt(jpeg: ByteArray, secondsAfter: Long): Long {
+        val uri = createGalleryImageFrom(withDateTaken(jpeg, BASE_TIME.plusSeconds(secondsAfter).format(EXIF_FORMAT)))
         return dateTakenOf(uri)
     }
 
     /**
-     * Adds a photo to memory [groupId] as it was saved on this phone and whose file was deleted afterwards: its picker
-     * URI names no file, so re-linking can't find it. It was taken at [dateTaken], or at an unknown time (0).
+     * Nine vertical stripes of two greys. Photos of one colour all have the same perceptual hash; stripes that start
+     * with the light grey and stripes that start with the dark one are as far apart as hashes get.
      */
-    fun missingPhoto(groupId: Int, dateTaken: Long, order: Int = 0) = runBlocking {
+    enum class Stripes(private val first: Int, private val second: Int) {
+        LIGHT_FIRST(Color.rgb(220, 220, 220), Color.rgb(40, 40, 40)),
+        DARK_FIRST(Color.rgb(40, 40, 40), Color.rgb(220, 220, 220));
+
+        internal fun bitmap(): Bitmap = Bitmap.createBitmap(IMAGE_WIDTH, IMAGE_HEIGHT, Bitmap.Config.ARGB_8888).also { bitmap ->
+            val canvas = Canvas(bitmap)
+            val stripe = IMAGE_WIDTH / STRIPES
+            repeat(STRIPES) { index ->
+                canvas.save()
+                canvas.clipRect(index * stripe, 0, if (index == STRIPES - 1) IMAGE_WIDTH else (index + 1) * stripe, IMAGE_HEIGHT)
+                canvas.drawColor(if (index % 2 == 0) first else second)
+                canvas.restore()
+            }
+        }
+    }
+
+    /**
+     * Adds a photo to memory [groupId] as it was saved on this phone and whose file was deleted afterwards: its picker
+     * URI names no file, so re-linking can't find it. It was taken at [dateTaken], or at an unknown time (0). With
+     * [looksLike], it has the perceptual hash of those stripes; with [thumbnailColor], a stored thumbnail of that colour.
+     */
+    fun missingPhoto(groupId: Int, dateTaken: Long, order: Int = 0, looksLike: Stripes? = null, thumbnailColor: Int? = null) = runBlocking {
+        val signature = "123456_0123456789abcdef0123456789abcdef"
         dao.insertMediaItems(
             listOf(
                 MediaItem(
@@ -226,13 +257,34 @@ object TestData {
                     uri = "content://media/picker/0/com.android.providers.media.photopicker/media/$MISSING_MEDIA_ID",
                     deviceId = InstallationIdentifier.getInstallationIdentifier(context),
                     type = MediaType.IMAGE,
-                    mediaSignature = "123456_0123456789abcdef0123456789abcdef",
+                    mediaSignature = signature,
                     fileSize = 123_456,
                     dateTaken = dateTaken,
                     order = order,
+                    displayName = "IMG_20250314_092653.jpg",
+                    width = IMAGE_WIDTH,
+                    height = IMAGE_HEIGHT,
+                    perceptualHash = looksLike?.bitmap()?.let(MediaDetails::perceptualHash),
                 )
             )
         )
+        thumbnailColor?.let {
+            val thumbnail = compress(Bitmap.createBitmap(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, Bitmap.Config.ARGB_8888).apply { eraseColor(it) })
+            MemoryMapDatabase.getDatabase(context).mediaThumbnailDao().insert(MediaThumbnail(signature, thumbnail))
+        }
+    }
+
+    /** Waits until the app has stored [count] thumbnails: the start-up backfill runs in the background. */
+    fun awaitStoredThumbnails(count: Int) {
+        val thumbnails = MemoryMapDatabase.getDatabase(context).mediaThumbnailDao()
+        val stored = Ui.eventually(read = { runBlocking { thumbnails.getSignatures().size } }) { it >= count }
+        check(stored >= count) { "The app stored $stored thumbnails, not $count" }
+    }
+
+    private fun compress(bitmap: Bitmap): ByteArray = ByteArrayOutputStream().use { stream ->
+        bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
+        bitmap.recycle()
+        stream.toByteArray()
     }
 
     private fun dateTakenOf(uri: Uri): Long {
@@ -432,6 +484,9 @@ object TestData {
     private const val IMAGE_WIDTH = 640
     private const val IMAGE_HEIGHT = 480
     private const val JPEG_QUALITY = 90
+    private const val STRIPES = 9
+    private const val THUMBNAIL_WIDTH = 128
+    private const val THUMBNAIL_HEIGHT = 96
     private const val MISSING_MEDIA_ID = 987_654_321L
     private const val ANOTHER_DEVICE = "another-device"
     private const val SHELL_PHOTOS_DIR = "/storage/emulated/0/Pictures/MemoryMapUiTests"

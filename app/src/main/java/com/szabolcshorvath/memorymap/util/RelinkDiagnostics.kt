@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.database.Cursor
+import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -19,6 +20,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.time.ZoneId
 
 /**
@@ -65,7 +67,7 @@ object RelinkDiagnostics {
                 hasGrant = item.uri in grants,
                 storedUriSignature = if (stored is StoredUriState.Readable) library.signature(item.uri) else null,
                 sameSize = sameSizeCheck(item, sameSizeFiles, library),
-                editedVersion = editedVersionCheck(item, installationId, library),
+                editedVersion = editedVersionCheck(context, item, installationId, library),
                 nearby = if (index < RelinkReportFormatter.DETAILED_ITEMS) library.nearby(item) else null
             )
         }
@@ -81,7 +83,17 @@ object RelinkDiagnostics {
             ),
             totalItems = items.size,
             deviceIdCounts = items.groupingBy { it.deviceId }.eachCount(),
-            diagnoses = diagnoses
+            diagnoses = diagnoses,
+            details = detailsCoverage(context, items)
+        )
+    }
+
+    private suspend fun detailsCoverage(context: Context, items: List<MediaItem>): DetailsCoverage {
+        val withThumbnail = MemoryMapDatabase.getDatabase(context).mediaThumbnailDao().getSignatures().toHashSet()
+        return DetailsCoverage(
+            withThumbnail = items.count { it.mediaSignature in withThumbnail },
+            withHash = items.count { it.perceptualHash != null },
+            withName = items.count { it.displayName != null }
         )
     }
 
@@ -93,12 +105,13 @@ object RelinkDiagnostics {
     }
 
     /** What `LocalMediaUtil.findEditedVersion` would find for [item], or null when its rule doesn't apply. */
-    private fun editedVersionCheck(item: MediaItem, installationId: String, library: PhoneLibrary): EditedVersionCheck? {
+    private fun editedVersionCheck(context: Context, item: MediaItem, installationId: String, library: PhoneLibrary): EditedVersionCheck? {
         val id = EditedPhotoRule.mediaStoreId(item, installationId) ?: return null
         val uri = EditedPhotoRule.mediaStoreUri(item.type, id).toString()
         val state = library.storedState(uri)
         val wouldLink = state is StoredUriState.Readable &&
             EditedPhotoRule.isSameCapture(item, LocalMediaUtil.MediaMetadata(state.size, state.dateTaken)) &&
+            EditedPhotoRule.isSameName(item, EditedPhotoRule.displayName(context, uri.toUri())) &&
             library.signature(uri) != null
         return EditedVersionCheck(uri, state, wouldLink)
     }
@@ -186,7 +199,24 @@ private class PhoneLibrary(private val context: Context) {
                 if (files.size < NEARBY_SCAN_LIMIT) files += phoneFile(contentUri, c)
             }
         }
-        return nearest(files, item.dateTaken, NEARBY_LIMIT).map { it.copy(signature = signature(it.uri)) }
+        return nearest(files, item.dateTaken, NEARBY_LIMIT).map { file ->
+            file.copy(
+                signature = signature(file.uri),
+                ids = file.ids.copy(imageUniqueId = if (file.mimeType?.startsWith("image/") == true) exifImageId(file.uri) else null),
+                hash = MediaDetails.hashOf(context, file.uri.toUri())
+            )
+        }
+    }
+
+    /** The EXIF ImageUniqueID of the photo at [uri], or null if it has none or can't be read. */
+    fun exifImageId(uri: String): String? = try {
+        resolver.openInputStream(uri.toUri())?.use { ExifInterface(it).getAttribute(ExifInterface.TAG_IMAGE_UNIQUE_ID) }
+    } catch (e: IOException) {
+        Log.w(RelinkDiagnostics.TAG, "Could not read the EXIF data of $uri", e)
+        null
+    } catch (e: SecurityException) {
+        Log.w(RelinkDiagnostics.TAG, "Could not read the EXIF data of $uri", e)
+        null
     }
 
     /** How many files the app can see at [contentUri], or null if it can't read it. */
@@ -209,7 +239,8 @@ private class PhoneLibrary(private val context: Context) {
         height = c.long(MediaStore.MediaColumns.HEIGHT)?.toInt() ?: 0,
         ownerPackage = c.string(MediaStore.MediaColumns.OWNER_PACKAGE_NAME),
         isTrashed = c.long(MediaStore.MediaColumns.IS_TRASHED) == 1L,
-        isPending = c.long(MediaStore.MediaColumns.IS_PENDING) == 1L
+        isPending = c.long(MediaStore.MediaColumns.IS_PENDING) == 1L,
+        ids = FileIds(documentId = c.string(MediaStore.MediaColumns.DOCUMENT_ID), originalDocumentId = c.string(MediaStore.MediaColumns.ORIGINAL_DOCUMENT_ID))
     )
 
     /** Runs [onRow] for every row. Returns false if the query failed or returned no cursor. */
@@ -263,6 +294,8 @@ private class PhoneLibrary(private val context: Context) {
             MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
             MediaStore.MediaColumns.IS_PENDING,
             MediaStore.MediaColumns.IS_TRASHED,
+            MediaStore.MediaColumns.DOCUMENT_ID,
+            MediaStore.MediaColumns.ORIGINAL_DOCUMENT_ID,
         )
     }
 }

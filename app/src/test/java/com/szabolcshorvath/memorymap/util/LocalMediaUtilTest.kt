@@ -65,6 +65,15 @@ class LocalMediaUtilTest {
         assertFalse(EditedPhotoRule.isSameCapture(picked("$LOCAL_PICKER/7", dateTaken = 0), MediaMetadata(2_480_000, 0)))
     }
 
+    @Test
+    fun `an edited version keeps the stored name, when both are known`() {
+        val named = picked("$LOCAL_PICKER/7").copy(displayName = "IMG_1.jpg")
+        assertTrue(EditedPhotoRule.isSameName(named, "IMG_1.jpg"))
+        assertFalse(EditedPhotoRule.isSameName(named, "IMG_1(1).jpg"))
+        assertTrue(EditedPhotoRule.isSameName(named, null))
+        assertTrue(EditedPhotoRule.isSameName(picked("$LOCAL_PICKER/7"), "anything.jpg"))
+    }
+
     private fun picked(uri: String, deviceId: String = THIS_INSTALLATION, dateTaken: Long = 1_788_023_205_927) =
         media(id = 1).copy(uri = uri, deviceId = deviceId, dateTaken = dateTaken)
 

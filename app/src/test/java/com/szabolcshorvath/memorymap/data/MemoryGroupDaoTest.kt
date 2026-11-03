@@ -137,6 +137,35 @@ class MemoryGroupDaoTest {
     }
 
     @Test
+    fun `a thumbnail is stored once per signature and deleted once no item uses it`() = runBlocking {
+        val groupId = dao.insertGroup(group()).toInt()
+        dao.insertMediaItems(listOf(media(groupId, "content://media/1", order = 1)))
+        val thumbnails = db.mediaThumbnailDao()
+
+        thumbnails.insert(MediaThumbnail("1024_abc", byteArrayOf(1)))
+        thumbnails.insert(MediaThumbnail("1024_abc", byteArrayOf(2))) // Kept: the same bytes give the same picture.
+        thumbnails.insert(MediaThumbnail("2048_unused", byteArrayOf(3)))
+
+        assertEquals(1, thumbnails.deleteUnused())
+        assertEquals(listOf(MediaThumbnail("1024_abc", byteArrayOf(1))), thumbnails.getThumbnails(listOf("1024_abc", "2048_unused")))
+    }
+
+    @Test
+    fun `details are filled in only where unknown, and only while the row holds the photo that was read`() = runBlocking {
+        val groupId = dao.insertGroup(group()).toInt()
+        dao.insertMediaItems(listOf(media(groupId, "content://media/1", order = 1).copy(displayName = "kept.jpg")))
+        val seen = dao.getAllMediaItems().single()
+        val read = seen.copy(displayName = "read.jpg", width = 640, height = 480, mimeType = "image/jpeg", perceptualHash = 42)
+        val mediaDao = db.mediaItemDao()
+
+        assertEquals(false, mediaDao.fillDetails(seen.copy(uri = "content://media/other"), read))
+        assertEquals(seen, dao.getAllMediaItems().single())
+
+        assertEquals(true, mediaDao.fillDetails(seen, read))
+        assertEquals(read.copy(displayName = "kept.jpg"), dao.getAllMediaItems().single())
+    }
+
+    @Test
     fun `re-linking to an edited version takes its size and signature`() = runBlocking {
         val groupId = dao.insertGroup(group()).toInt()
         dao.insertMediaItems(listOf(media(groupId, "content://picker/1", order = 3)))

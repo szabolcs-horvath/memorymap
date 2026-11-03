@@ -1,10 +1,11 @@
-# Database (Room, `MemoryMapDatabase.kt`, version **18**)
+# Database (Room, `MemoryMapDatabase.kt`, version **19**)
 
 Tables:
 - `memory_groups` (`MemoryGroup`)
 - `memory_fragments` (`MemoryFragment`, FK `groupId` → group, `ON DELETE CASCADE`)
 - `media_items` (`MediaItem`, FK cascade)
 - `hsv_presets` (`HSVPreset`)
+- `media_thumbnails` (`MediaThumbnail`): one small JPEG per media signature, no FK. Keyed by signature, not item id, because editing a memory re-inserts its media rows with new ids, and so lists of `MediaItem` stay light. Thumbnails no item uses are deleted only at start-up (`MediaDetailsBackfill`), so an Undo of a delete still finds them.
 
 Rules when changing the schema:
 1. Bump `DB_VERSION`, then add an `AutoMigration` (with a spec for renames or deletes) or a manual `Migration` registered in `MemoryMapDatabase.build()` (used for the app's database and for backup copies).

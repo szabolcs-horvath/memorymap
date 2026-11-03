@@ -14,7 +14,8 @@ data class DatabaseContents(
     val groups: List<MemoryGroup>,
     val mediaItems: List<MediaItem>,
     val fragments: List<MemoryFragment>,
-    val presets: List<HSVPreset>
+    val presets: List<HSVPreset>,
+    val thumbnails: List<MediaThumbnail> = emptyList()
 ) {
     /**
      * Replaces everything in the database behind [dao] with these contents, atomically. Rows whose
@@ -27,20 +28,22 @@ data class DatabaseContents(
         val orphans = (mediaItems.size - validMedia.size) + (fragments.size - validFragments.size)
         if (orphans > 0) Log.w(TAG, "Skipping $orphans media items or fragments without a memory")
 
-        dao.replaceAll(groups, validMedia, validFragments, presets)
+        val usedSignatures = validMedia.mapTo(HashSet()) { it.mediaSignature }
+        dao.replaceAll(groups, validMedia, validFragments, presets, thumbnails.filter { it.signature in usedSignatures })
     }
 
     companion object {
         private const val TAG = "DatabaseContents"
 
         /** The tables these contents cover. */
-        val TABLES = setOf("memory_groups", "media_items", "memory_fragments", "hsv_presets")
+        val TABLES = setOf("memory_groups", "media_items", "memory_fragments", "hsv_presets", "media_thumbnails")
 
         suspend fun readFrom(dao: DatabaseContentsDao) = DatabaseContents(
             groups = dao.getAllGroups(),
             mediaItems = dao.getAllMediaItems(),
             fragments = dao.getAllFragments(),
-            presets = dao.getAllPresets()
+            presets = dao.getAllPresets(),
+            thumbnails = dao.getAllThumbnails()
         )
     }
 }

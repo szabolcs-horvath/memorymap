@@ -32,7 +32,7 @@
         android:id="@+id/errorContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#CC000000"
+        android:background="@color/missing_media_scrim"
         android:gravity="center"
         android:orientation="vertical"
         android:padding="2dp"

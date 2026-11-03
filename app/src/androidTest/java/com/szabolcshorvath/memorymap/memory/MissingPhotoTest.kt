@@ -49,6 +49,26 @@ class MissingPhotoTest {
     }
 
     @Test
+    fun aSuggestionThatLooksAlikeComesFirst() {
+        val taken = TestData.photoTakenAt(TestData.Stripes.DARK_FIRST, secondsAfter = 7) - 7_000
+        TestData.photoTakenAt(TestData.Stripes.LIGHT_FIRST, secondsAfter = -180)
+        TestData.missingPhoto(TestData.memory(TRIP), taken, looksLike = TestData.Stripes.LIGHT_FIRST)
+        TestData.grantMediaAccess()
+        openMissingPhoto()
+
+        MissingPhotoSheet.assertSuggestions("3 min earlier, which looks alike", "7 s later")
+    }
+
+    @Test
+    fun theSheetShowsHowTheLostPhotoLookedAndItsName() {
+        TestData.missingPhoto(TestData.memory(TRIP), dateTaken = 0, thumbnailColor = GREEN)
+        openMissingPhoto()
+
+        MissingPhotoSheet.assertThumbnail(GREEN)
+        MissingPhotoSheet.assertFile("IMG_20250314_092653.jpg · 640 × 480")
+    }
+
+    @Test
     fun showMoreLooksAnHourAround() {
         val taken = TestData.photoTakenAt(GREEN, secondsAfter = 20 * 60) - 20 * 60_000
         TestData.missingPhoto(TestData.memory(TRIP), taken)
