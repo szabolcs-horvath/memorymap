@@ -412,9 +412,11 @@ class MemoryFragment : Fragment() {
             }
         }
 
-        val hasMissingMedia = withContext(Dispatchers.IO) {
-            LocalMediaUtil.hasMissingMedia(context, viewModel.mediaItems)
+        val missingIds = withContext(Dispatchers.IO) {
+            viewModel.mediaItems.filter { LocalMediaUtil.hasMissingMedia(context, listOf(it)) }.mapTo(HashSet()) { it.id }
         }
+        val hasMissingMedia = missingIds.isNotEmpty()
+        mediaAdapter.updateMissing(missingIds)
         binding.cardMediaWarning.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
         if (hasMissingMedia) {
             binding.tvMediaWarningText.text =
