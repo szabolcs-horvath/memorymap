@@ -88,6 +88,26 @@ class RelinkReportTest {
     }
 
     @Test
+    fun `grant usage counts picker items with their grant and grants no item uses`() {
+        val picker = "content://media/picker/0/com.android.providers.media.photopicker/media/"
+        val items = listOf(
+            item().copy(id = 1, uri = "${picker}1"),
+            item().copy(id = 2, uri = "${picker}1"), // the same photo in another memory
+            item().copy(id = 3, uri = "${picker}2"),
+            item().copy(id = 4, uri = "content://media/external/images/media/38")
+        )
+        val grants = setOf("${picker}1", "${picker}9", "content://com.example.documents/document/3")
+
+        val usage = grantUsage(items, grants)
+
+        assertEquals(mapOf("photo picker" to 3, "MediaStore" to 1), usage.itemUriKinds)
+        assertEquals(3, usage.pickerItems)
+        assertEquals(2, usage.pickerItemsWithGrant)
+        assertEquals(2, usage.distinctPickerUris)
+        assertEquals(mapOf("photo picker" to 1, "other" to 1), usage.unusedGrants)
+    }
+
+    @Test
     fun `report shows the summary, the item line and the nearby files`() {
         val diagnosis = ItemDiagnosis(
             item = item(),
@@ -101,7 +121,13 @@ class RelinkReportTest {
         val report = RelinkReport(
             generatedAt = taken,
             installation = InstallationInfo("new-id", idFileWrittenAt = taken, firstInstalledAt = null, lastUpdatedAt = taken),
-            access = MediaAccessInfo(listOf("android.permission.READ_MEDIA_IMAGES" to true), 117, visibleImages = 900, visibleVideos = 40),
+            access = MediaAccessInfo(
+                listOf("android.permission.READ_MEDIA_IMAGES" to true),
+                117,
+                grantUsage = grantUsage(listOf(item()), setOf("content://media/picker/0/com.android.providers.media.photopicker/media/1")),
+                visibleImages = 900,
+                visibleVideos = 40
+            ),
             totalItems = 120,
             deviceIdCounts = mapOf("old-id" to 120),
             diagnoses = listOf(diagnosis)
@@ -116,6 +142,9 @@ class RelinkReportTest {
             "  old-id: 120",
             "  saved by another installation: 1",
             "Stored URI kinds: photo picker 1",
+            "Stored URI kinds (all items): photo picker 1",
+            "Photo picker items with a grant: 0 of 1 (1 distinct URIs)",
+            "Grants no item uses: 1 (photo picker 1)",
             "Same-size file on this phone: 0 of 1 searched",
             "#12  group 3  IMAGE  photo picker  size 5300000  taken 2025-10-09T08:53:20Z (1760000000000)",
             "Stored URI now: can't be read (SecurityException: denied)",
@@ -132,7 +161,7 @@ class RelinkReportTest {
         val report = RelinkReport(
             generatedAt = taken,
             installation = InstallationInfo("id", null, null, null),
-            access = MediaAccessInfo(emptyList(), 0, visibleImages = null, visibleVideos = null),
+            access = MediaAccessInfo(emptyList(), 0, grantUsage(emptyList(), emptySet()), visibleImages = null, visibleVideos = null),
             totalItems = 4,
             deviceIdCounts = mapOf("id" to 4),
             diagnoses = emptyList()
@@ -142,6 +171,7 @@ class RelinkReportTest {
 
         assertTrue("Need re-linking: 0" in text)
         assertTrue("Photos visible in MediaStore: not readable" in text)
+        assertTrue("Grants no item uses: 0 (none)" in text)
         assertFalse("== Items that need re-linking ==" in text)
         assertFalse("== Details" in text)
     }

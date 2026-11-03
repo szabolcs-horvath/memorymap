@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 59 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 27 open
+✅ 60 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 26 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -55,7 +55,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [SEC-7](#sec-7) | Low | Auto Backup enabled with empty rules |
 | ✅ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
 
-**DATA — Data loss / integrity** · 8 of 11 fixed
+**DATA — Data loss / integrity** · 9 of 11 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -69,7 +69,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ✅ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
 | ⬜ | [DATA-10](#data-10) | Medium | Too little is stored about each photo to re-link it once its bytes change |
-| ⬜ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
+| ✅ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
 
 **BUG — Functional bugs** · 19 of 20 fixed
 
@@ -304,10 +304,11 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Columns on `media_items`, not a separate table: editing a memory deletes and re-inserts its media rows (new ids), so the values must travel through `SelectedMedia` and `prepareMediaItems` the way the signature does. Follow the schema rules in `data/AGENTS.md`; older backups restore with the new columns empty.
   - A matching rule that uses a new field must be mirrored in `RelinkDiagnostics`.
 
-### <a id="data-11"></a>⬜ DATA-11 · Medium · Picker grants are kept after re-linking, so the 512 cap pushes out live ones
+### <a id="data-11"></a>✅ DATA-11 · Medium · Picker grants are kept after re-linking, so the 512 cap pushes out live ones
 - **Where:** `util/LocalMediaUtil.kt` (`verifyAndFixMediaItems`, the `updateMediaLink` branch)
 - **What:** When re-linking moves an item from a photo picker URI to a MediaStore URI, the picker URI's persisted grant is kept. Android keeps at most 512 grants per app and drops the oldest when a new one is taken, so stale grants push out the grants of items that still use picker URIs. The main user's logs (2026-11-01) show 512 grants held, while their two unlinked picker items had none. Those items only work again through re-linking, which needs full media access. It is not yet known how many of the 512 are stale.
 - **Fix:** After `updateMediaLink` succeeds, release the old URI's grant if no other item uses it (`releaseUriGrantsIfUnused`). This is not the forbidden "sweep": an older backup that still has the picker URI re-links the same way after a restore, because the photo was just found through MediaStore. Have `RelinkDiagnostics` count the stored URI kinds of all items and how many grants no item uses, to measure the leak first.
+- **Status:** Fixed. After a re-link run, the old URIs of the items it moved are passed to `releaseUriGrantsIfUnused`, which releases each grant no item still uses (covered by `UriGrantReleaseTest`). Grants left over from earlier runs are not released (that would be a sweep); they drop out as new picks push them past the cap. The "Send logs" diagnostics now list the stored URI kinds of all items, how many photo picker items still have their grant (and how many distinct picker URIs there are: more than 512 can't all keep theirs), and how many grants no item uses, by kind (`grantUsage`, covered by `RelinkReportTest`). Not covered here: photos picked in the Add form and then removed before saving, or left in a draft that is cleared, keep their grants too; the diagnostics' count of unused grants includes them.
 
 [↑ Back to index](#index)
 

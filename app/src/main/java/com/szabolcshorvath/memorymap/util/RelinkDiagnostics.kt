@@ -74,6 +74,7 @@ object RelinkDiagnostics {
             access = MediaAccessInfo(
                 permissions = mediaPermissions().map { it to PermissionUtil.checkPermission(context, it) },
                 persistedGrants = grants.size,
+                grantUsage = grantUsage(items, grants),
                 visibleImages = library.count(MediaStore.Images.Media.EXTERNAL_CONTENT_URI),
                 visibleVideos = library.count(MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
             ),

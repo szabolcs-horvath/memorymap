@@ -185,6 +185,7 @@ object LocalMediaUtil {
         val sigs = SignatureCache { signatureOrNull(context, it) }
         var relinkedCount = 0
         val stillMissing = HashSet<Int>()
+        val replacedUris = mutableListOf<String>()
 
         for ((index, item) in itemsNeedingFix.withIndex()) {
             onProgress?.invoke("Re-linking photo ${index + 1} of ${itemsNeedingFix.size}...")
@@ -211,6 +212,7 @@ object LocalMediaUtil {
                     )
                     relinkNeeded[item.copy(uri = match.uri, deviceId = installationIdentifier).linkKey] = false
                     relinkedCount++
+                    if (item.uri != match.uri) replacedUris += item.uri
                 }
 
                 else -> Log.w(TAG, "RE-LINK SKIPPED [Changed]: item id=${item.id} changed during the run (restore or edit).")
@@ -220,6 +222,9 @@ object LocalMediaUtil {
         if (relinkedCount > 0) {
             Log.i(TAG, "RE-LINK COMPLETE: Successfully updated $relinkedCount media items in Room DB.")
         }
+        // The old URIs' grants would otherwise count toward Android's cap of 512 and push out grants still in use.
+        // Not a sweep: an older backup that still has one of these URIs finds the same photo again through MediaStore.
+        releaseUriGrantsIfUnused(context, dao, replacedUris)
         val removedDuplicates = deduplicateMediaItems(context, dao)
         stillMissing -= removedDuplicates.mapTo(HashSet()) { it.id }
 
@@ -240,7 +245,7 @@ object LocalMediaUtil {
     }
 
     /**
-     * Releases the persisted grants of [uris] (media the user just removed from a memory) unless a saved
+     * Releases the persisted grants of [uris] (media just removed from a memory, or re-linked to another URI) unless a saved
      * media item still uses them. Android keeps at most 512 persisted grants per app and silently revokes
      * the oldest beyond that, which would break older photo picker items.
      *
