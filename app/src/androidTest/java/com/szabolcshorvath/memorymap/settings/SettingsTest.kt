@@ -186,6 +186,23 @@ class SettingsTest {
     }
 
     @Test
+    fun reLinkingFindsAPickedPhotoEditedAfterwards() {
+        TestData.pickedPhotoEditedLater(TestData.memory(KEPT), pickedColor = PHOTO_COLOR, editedColor = EDITED_PHOTO_COLOR)
+        openSettings()
+        Flows.openMemory(KEPT)
+        MemoryScreen.assertPhotoNotLoaded()
+        TestData.grantMediaAccess()
+
+        BottomNav.open(Tab.SETTINGS)
+        SettingsScreen.relinkMedia()
+        SettingsScreen.waitForRelinkToFinish()
+
+        Flows.openMemory(KEPT)
+        MemoryScreen.assertPhotoLoaded()
+        MemoryScreen.assertPhotoColors(EDITED_PHOTO_COLOR)
+    }
+
+    @Test
     fun sendingLogsOpensTheShareSheet() {
         openSettings()
 
@@ -217,6 +234,7 @@ class SettingsTest {
         const val NOT_SET_UP = "Google sign-in isn't set up in this build (missing OAuth client ID)."
         const val MINUTE_MS = 60_000L
         val PHOTO_COLOR = Color.rgb(150, 60, 170)
+        val EDITED_PHOTO_COLOR = Color.rgb(40, 160, 90)
 
         const val AUTOMATIC_BACKUP_DELAY_SECONDS = 5L
         const val AUTOMATIC_BACKUP_TIMEOUT_MS = 30_000L

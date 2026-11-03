@@ -1,11 +1,13 @@
 package com.szabolcshorvath.memorymap.testing
 
 import android.Manifest
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.media.ExifInterface
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
@@ -28,6 +30,7 @@ import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.concurrent.CountDownLatch
@@ -173,6 +176,51 @@ object TestData {
         )
     }
 
+    /**
+     * Adds a photo to memory [groupId] as the photo picker saved it on this phone, after its grant was lost: by its
+     * picker URI, with the size and signature of the photo as picked ([pickedColor]). The phone's gallery holds the
+     * photo as an edit in place left it ([editedColor]): under the same MediaStore id, with the same date taken, but
+     * other bytes. The signature can't find it; only the id in the picker URI can.
+     */
+    fun pickedPhotoEditedLater(groupId: Int, pickedColor: Int, editedColor: Int) = runBlocking {
+        val picked = withDateTaken(jpeg(pickedColor, pickedColor))
+        val edited = createGalleryImageFrom(withDateTaken(jpeg(editedColor, editedColor)))
+        val dateTaken = context.contentResolver.query(edited, arrayOf(MediaStore.MediaColumns.DATE_TAKEN), null, null, null)
+            ?.use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else 0L } ?: 0L
+        check(dateTaken > 0) { "The gallery gave the test photo no date taken" }
+        val size = picked.size.toLong()
+        dao.insertMediaItems(
+            listOf(
+                MediaItem(
+                    groupId = groupId,
+                    uri = "content://media/picker/0/com.android.providers.media.photopicker/media/${ContentUris.parseId(edited)}",
+                    deviceId = InstallationIdentifier.getInstallationIdentifier(context),
+                    type = MediaType.IMAGE,
+                    mediaSignature = MediaHasher.signatureOf(picked.inputStream(), size),
+                    fileSize = size,
+                    dateTaken = dateTaken,
+                    order = 0,
+                )
+            )
+        )
+    }
+
+    /** [jpeg] with an EXIF capture time, which the gallery reads as the photo's date taken. */
+    private fun withDateTaken(jpeg: ByteArray): ByteArray {
+        val file = File.createTempFile("memorymap_ui_test_exif", ".jpg", context.cacheDir)
+        try {
+            file.writeBytes(jpeg)
+            ExifInterface(file.path).apply {
+                setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, EXIF_DATE_TAKEN)
+                setAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL, "+00:00")
+                saveAttributes()
+            }
+            return file.readBytes()
+        } finally {
+            file.delete()
+        }
+    }
+
     /** Writes [bytes] into the file at [path] as the shell does (`dd` copies what it reads into the file). */
     private fun writeAsShell(path: String, bytes: ByteArray) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
@@ -294,12 +342,14 @@ object TestData {
         shellPhotos.clear()
     }
 
-    private fun createGalleryImage(color: Int, rightHalf: Int = color): Uri = createGalleryFile(
+    private fun createGalleryImage(color: Int, rightHalf: Int = color): Uri = createGalleryImageFrom(jpeg(color, rightHalf))
+
+    private fun createGalleryImageFrom(jpeg: ByteArray): Uri = createGalleryFile(
         MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
         "jpg",
         "image/jpeg",
         "Pictures/MemoryMapUiTests",
-        jpeg(color, rightHalf)
+        jpeg
     )
 
     private fun createGalleryVideo(color: Int): Uri = createGalleryFile(
@@ -348,4 +398,5 @@ object TestData {
     private const val MISSING_MEDIA_ID = 987_654_321L
     private const val ANOTHER_DEVICE = "another-device"
     private const val SHELL_PHOTOS_DIR = "/storage/emulated/0/Pictures/MemoryMapUiTests"
+    private const val EXIF_DATE_TAKEN = "2026:05:01 10:00:00"
 }

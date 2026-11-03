@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 60 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 26 open
+✅ 61 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -71,7 +71,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [DATA-10](#data-10) | Medium | Too little is stored about each photo to re-link it once its bytes change |
 | ✅ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
 
-**BUG — Functional bugs** · 19 of 20 fixed
+**BUG — Functional bugs** · 20 of 20 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -94,7 +94,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-17](#bug-17) | Low | Show on Timeline can leave a memory below the screen |
 | ✅ | [BUG-18](#bug-18) | Medium | Saving an edit of a deleted memory loses the edit |
 | ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
-| ⬜ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
+| ✅ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
 
 **PERF — Performance** · 7 of 10 fixed
 
@@ -428,7 +428,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Turn off Android's own state saving on these inputs (`android:saveEnabled="false"`) and fill them from the ViewModel alone, which keeps the form through a rotation and process death.
 - **Status:** Fixed. The title, description, All Day switch and colour sliders have `saveEnabled="false"`, and `onViewCreated` sets the switch from the ViewModel too (`updateInputs`). The test above checks that the form is empty and All Day off after such a save.
 
-### <a id="bug-20"></a>⬜ BUG-20 · Low · A picked photo edited afterwards can't be re-linked
+### <a id="bug-20"></a>✅ BUG-20 · Low · A picked photo edited afterwards can't be re-linked
 - **Where:** `util/LocalMediaUtil.kt` (`verifyAndFixMediaItems`), `util/RelinkDiagnostics.kt`
 - **What:** Editing a photo in the gallery (a crop, for example) rewrites the file under the same MediaStore id and keeps its date taken, but its size and signature change. An item with a MediaStore URI still opens and shows the edited photo. An item with a photo picker URI breaks once its grant is gone ([DATA-11](#data-11)), and the signature can't find the edited file. Seen in the main user's logs (2026-11-01): item 1913's picker URI ends in `1000021632`, the file with that id has the same name and date taken (to the millisecond), and it was cropped two days after being picked (2.81 MB → 2.48 MB).
 - **Fix:** When the signature finds nothing for a local picker URI (`content://media/picker/…/com.android.providers.media.photopicker/media/<id>`), look up `<id>` in MediaStore and link to it if all of these hold:
@@ -438,6 +438,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
   Cloud picker URIs (`com.google.android.apps.photos.cloudpicker`) are skipped: their ids aren't MediaStore ids. Count these links separately in the re-link report ("linked to an edited version"), and mirror the rule in `RelinkDiagnostics`.
 - **Open question:** after such a link, keep the old signature and size (the current rule: computed once, kept) or replace them with the edited file's? Replacing them lets backups find the photo as it is now, since the old bytes no longer exist on this phone.
+- **Status:** Fixed. When the signature finds nothing, `EditedPhotoRule` takes the MediaStore file whose id is in a local picker URI, under the three conditions above (cloud picker URIs are skipped). Decided (2026-11-03): the item then takes the edited file's size and signature (`updateMediaLink` now writes both; a file found by its signature keeps its own), and the old URI's grant is released if no item uses it. The re-link summary counts these links ("… of them to an edited version"), and `RelinkDiagnostics` reports per item what the rule would find. Covered by `LocalMediaUtilTest` (the conditions), `MemoryGroupDaoTest`, `RelinkReportTest`, and the UI test `SettingsTest.reLinkingFindsAPickedPhotoEditedAfterwards` (a picker item whose file was edited in place shows the edited photo after a re-link).
 - **Rejected:** matching any file with the same date taken to the millisecond, regardless of id (it would also catch "save as copy" edits). It was rejected as too risky: dates with only whole seconds (videos, messenger images) collide for shots taken in the same second, and two different edits share a date. A wrong link is worse than a missing one; [UX-19](#ux-19) leaves such cases to the user.
 
 [↑ Back to index](#index)

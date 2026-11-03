@@ -225,8 +225,14 @@ object MemoryScreen {
      * A photo from another phone shows as an error tile with its type, size and date instead of the picture, and the
      * screen warns that some media could not be loaded.
      */
-    fun assertPhotoFromAnotherDevice() {
-        Ui.assertShown("The error tile of a photo from another phone") {
+    fun assertPhotoFromAnotherDevice() = assertPhotoNotLoaded()
+
+    /**
+     * A photo the app can't read shows as an error tile with its type, size and date instead of the picture, and the
+     * screen warns that some media could not be loaded.
+     */
+    fun assertPhotoNotLoaded() {
+        Ui.assertShown("The error tile of a photo that could not be loaded") {
             hasId("tvErrorDetails") && textAsString().orEmpty().startsWith("IMAGE")
         }
         Ui.assertShown("The could-not-load warning") { isMediaWarning() }

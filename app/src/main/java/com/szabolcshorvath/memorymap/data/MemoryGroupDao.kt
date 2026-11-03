@@ -28,12 +28,24 @@ interface MemoryGroupDao {
      * Points a re-linked item at [uri] on device [deviceId], but only while the row still has the URI and
      * signature the re-link read ([seenUri], [signature]): a restore during the run can put another photo
      * under the same id. Returns the number of rows updated (0 or 1).
+     *
+     * [newSignature] and [newSize] are the item's own for a file found by its signature. A photo edited in place
+     * after it was picked takes the edited file's, since the bytes it was saved with no longer exist on this phone.
      */
     @Query(
-        "UPDATE media_items SET uri = :uri, deviceId = :deviceId " +
+        "UPDATE media_items SET uri = :uri, deviceId = :deviceId, mediaSignature = :newSignature, fileSize = :newSize " +
             "WHERE id = :id AND uri = :seenUri AND mediaSignature = :signature"
     )
-    suspend fun updateMediaLink(id: Int, seenUri: String, signature: String, uri: String, deviceId: String): Int
+    @Suppress("LongParameterList")
+    suspend fun updateMediaLink(
+        id: Int,
+        seenUri: String,
+        signature: String,
+        uri: String,
+        deviceId: String,
+        newSignature: String,
+        newSize: Long
+    ): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFragments(fragments: List<MemoryFragment>)

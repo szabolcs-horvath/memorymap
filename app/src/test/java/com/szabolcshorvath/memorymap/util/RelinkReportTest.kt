@@ -116,6 +116,7 @@ class RelinkReportTest {
             hasGrant = false,
             storedUriSignature = null,
             sameSize = SameSizeCheck(files = 0, signatureMatches = 0),
+            editedVersion = EditedVersionCheck("content://media/external/images/media/4990", StoredUriState.Readable(4_900_000, taken), wouldLink = true),
             nearby = listOf(file("content://media/external/images/media/5000", dateTaken = taken))
         )
         val report = RelinkReport(
@@ -146,7 +147,10 @@ class RelinkReportTest {
             "Photo picker items with a grant: 0 of 1 (1 distinct URIs)",
             "Grants no item uses: 1 (photo picker 1)",
             "Same-size file on this phone: 0 of 1 searched",
+            "Edited version under the picker id (would re-link): 1 of 1 checked",
             "#12  group 3  IMAGE  photo picker  size 5300000  taken 2025-10-09T08:53:20Z (1760000000000)",
+            "edited yes",
+            "Edited version: content://media/external/images/media/4990: size 4900000, taken 2025-10-09T08:53:20Z (1760000000000) (+0 s), would re-link",
             "Stored URI now: can't be read (SecurityException: denied)",
             "Device id: old-id (another installation)",
             "size 4600000 (-700000 bytes, -13.2%)",
