@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 62 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 25 open
+✅ 63 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 24 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -112,7 +112,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 12 of 19 fixed
+**UX — User experience** · 13 of 19 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -134,7 +134,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
 | ✅ | [UX-17](#ux-17) | Low | A date picker ignores the picked date after process death |
 | ✅ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
-| ⬜ | [UX-19](#ux-19) | Medium | A photo that can't be re-linked can only stay broken |
+| ✅ | [UX-19](#ux-19) | Medium | A photo that can't be re-linked can only stay broken |
 
 **ARCH — Structure / maintainability** · 1 of 10 fixed
 
@@ -630,7 +630,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Keep the result line during the re-link after a restore (`hideBackupStatus = false`), or show it again when the re-link is done.
 - **Status:** Fixed. The re-link that follows a restore keeps the result line (`hideBackupStatus = false`), so "Restore successful" stays. `SettingsTest.aRestoreSaysThatItSucceeded` runs again.
 
-### <a id="ux-19"></a>⬜ UX-19 · Medium · A photo that can't be re-linked can only stay broken
+### <a id="ux-19"></a>✅ UX-19 · Medium · A photo that can't be re-linked can only stay broken
 - **Where:** `adapter/MediaAdapter.kt` (the error tile; a tap opens the media viewer), the memory screen, `SettingsFragment` (Re-link)
 - **What:** When re-linking can't find a photo's file, the memory shows an error tile forever. The user can't point the app to the right photo, replace it, or remove it without editing the whole memory. The main user's logs (2026-11-01): 52 items unlinked, 50 of them because the file was deleted from the phone. In most of those cases a shot of the same scene taken seconds before or after is still there: the user took two or three shots and deleted the one the memory used. Of the 40 items the diagnostics describe in detail, 18 have a photo of the same type within 1 minute, 20 within 5 minutes, 25 within 10 and 34 within 30.
 - **Fix (proposed by the owner):** Tapping a missing tile opens a sheet for that one item:
@@ -644,6 +644,9 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Going through the memories one by one to fix 52 tiles is slow, so Settings could also offer "Review unlinked photos (52)", which steps through them with the same sheet.
   - Optionally, include photos in Android's trash (`MATCH_TRASHED`) with a "Restore from trash" action (`MediaStore.createTrashRequest`). It's not clear that Samsung's Gallery uses Android's trash.
   - Build the sheet as a DialogFragment that gets the item id in its arguments, so it survives rotation and process death (as `ConfirmDialog` does). UI tests can add gallery photos at chosen times through `TestData`, and the picker path uses `FakeMediaPicker`.
+- **Status:** Fixed (2026-11-03), the core sheet. Tapping a photo or video that needs re-linking opens `MissingMediaSheet` instead of the media viewer. With full media access, it first runs a re-link (`MediaRelinker`); if that finds the file, the sheet closes. Otherwise it suggests up to 20 files of the same type taken within 5 minutes, nearest first, with how much earlier or later and their size (`NearbyMedia`, which leaves out files already in the memory by URI or signature). "Show more" widens to an hour once. Without full access it offers "Allow access". Always offered: "Choose another photo…", "Remove from memory" and "Not now". Using a suggestion asks first. A suggestion or a chosen photo replaces the item (`MediaItemDao.replaceMedia`: new URI, device, type, signature, size and date, same id and place, only while the row is unchanged); removing it closes the `order` gap. Both release the old grant if unused and schedule a backup (`MissingMedia`). Covered by `NearbyMediaTest`, `MemoryGroupDaoTest` and the UI tests in `memory/MissingPhotoTest` (suggestions with Cancel and Use, Show more, no access, another photo, Remove with Cancel, Not now, rotation and process death, a photo the re-link finds).
+  - Found along the way: after process death the memory pager dropped its pages' saved state (the adapter didn't know the pages before the memories loaded), so anything open on a memory page was lost. `containsItem` now treats every page as known until the list loads.
+  - Not done (later, if wanted): a Settings entry that steps through all unlinked photos, photos in Android's trash, the lost photo's thumbnail ([DATA-10](#data-10)), and ranking by perceptual hash.
 
 [↑ Back to index](#index)
 

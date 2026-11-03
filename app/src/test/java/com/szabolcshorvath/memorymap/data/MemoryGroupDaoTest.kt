@@ -61,7 +61,7 @@ class MemoryGroupDaoTest {
         val inserted = dao.getAllMediaItems().sortedBy { it.order }
         val duplicate = inserted[1] // order 2
 
-        dao.deleteDuplicateMedia(listOf(duplicate), mapOf(inserted[2].id to 2, inserted[3].id to 3))
+        dao.deleteMediaAndRenumber(listOf(duplicate), mapOf(inserted[2].id to 2, inserted[3].id to 3))
 
         val remaining = dao.getAllMediaItems().sortedBy { it.order }
         assertEquals(listOf(inserted[0].id, inserted[2].id, inserted[3].id), remaining.map { it.id })
@@ -111,6 +111,29 @@ class MemoryGroupDaoTest {
         dao.updateMediaItems(listOf(seen))
         assertEquals(1, dao.updateMediaLink(seen.id, seen.uri, seen.mediaSignature, "content://media/42", "this-phone", seen.mediaSignature, seen.fileSize))
         assertEquals(seen.copy(uri = "content://media/42", deviceId = "this-phone"), dao.getAllMediaItems().single())
+    }
+
+    @Test
+    fun `replacing a media item keeps its id, memory and place, only while it holds the photo the sheet read`() = runBlocking {
+        val groupId = dao.insertGroup(group()).toInt()
+        dao.insertMediaItems(listOf(media(groupId, "content://picker/1", order = 2)))
+        val seen = dao.getAllMediaItems().single()
+        val replacement = MediaItem(
+            groupId = 0,
+            uri = "content://media/external/video/media/8",
+            deviceId = "this-phone",
+            type = MediaType.VIDEO,
+            mediaSignature = "4096_new",
+            fileSize = 4096,
+            dateTaken = 1_700_000_007_000
+        )
+        val mediaDao = db.mediaItemDao()
+
+        assertEquals(false, mediaDao.replaceMedia(seen.copy(mediaSignature = "other"), replacement))
+        assertEquals(seen, dao.getAllMediaItems().single())
+
+        assertEquals(true, mediaDao.replaceMedia(seen, replacement))
+        assertEquals(replacement.copy(id = seen.id, groupId = groupId, order = 2), dao.getAllMediaItems().single())
     }
 
     @Test
