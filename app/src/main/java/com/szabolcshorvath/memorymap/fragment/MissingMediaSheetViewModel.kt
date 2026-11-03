@@ -62,6 +62,10 @@ class MissingMediaSheetViewModel(application: Application) : AndroidViewModel(ap
     /** The item as last read, once loaded. */
     var item: MediaItem? = null
         private set
+
+    /** The item's stored thumbnail (a JPEG), if it has one: how the lost photo looked. */
+    var thumbnail: ByteArray? = null
+        private set
     private var memoryItems: List<MediaItem> = emptyList()
     private var checking: Job? = null
 
@@ -157,6 +161,8 @@ class MissingMediaSheetViewModel(application: Application) : AndroidViewModel(ap
     private suspend fun load(itemId: Int): MediaItem? = withContext(Dispatchers.IO) {
         val loaded = db.mediaItemDao().getMediaItem(itemId) ?: return@withContext null
         memoryItems = db.memoryGroupDao().getGroupWithMedia(loaded.groupId)?.mediaItems.orEmpty()
+        thumbnail = loaded.mediaSignature.takeIf { it.isNotEmpty() }
+            ?.let { db.mediaThumbnailDao().getThumbnails(listOf(it)).firstOrNull()?.jpeg }
         loaded
     }.also { item = it }
 

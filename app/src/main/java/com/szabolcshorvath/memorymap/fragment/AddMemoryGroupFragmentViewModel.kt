@@ -16,6 +16,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MediaThumbnail
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
@@ -25,6 +26,9 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.MediaDetails
+import com.szabolcshorvath.memorymap.util.MediaDetails.withDetails
+import com.szabolcshorvath.memorymap.util.MediaDetails.withDetailsOf
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import kotlinx.coroutines.Dispatchers
@@ -136,6 +140,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
                     // File reads (sizes, signatures, possibly a cloud download) happen before the transaction,
                     // so it only writes and doesn't block other writers, such as a backup snapshot, meanwhile.
                     val preparedMedia = prepareMediaItems(getApplication(), snapshotMedia)
+                    val detailed = readNewDetails(getApplication(), snapshotMedia, preparedMedia)
                     val dao = database.memoryGroupDao()
 
                     var removedUris: Set<String> = emptySet()
@@ -146,7 +151,8 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
                         savedAsNew = snapshotEditingId != null && updatedId == null
                         val groupId = updatedId?.toLong() ?: dao.insertGroup(group.copy(id = 0))
 
-                        removedUris = saveMediaItems(dao, groupId.toInt(), preparedMedia, updatedId)
+                        removedUris = saveMediaItems(dao, groupId.toInt(), detailed.items, updatedId)
+                        detailed.thumbnails.forEach { database.mediaThumbnailDao().insert(it) }
                         saveMemoryFragments(dao, groupId, snapshotFragments)
                         groupId.toInt()
                     }
@@ -405,12 +411,35 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         } else {
             emptySet()
         }
+        val previous = if (editingId != null) dao.getGroupWithMedia(groupId)?.mediaItems.orEmpty().associateBy { it.uri } else emptyMap()
         if (editingId != null) {
             dao.deleteMediaByGroupId(groupId)
         }
-        val mediaItems = prepared.map { it.copy(groupId = groupId) }
+        // Items kept through an edit keep the details they were saved with: the form doesn't carry them.
+        val mediaItems = prepared.map { item -> previous[item.uri]?.let { item.withDetailsOf(it) } ?: item }.map { it.copy(groupId = groupId) }
         dao.insertMediaItems(mediaItems)
         return previousUris - mediaItems.mapTo(HashSet()) { it.uri }
+    }
+
+    /** [prepared] media with the details of the newly picked ones, and their thumbnails. */
+    private class WithDetails(val items: List<MediaItem>, val thumbnails: List<MediaThumbnail>)
+
+    /**
+     * Reads the details (name, size in pixels, thumbnail, perceptual hash) of the media picked in this form: they can
+     * be read now, through the pick's grant. Media loaded for editing keep theirs ([saveMediaItems]). Reads files, so it
+     * runs before the save transaction.
+     */
+    private fun readNewDetails(context: Context, selected: List<AddMemoryGroupFragment.SelectedMedia>, prepared: List<MediaItem>): WithDetails {
+        val newUris = selected.filter { it.mediaSignature.isEmpty() }.mapTo(HashSet()) { it.uri.toString() }
+        val thumbnails = mutableListOf<MediaThumbnail>()
+        val items = prepared.map { item ->
+            if (item.uri !in newUris) return@map item
+            val details = MediaDetails.read(context, item.uri.toUri(), item.type)
+            val thumbnail = details.thumbnail
+            if (thumbnail != null && item.mediaSignature.isNotEmpty()) thumbnails += MediaThumbnail(item.mediaSignature, thumbnail)
+            item.withDetails(details)
+        }
+        return WithDetails(items, thumbnails)
     }
 
     /**

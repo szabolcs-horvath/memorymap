@@ -23,12 +23,21 @@ class MediaAdapter(
 
     private val items = mutableListOf<MediaItem>()
 
+    /** Stored thumbnails by signature: a tile that can't be loaded shows its own behind the warning. */
+    private var thumbnails: Map<String, ByteArray> = emptyMap()
+
     /** Items known to need re-linking (`LocalMediaUtil.hasMissingMedia`): their tiles show as missing without loading. */
     private var missingIds: Set<Int> = emptySet()
 
     fun updateMissing(newMissingIds: Set<Int>) {
         if (newMissingIds == missingIds) return
         missingIds = newMissingIds
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun updateThumbnails(newThumbnails: Map<String, ByteArray>) {
+        if (newThumbnails.keys == thumbnails.keys) return
+        thumbnails = newThumbnails
         notifyItemRangeChanged(0, itemCount)
     }
 
@@ -89,6 +98,11 @@ class MediaAdapter(
         private fun showError(binding: ItemMediaThumbnailBinding, mediaItem: MediaItem) {
             binding.errorContainer.visibility = View.VISIBLE
             val context = binding.root.context
+            val thumbnail = thumbnails[mediaItem.mediaSignature]
+            if (thumbnail != null) binding.thumbnailImage.load(thumbnail) { scale(Scale.FILL) }
+            binding.errorContainer.setBackgroundColor(
+                context.getColor(if (thumbnail != null) R.color.missing_media_scrim_over_thumbnail else R.color.missing_media_scrim)
+            )
             val typeStr = mediaItem.type.name
             val sizeStr = if (mediaItem.fileSize > 0) android.text.format.Formatter.formatFileSize(context, mediaItem.fileSize) else "Unknown size"
             val dateStr = if (mediaItem.dateTaken > 0) {

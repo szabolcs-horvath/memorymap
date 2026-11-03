@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.util
 
 import android.content.ContentUris
+import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
 import com.szabolcshorvath.memorymap.data.MediaItem
@@ -11,8 +12,8 @@ import com.szabolcshorvath.memorymap.util.LocalMediaUtil.MediaMetadata
  * Re-links a photo edited in the gallery after it was picked (a crop, for example). The edit rewrites the file under
  * the same MediaStore id and keeps its date taken, but the size and signature change, so the signature can't find it.
  * The id in the item's photo picker URI can: re-linking takes the MediaStore file of that id if it is of the item's
- * type and has the same date taken. `LocalMediaUtil.verifyAndFixMediaItems` applies the rule and `RelinkDiagnostics`
- * reports it, so keep the two in step.
+ * type and has the same date taken (and the same name, when both are known). `LocalMediaUtil.verifyAndFixMediaItems`
+ * applies the rule and `RelinkDiagnostics` reports it, so keep the two in step.
  */
 internal object EditedPhotoRule {
     private val LOCAL_PICKER_URI = Regex("""content://media/picker/\d+/com\.android\.providers\.media\.photopicker/media/(\d+)""")
@@ -41,4 +42,18 @@ internal object EditedPhotoRule {
      * guards against Android ever numbering picker ids differently from MediaStore, which isn't documented.
      */
     fun isSameCapture(item: MediaItem, actual: MediaMetadata): Boolean = item.dateTaken > 0 && actual.dateTaken == item.dateTaken
+
+    /** Whether the file's name allows the link: the same as the stored one, or either is unknown (older items). */
+    fun isSameName(item: MediaItem, fileName: String?): Boolean = item.displayName == null || fileName == null || item.displayName == fileName
+
+    /** The name MediaStore has for [uri], or null if it can't be read. */
+    fun displayName(context: Context, uri: Uri): String? = try {
+        context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst() && !c.isNull(0)) c.getString(0) else null
+        }
+    } catch (_: SecurityException) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
+    }
 }

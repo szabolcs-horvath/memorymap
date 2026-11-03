@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 63 fixed · 🟡 3 partly fixed · ❔ 0 to verify · ⬜ 24 open
+✅ 63 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 23 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -68,7 +68,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-7](#data-7) | Medium | Deleting a memory never releases URI grants and never backs up |
 | ✅ | [DATA-8](#data-8) | Low | `deduplicateMediaItems` silently deletes rows |
 | ✅ | [DATA-9](#data-9) | Low | Early migrations cannot run below Android 14 |
-| ⬜ | [DATA-10](#data-10) | Medium | Too little is stored about each photo to re-link it once its bytes change |
+| 🟡 | [DATA-10](#data-10) | Medium | Too little is stored about each photo to re-link it once its bytes change |
 | ✅ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
 | ✅ | [DATA-12](#data-12) | Low | Photos picked and then dropped from the Add form keep their grants |
 
@@ -290,7 +290,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Rewrite them as create-new-table, copy, drop, rename, or drop support for schema versions below 5.
 - **Status:** Fixed differently. `minSdk` is now 34 (every user has Android 14 or newer), and Android 14 ships SQLite 3.39, so the migrations run unchanged on every supported device.
 
-### <a id="data-10"></a>⬜ DATA-10 · Medium · Too little is stored about each photo to re-link it once its bytes change
+### <a id="data-10"></a>🟡 DATA-10 · Medium · Too little is stored about each photo to re-link it once its bytes change
 - **Where:** `data/MediaItem.kt`, `AddMemoryGroupFragment.readPickedMedia`, `AddMemoryGroupFragmentViewModel.prepareMediaItems`, `util/LocalMediaUtil.kt`
 - **What:** A media item stores only its URI, size, date taken and signature (size + hash of the first and last 4 KB). Re-linking needs the exact same bytes, so any edit, re-encoding (Google Photos "Storage saver", a messenger) or metadata rewrite makes the photo unfindable. A missing photo also shows only its type, size and date, so neither the app nor the user can tell what it looked like. Raised by the owner after the main user's logs (2026-11-01): 52 of 1,788 items unlinked; see [UX-19](#ux-19) and [BUG-20](#bug-20).
 - **Fix (proposed, not decided):** Store more about each item, but only fields that a matching rule or the [UX-19](#ux-19) chooser uses. Each extra field means a schema change, and a field that nothing reads only adds risk. Most of these can be read from the picked file itself when it is picked (the app already opens it to compute the signature), so they don't need full media access:
@@ -304,6 +304,13 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Backfill existing items while their file is still readable: the re-link run already visits every item, so it can fill in missing fields once. Items whose file is already gone (like the 50 in those logs) can't be backfilled.
   - Columns on `media_items`, not a separate table: editing a memory deletes and re-inserts its media rows (new ids), so the values must travel through `SelectedMedia` and `prepareMediaItems` the way the signature does. Follow the schema rules in `data/AGENTS.md`; older backups restore with the new columns empty.
   - A matching rule that uses a new field must be mirrored in `RelinkDiagnostics`.
+- **Status:** Partly fixed (2026-11-03). Decided: store the thumbnail (in the database, so in the Drive backups), the perceptual hash, and the name, pixel size, MIME type and video length; measure the unique ids first.
+  - **Schema 19.** `media_items` has nullable `displayName`, `width`, `height`, `mimeType`, `durationMs` and `perceptualHash` (a 64-bit dHash). Thumbnails (128 px JPEGs; 856 bytes for a two-colour test photo, a few KB for real ones) are in a new table `media_thumbnails`, keyed by signature. That differs from the proposal above: a column would load every thumbnail with each list of media items. The signature survives the delete-and-reinsert of an edit, and one photo in two memories shares one thumbnail. Restores copy the table (`DatabaseContents`), and `RestoreCompatibilityTest` covers versions 6 to 19.
+  - **When the details are read** (`MediaDetails`, through `ContentResolver.loadThumbnail` and the provider's columns): when the Add form saves new picks (media kept through an edit copy theirs from the saved rows, so nothing goes into the saved-state Bundle), when the missing-photo sheet replaces an item, and at start-up for older items whose file is still readable (`MediaDetailsBackfill`). The start-up run also deletes thumbnails no item uses; it is the only place that does, because an Undo of a delete must still find them.
+  - **Used:** a missing tile shows the thumbnail dimmed behind its warning, and an item known to be missing shows that way even if an image of it is still in Coil's memory cache. The sheet shows the thumbnail, name and pixel size, and puts suggestions within 10 of 64 hash bits first, marked "Looks alike". `EditedPhotoRule` also requires the same name when both are known.
+  - **Diagnostics:** "Send logs" reports how many items have each detail, each unlinked item's stored details, and, for nearby files, the look-alike distance, MediaStore `DOCUMENT_ID` / `ORIGINAL_DOCUMENT_ID` and EXIF `ImageUniqueID`, with a summary of how many carry each id and how many share an original document id.
+  - **Tests:** `MediaDetailsTest` (unit: dHash, merging), `NearbyMediaTest` (ranking), `LocalMediaUtilTest` (name rule), `MemoryGroupDaoTest` (thumbnails, guarded fill-in), `RelinkReportTest`, and the UI tests `memory/MediaDetailsTest` (a form-saved photo and a backfilled one show their thumbnail once deleted) and `MissingPhotoTest` (look-alike first, thumbnail and name in the sheet).
+  - **Left open:** whether to store and match on the unique ids. Decide from the main user's next "Send logs". Items whose file was already gone before this change can't get details.
 
 ### <a id="data-11"></a>✅ DATA-11 · Medium · Picker grants are kept after re-linking, so the 512 cap pushes out live ones
 - **Where:** `util/LocalMediaUtil.kt` (`verifyAndFixMediaItems`, the `updateMediaLink` branch)

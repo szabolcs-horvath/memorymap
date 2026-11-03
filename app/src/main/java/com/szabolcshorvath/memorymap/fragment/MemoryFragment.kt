@@ -422,6 +422,11 @@ class MemoryFragment : Fragment() {
             binding.tvMediaWarningText.text =
                 "Some media items could not be loaded. They may have been deleted or are from a different device."
         }
+        // A tile that can't be loaded shows the photo's stored thumbnail, if it has one. Also when the check above
+        // doesn't know yet: a photo deleted from the gallery while the app runs fails only when it loads.
+        val signatures = viewModel.mediaItems.map { it.mediaSignature }.filter { it.isNotEmpty() }
+        val thumbnails = withContext(Dispatchers.IO) { commonViewModel.getDb().mediaThumbnailDao().getThumbnails(signatures) }
+        mediaAdapter.updateThumbnails(thumbnails.associate { it.signature to it.jpeg })
         mediaAdapter.updateData(viewModel.mediaItems)
     }
 

@@ -156,7 +156,14 @@ class RelinkReportTest {
             "size 4600000 (-700000 bytes, -13.2%)",
             "taken 2025-10-09T08:53:20Z (1760000000000) (+0 s)",
             "owner com.google.android.apps.photos, trashed",
-            "signature 4600000_def (differs from stored)"
+            "signature 4600000_def (differs from stored)",
+            "With stored details: thumbnail 0, perceptual hash 0, name 0",
+            "Stored file: (no name), unknown type, ?x?",
+            "Stored perceptual hash: (none)",
+            "ids: document -, original -, EXIF image -",
+            "== Unique ids in nearby files ==",
+            "With a document id: 0",
+            "Sharing an original document id with another file: 0 (in 0 groups)"
         ).forEach { assertTrue(it in text, "missing: $it\n$text") }
     }
 

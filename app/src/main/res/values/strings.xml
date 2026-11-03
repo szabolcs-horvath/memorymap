@@ -80,5 +80,9 @@
     <string name="nearby_same_time">at the same time</string>
     <string name="nearby_use">Use the one taken %1$s</string>
     <string name="cancel">Cancel</string>
+    <string name="missing_media_thumbnail">How it looked</string>
+    <string name="missing_media_file">%1$s · %2$d × %3$d</string>
+    <string name="nearby_looks_alike">Looks alike</string>
+    <string name="nearby_use_alike">Use the one taken %1$s, which looks alike</string>
     <string name="location_unavailable">Your location isn\'t available right now. Check that location is turned on.</string>
 </resources>

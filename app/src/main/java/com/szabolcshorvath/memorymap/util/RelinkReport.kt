@@ -80,8 +80,18 @@ internal data class PhoneFile(
     val ownerPackage: String?,
     val isTrashed: Boolean,
     val isPending: Boolean,
-    val signature: String? = null
+    val signature: String? = null,
+    /** XMP ids MediaStore read from the file (`DOCUMENT_ID`, `ORIGINAL_DOCUMENT_ID`), and EXIF `ImageUniqueID`. */
+    val ids: FileIds = FileIds(),
+    /** Its perceptual hash (`MediaDetails.hashOf`), or null if not read. */
+    val hash: Long? = null
 )
+
+/** Ids a camera or editor may write into a file. Measured to see whether the phone keeps them through edits and copies. */
+internal data class FileIds(val documentId: String? = null, val originalDocumentId: String? = null, val imageUniqueId: String? = null)
+
+/** How many media items have each of the stored details. */
+internal data class DetailsCoverage(val withThumbnail: Int, val withHash: Int, val withName: Int)
 
 /** How far [file]'s capture or change time is from [dateTaken], whichever is closer. */
 internal fun distance(file: PhoneFile, dateTaken: Long): Long =
@@ -139,7 +149,8 @@ internal data class RelinkReport(
     val totalItems: Int,
     val deviceIdCounts: Map<String, Int>,
     /** Only the items that need re-linking. */
-    val diagnoses: List<ItemDiagnosis>
+    val diagnoses: List<ItemDiagnosis>,
+    val details: DetailsCoverage = DetailsCoverage(0, 0, 0)
 )
 
 /** Renders a [RelinkReport] as plain text for the "Send logs" zip. */
@@ -162,6 +173,7 @@ internal object RelinkReportFormatter {
         appendSummary(report)
         appendItemLines(report.diagnoses, zone)
         appendDetails(report, zone)
+        appendIdSummary(report.diagnoses.take(DETAILED_ITEMS))
     }
 
     private fun StringBuilder.appendInstallation(info: InstallationInfo, zone: ZoneId) {
@@ -196,6 +208,7 @@ internal object RelinkReportFormatter {
         appendLine()
         appendLine("== Media items ==")
         appendLine("Total: ${report.totalItems}")
+        report.details.let { appendLine("With stored details: thumbnail ${it.withThumbnail}, perceptual hash ${it.withHash}, name ${it.withName}") }
         appendLine("Need re-linking: ${diagnoses.size}")
         appendLine("By device id:")
         val currentId = report.installation.id
@@ -249,6 +262,7 @@ internal object RelinkReportFormatter {
         appendLine("Stored size: ${item.fileSize} bytes")
         appendLine("Stored date taken: ${time(item.dateTaken, zone)}")
         appendLine("Stored signature: ${item.mediaSignature.ifEmpty { "(none)" }}")
+        appendStoredFile(item)
         val stored = d.stored
         appendLine(
             when (stored) {
@@ -293,7 +307,37 @@ internal object RelinkReportFormatter {
         val flags = listOfNotNull("trashed".takeIf { file.isTrashed }, "pending".takeIf { file.isPending })
         appendLine("     owner ${file.ownerPackage ?: "unknown"}${flags.joinToString("") { ", $it" }}")
         appendLine("     signature ${file.signature?.let { signatureNote(it, item) } ?: "(can't be read)"}")
+        val stored = item.perceptualHash
+        val hash = file.hash
+        if (stored != null && hash != null) appendLine("     looks-alike distance ${MediaDetails.hashDistance(stored, hash)} of 64")
+        val ids = file.ids
+        appendLine("     ids: document ${ids.documentId ?: "-"}, original ${ids.originalDocumentId ?: "-"}, EXIF image ${ids.imageUniqueId ?: "-"}")
     }
+
+    /** Whether the phone's files carry unique ids, and whether edited copies share their original's (the open question). */
+    private fun StringBuilder.appendIdSummary(diagnoses: List<ItemDiagnosis>) {
+        val files = diagnoses.flatMap { it.nearby.orEmpty() }.distinctBy { it.uri }
+        if (files.isEmpty()) return
+        val sharedOriginals = files.mapNotNull { it.ids.originalDocumentId }.groupingBy { it }.eachCount().filterValues { it > 1 }
+        appendLine()
+        appendLine("== Unique ids in nearby files ==")
+        appendLine("Files: ${files.size}")
+        appendLine("With a document id: ${files.count { it.ids.documentId != null }}")
+        appendLine("With an original document id: ${files.count { it.ids.originalDocumentId != null }}")
+        appendLine("With an EXIF image id: ${files.count { it.ids.imageUniqueId != null }}")
+        appendLine("Sharing an original document id with another file: ${sharedOriginals.values.sum()} (in ${sharedOriginals.size} groups)")
+    }
+
+    /** The details stored when the item was picked or filled in later. */
+    private fun StringBuilder.appendStoredFile(item: MediaItem) {
+        appendLine(
+            "Stored file: ${item.displayName ?: "(no name)"}, ${item.mimeType ?: "unknown type"}, " +
+                "${item.width ?: "?"}x${item.height ?: "?"}${item.durationMs?.let { ", $it ms" }.orEmpty()}"
+        )
+        appendLine("Stored perceptual hash: ${item.perceptualHash?.let(::hex) ?: "(none)"}")
+    }
+
+    private fun hex(hash: Long) = String.format(Locale.ROOT, "%016x", hash)
 
     private fun editedVersionLine(d: ItemDiagnosis, zone: ZoneId): String {
         val check = d.editedVersion

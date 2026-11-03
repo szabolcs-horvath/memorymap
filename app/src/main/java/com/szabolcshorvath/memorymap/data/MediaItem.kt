@@ -29,7 +29,16 @@ data class MediaItem(
     val mediaSignature: String, // Format: "{SizeBytes}_{PartialHash}"
     val fileSize: Long,
     val dateTaken: Long,
-    val order: Int? = null
+    val order: Int? = null,
+    // What the file was, read when it was picked (or later, while it could still be read). Null when unknown, as for
+    // items saved by older versions. Its thumbnail is in media_thumbnails, under the signature.
+    val displayName: String? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val mimeType: String? = null,
+    val durationMs: Long? = null,
+    /** A 64-bit dHash of the picture (`MediaDetails.perceptualHash`), to rank look-alikes. Never used to link on its own. */
+    val perceptualHash: Long? = null
 )
 
 enum class MediaType {

@@ -257,7 +257,8 @@ object LocalMediaUtil {
     private fun findEditedVersion(context: Context, item: MediaItem, installationIdentifier: String): Link? {
         val id = EditedPhotoRule.mediaStoreId(item, installationIdentifier) ?: return null
         val uri = EditedPhotoRule.mediaStoreUri(item.type, id)
-        val metadata = queryMetadata(context, uri)?.takeIf { EditedPhotoRule.isSameCapture(item, it) }
+        val metadata = queryMetadata(context, uri)
+            ?.takeIf { EditedPhotoRule.isSameCapture(item, it) && EditedPhotoRule.isSameName(item, EditedPhotoRule.displayName(context, uri)) }
         val signature = metadata?.let { signatureOrNull(context, uri) }
         return if (metadata != null && signature != null) Link(uri.toString(), metadata.size, signature) else null
     }

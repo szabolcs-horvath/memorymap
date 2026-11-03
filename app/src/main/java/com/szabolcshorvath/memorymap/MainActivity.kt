@@ -35,6 +35,7 @@ import com.szabolcshorvath.memorymap.fragment.TimelineFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
+import com.szabolcshorvath.memorymap.util.MediaDetailsBackfill
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
@@ -245,6 +246,7 @@ class MainActivity :
                 val needsPermissionForRelink = withContext(Dispatchers.IO) {
                     initializeHSVPresetsIfEmpty()
                     val relinkResult = MediaRelinker.relink(applicationContext)
+                    MediaDetailsBackfill.start(applicationContext)
                     // Only prompt when there is no media access at all, so users who chose
                     // "selected photos" are not asked again on every launch.
                     !PermissionUtil.hasAnyMediaPermission(applicationContext) && relinkResult.missingCount > 0

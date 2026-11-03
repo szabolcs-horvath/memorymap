@@ -56,6 +56,26 @@ class NearbyMediaTest {
     }
 
     @Test
+    fun `look-alikes come first and are marked, each group keeping its order`() {
+        val withHash = missing.copy(perceptualHash = 0L)
+        val nearest = (1..4).map { file(it, offset = it * 1_000L) }
+        // Files 2 and 4 are within the look-alike distance (3 and 10 bits differ), 1 and 3 are not.
+        val hashes = mapOf(uri(1) to 0x7FFL, uri(2) to 0b111L, uri(3) to -1L, uri(4) to 0x3FFL)
+
+        val ranked = NearbyMedia.rankByLooks(withHash, nearest) { hashes[it] }
+
+        assertEquals(listOf(uri(2), uri(4), uri(1), uri(3)), ranked.map { it.uri })
+        assertEquals(listOf(true, true, false, false), ranked.map { it.looksAlike })
+    }
+
+    @Test
+    fun `without a stored hash the order stays by time`() {
+        val nearest = (1..3).map { file(it, offset = it * 1_000L) }
+
+        assertEquals(nearest, NearbyMedia.rankByLooks(missing, nearest) { 0L })
+    }
+
+    @Test
     fun `spans are rounded down to seconds, minutes or hours and minutes`() {
         assertEquals("0 s", NearbyMedia.span(400))
         assertEquals("7 s", NearbyMedia.span(-7_900))
