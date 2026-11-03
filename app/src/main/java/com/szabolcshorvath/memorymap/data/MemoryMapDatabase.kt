@@ -36,6 +36,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 abstract class MemoryMapDatabase : RoomDatabase() {
     abstract fun memoryGroupDao(): MemoryGroupDao
 
+    abstract fun mediaItemDao(): MediaItemDao
+
     abstract fun hsvPresetDao(): HSVPresetDao
 
     abstract fun databaseContentsDao(): DatabaseContentsDao

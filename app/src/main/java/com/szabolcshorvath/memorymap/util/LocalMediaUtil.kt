@@ -366,7 +366,7 @@ object LocalMediaUtil {
                     .fold(emptyMap<Int, Int>()) { acc, groupItems -> acc + closeOrderGaps(groupItems) }
 
                 Log.i(TAG, "Removing ${duplicates.size} duplicate media items: ids=${duplicates.map { it.id }}")
-                dao.deleteDuplicateMedia(duplicates, newOrders)
+                dao.deleteMediaAndRenumber(duplicates, newOrders)
                 releaseUriGrantsIfUnused(context, dao, duplicates.map { it.uri })
             }
             duplicates

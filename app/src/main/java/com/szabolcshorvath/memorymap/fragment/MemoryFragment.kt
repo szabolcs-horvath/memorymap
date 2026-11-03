@@ -161,10 +161,7 @@ class MemoryFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        mediaAdapter = MediaAdapter(viewModel.currentDeviceId) { position ->
-            val mediaPairs = ArrayList(viewModel.mediaItems.map { it.uri to it.type.name })
-            memoryFragmentListener?.onMediaClick(mediaPairs, position)
-        }
+        mediaAdapter = MediaAdapter(viewModel.currentDeviceId, ::onMediaTapped)
         mediaAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 binding.rvMedia.scrollToPosition(positionStart)
@@ -190,6 +187,23 @@ class MemoryFragment : Fragment() {
 
         setupMediaTouchHelper()
         setupFragmentsTouchHelper()
+    }
+
+    /** Opens the media viewer at [position], or for an item that can't be re-linked, the sheet that fixes it. */
+    private fun onMediaTapped(position: Int) {
+        val context = context
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value
+        val item = viewModel.mediaItems.getOrNull(position)
+        if (context == null || viewLifecycleOwner == null || item == null) return
+        viewLifecycleOwner.lifecycleScope.launch {
+            val missing = withContext(Dispatchers.IO) { LocalMediaUtil.hasMissingMedia(context, listOf(item)) }
+            if (missing) {
+                MissingMediaSheet.show(childFragmentManager, item)
+            } else {
+                val mediaPairs = ArrayList(viewModel.mediaItems.map { it.uri to it.type.name })
+                memoryFragmentListener?.onMediaClick(mediaPairs, position)
+            }
+        }
     }
 
     private fun setupMediaTouchHelper() {

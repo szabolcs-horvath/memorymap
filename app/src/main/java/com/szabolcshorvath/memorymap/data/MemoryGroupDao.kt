@@ -74,12 +74,13 @@ interface MemoryGroupDao {
     suspend fun updateMediaOrder(id: Int, order: Int)
 
     /**
-     * Deletes [duplicates] and sets the new `order` of the remaining items ([newOrders], id to order)
-     * in one transaction. Only the `order` column is written, so a concurrent re-link isn't overwritten.
+     * Deletes [items] (duplicates, or a photo removed from its memory) and sets the new `order` of the remaining items
+     * ([newOrders], id to order) in one transaction. Only the `order` column is written, so a concurrent re-link isn't
+     * overwritten.
      */
     @Transaction
-    suspend fun deleteDuplicateMedia(duplicates: List<MediaItem>, newOrders: Map<Int, Int>) {
-        deleteMediaItems(duplicates)
+    suspend fun deleteMediaAndRenumber(items: List<MediaItem>, newOrders: Map<Int, Int>) {
+        deleteMediaItems(items)
         newOrders.forEach { (id, order) -> updateMediaOrder(id, order) }
     }
 

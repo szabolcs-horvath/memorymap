@@ -31,8 +31,10 @@ import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -185,9 +187,7 @@ object TestData {
     fun pickedPhotoEditedLater(groupId: Int, pickedColor: Int, editedColor: Int) = runBlocking {
         val picked = withDateTaken(jpeg(pickedColor, pickedColor))
         val edited = createGalleryImageFrom(withDateTaken(jpeg(editedColor, editedColor)))
-        val dateTaken = context.contentResolver.query(edited, arrayOf(MediaStore.MediaColumns.DATE_TAKEN), null, null, null)
-            ?.use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else 0L } ?: 0L
-        check(dateTaken > 0) { "The gallery gave the test photo no date taken" }
+        val dateTaken = dateTakenOf(edited)
         val size = picked.size.toLong()
         dao.insertMediaItems(
             listOf(
@@ -205,13 +205,50 @@ object TestData {
         )
     }
 
-    /** [jpeg] with an EXIF capture time, which the gallery reads as the photo's date taken. */
-    private fun withDateTaken(jpeg: ByteArray): ByteArray {
+    /**
+     * Adds a photo of [color] to the phone's gallery only, taken [secondsAfter] seconds after the others this test adds
+     * this way (a negative number: before), and returns its date taken as the gallery read it.
+     */
+    fun photoTakenAt(color: Int, secondsAfter: Long): Long {
+        val uri = createGalleryImageFrom(withDateTaken(jpeg(color, color), BASE_TIME.plusSeconds(secondsAfter).format(EXIF_FORMAT)))
+        return dateTakenOf(uri)
+    }
+
+    /**
+     * Adds a photo to memory [groupId] as it was saved on this phone and whose file was deleted afterwards: its picker
+     * URI names no file, so re-linking can't find it. It was taken at [dateTaken], or at an unknown time (0).
+     */
+    fun missingPhoto(groupId: Int, dateTaken: Long, order: Int = 0) = runBlocking {
+        dao.insertMediaItems(
+            listOf(
+                MediaItem(
+                    groupId = groupId,
+                    uri = "content://media/picker/0/com.android.providers.media.photopicker/media/$MISSING_MEDIA_ID",
+                    deviceId = InstallationIdentifier.getInstallationIdentifier(context),
+                    type = MediaType.IMAGE,
+                    mediaSignature = "123456_0123456789abcdef0123456789abcdef",
+                    fileSize = 123_456,
+                    dateTaken = dateTaken,
+                    order = order,
+                )
+            )
+        )
+    }
+
+    private fun dateTakenOf(uri: Uri): Long {
+        val dateTaken = context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DATE_TAKEN), null, null, null)
+            ?.use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else 0L } ?: 0L
+        check(dateTaken > 0) { "The gallery gave the test photo no date taken" }
+        return dateTaken
+    }
+
+    /** [jpeg] with an EXIF capture time ([date], `yyyy:MM:dd HH:mm:ss`), which the gallery reads as its date taken. */
+    private fun withDateTaken(jpeg: ByteArray, date: String = EXIF_DATE_TAKEN): ByteArray {
         val file = File.createTempFile("memorymap_ui_test_exif", ".jpg", context.cacheDir)
         try {
             file.writeBytes(jpeg)
             ExifInterface(file.path).apply {
-                setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, EXIF_DATE_TAKEN)
+                setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, date)
                 setAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL, "+00:00")
                 saveAttributes()
             }
@@ -399,4 +436,8 @@ object TestData {
     private const val ANOTHER_DEVICE = "another-device"
     private const val SHELL_PHOTOS_DIR = "/storage/emulated/0/Pictures/MemoryMapUiTests"
     private const val EXIF_DATE_TAKEN = "2026:05:01 10:00:00"
+
+    /** When [photoTakenAt]'s photos are taken: a time no other photo on the test phone is near. */
+    private val BASE_TIME = LocalDateTime.of(2025, 3, 14, 9, 26, 53)
+    private val EXIF_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss")
 }
