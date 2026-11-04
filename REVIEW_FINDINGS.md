@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 67 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 19 open
+✅ 68 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 18 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -136,7 +136,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
 | ✅ | [UX-19](#ux-19) | Medium | A photo that can't be re-linked can only stay broken |
 
-**ARCH — Structure / maintainability** · 2 of 10 fixed
+**ARCH — Structure / maintainability** · 3 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -147,7 +147,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [ARCH-5](#arch-5) | Medium | Duplicated logic |
 | 🟡 | [ARCH-6](#arch-6) | Medium | Hand-rolled singletons, no DI |
 | ⬜ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
-| ⬜ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
+| ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ⬜ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
 | ⬜ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (blocked until the whole UI is covered by UI tests) |
 
@@ -509,7 +509,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `MapFragment.kt:503-566`
 - **What:** `clearItems()` + `addItems()` + `cluster()` re-renders every marker, even for an unrelated change such as a title edit elsewhere.
 - **Fix:** Diff the items, or update only the changed ones (`updateItem`).
-- **Status:** Fixed. `MarkerSync` (`util/MarkerChanges.kt`) keeps what the cluster manager holds and gives it only the items that were removed or added since; an edited memory is both. It re-clusters only when something changed or clustering was turned on or off, and an emission with the same items changes nothing. The renderer already kept the marker of an item that came back equal, so the cost was the re-clustering and re-setting every icon. A fragment's title comes from its memory and isn't part of its equality, so the diff also compares the titles each marker was drawn with. Covered by `MarkerChangesTest` and `MapTest.markersFollowARenameAndADeleteMadeOnOtherTabs`.
+- **Status:** Fixed. `MarkerSync` (`util/MarkerChanges.kt`) keeps what the cluster manager holds and gives it only the items that were removed or added since; an edited memory is both. It re-clusters only when something changed or clustering was turned on or off, and an emission with the same items changes nothing. The renderer already kept the marker of an item that came back equal, so the cost was the re-clustering and re-setting every icon. A fragment's marker carries its memory's title as part of its equality (`FragmentMarker`, since ARCH-8), so a renamed memory's fragment counts as changed. Covered by `MarkerChangesTest` and `MapTest.markersFollowARenameAndADeleteMadeOnOtherTabs`.
 
 ### <a id="perf-9"></a>✅ PERF-9 · Low · Pin icon recomputed on every render
 - **Where:** `util/MarkerGenerator.kt:59-69`
@@ -725,10 +725,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `MemoryFragmentListener.onMediaClick(ArrayList<Pair<String,String>>)`, `MediaPagerAdapter` (`item.second == "VIDEO"`), `MediaViewerFragment` (Serializable `Pair` list in arguments, which also risks `TransactionTooLargeException` for large memories)
 - **Fix:** Pass the memory id + start index and load the media in the viewer's ViewModel.
 
-### <a id="arch-8"></a>⬜ ARCH-8 · Low · Shared entity mutated off the main thread
+### <a id="arch-8"></a>✅ ARCH-8 · Low · Shared entity mutated off the main thread
 - **Where:** `MapFragmentViewModel.kt:89`, `data/MemoryFragment.kt:47-48`
 - **What:** `fragment.title = parent.title` mutates Room-emitted objects on `Dispatchers.Default`, and those objects are shared with other collectors. `title` is a `@Ignore var` that is not part of `equals`.
 - **Fix:** Map to an immutable UI model (`MarkerItem(title, …)`).
+- **Status:** Fixed. The map wraps each fragment in `Markerable.FragmentMarker(fragment, title)` instead of setting the title on the object Room emitted, and `MemoryFragment.title` is no longer a mutable field (a fragment has no title of its own). The title is part of the wrapper's equality, so the map's marker diff compares items directly. Covered by `MarkerChangesTest` and `MapTest.markersFollowARenameAndADeleteMadeOnOtherTabs`.
 
 ### <a id="arch-9"></a>⬜ ARCH-9 · Low · Dead or misleading code
 - `AddMemoryGroupFragmentViewModel.isInitialized` (written, never read)

@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.data
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
@@ -44,8 +43,8 @@ data class MemoryFragment(
     override val markerBrightness: Float? = 1.0f,
     val order: Int? = null
 ) : Markerable {
-    @Ignore
-    override var title: String? = null
+    /** A fragment has no title of its own: the map shows it under its memory's ([Markerable.FragmentMarker]). */
+    override val title: String? get() = null
 
     override fun getFormattedDate(): String? {
         if (startDate == null || endDate == null) return null

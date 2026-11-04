@@ -21,6 +21,13 @@ interface Markerable {
 
     fun getFormattedDate(): String?
 
+    /**
+     * A fragment as the map shows it: under its memory's [title]. Room's objects are shared with every screen that
+     * reads the same data, so the map wraps a fragment instead of changing it. The title is part of its equality, so a
+     * renamed memory's fragment counts as changed.
+     */
+    data class FragmentMarker(val fragment: MemoryFragment, override val title: String) : Markerable by fragment
+
     data class MarkerableCluster(val items: List<Markerable>) : ClusterItem {
         /** The middle of the items. Longitudes are taken relative to the first item, so a pin on the 180th meridian stays there. */
         override val position: LatLng = run {
