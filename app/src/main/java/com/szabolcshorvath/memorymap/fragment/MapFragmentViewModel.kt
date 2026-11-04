@@ -89,10 +89,7 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
             candidateItems.addAll(groups)
             if (showFrags) {
                 fragments.forEach { fragment ->
-                    groupsMap[fragment.groupId]?.let { parent ->
-                        fragment.title = parent.title
-                        candidateItems.add(fragment)
-                    }
+                    groupsMap[fragment.groupId]?.let { parent -> candidateItems.add(Markerable.FragmentMarker(fragment, parent.title)) }
                 }
             }
             candidateItems.filter { item ->

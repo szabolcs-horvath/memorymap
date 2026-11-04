@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.util
 
 import com.szabolcshorvath.memorymap.data.Markerable
+import com.szabolcshorvath.memorymap.data.Markerable.FragmentMarker
 import com.szabolcshorvath.memorymap.data.Markerable.MarkerableCluster
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -13,17 +14,17 @@ class MarkerChangesTest {
 
     @Test
     fun `the same memories again change nothing`() {
-        val drawn = DrawnMarker.of(listOf(pin(group(1)), pin(group(2))))
+        val drawn = setOf(pin(group(1)), pin(group(2)))
 
-        val changes = MarkerChanges.between(drawn, DrawnMarker.of(listOf(pin(group(1)), pin(group(2)))))
+        val changes = MarkerChanges.between(drawn, setOf(pin(group(1)), pin(group(2))))
 
         assertTrue(changes.isEmpty)
     }
 
     @Test
     fun `only an edited, added or deleted memory changes`() {
-        val drawn = DrawnMarker.of(listOf(pin(group(1)), pin(group(2)), pin(group(3))))
-        val next = DrawnMarker.of(listOf(pin(group(1)), pin(group(2, title = "Renamed")), pin(group(4))))
+        val drawn = setOf(pin(group(1)), pin(group(2)), pin(group(3)))
+        val next = setOf(pin(group(1)), pin(group(2, title = "Renamed")), pin(group(4)))
 
         val changes = MarkerChanges.between(drawn, next)
 
@@ -33,15 +34,13 @@ class MarkerChangesTest {
 
     @Test
     fun `a fragment changes when its memory is renamed, though its own fields don't`() {
-        val fragment = fragment(groupId = 1).apply { title = "Trip" }
-        val drawn = DrawnMarker.of(listOf(pin(fragment)))
-        // The same fragment object gets the new title, as the map's data does.
-        fragment.title = "Renamed trip"
+        val fragment = fragment(groupId = 1)
+        val drawn = setOf(pin(FragmentMarker(fragment, "Trip")))
 
-        val changes = MarkerChanges.between(drawn, DrawnMarker.of(listOf(pin(fragment))))
+        val changes = MarkerChanges.between(drawn, setOf(pin(FragmentMarker(fragment, "Renamed trip"))))
 
-        assertEquals(listOf(pin(fragment)), changes.removed)
-        assertEquals(listOf(pin(fragment)), changes.added)
+        assertEquals(listOf(pin(FragmentMarker(fragment, "Trip"))), changes.removed)
+        assertEquals(listOf(pin(FragmentMarker(fragment, "Renamed trip"))), changes.added)
     }
 
     private fun pin(vararg items: Markerable) = MarkerableCluster(items.toList())
