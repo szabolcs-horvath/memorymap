@@ -15,6 +15,7 @@ import com.szabolcshorvath.memorymap.testing.TestData
 import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
+import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -118,6 +119,25 @@ class FragmentsAndColorTest {
         AddScreen.assertColor(GREEN)
     }
 
+    @Test
+    fun thePresetOfTheFormsColorIsHighlightedUntilTheColorChanges() {
+        TestData.colorPresets(RED, GREEN, BLUE)
+        TestData.memory(VIENNA) // Red, as every memory starts.
+        openForEditing()
+        AddScreen.assertPresetHighlighted(RED)
+        AddScreen.assertPresetHighlighted(GREEN, highlighted = false)
+
+        AddScreen.pickColor(GREEN)
+
+        AddScreen.assertPresetHighlighted(GREEN)
+        AddScreen.assertPresetHighlighted(RED, highlighted = false)
+
+        val hue = AddScreen.tapHue(HALF)
+
+        assertNotEquals("The hue after the tap", GREEN.hue.toInt(), hue)
+        AddScreen.assertPresetHighlighted(GREEN, highlighted = false)
+    }
+
     private fun openForEditing() {
         app.launch()
         Flows.editMemory(VIENNA)
@@ -132,5 +152,6 @@ class FragmentsAndColorTest {
         val RED = Hsv(0f)
         val GREEN = Hsv(120f)
         val BLUE = Hsv(240f)
+        const val HALF = 0.5f
     }
 }

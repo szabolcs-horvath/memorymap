@@ -322,6 +322,7 @@ class MemoryFragmentEditAdapter(
         val colorStateList = ColorStateList.valueOf(color)
 
         binding.colorIndicator.setBackgroundColor(color)
+        highlightPreset(binding, item.markerHue, item.markerSaturation, item.markerBrightness)
 
         binding.sliderHue.value = item.markerHue
         binding.sliderSaturation.value = item.markerSaturation
@@ -355,6 +356,7 @@ class MemoryFragmentEditAdapter(
 
         val color = ColorUtil.hsvToColor(newH, newS, newV)
         binding.colorIndicator.setBackgroundColor(color)
+        highlightPreset(binding, newH, newS, newV)
         val colorStateList = ColorStateList.valueOf(color)
         binding.sliderHue.thumbTintList = colorStateList
         binding.sliderSaturation.thumbTintList = colorStateList
@@ -411,12 +413,18 @@ class MemoryFragmentEditAdapter(
         }
     }
 
+    /** Highlights the fragment's presets of this colour; see [ColorPresetAdapter.setSelectedColor]. */
+    private fun highlightPreset(binding: ItemMemoryFragmentEditBinding, h: Float, s: Float, v: Float) {
+        (binding.rvPresetColors.adapter as? ColorPresetAdapter)?.setSelectedColor(h, s, v)
+    }
+
     private fun setupFragmentPresetColors(holder: MemoryFragmentEditViewHolder) {
         holder.colorPresetAdapter.submitList(hsvPresets.toList())
         holder.colorPresetAdapter.onPresetClick = { preset ->
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
                 animateFragmentColorToTargets(holder, preset)
+                highlightPreset(holder.binding, preset.hue, preset.saturation, preset.brightness)
 
                 // Still update the underlying data so it's persisted/ready for save.
                 // Read from backing collection (fragments[pos]) rather than getItem(pos) to ensure

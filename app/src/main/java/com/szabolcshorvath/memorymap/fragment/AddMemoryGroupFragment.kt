@@ -352,6 +352,7 @@ class AddMemoryGroupFragment : Fragment() {
 
         val color = ColorUtil.hsvToColor(viewModel.markerHue, viewModel.markerSaturation, viewModel.markerBrightness)
         val colorStateList = ColorStateList.valueOf(color)
+        colorPresetAdapter.setSelectedColor(viewModel.markerHue, viewModel.markerSaturation, viewModel.markerBrightness)
 
         if (animate) {
             animateSlidersToTargets()

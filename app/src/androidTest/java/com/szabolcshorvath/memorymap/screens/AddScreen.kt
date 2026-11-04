@@ -207,16 +207,32 @@ object AddScreen : TabScreen {
 
     /** Opens the marker colour's sliders and picks the preset [color], which moves them to it. */
     fun pickColor(color: Hsv) {
-        Ui.scrollTo { hasText(MARKER_COLOR) }
-        if (!Ui.isShown(timeoutMs = 0) { hasId("tv_HueValue") }) Ui.find { hasText(MARKER_COLOR) }.click()
+        openColor()
         ColorPresetsSection.select(color)
     }
 
     /** The marker colour's sliders show [color]. */
     fun assertColor(color: Hsv) {
+        openColor()
+        ColorPresetsSection.assertSlidersShow(color)
+    }
+
+    /** The marker colour's preset [color] is highlighted as the form's colour, or not. */
+    fun assertPresetHighlighted(color: Hsv, highlighted: Boolean = true) {
+        openColor()
+        Ui.scrollTo { hasId("tv_BrightnessValue") } // The swatches and the sliders below them, on screen.
+        if (highlighted) ColorPresetsSection.assertSelected(color) else ColorPresetsSection.assertNotSelected(color)
+    }
+
+    /** Taps the marker colour's hue slider at [fraction] of its width, and returns the hue it shows then. */
+    fun tapHue(fraction: Float): Int {
+        openColor()
+        return ColorPresetsSection.tapHue(fraction)
+    }
+
+    private fun openColor() {
         Ui.scrollTo { hasText(MARKER_COLOR) }
         if (!Ui.isShown(timeoutMs = 0) { hasId("tv_HueValue") }) Ui.find { hasText(MARKER_COLOR) }.click()
-        ColorPresetsSection.assertSlidersShow(color)
     }
 
     fun addFragment() = tap("Add a Memory Fragment")

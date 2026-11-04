@@ -184,6 +184,10 @@ object ColorPresetsSection {
         isSwatch(color) && isSelected
     }
 
+    fun assertNotSelected(color: Hsv) = Ui.assertShown("The preset ${describe(color)}, not selected") {
+        isSwatch(color) && !isSelected
+    }
+
     /** The presets appear in this order, from left to right (all on screen). */
     fun assertLeftToRight(vararg colors: Hsv) {
         val lefts = colors.map { color -> Ui.find { isSwatch(color) }.visibleBounds.left }

@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 68 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 17 open
+✅ 69 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 17 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -136,7 +136,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
 | ✅ | [UX-19](#ux-19) | Medium | A photo that can't be re-linked can only stay broken |
 
-**ARCH — Structure / maintainability** · 3 of 10 fixed
+**ARCH — Structure / maintainability** · 4 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -148,7 +148,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | 🟡 | [ARCH-6](#arch-6) | Medium | Hand-rolled singletons, no DI |
 | ⬜ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
-| 🟡 | [ARCH-9](#arch-9) | Low | Dead or misleading code |
+| ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
 | ⬜ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (blocked until the whole UI is covered by UI tests) |
 
 **BUILD — Build, CI, tooling** · 3 of 4 fixed
@@ -731,7 +731,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Map to an immutable UI model (`MarkerItem(title, …)`).
 - **Status:** Fixed. The map wraps each fragment in `Markerable.FragmentMarker(fragment, title)` instead of setting the title on the object Room emitted, and `MemoryFragment.title` is no longer a mutable field (a fragment has no title of its own). The title is part of the wrapper's equality, so the map's marker diff compares items directly. Covered by `MarkerChangesTest` and `MapTest.markersFollowARenameAndADeleteMadeOnOtherTabs`.
 
-### <a id="arch-9"></a>🟡 ARCH-9 · Low · Dead or misleading code
+### <a id="arch-9"></a>✅ ARCH-9 · Low · Dead or misleading code
 - `AddMemoryGroupFragmentViewModel.isInitialized` (written, never read)
 - The `IS_FIRST_RUN` / `LAST_APP_VERSION` block in `MainActivity.kt:244-256` writes the version twice and reads it nowhere
 - The commented-out passkey and password branches in `GoogleAuthManager.kt`
@@ -740,12 +740,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 - The default literals in `SettingsFragment.kt:290,313` duplicate the `PreferencesKeys` defaults
 - `SIGNATURE_FIX_PLAN.md` now documents media re-linking, not a "fix plan"; move it to `docs/media-relinking.md`
 - `ColorPresetAdapter.setSelectedPresetId` is never called from the Add screen, so the chosen preset is never highlighted there
-- **Status:** Partly fixed (2026-11-04).
+- **Status:** Fixed (2026-11-04).
   - Removed: the Add form's `isInitialized` (Settings' is read, so it stays), the second write of `LAST_APP_VERSION`, and `ExampleUnitTest`. `GoogleAuthManager.kt` was already gone, with its commented-out branches.
   - Kept on purpose: `LAST_APP_VERSION` itself (nothing reads it yet, but it is the only record of the version an installation last ran, for a step that must run once after an update), and the DataStore's name (renaming it would lose every user's preferences without a migration; AGENTS.md explains it).
   - Settings' switches use the `PreferencesKeys` defaults.
   - `SIGNATURE_FIX_PLAN.md` became `docs/media-relinking.md`, trimmed to the evidence, the reasons behind the rules and the known limits; the rules themselves are in AGENTS.md.
-  - Left: highlighting the chosen preset on the Add screen.
+  - The Add form highlights the preset that matches the memory's colour, and each fragment's picker its own (`ColorPresetAdapter.setSelectedColor`, `HSVPreset.hasColor`), so the highlight follows a preset tap, a slider and a memory loaded for editing. Covered by `FragmentsAndColorTest.thePresetOfTheFormsColorIsHighlightedUntilTheColorChanges`.
 
 ### <a id="arch-10"></a>⬜ ARCH-10 · Medium · UI built on XML Views, not Jetpack Compose
 - **Where:** all of `fragment/`, `adapter/`, `MainActivity.kt`, `view/MaxHeightCardView.kt` and `res/layout/`. As of `28df90b` that is about 6,000 lines of Kotlin and 2,900 lines of layout XML.

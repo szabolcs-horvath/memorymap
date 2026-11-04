@@ -15,6 +15,7 @@ class ColorPresetAdapter(var onPresetClick: ((HSVPreset) -> Unit)? = null) : Rec
 
     private val items = mutableListOf<HSVPreset>()
     private var selectedPresetId: Int? = null
+    private var selectedColor: FloatArray? = null
 
     val currentList: List<HSVPreset> get() = items
 
@@ -29,7 +30,7 @@ class ColorPresetAdapter(var onPresetClick: ((HSVPreset) -> Unit)? = null) : Rec
         val preset = items[position]
         val context = holder.itemView.context
         val density = context.resources.displayMetrics.density
-        val isSelected = preset.id == selectedPresetId
+        val isSelected = isSelected(preset)
 
         val color = ColorUtil.hsvToColor(preset.hue, preset.saturation, preset.brightness)
         val shape = GradientDrawable().apply {
@@ -90,6 +91,21 @@ class ColorPresetAdapter(var onPresetClick: ((HSVPreset) -> Unit)? = null) : Rec
             items.add(toPosition, item)
             notifyItemMoved(fromPosition, toPosition)
         }
+    }
+
+    /**
+     * Highlights the presets of this colour: the one a form's colour was picked from, or one it was set to by hand.
+     * A form calls it whenever its colour changes, so moving a slider away from a preset clears the highlight.
+     */
+    fun setSelectedColor(hue: Float, saturation: Float, brightness: Float) {
+        val wasSelected = items.map(::isSelected)
+        selectedColor = floatArrayOf(hue, saturation, brightness)
+        items.forEachIndexed { index, preset -> if (isSelected(preset) != wasSelected[index]) notifyItemChanged(index) }
+    }
+
+    private fun isSelected(preset: HSVPreset): Boolean {
+        val color = selectedColor
+        return preset.id == selectedPresetId || (color != null && preset.hasColor(color[0], color[1], color[2]))
     }
 
     fun setSelectedPresetId(id: Int?) {
