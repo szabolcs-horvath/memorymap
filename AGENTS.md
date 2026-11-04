@@ -4,7 +4,7 @@ Guide for AI agents and new contributors. Read this before changing code.
 Known problems and planned improvements are tracked in [REVIEW_FINDINGS.md](REVIEW_FINDINGS.md) by ID (for example `BUG-3`).
 Check that file before "fixing" something that looks odd: it may already be catalogued, with a suggested fix. When you fix one, add a **Status** line to it and update its heading marker and index row (see the top of that file).
 Database and schema rules live in `app/src/main/java/com/szabolcshorvath/memorymap/data/AGENTS.md`.
-The design of media re-linking is documented in `SIGNATURE_FIX_PLAN.md` (despite the file name).
+What device logs and emulator tests showed about media re-linking, and why its rules are what they are, is in [docs/media-relinking.md](docs/media-relinking.md).
 
 ## What the app is
 
@@ -45,7 +45,7 @@ Local setup needs files that are **not** in git:
 - The Add tab is both "new memory" and "edit memory". `AddMemoryGroupFragmentViewModel.hasUnsavedChanges` compares the form with how it was when last cleared or loaded for editing (call `markUnchanged` after filling it). An Edit request asks before it replaces unsaved changes (for the memory already being edited it keeps them), and switching to another tab closes an edit that has no changes (`closeUnchangedEdit`). A new field that a save stores must also go into `FormContent` (`fragment/FormContent.kt`, with its Bundle code), or changing it won't count as a change and process death will lose it. Its input gets `android:saveEnabled="false"` and is filled from the ViewModel in `onViewCreated`: Android would otherwise restore what it showed when the tab was last left, over a form cleared meanwhile (a save that finished on another tab). A save result is handled only while the tab is shown: one that finishes on another tab clears the ViewModel at once, and the kept view shows it when the tab is shown again.
 - Preferences: a single DataStore named `"googleAuthDatastore"` (it holds all app prefs, not just auth). Keys and defaults are in `util/PreferencesKeys.kt`; the default map filter is in `util/DateFilterOption.kt` (stored by enum `name`).
 
-### Media handling and re-linking (read `SIGNATURE_FIX_PLAN.md`)
+### Media handling and re-linking (the evidence behind it: `docs/media-relinking.md`)
 - Picked media keep their **photo picker URI**, with `takePersistableUriPermission` (survives reboots, no `READ_MEDIA_*` needed). Android caps persisted grants at 512 and drops the oldest beyond that, so call `LocalMediaUtil.releaseUriGrantsIfUnused` when media is removed or re-linked to another URI. The Add form does it for photos picked in it that leave the form unsaved (removed, cleared, replaced by an edit), but never for media loaded for editing.
 - The Add form opens the photo picker through `AppServices.mediaPicker` (the system's `PickMultipleVisualMedia`), so UI tests can replace it. A screen registers its launcher with it once, when it is created.
 - Each `MediaItem` stores `deviceId` (the installation id), `fileSize`, `dateTaken` and `mediaSignature` = `"{size}_{md5(first 4 KB + last 4 KB)}"` (`MediaHasher`). The signature is computed once and kept on later saves; only re-linking to an edited version (below) replaces it.

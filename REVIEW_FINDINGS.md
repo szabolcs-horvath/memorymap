@@ -744,7 +744,8 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Removed: the Add form's `isInitialized` (Settings' is read, so it stays), the second write of `LAST_APP_VERSION`, and `ExampleUnitTest`. `GoogleAuthManager.kt` was already gone, with its commented-out branches.
   - Kept on purpose: `LAST_APP_VERSION` itself (nothing reads it yet, but it is the only record of the version an installation last ran, for a step that must run once after an update), and the DataStore's name (renaming it would lose every user's preferences without a migration; AGENTS.md explains it).
   - Settings' switches use the `PreferencesKeys` defaults.
-  - Left: moving `SIGNATURE_FIX_PLAN.md`, and highlighting the chosen preset on the Add screen.
+  - `SIGNATURE_FIX_PLAN.md` became `docs/media-relinking.md`, trimmed to the evidence, the reasons behind the rules and the known limits; the rules themselves are in AGENTS.md.
+  - Left: highlighting the chosen preset on the Add screen.
 
 ### <a id="arch-10"></a>⬜ ARCH-10 · Medium · UI built on XML Views, not Jetpack Compose
 - **Where:** all of `fragment/`, `adapter/`, `MainActivity.kt`, `view/MaxHeightCardView.kt` and `res/layout/`. As of `28df90b` that is about 6,000 lines of Kotlin and 2,900 lines of layout XML.
@@ -798,7 +799,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** GitHub Actions are pinned to tags (`@v4`) rather than SHAs; `gradle-wrapper.properties` has no `distributionSha256Sum`.
 
 ### <a id="build-4"></a>✅ BUILD-4 · Low · Robolectric cannot run against `targetSdk 37`
-- **Where:** noted in `SIGNATURE_FIX_PLAN.md` §5
+- **Where:** noted in the re-linking design notes (then `SIGNATURE_FIX_PLAN.md` §5)
 - **What:** `ColorUtilTest` does not start, so the only colour tests are effectively off.
 - **Fix:** Pin `@Config(sdk = [36])` for Robolectric tests, or make `ColorUtil` pure-JVM (its maths does not need Android).
 - **Note (2026-10-24):** Could not reproduce. With Robolectric 4.17, `ColorUtilTest` (91 tests) and `MemoryGroupDaoTest` run and pass locally. Probably resolved by a dependency upgrade; close it after a CI run confirms.
