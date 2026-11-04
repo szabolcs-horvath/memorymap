@@ -254,13 +254,14 @@ class MainActivity :
                 val isFirstRun = prefs[PreferencesKeys.IS_FIRST_RUN] ?: true
                 val lastVersion = prefs[PreferencesKeys.LAST_APP_VERSION] ?: 0L
 
+                // Nothing reads it yet: it records the version this installation last ran, for a future step that
+                // must run once after an update.
                 if (currentVersion > lastVersion) {
                     dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
                 }
 
                 if (isFirstRun) {
                     InstallationIdentifier.getInstallationIdentifier(applicationContext)
-                    dataStore.edit { it[PreferencesKeys.LAST_APP_VERSION] = currentVersion }
                     dataStore.edit { it[PreferencesKeys.IS_FIRST_RUN] = false }
                 }
 

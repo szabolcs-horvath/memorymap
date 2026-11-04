@@ -94,8 +94,6 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
     var colorExpanded = false
     var dateExpanded = true
 
-    var isInitialized = false
-
     /** Whether the Add screen is shown (not hidden behind another tab); kept up to date by the fragment. */
     var isScreenShown = true
 

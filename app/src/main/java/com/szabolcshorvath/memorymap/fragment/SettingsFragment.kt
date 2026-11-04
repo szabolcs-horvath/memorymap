@@ -267,11 +267,11 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupShowFragmentsSwitch() {
-        bindPreferenceSwitch(binding.switchShowFragments, PreferencesKeys.SHOW_FRAGMENT_MARKERS, default = false)
+        bindPreferenceSwitch(binding.switchShowFragments, PreferencesKeys.SHOW_FRAGMENT_MARKERS, PreferencesKeys.SHOW_FRAGMENT_MARKERS_DEFAULT_VALUE)
     }
 
     private fun setupClusterMarkersSwitch() {
-        bindPreferenceSwitch(binding.switchClusterMarkers, PreferencesKeys.MARKER_CLUSTERING_ENABLED, default = true)
+        bindPreferenceSwitch(binding.switchClusterMarkers, PreferencesKeys.MARKER_CLUSTERING_ENABLED, PreferencesKeys.MARKER_CLUSTERING_ENABLED_DEFAULT_VALUE)
     }
 
     /**
