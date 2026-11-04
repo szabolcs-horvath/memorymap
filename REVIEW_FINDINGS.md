@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 65 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 21 open
+✅ 66 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 20 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -97,7 +97,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
 | ✅ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
 
-**PERF — Performance** · 8 of 10 fixed
+**PERF — Performance** · 9 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -109,7 +109,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [PERF-6](#perf-6) | Medium | Every small change uploads the whole database |
 | ✅ | [PERF-7](#perf-7) | Medium | Map rebuilt on every tab switch or detail open |
 | ⬜ | [PERF-8](#perf-8) | Low | Full marker reset on every emission |
-| ⬜ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
+| ✅ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
 **UX — User experience** · 13 of 19 fixed
@@ -510,10 +510,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** `clearItems()` + `addItems()` + `cluster()` re-renders every marker, even for an unrelated change such as a title edit elsewhere.
 - **Fix:** Diff the items, or update only the changed ones (`updateItem`).
 
-### <a id="perf-9"></a>⬜ PERF-9 · Low · Pin icon recomputed on every render
+### <a id="perf-9"></a>✅ PERF-9 · Low · Pin icon recomputed on every render
 - **Where:** `util/MarkerGenerator.kt:59-69`
 - **What:** `singleColorPinConfigIcon` runs a 20-step binary search and builds a new `BitmapDescriptor` per marker per render, uncached. The multi-colour cache key uses `colors.hashCode()` (collisions give wrong icons).
 - **Fix:** Cache by colour int, and use `colors.joinToString()` as the key.
+- **Status:** Fixed. Single-colour pins have a cache of their own (`singleColorPinCache`, by colour, up to 256, since a map can have a colour per memory), which also saves the contrast-colour search; they are small, so they are kept apart from the bitmap icons (`drawnIconCache`, up to 50), and neither pushes out the other. The drawn icons are keyed by every colour (`MarkerGenerator.drawnIconKey`), so two colour lists with the same hash no longer share an icon. Covered by `MarkerGeneratorTest`.
 
 ### <a id="perf-10"></a>✅ PERF-10 · Low · Global layout listener on every layout pass
 - **Where:** `MapFragment.kt:387-389`
