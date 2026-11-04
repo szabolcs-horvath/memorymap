@@ -184,8 +184,6 @@ class AddMemoryGroupFragment : Fragment() {
 
             // The form shows what the ViewModel holds: on first load, after a rotation and after process death.
             showForm()
-
-            viewModel.isInitialized = true
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
