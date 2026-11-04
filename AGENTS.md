@@ -83,6 +83,7 @@ Local setup needs files that are **not** in git:
 ## Gotchas (quick list)
 
 - A hidden tab may or may not have a view. A tab fragment method called from the activity must not touch the view directly: keep the request in the ViewModel and handle it once the tab is shown (see the cross-tab actions above).
+- The map gives its cluster manager only the items that changed (`MarkerSync`), and the renderer reuses the marker of an item that comes back equal. Something a marker shows that is not part of its item's equality must go into `DrawnMarker` (it already holds the titles: a fragment's comes from its memory), or the marker keeps showing the old value.
 - `data.MemoryFragment` (entity) vs `fragment.MemoryFragment` (screen): the name clash is handled with `import … as MemoryFragmentEntity` in `MemoryFragmentViewModel`.
 - `MemoryFragment.title` (entity) is a mutable `@Ignore` field, filled from the parent group at runtime.
 - Deleting a group cascades to fragments and media. The undo (`MainActivity.onMemoryDeleted`) calls `MemoryGroupDao.restoreDeletedGroup`, which re-inserts all three in one transaction. Media URI grants are released, and an automatic backup runs, only when the undo Snackbar is dismissed without "Undo": a released grant can't be taken back, so undo would lose the photos. If the process dies while the Snackbar is showing, those grants stay (harmless, but they count toward the 512 cap).

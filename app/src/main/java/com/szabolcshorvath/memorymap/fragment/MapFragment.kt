@@ -49,6 +49,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MarkerGenerator
+import com.szabolcshorvath.memorymap.util.MarkerSync
 import com.szabolcshorvath.memorymap.util.MyLocationAction
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
@@ -81,6 +82,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val clustersFlow by lazy {
         viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled)
     }
+
+    // Created with the cluster manager: gives it only the items that changed.
+    private var markerSync: MarkerSync? = null
 
     private var shouldAdjustCameraOnUpdate = false
     private var mapLoadTrace: Trace? = null
@@ -362,6 +366,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val context = context ?: return
         clusterManager = ClusterManager(context, googleMap, markerManager)
         clusterManager.renderer = MarkerableClusterRenderer(context, googleMap, clusterManager)
+        markerSync = MarkerSync(clusterManager)
 
         clusterManager.setOnClusterItemClickListener { locationItem ->
             showMemoryOverlay(locationItem.position.latitude, locationItem.position.longitude, locationItem.items)
@@ -507,9 +512,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         adjustCamera: Boolean
     ) {
         trace("map_fragment_update_ui_with_fresh_markers") {
-            clusterManager.clearItems()
-            clusterManager.addItems(clusters)
-            clusterManager.cluster()
+            markerSync?.update(clusters, commonViewModel.markerClusteringEnabled.value)
 
             updatePieChart(filteredItems)
 
@@ -656,6 +659,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         super.onDestroyView()
         mapLoadTrace = null
         mMap = null
+        markerSync = null
         _binding = null
     }
 

@@ -1,9 +1,11 @@
 package com.szabolcshorvath.memorymap.map
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.DateRangePickerDialog
+import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
@@ -140,6 +142,39 @@ class MapTest {
         MapScreen.assertMarkerCount(EURO_TRIP, 2)
     }
 
+    /** The map stays alive while another tab is shown, and updates only the markers of what changed there. */
+    @Test
+    fun markersFollowARenameAndADeleteMadeOnOtherTabs() {
+        TestData.markerClustering(false)
+        TestData.showFragmentMarkers(true)
+        val trip = TestData.memory(EURO_TRIP, place = Place.MADRID)
+        TestData.fragment(trip, Place.ATHENS)
+        TestData.memory(PARIS_TRIP, place = Place.PARIS)
+        TestData.memory(CAPE_TOWN_TRIP, place = Place.CAPE_TOWN)
+        openMap()
+        MapScreen.assertMarkerCount(EURO_TRIP, 2)
+        MapScreen.assertMarkerShown(PARIS_TRIP)
+
+        Flows.editMemory(EURO_TRIP)
+        AddScreen.typeTitle(GRAND_TOUR)
+        AddScreen.save()
+        MemoryScreen.assertShowing(GRAND_TOUR)
+        BottomNav.open(Tab.MAP)
+
+        // The fragment's marker takes its memory's new title too.
+        MapScreen.assertMarkerCount(GRAND_TOUR, 2)
+        MapScreen.assertMarkerCount(EURO_TRIP, 0)
+
+        Flows.openMemory(PARIS_TRIP)
+        MemoryScreen.delete()
+        Dialog.tap("Delete")
+        BottomNav.open(Tab.MAP)
+
+        MapScreen.assertMarkerGone(PARIS_TRIP)
+        MapScreen.assertMarkerShown(CAPE_TOWN_TRIP)
+        MapScreen.assertMarkerCount(GRAND_TOUR, 2)
+    }
+
     @Test
     fun aFragmentsShowOnMapOpensTheMapAtTheFragment() {
         TestData.markerClustering(false)
@@ -253,6 +288,7 @@ class MapTest {
         const val PARIS_TRIP = "Paris trip"
         const val CAPE_TOWN_TRIP = "Cape Town trip"
         const val EURO_TRIP = "Euro trip"
+        const val GRAND_TOUR = "Grand tour"
         const val TODAY = "Today"
         const val TWENTY_DAYS_AGO = "Twenty days ago"
         const val TWO_HUNDRED_DAYS_AGO = "Two hundred days ago"

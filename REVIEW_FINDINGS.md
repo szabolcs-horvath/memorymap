@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 66 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 20 open
+✅ 67 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 19 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -97,7 +97,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
 | ✅ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
 
-**PERF — Performance** · 9 of 10 fixed
+**PERF — Performance** · 10 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -108,7 +108,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [PERF-5](#perf-5) | Medium | Cold start scans all media twice |
 | ✅ | [PERF-6](#perf-6) | Medium | Every small change uploads the whole database |
 | ✅ | [PERF-7](#perf-7) | Medium | Map rebuilt on every tab switch or detail open |
-| ⬜ | [PERF-8](#perf-8) | Low | Full marker reset on every emission |
+| ✅ | [PERF-8](#perf-8) | Low | Full marker reset on every emission |
 | ✅ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
@@ -503,12 +503,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Plan:** see [ARCH-1](#arch-1), which has the planned fix and what to watch for (stale data).
 - **Compose migration ([ARCH-10](#arch-10)):** Compose alone does not fix this, but the migration's last step replaces `MainActivity`'s fragment handling, and that is where keeping the map alive would then be solved. See ARCH-1 for which order to choose.
 - **⛔ Precondition:** do not start until the ENTIRE UI is covered by UI tests ([TEST-3](#test-3)): every screen, every user flow and as many edge cases as possible, passing on the local test emulator (docs/ui-tests.md).
-- **Status:** Fixed with [ARCH-1](#arch-1): a tab that was shown keeps its view while hidden, and a memory opens over the shown tab instead of replacing every tab, so the map is built once and Back returns to it as it was. A hidden map still redraws every marker on each data change (PERF-8).
+- **Status:** Fixed with [ARCH-1](#arch-1): a tab that was shown keeps its view while hidden, and a memory opens over the shown tab instead of replacing every tab, so the map is built once and Back returns to it as it was. A hidden map redrew every marker on each data change until PERF-8 was fixed.
 
-### <a id="perf-8"></a>⬜ PERF-8 · Low · Full marker reset on every emission
+### <a id="perf-8"></a>✅ PERF-8 · Low · Full marker reset on every emission
 - **Where:** `MapFragment.kt:503-566`
 - **What:** `clearItems()` + `addItems()` + `cluster()` re-renders every marker, even for an unrelated change such as a title edit elsewhere.
 - **Fix:** Diff the items, or update only the changed ones (`updateItem`).
+- **Status:** Fixed. `MarkerSync` (`util/MarkerChanges.kt`) keeps what the cluster manager holds and gives it only the items that were removed or added since; an edited memory is both. It re-clusters only when something changed or clustering was turned on or off, and an emission with the same items changes nothing. The renderer already kept the marker of an item that came back equal, so the cost was the re-clustering and re-setting every icon. A fragment's title comes from its memory and isn't part of its equality, so the diff also compares the titles each marker was drawn with. Covered by `MarkerChangesTest` and `MapTest.markersFollowARenameAndADeleteMadeOnOtherTabs`.
 
 ### <a id="perf-9"></a>✅ PERF-9 · Low · Pin icon recomputed on every render
 - **Where:** `util/MarkerGenerator.kt:59-69`
@@ -681,7 +682,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Hidden tabs keep re-drawing on every data change; for the map that is a full marker reset (PERF-8).
 - **⛔ Tests first (hard precondition):** this changes the lifecycle of every screen, so **it must not be started until the ENTIRE UI is covered by UI tests (TEST-3): every screen, every user flow and as many edge cases as possible, passing on the local test emulator (docs/ui-tests.md).** Tests for only the flows listed here are not enough. These flows matter most and must be among them: switching tabs; Show on map, Show in timeline and Edit from a memory, also while the target tab already has a view; the location picker round trip; back from a memory and from the media viewer; rotation and process death; and data changed on one tab showing on another. After the change, check on a device that the map is built only once (`dumpsys activity`) and compare tab-switch times (the `main_activity_navigate_to_tab_*` traces).
 - **Compose migration ([ARCH-10](#arch-10)):** both wait for the same complete UI test suite (TEST-3). The migration keeps the fragments for most of its steps, so this plan still applies alongside it. Only its last, optional step replaces `MainActivity`'s fragment handling with a Compose shell, which would throw this work away and solve PERF-7 there instead. Once TEST-3 is done, decide: if the Compose shell is planned soon, skip this plan and solve PERF-7 in that step; otherwise do this plan first.
-- **Status:** Fixed (2026-11-04), as planned, keeping the manual tab management; the Compose shell isn't planned soon. `navigateToTab` caps a hidden tab that has a view at `STARTED` and one never shown at `CREATED`, and loops only over the tabs and the picker. `onMemoryClicked` adds the memory over the shown screen and hides it at `STARTED`; the media viewer and the location picker hide the memory and the form at `STARTED` too, and the picker goes back to `CREATED` when it closes. After a recreation, `releaseHiddenViews` puts every hidden screen back to `CREATED`. Show on Map and Show in Timeline run in `onResume` (at once if already resumed); Edit still runs as soon as the form has a view, since filling a hidden form shows nothing. The stale-data points: the Settings switches and default filter now follow DataStore; the Add tab's save result is handled only while the tab is shown (a save error waits for it, and a save that finished elsewhere shows the cleared form, or an edit opened meanwhile); the keyboard is closed whenever a screen is hidden. Hidden tabs still redraw on data changes (PERF-8). New UI test: `DetailNavigationTest.theKeyboardClosesAndTheSearchStaysWhenAMemoryOrAnotherTabIsShown`.
+- **Status:** Fixed (2026-11-04), as planned, keeping the manual tab management; the Compose shell isn't planned soon. `navigateToTab` caps a hidden tab that has a view at `STARTED` and one never shown at `CREATED`, and loops only over the tabs and the picker. `onMemoryClicked` adds the memory over the shown screen and hides it at `STARTED`; the media viewer and the location picker hide the memory and the form at `STARTED` too, and the picker goes back to `CREATED` when it closes. After a recreation, `releaseHiddenViews` puts every hidden screen back to `CREATED`. Show on Map and Show in Timeline run in `onResume` (at once if already resumed); Edit still runs as soon as the form has a view, since filling a hidden form shows nothing. The stale-data points: the Settings switches and default filter now follow DataStore; the Add tab's save result is handled only while the tab is shown (a save error waits for it, and a save that finished elsewhere shows the cleared form, or an edit opened meanwhile); the keyboard is closed whenever a screen is hidden. Hidden tabs still update on data changes; the map now changes only the markers that changed (PERF-8). New UI test: `DetailNavigationTest.theKeyboardClosesAndTheSearchStaysWhenAMemoryOrAnotherTabIsShown`.
 
 ### <a id="arch-2"></a>⬜ ARCH-2 · High · Business logic lives in Fragments and the Activity
 - **Where:** `SettingsFragment.kt` (1041 lines), `AddMemoryGroupFragment.kt` (786), `MapFragment.kt` (778), `MainActivity.kt`
