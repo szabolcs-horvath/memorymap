@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.CompoundButton
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +16,7 @@ import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -265,69 +267,55 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupShowFragmentsSwitch() {
-        binding.switchShowFragments.isEnabled = false
-        val viewLifecycleOwner = viewLifecycleOwner
-        val context = context ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            val showFragments = context.dataStore.data
-                .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: false }
-                .firstOrNull() ?: false
-
-            _binding?.switchShowFragments?.apply {
-                isChecked = showFragments
-                setOnCheckedChangeListener { _, isChecked ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        context.dataStore.edit { preferences ->
-                            preferences[PreferencesKeys.SHOW_FRAGMENT_MARKERS] = isChecked
-                        }
-                    }
-                }
-                isEnabled = true
-            }
-        }
+        bindPreferenceSwitch(binding.switchShowFragments, PreferencesKeys.SHOW_FRAGMENT_MARKERS, default = false)
     }
 
     private fun setupClusterMarkersSwitch() {
-        binding.switchClusterMarkers.isEnabled = false
-        val viewLifecycleOwner = viewLifecycleOwner
-        val context = context ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            val clusterMarkers = context.dataStore.data
-                .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: true }
-                .firstOrNull() ?: true
+        bindPreferenceSwitch(binding.switchClusterMarkers, PreferencesKeys.MARKER_CLUSTERING_ENABLED, default = true)
+    }
 
-            _binding?.switchClusterMarkers?.apply {
-                isChecked = clusterMarkers
-                setOnCheckedChangeListener { _, isChecked ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        context.dataStore.edit { preferences ->
-                            preferences[PreferencesKeys.MARKER_CLUSTERING_ENABLED] = isChecked
-                        }
+    /**
+     * Shows preference [key] on [switch] and stores the user's changes. It follows the stored value for as long as the
+     * view is started: the tab keeps its view while another tab is shown.
+     */
+    private fun bindPreferenceSwitch(switch: CompoundButton, key: Preferences.Key<Boolean>, default: Boolean) {
+        val context = context ?: return
+        val viewLifecycleOwner = viewLifecycleOwner
+        switch.isEnabled = false
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                context.dataStore.data.map { it[key] ?: default }.distinctUntilChanged().collect { value ->
+                    switch.setOnCheckedChangeListener(null)
+                    switch.isChecked = value
+                    switch.setOnCheckedChangeListener { _, isChecked ->
+                        viewLifecycleOwner.lifecycleScope.launch { context.dataStore.edit { it[key] = isChecked } }
                     }
+                    switch.isEnabled = true
                 }
-                isEnabled = true
             }
         }
     }
 
     private fun setupDefaultFilterDropdown() {
         val options = DateFilterOption.allLabels()
-        val adapter = context?.let { ArrayAdapter(it, R.layout.item_dropdown, options) } ?: return
+        val context = context ?: return
+        val adapter = ArrayAdapter(context, R.layout.item_dropdown, options)
         binding.spinnerDefaultFilter.setAdapter(adapter)
 
         val viewLifecycleOwner = viewLifecycleOwner
-        val context = context
-        if (context != null) {
-            viewLifecycleOwner.lifecycleScope.launch {
-                val currentFilter = DateFilterOption.getFromDataStore(context.dataStore)
-                _binding?.spinnerDefaultFilter?.setText(currentFilter.label, false)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                context.dataStore.data
+                    .map { DateFilterOption.ofStoredName(it[PreferencesKeys.DEFAULT_DATE_FILTER]) }
+                    .distinctUntilChanged()
+                    .collect { _binding?.spinnerDefaultFilter?.setText(it.label, false) }
             }
         }
 
         binding.spinnerDefaultFilter.setOnItemClickListener { _, _, position, _ ->
             val selectedOption = options[position]
             viewLifecycleOwner.lifecycleScope.launch {
-                context?.dataStore?.edit { preferences ->
+                context.dataStore.edit { preferences ->
                     preferences[PreferencesKeys.DEFAULT_DATE_FILTER] = DateFilterOption.ofLabel(selectedOption).name
                 }
             }

@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnPreDraw
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -105,6 +107,8 @@ class MainActivity :
                 .add(R.id.fragmentContainer, settingsFragment, SettingsFragment.TAG).hide(settingsFragment)
                 .setMaxLifecycle(settingsFragment, Lifecycle.State.CREATED)
                 .commit()
+        } else {
+            releaseHiddenViews()
         }
 
         setupBottomNavigationBar()
@@ -113,6 +117,18 @@ class MainActivity :
         lifecycleScope.launch {
             checkAppStatus()
         }
+    }
+
+    /**
+     * After the activity is recreated (rotation, process death), the FragmentManager would build the view of every
+     * hidden screen that kept one. Only the shown screen gets one now; the others build theirs when shown again.
+     */
+    private fun releaseHiddenViews() {
+        val hidden = supportFragmentManager.fragments.filter { it.isHidden && it.id == R.id.fragmentContainer }
+        if (hidden.isEmpty()) return
+        val transaction = supportFragmentManager.beginTransaction()
+        hidden.forEach { transaction.setMaxLifecycle(it, Lifecycle.State.CREATED) }
+        transaction.commitNow()
     }
 
     private fun setupBottomNavigationBar() {
@@ -135,26 +151,31 @@ class MainActivity :
         fragmentNavigationTrace = PerfUtil.startTrace("main_activity_navigate_to_tab_$targetTag")
 
         if (targetTag != AddMemoryGroupFragment.TAG) addMemoryFragment?.closeUnchangedEdit()
+        hideKeyboard()
 
-        // 1. If we have a backstack (Detail views), clear it first
+        // Close the detail screens (a memory, the media viewer, the location picker) first.
         if (supportFragmentManager.backStackEntryCount > 0) {
             supportFragmentManager.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
         }
 
         val targetFragment = supportFragmentManager.findFragmentByTag(targetTag) ?: return
         val transaction = supportFragmentManager.beginTransaction()
-
-        // 2. Hide ALL fragments that are currently added to the container
-        // This ensures that even if we just popped the backstack, everything is reset
-        supportFragmentManager.fragments.forEach { fragment ->
-            transaction.hide(fragment)
-            transaction.setMaxLifecycle(fragment, Lifecycle.State.CREATED)
+        TAB_TAGS.filter { it != targetTag }.mapNotNull { supportFragmentManager.findFragmentByTag(it) }.forEach { tab ->
+            // A tab that has a view keeps it, paused, so it comes back as it was left. One never shown stays without one.
+            transaction.hide(tab)
+            transaction.setMaxLifecycle(tab, if (tab.view != null) Lifecycle.State.STARTED else Lifecycle.State.CREATED)
         }
-
-        // 3. Show the one we want
+        pickLocationFragment?.let { transaction.hide(it).setMaxLifecycle(it, Lifecycle.State.CREATED) }
         transaction.show(targetFragment)
         transaction.setMaxLifecycle(targetFragment, Lifecycle.State.RESUMED)
         transaction.commit()
+    }
+
+    /** Closes the keyboard: a hidden screen keeps its view now, and with it a focused text field. */
+    private fun hideKeyboard() {
+        val focused = currentFocus ?: return
+        WindowCompat.getInsetsController(window, focused).hide(WindowInsetsCompat.Type.ime())
+        focused.clearFocus()
     }
 
     /**
@@ -282,11 +303,16 @@ class MainActivity :
     }
 
     override fun onMemoryClicked(id: Int) {
+        hideKeyboard()
         val fragment = MemoryPagerFragment.newInstance(id)
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment, MemoryPagerFragment.TAG) // Replace the current tab
-            .addToBackStack(null) // This is the ONLY place you use backstack
-            .commit()
+        val transaction = supportFragmentManager.beginTransaction()
+            .add(R.id.fragmentContainer, fragment, MemoryPagerFragment.TAG)
+            .setMaxLifecycle(fragment, Lifecycle.State.RESUMED)
+        // The screen below keeps its view, paused, so Back returns to it as it was (camera, scroll, search).
+        supportFragmentManager.fragments
+            .filter { it.id == R.id.fragmentContainer && !it.isHidden }
+            .forEach { transaction.hide(it).setMaxLifecycle(it, Lifecycle.State.STARTED) }
+        transaction.addToBackStack(null).commit()
     }
 
     override fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int) {
@@ -300,7 +326,7 @@ class MainActivity :
 
         if (memoryPagerFragment != null && memoryPagerFragment.isVisible) {
             transaction.hide(memoryPagerFragment)
-            transaction.setMaxLifecycle(memoryPagerFragment, Lifecycle.State.CREATED)
+            transaction.setMaxLifecycle(memoryPagerFragment, Lifecycle.State.STARTED)
         }
 
         transaction.commit()
@@ -330,8 +356,8 @@ class MainActivity :
         }
 
         supportFragmentManager.beginTransaction()
-            .hide(form) // Specifically hide the caller
-            .setMaxLifecycle(form, Lifecycle.State.CREATED)
+            .hide(form) // Keeps its view, paused, for when the picker closes
+            .setMaxLifecycle(form, Lifecycle.State.STARTED)
             .show(picker)
             .setMaxLifecycle(picker, Lifecycle.State.RESUMED)
             .addToBackStack(PickLocationFragment.TAG) // Use the TAG here
@@ -384,5 +410,7 @@ class MainActivity :
 
     companion object {
         const val TAG = "MainActivity"
+
+        private val TAB_TAGS = listOf(MapFragment.TAG, TimelineFragment.TAG, AddMemoryGroupFragment.TAG, SettingsFragment.TAG)
     }
 }

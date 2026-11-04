@@ -16,9 +16,10 @@ object SettingsScreen : TabScreen {
     private const val SHOW_FRAGMENTS = "Show Memory Fragment Markers"
     private const val CONNECT = "Connect to Google Drive"
 
-    override fun assertShown() = Ui.assertShown("Settings") { hasText(SHOW_FRAGMENTS) }
+    // By the scrolling page, which is on screen wherever it was scrolled to: the tab keeps its scroll position.
+    override fun assertShown() = Ui.assertShown("Settings") { hasId("scroll_settings") }
 
-    override fun assertGone() = Ui.assertGone("Settings") { hasText(SHOW_FRAGMENTS) }
+    override fun assertGone() = Ui.assertGone("Settings") { hasId("scroll_settings") }
 
     fun assertSignedOut() {
         Ui.scrollTo { hasText(CONNECT) }

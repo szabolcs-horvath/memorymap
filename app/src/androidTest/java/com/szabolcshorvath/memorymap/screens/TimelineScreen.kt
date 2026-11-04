@@ -64,6 +64,12 @@ object TimelineScreen : TabScreen {
         Ui.device.waitForIdle()
     }
 
+    /** Taps the search field, which opens the keyboard, and types [text] in it. */
+    fun typeInSearch(text: String) {
+        Ui.find { hasHint(SEARCH) && isEditable }.click()
+        search(text)
+    }
+
     fun assertSearch(text: String) = Ui.assertShown("The search \"$text\"") { hasHint(SEARCH) && hasText(text) }
 
     fun assertEmpty() = Ui.assertShown("The empty timeline message") { hasText("No memories yet. Add some!") }

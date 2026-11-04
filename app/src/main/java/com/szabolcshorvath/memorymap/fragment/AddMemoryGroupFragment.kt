@@ -183,16 +183,7 @@ class AddMemoryGroupFragment : Fragment() {
             mediaAdapter.updateCurrentDeviceId(viewModel.currentDeviceId)
 
             // The form shows what the ViewModel holds: on first load, after a rotation and after process death.
-            updateInputs()
-            updateLocationText()
-            updateDateTimeButtons()
-            updateColorUI()
-            updateMediaUI()
-            updateFragmentsUI()
-
-            if (viewModel.editingMemoryId != null) {
-                binding.btSave.setText(R.string.update_memory)
-            }
+            showForm()
 
             viewModel.isInitialized = true
         }
@@ -270,26 +261,28 @@ class AddMemoryGroupFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.isSaving.collect { isSaving ->
-                        binding.btSave.visibility = if (isSaving) View.INVISIBLE else View.VISIBLE
-                        binding.btClear.isEnabled = !isSaving
-                        binding.progressSave.visibility = if (isSaving) View.VISIBLE else View.GONE
-                    }
+                viewModel.isSaving.collect { isSaving ->
+                    binding.btSave.visibility = if (isSaving) View.INVISIBLE else View.VISIBLE
+                    binding.btClear.isEnabled = !isSaving
+                    binding.progressSave.visibility = if (isSaving) View.VISIBLE else View.GONE
                 }
-                launch {
-                    viewModel.saveResult.collect { result ->
-                        val context = context
-                        when (result) {
-                            is AddMemoryGroupFragmentViewModel.SaveResult.Success -> {
-                                // The view model has already cleared the form.
-                                addMemoryGroupListener?.onMemorySaved(result.groupId)
-                                showClearedForm()
-                            }
+            }
+        }
 
-                            AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
-                                Toast.makeText(context, R.string.memory_save_failed, Toast.LENGTH_LONG).show()
-                            }
+        // Only while shown: a hidden tab keeps its view, and a save error must not show over another screen.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                viewModel.saveResult.collect { result ->
+                    when (result) {
+                        is AddMemoryGroupFragmentViewModel.SaveResult.Success -> {
+                            if (result.openMemory) addMemoryGroupListener?.onMemorySaved(result.groupId)
+                            // The view model has already cleared the form. One that waited may have been filled since
+                            // (an Edit while this tab was hidden), so show whatever it holds now.
+                            showForm()
+                        }
+
+                        AddMemoryGroupFragmentViewModel.SaveResult.Error -> {
+                            Toast.makeText(context, R.string.memory_save_failed, Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -485,21 +478,18 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun clearFields() {
         viewModel.resetForm()
-        showClearedForm()
+        showForm()
     }
 
-    /** Shows the empty form after [AddMemoryGroupFragmentViewModel.resetForm]. */
-    private fun showClearedForm() {
+    /** Shows everything the ViewModel holds: when the view is created, and after the form was cleared. */
+    private fun showForm() {
+        updateInputs()
+        updateLocationText()
         updateDateTimeButtons()
+        updateColorUI()
         updateMediaUI()
         updateFragmentsUI()
-        updateColorUI()
-
-        binding.titleInput.text?.clear()
-        binding.descriptionInput.text?.clear()
-        updateLocationText()
-        binding.switchAllDay.isChecked = false
-        binding.btSave.setText(R.string.save_memory)
+        binding.btSave.setText(if (viewModel.editingMemoryId != null) R.string.update_memory else R.string.save_memory)
     }
 
     override fun onHiddenChanged(hidden: Boolean) {
@@ -590,7 +580,7 @@ class AddMemoryGroupFragment : Fragment() {
     fun closeUnchangedEdit() {
         if (viewModel.editingMemoryId == null || viewModel.hasUnsavedChanges()) return
         viewModel.resetForm()
-        if (_binding != null) showClearedForm()
+        if (_binding != null) showForm()
     }
 
     private fun showForEditing(data: MemoryGroupWithMedia) {

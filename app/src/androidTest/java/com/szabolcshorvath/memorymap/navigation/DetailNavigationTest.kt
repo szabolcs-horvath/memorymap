@@ -5,6 +5,7 @@ import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.Flows
+import com.szabolcshorvath.memorymap.screens.Keyboard
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MediaViewerScreen
@@ -54,6 +55,38 @@ class DetailNavigationTest {
             MemoryScreen.assertGone()
             BottomNav.assertSelected(tab)
         }
+    }
+
+    @Test
+    fun theKeyboardClosesAndTheSearchStaysWhenAMemoryOrAnotherTabIsShown() {
+        app.launch()
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.typeInSearch("Vienna")
+        Keyboard.assertShown()
+
+        TimelineScreen.openMemory(OLDER)
+
+        MemoryScreen.assertShown()
+        Keyboard.assertHidden()
+
+        Ui.pressBack()
+
+        TimelineScreen.assertSearch("Vienna")
+        TimelineScreen.assertMemoryShown(OLDER)
+        TimelineScreen.assertMemoryGone(NEWER)
+
+        TimelineScreen.typeInSearch("Vienna trip")
+        Keyboard.assertShown()
+
+        BottomNav.select(Tab.MAP)
+
+        MapScreen.assertShown()
+        Keyboard.assertHidden()
+
+        BottomNav.select(Tab.TIMELINE)
+
+        TimelineScreen.assertSearch("Vienna trip")
+        TimelineScreen.assertMemoryShown(OLDER)
     }
 
     @Test
