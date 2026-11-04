@@ -36,12 +36,28 @@ object MarkerGenerator {
     private const val TAPERED_CURVE_BOTTOM_Y_FACTOR = 0.7f
     private const val TAPERED_CURVE_CENTER_Y_FACTOR = 0.6f
 
-    private const val CACHE_MAX_SIZE = 50
-    private val cache = LruCache<String, BitmapDescriptor>(CACHE_MAX_SIZE)
+    private const val DRAWN_ICON_CACHE_SIZE = 50
+    private const val SINGLE_COLOR_PIN_CACHE_SIZE = 256
+
+    /**
+     * The icons drawn here as bitmaps (several colours, with a count), by [drawnIconKey]. Each holds a bitmap of about
+     * 40 KB, so only a few are kept.
+     */
+    private val drawnIconCache = LruCache<String, BitmapDescriptor>(DRAWN_ICON_CACHE_SIZE)
+
+    /**
+     * The one-colour pins, by their colour. The map draws these from a [PinConfig], so each is small, and many are kept:
+     * a map can have a colour per memory. Kept apart from [drawnIconCache], so neither pushes out the other's icons.
+     */
+    private val singleColorPinCache = LruCache<Int, BitmapDescriptor>(SINGLE_COLOR_PIN_CACHE_SIZE)
+
+    /** The key of an icon in [drawnIconCache]. It names every colour: two colour lists can have the same `hashCode`. */
+    internal fun drawnIconKey(shape: String, colors: List<Int>, count: Int, density: Float) =
+        "${shape}_${colors.joinToString(",")}_${count}_$density"
 
     fun multiColorBitmapCircleIcon(colors: List<Int>, count: Int, density: Float): BitmapDescriptor {
-        val cacheKey = "circle_${colors.hashCode()}_${count}_$density"
-        cache.get(cacheKey)?.let { return it }
+        val key = drawnIconKey("circle", colors, count, density)
+        drawnIconCache.get(key)?.let { return it }
 
         val borderWidth = (CLUSTER_BORDER_WIDTH_DP * density)
         val essentials = Essentials.initClusterEssentials(colors, count, density, borderWidth)
@@ -50,24 +66,28 @@ object MarkerGenerator {
         drawContent(essentials, borderWidth, outlineWidth)
 
         val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(essentials.bitmap)
-        cache.put(cacheKey, bitmapDescriptor)
+        drawnIconCache.put(key, bitmapDescriptor)
         return bitmapDescriptor
     }
 
     fun singleColorPinConfigIcon(@ColorInt color: Int): BitmapDescriptor {
+        singleColorPinCache.get(color)?.let { return it }
+        // The contrast colour takes a search over brightness levels, so it is worth caching with the icon.
         val contrastColor = ColorUtil.generateColorWithTargetContrast(color, TARGET_CONTRAST_FOR_MARKER_COLORS)
-        return BitmapDescriptorFactory.fromPinConfig(
+        val icon = BitmapDescriptorFactory.fromPinConfig(
             PinConfig.builder()
                 .setBackgroundColor(color)
                 .setGlyph(PinConfig.Glyph(contrastColor))
                 .setBorderColor(contrastColor)
                 .build()
         )
+        singleColorPinCache.put(color, icon)
+        return icon
     }
 
     fun multiColorBitmapPinIcon(colors: List<Int>, count: Int, density: Float): BitmapDescriptor {
-        val cacheKey = "pin_${colors.hashCode()}_${count}_$density"
-        cache.get(cacheKey)?.let { return it }
+        val key = drawnIconKey("pin", colors, count, density)
+        drawnIconCache.get(key)?.let { return it }
 
         val borderWidth = (MARKER_BORDER_WIDTH_DP * density)
         val essentials = Essentials.initPinEssentials(colors, count, density, borderWidth)
@@ -78,7 +98,7 @@ object MarkerGenerator {
         drawContent(essentials, borderWidth, outlineWidth)
 
         val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(essentials.bitmap)
-        cache.put(cacheKey, bitmapDescriptor)
+        drawnIconCache.put(key, bitmapDescriptor)
         return bitmapDescriptor
     }
 
