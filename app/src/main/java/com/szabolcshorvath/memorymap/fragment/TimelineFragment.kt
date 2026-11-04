@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.doOnPreDraw
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -61,9 +62,12 @@ class TimelineFragment : Fragment() {
                 }.collect { (filteredGroups, query) ->
                     val sortedGroups = filteredGroups.sortedByDescending { it.startDate }
                     adapter.updateData(sortedGroups) {
-                        viewModel.pendingScrollMemoryId?.let { id ->
-                            performScrollAndFlash(id)
-                            viewModel.pendingScrollMemoryId = null
+                        // A hidden tab keeps its list up to date, but scrolls and flashes only once it is shown.
+                        if (isResumed) {
+                            viewModel.pendingScrollMemoryId?.let { id ->
+                                performScrollAndFlash(id)
+                                viewModel.pendingScrollMemoryId = null
+                            }
                         }
                     }
                     if (sortedGroups.isEmpty()) {
@@ -118,12 +122,25 @@ class TimelineFragment : Fragment() {
         binding.rvTimeline.adapter = adapter
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Once the shown list is laid out: a tab that kept its view while hidden is shown in this same frame.
+        val view = view ?: return
+        view.doOnPreDraw { if (isResumed) scrollToPendingMemory() }
+    }
+
     /**
-     * Scrolls to memory [memoryId] and flashes it. The request is kept in the ViewModel until a view's list contains
-     * the memory, so it can be made while the tab is hidden or still being shown.
+     * Scrolls to memory [memoryId] and flashes it. The request is kept in the ViewModel until the tab is shown and its
+     * list contains the memory, so it can be made while the tab is hidden, with or without a view, or still being shown.
      */
     fun requestScrollToAndFlash(memoryId: Int) {
         viewModel.pendingScrollMemoryId = memoryId
+        if (isResumed) scrollToPendingMemory()
+    }
+
+    /** Handles the pending scroll request, if this view's list has the memory yet. */
+    private fun scrollToPendingMemory() {
+        val memoryId = viewModel.pendingScrollMemoryId ?: return
         // The adapter belongs to the current view, so only use it while there is one.
         if (_binding != null && adapter.getPositionForId(memoryId) != -1) {
             viewModel.pendingScrollMemoryId = null

@@ -114,6 +114,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (context != null && hasLocationPermission(context)) {
             enableMyLocation()
         }
+        focusOnPendingMemory()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -173,8 +174,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             }
         }
-
-        focusOnPendingMemory()
     }
 
     private fun setupOverlayRecyclerView() {
@@ -266,13 +265,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     /**
-     * Shows memory [id] on the map. The request is kept in the ViewModel and handled once this fragment has a view
-     * (right away if it has one), so it can be made while the tab is hidden or still being shown.
+     * Shows memory [id] on the map. The request is kept in the ViewModel and handled once this tab is shown (right away
+     * if it is), so it can be made while the tab is hidden, with or without a view, or still being shown.
      */
     fun requestFocusOnMemory(lat: Double, lng: Double, id: Int) {
         viewModel.isInitialZoomDone = true
         viewModel.pendingFocus = MapFragmentViewModel.FocusRequest(id, lat, lng)
-        focusOnPendingMemory()
+        if (isResumed) focusOnPendingMemory()
     }
 
     /** Handles the pending focus request, if any. It stays pending until handled, so a view destroyed meanwhile retries it. */

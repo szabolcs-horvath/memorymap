@@ -44,8 +44,10 @@ import java.time.ZonedDateTime
 
 class AddMemoryGroupFragmentViewModel(application: Application, savedState: SavedStateHandle) : AndroidViewModel(application) {
 
+    /** Handled while the Add screen is shown: one that comes while another screen is shown waits for it. */
     sealed class SaveResult {
-        data class Success(val groupId: Int) : SaveResult()
+        /** The form was cleared. [openMemory]: the save finished while the Add screen was shown, so the memory opens. */
+        data class Success(val groupId: Int, val openMemory: Boolean) : SaveResult()
 
         /** The save failed; the cause is logged, and the user gets a plain message instead of the database's text. */
         data object Error : SaveResult()
@@ -215,11 +217,10 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         if (savedAsNew) {
             Toast.makeText(getApplication(), R.string.memory_saved_as_new, Toast.LENGTH_LONG).show()
         }
-        if (isScreenShown) {
-            _saveResult.send(SaveResult.Success(groupId))
-        } else if (!savedAsNew) {
+        if (!isScreenShown && !savedAsNew) {
             Toast.makeText(getApplication(), R.string.memory_saved, Toast.LENGTH_SHORT).show()
         }
+        _saveResult.send(SaveResult.Success(groupId, openMemory = isScreenShown))
     }
 
     /** Whether the form differs from how it was last cleared or loaded for editing, in anything a save would store. */
