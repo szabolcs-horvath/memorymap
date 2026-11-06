@@ -813,7 +813,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 ### <a id="build-3"></a>✅ BUILD-3 · Low · Supply-chain hygiene
 - **What:** GitHub Actions are pinned to tags (`@v4`) rather than SHAs; `gradle-wrapper.properties` has no `distributionSha256Sum`.
 - **Status:** Fixed (2026-11-06).
-  - Every action in the workflows is pinned to the commit its tag pointed to, with the exact version in a comment (`actions/checkout@3d3c42e… # v7.0.1`), so a tag moved to other code can't change what CI runs.
+  - Every action in the workflows is pinned to the commit its tag pointed to, with the exact version in a comment (`actions/checkout@3d3c42e… # v7.0.1`), so a tag moved to other code can't change what CI runs. Dependabot (`.github/dependabot.yml`) keeps them current: once a week it opens one PR that updates every pinned commit and its version comment.
   - `gradle-wrapper.properties` has the distribution's `distributionSha256Sum`, from Gradle's published checksum: the wrapper refuses a download that doesn't match (checked with a wrong value). The wrapper jar itself is checked on every CI run by `setup-gradle` (`validate-wrappers`, on by default).
 
 ### <a id="build-4"></a>✅ BUILD-4 · Low · Robolectric cannot run against `targetSdk 37`

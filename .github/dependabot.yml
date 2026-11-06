@@ -1,0 +1,12 @@
+# Keeps the workflow actions, which are pinned to commits, up to date: once a week, one PR for all of them,
+# updating each pinned commit and its version comment.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
