@@ -12,13 +12,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAuthIOException
-import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -37,9 +34,6 @@ object AutomaticBackups {
     private const val DEBOUNCE_SECONDS = 15L
     private const val RETRY_BACKOFF_MINUTES = 1L
     internal const val MAX_ATTEMPTS = 5
-
-    private const val HTTP_TOO_MANY_REQUESTS = 429
-    private const val HTTP_SERVER_ERROR = 500
 
     /**
      * Schedules an automatic backup. Replaces a pending one, which restarts the debounce delay, and also a
@@ -67,17 +61,6 @@ object AutomaticBackups {
         states.any { it == WorkInfo.State.ENQUEUED || it == WorkInfo.State.BLOCKED } -> AutomaticBackupStatus.PENDING
         WorkInfo.State.FAILED in states -> AutomaticBackupStatus.FAILED
         else -> AutomaticBackupStatus.IDLE
-    }
-
-    /**
-     * Whether a failed backup is worth retrying later: network trouble and Drive server errors are,
-     * missing consent or a rejected request are not (they would fail the same way again).
-     */
-    internal fun isRetryable(e: Throwable): Boolean = when (e) {
-        is GoogleAuthIOException -> false // the user has to sign in or grant access again
-        is GoogleJsonResponseException -> e.statusCode == HTTP_TOO_MANY_REQUESTS || e.statusCode >= HTTP_SERVER_ERROR
-        is IOException -> true // no connection, timeout, connection reset
-        else -> false
     }
 }
 

@@ -30,6 +30,7 @@ import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.color.MaterialColors
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
@@ -39,6 +40,7 @@ import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.dataStore
@@ -87,6 +89,12 @@ class SettingsFragment : Fragment() {
     private lateinit var backupAdapter: BackupAdapter
     private lateinit var colorPresetAdapter: ColorPresetAdapter
     private var allPresets: List<HSVPreset> = emptyList()
+
+    // The consent screen Drive's own sign-in offers when listing backups fails for lack of access.
+    private val recoverDriveAccessLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
+        (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
+    }
 
     private val relinkPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -245,6 +253,9 @@ class SettingsFragment : Fragment() {
                 binding.swipeRefresh.isRefreshing = false
             }
         }
+
+        binding.btAllowDriveAccess.setOnClickListener { allowDriveAccessAgain() }
+        showBackupListProblem()
 
         binding.btBackupNow.setOnClickListener {
             val email = binding.tvAccountName.tag as? String
@@ -784,6 +795,8 @@ class SettingsFragment : Fragment() {
                 tvAccountName.tag = null
                 viewModel.backupsLoadedForEmail = null
                 viewModel.lastLoadedBackups = emptyList()
+                viewModel.backupListFailure = null
+                showBackupListProblem()
                 backupAdapter.submitList(emptyList())
             }
         }
@@ -899,16 +912,52 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 if (!quiet) setLoadingState(true, "Loading backups...", hideBackupStatus = false)
-                val backups = backupManager.listBackups(email)
-                backupAdapter.submitList(backups)
-                viewModel.backupsLoadedForEmail = email
-                viewModel.lastLoadedBackups = backups
+                backupManager.listBackups(email).fold(
+                    onSuccess = { backups ->
+                        backupAdapter.submitList(backups)
+                        viewModel.backupsLoadedForEmail = email
+                        viewModel.lastLoadedBackups = backups
+                        viewModel.backupListFailure = null
+                    },
+                    // The list shown before stays: an empty one would look as if the backups were gone.
+                    onFailure = { viewModel.backupListFailure = it }
+                )
+                showBackupListProblem()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to list backups", e)
             } finally {
                 if (!quiet) setLoadingState(false)
                 _binding?.swipeRefresh?.isRefreshing = false
             }
+        }
+    }
+
+    /** Says why the backup list couldn't be loaded, if it couldn't, and offers to allow Drive access when that is why. */
+    private fun showBackupListProblem() {
+        val binding = _binding ?: return
+        val problem = viewModel.backupListFailure?.let(DriveProblem::of)
+        binding.tvBackupListProblem.isVisible = problem != null
+        binding.btAllowDriveAccess.isVisible = problem == DriveProblem.NEEDS_ACCESS
+        val message = when (problem) {
+            null -> return
+            DriveProblem.NEEDS_ACCESS -> R.string.backup_list_needs_access
+            DriveProblem.NO_CONNECTION -> R.string.backup_list_no_connection
+            DriveProblem.DRIVE_UNAVAILABLE -> R.string.backup_list_drive_unavailable
+            DriveProblem.OTHER -> R.string.backup_list_failed
+        }
+        binding.tvBackupListProblem.setText(message)
+    }
+
+    /**
+     * Asks for Drive access again, then reloads the list. Drive's own sign-in, which the backup calls go through, may
+     * come with the consent screen that fixes its error; otherwise the app's usual Drive consent is asked for.
+     */
+    private fun allowDriveAccessAgain() {
+        val consent = (viewModel.backupListFailure as? UserRecoverableAuthIOException)?.intent
+        if (consent != null) {
+            recoverDriveAccessLauncher.launch(consent)
+        } else {
+            requestDriveAuthorization(isBackup = false)
         }
     }
 

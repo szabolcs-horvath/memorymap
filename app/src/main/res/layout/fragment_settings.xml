@@ -452,6 +452,26 @@
                     android:textColor="?attr/colorOnSurface"
                     android:textStyle="bold" />
 
+                <!-- Why the list couldn't be loaded; the list shown before stays under it. -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/tv_backupListProblem"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="?attr/colorError"
+                    android:visibility="gone"
+                    tools:text="@string/backup_list_no_connection"
+                    tools:visibility="visible" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/bt_allowDriveAccess"
+                    style="@style/Widget.Material3Expressive.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/allow_drive_access"
+                    android:visibility="gone" />
+
                 <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
                     android:id="@+id/swipeRefresh"
                     android:layout_width="match_parent"

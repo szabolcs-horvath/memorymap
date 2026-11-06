@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 71 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 15 open
+✅ 71 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 14 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -143,7 +143,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-1](#arch-1) | High | Manual fragment management fights the framework |
 | ⬜ | [ARCH-2](#arch-2) | High | Business logic lives in Fragments and the Activity |
 | ✅ | [ARCH-3](#arch-3) | High | Background work tied to UI scopes |
-| ⬜ | [ARCH-4](#arch-4) | Medium | Two Google auth stacks |
+| 🟡 | [ARCH-4](#arch-4) | Medium | Two Google auth stacks |
 | ⬜ | [ARCH-5](#arch-5) | Medium | Duplicated logic |
 | 🟡 | [ARCH-6](#arch-6) | Medium | Hand-rolled singletons, no DI |
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
@@ -696,10 +696,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** WorkManager unique work (`enqueueUniqueWork("auto-backup", REPLACE)` with a short initial delay and a network constraint) and a single `MediaRelinker` with a mutex.
 - **Status:** Fixed. Automatic backups run in WorkManager (`AutomaticBackupWorker`), so they survive the screen and the process and are deduplicated. Media re-linking goes through `MediaRelinker.relink`: runs happen one at a time (a `Mutex`) in `MemoryMapApplication.applicationScope`, so they finish when the screen goes away, and requests made during a run share the next run (`SerialRunner`, covered by `SerialRunnerTest`). Screens only wait for the result and show its progress. A run killed with the process is not resumed; the next cold start runs it again.
 
-### <a id="arch-4"></a>⬜ ARCH-4 · Medium · Two Google auth stacks
+### <a id="arch-4"></a>🟡 ARCH-4 · Medium · Two Google auth stacks
 - **Where:** `auth/GoogleAccountService.kt`, `SettingsFragment.kt` (`requestDriveAuthorization`), `backup/DriveBackupStorage.kt`
 - **What:** Credential Manager is used for sign-in and `AuthorizationClient` for consent, but Drive calls use the legacy `GoogleAccountCredential.usingOAuth2` + account name (AccountManager-based). The access token from `AuthorizationResult` is thrown away. `UserRecoverableAuthIOException` from `listBackups` is swallowed as "no backups".
 - **Fix:** Use `AuthorizationClient` for tokens everywhere (silent `authorize()` for automatic backups) and surface recoverable auth errors.
+- **Status:** Partly fixed (2026-11-06): recoverable auth errors are surfaced.
+  - `listBackups` returned an empty list on any `IOException`: lapsed consent, but also no connection or a Drive outage, and a failed refresh wiped a list already shown. To the user it looked as if the backups were gone. It now returns a `Result`, and `DriveProblem` sorts the failure (needs access, no connection, Drive unavailable, other). Settings keeps the list it showed and says why under "Available Backups"; when access lapsed it offers "Allow access", which opens the consent screen Drive's sign-in hands back with `UserRecoverableAuthIOException`, or else the app's usual Drive consent, then reloads the list. Automatic backups decide what to retry with the same `DriveProblem`. Covered by `DriveProblemTest` and `BackupListProblemTest` (with the fake Drive failing).
+  - Left: Drive calls still go through `GoogleAccountCredential` and the account name, not the `AuthorizationClient` token. That change needs a check on a real phone with a real account, since the UI tests fake both.
 
 ### <a id="arch-5"></a>⬜ ARCH-5 · Medium · Duplicated logic
 - **What and where:**

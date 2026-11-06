@@ -4,6 +4,7 @@ import android.graphics.Point
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.textAsString
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.testing.TestData.Hsv
@@ -50,6 +51,33 @@ object SettingsScreen : TabScreen {
     }
 
     private fun AccessibilityNodeInfo.isBackup(label: String) = hasId("tv_backup_name") && hasText(label)
+
+    /** Pulls the backup list down, which loads it again. */
+    fun refreshBackups() {
+        Ui.scrollTo { hasId("swipeRefresh") }
+        Ui.find { hasId("swipeRefresh") }.swipe(Direction.DOWN, PULL_PERCENT)
+        Ui.device.waitForIdle()
+    }
+
+    /** The line above the backup list says it couldn't be loaded, with the message [message] (a string resource). */
+    fun assertBackupListProblem(message: Int) {
+        val text = InstrumentationRegistry.getInstrumentation().targetContext.getString(message)
+        Ui.scrollTo { hasText(text) }
+        Ui.assertShown("The backup list problem \"$text\"") { hasText(text) }
+    }
+
+    fun assertNoBackupListProblem() = Ui.assertGone("A backup list problem") { hasId("tv_backupListProblem") }
+
+    fun assertAllowAccessGone() = Ui.assertGone("The Allow access button") { hasText(ALLOW_ACCESS) }
+
+    fun allowDriveAccess() {
+        Ui.scrollTo { hasText(ALLOW_ACCESS) }
+        Ui.find { hasText(ALLOW_ACCESS) }.click()
+        Ui.device.waitForIdle()
+    }
+
+    private const val ALLOW_ACCESS = "Allow access"
+    private const val PULL_PERCENT = 0.8f
 
     /** The first backup in the list is the newest. */
     fun tapRestoreOnFirstBackup() = tapOnFirstBackup("Restore")
