@@ -1,11 +1,11 @@
 package com.szabolcshorvath.memorymap.backup
 
-import com.google.android.gms.auth.GoogleAuthException
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAuthIOException
 import com.google.api.client.googleapis.json.GoogleJsonError
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.HttpHeaders
 import com.google.api.client.http.HttpResponseException
+import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
+import com.szabolcshorvath.memorymap.auth.DriveAuthorizationFailedException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
@@ -16,8 +16,9 @@ import java.net.UnknownHostException
 class DriveProblemTest {
 
     @Test
-    fun `missing consent needs the user, even though it is an IOException`() {
-        assertEquals(DriveProblem.NEEDS_ACCESS, DriveProblem.of(GoogleAuthIOException(GoogleAuthException("consent needed"))))
+    fun `missing consent or a token drive rejects needs the user, though both are IOExceptions`() {
+        assertEquals(DriveProblem.NEEDS_ACCESS, DriveProblem.of(DriveAccessNeededException(consent = null)))
+        assertEquals(DriveProblem.NEEDS_ACCESS, DriveProblem.of(driveError(401)))
     }
 
     @Test
@@ -32,6 +33,11 @@ class DriveProblemTest {
         assertEquals(DriveProblem.DRIVE_UNAVAILABLE, DriveProblem.of(driveError(429)))
         assertEquals(DriveProblem.OTHER, DriveProblem.of(driveError(403)))
         assertEquals(DriveProblem.OTHER, DriveProblem.of(driveError(404)))
+    }
+
+    @Test
+    fun `an authorization that failed for another reason is no connection problem`() {
+        assertEquals(DriveProblem.OTHER, DriveProblem.of(DriveAuthorizationFailedException(IllegalStateException("developer error"))))
     }
 
     @Test

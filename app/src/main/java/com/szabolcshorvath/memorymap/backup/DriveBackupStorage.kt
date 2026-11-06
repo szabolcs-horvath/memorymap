@@ -1,13 +1,15 @@
 package com.szabolcshorvath.memorymap.backup
 
 import android.content.Context
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.FileContent
+import com.google.api.client.http.HttpRequestInitializer
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
-import com.google.api.services.drive.DriveScopes
 import com.google.firebase.perf.metrics.AddTrace
+import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
+import com.szabolcshorvath.memorymap.auth.GoogleAccountService
 import java.io.File
 import java.io.FileOutputStream
 import com.google.api.services.drive.model.File as DriveFile
@@ -17,12 +19,13 @@ object DriveBackupStorage : BackupStorage {
 
     private const val FOLDER_NAME = "Memory Map Backups"
     private const val DRIVE_LIST_PAGE_SIZE = 1000 // Drive's maximum
+    private const val HTTP_UNAUTHORIZED = 401
+    private const val TOKEN_ATTEMPTS = 2 // the first token, and one replacing it if Drive rejects it
 
-    override fun list(context: Context, email: String): List<DriveFile> {
-        val driveService = driveService(context, email)
+    override fun list(context: Context, email: String): List<DriveFile> = withDrive(context, email) { driveService ->
         val folderId = getOrCreateBackupFolder(driveService)
         val query = "'$folderId' in parents and trashed = false"
-        return collectAllPages { pageToken ->
+        collectAllPages { pageToken ->
             val result = driveService.files().list()
                 .setQ(query)
                 .setFields("nextPageToken, files(id, name, modifiedTime, size)")
@@ -34,8 +37,7 @@ object DriveBackupStorage : BackupStorage {
         }
     }
 
-    override fun upload(context: Context, email: String, name: String, zipFile: File) {
-        val driveService = driveService(context, email)
+    override fun upload(context: Context, email: String, name: String, zipFile: File) = withDrive(context, email) { driveService ->
         val fileMetadata = DriveFile()
         fileMetadata.name = name
         fileMetadata.parents = listOf(getOrCreateBackupFolder(driveService))
@@ -44,25 +46,52 @@ object DriveBackupStorage : BackupStorage {
         driveService.files().create(fileMetadata, mediaContent)
             .setFields("id")
             .execute()
+        Unit
     }
 
-    override fun download(context: Context, email: String, fileId: String, target: File) {
+    override fun download(context: Context, email: String, fileId: String, target: File) = withDrive(context, email) { driveService ->
+        // Opened here, so a second try writes the file from the start.
         FileOutputStream(target).use { outputStream ->
-            driveService(context, email).files().get(fileId).executeMediaAndDownloadTo(outputStream)
+            driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream)
         }
     }
 
-    override fun delete(context: Context, email: String, fileId: String) {
-        driveService(context, email).files().delete(fileId).execute()
+    override fun delete(context: Context, email: String, fileId: String) = withDrive(context, email) { driveService ->
+        driveService.files().delete(fileId).execute()
+        Unit
     }
 
-    private fun driveService(context: Context, email: String): Drive {
-        val credential = GoogleAccountCredential.usingOAuth2(context, listOf(DriveScopes.DRIVE_FILE)).apply {
-            selectedAccountName = email
-        }
-        return Drive.Builder(NetHttpTransport(), GsonFactory.getDefaultInstance(), credential)
+    /** Runs [call] with a Drive client for [email], authorized with an access token from Play services. */
+    private fun <T> withDrive(context: Context, email: String, call: (Drive) -> T): T = withFreshToken(
+        token = { GoogleAccountService.driveAccessToken(context, email) },
+        clear = { GoogleAccountService.clearAccessToken(context, it) },
+        call = { token -> call(driveService(token)) }
+    )
+
+    private fun driveService(token: String): Drive {
+        val authorize = HttpRequestInitializer { request -> request.headers.authorization = "Bearer $token" }
+        return Drive.Builder(NetHttpTransport(), GsonFactory.getDefaultInstance(), authorize)
             .setApplicationName("Memory Map")
             .build()
+    }
+
+    /**
+     * Runs [call] with a token from [token]. A token Drive rejects (401) is [clear]ed and replaced once: Play services
+     * can still hold one for access the user has removed meanwhile. Rejected again, the user has to allow access.
+     */
+    internal fun <T> withFreshToken(token: () -> String, clear: (String) -> Unit, call: (String) -> T): T {
+        var rejection: GoogleJsonResponseException? = null
+        repeat(TOKEN_ATTEMPTS) {
+            val current = token()
+            try {
+                return call(current)
+            } catch (e: GoogleJsonResponseException) {
+                if (e.statusCode != HTTP_UNAUTHORIZED) throw e
+                clear(current)
+                rejection = e
+            }
+        }
+        throw DriveAccessNeededException(consent = null, cause = rejection)
     }
 
     @AddTrace(name = "drive_backup_storage_get_or_create_backup_folder", enabled = true)

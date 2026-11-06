@@ -1,7 +1,13 @@
 package com.szabolcshorvath.memorymap.backup
 
+import com.google.api.client.googleapis.json.GoogleJsonError
+import com.google.api.client.googleapis.json.GoogleJsonResponseException
+import com.google.api.client.http.HttpHeaders
+import com.google.api.client.http.HttpResponseException
+import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class DriveBackupStorageTest {
 
@@ -47,4 +53,56 @@ class DriveBackupStorageTest {
     fun `empty listing`() {
         assertEquals(emptyList<Int>(), DriveBackupStorage.collectAllPages { emptyList<Int>() to null })
     }
+
+    @Test
+    fun `a call that works uses the first token and clears nothing`() {
+        val cleared = mutableListOf<String>()
+        val tokens = ArrayDeque(listOf("t1", "t2"))
+
+        val result = DriveBackupStorage.withFreshToken({ tokens.removeFirst() }, { cleared += it }) { token -> "listed with $token" }
+
+        assertEquals("listed with t1", result)
+        assertEquals(emptyList<String>(), cleared)
+    }
+
+    @Test
+    fun `a rejected token is cleared and the call tried once more with a new one`() {
+        val cleared = mutableListOf<String>()
+        val tokens = ArrayDeque(listOf("stale", "fresh"))
+
+        val result = DriveBackupStorage.withFreshToken({ tokens.removeFirst() }, { cleared += it }) { token ->
+            if (token == "stale") throw driveError(401) else "listed with $token"
+        }
+
+        assertEquals("listed with fresh", result)
+        assertEquals(listOf("stale"), cleared)
+    }
+
+    @Test
+    fun `a token rejected twice means the user has to allow access`() {
+        val cleared = mutableListOf<String>()
+        val tokens = ArrayDeque(listOf("t1", "t2"))
+
+        assertThrows<DriveAccessNeededException> {
+            DriveBackupStorage.withFreshToken({ tokens.removeFirst() }, { cleared += it }) { throw driveError(401) }
+        }
+        assertEquals(listOf("t1", "t2"), cleared)
+    }
+
+    @Test
+    fun `other drive errors are not retried`() {
+        var calls = 0
+
+        val error = assertThrows<GoogleJsonResponseException> {
+            DriveBackupStorage.withFreshToken({ "t" }, {}) {
+                calls++
+                throw driveError(503)
+            }
+        }
+        assertEquals(503, error.statusCode)
+        assertEquals(1, calls)
+    }
+
+    private fun driveError(status: Int) =
+        GoogleJsonResponseException(HttpResponseException.Builder(status, "error", HttpHeaders()), GoogleJsonError())
 }

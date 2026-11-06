@@ -1,9 +1,8 @@
 package com.szabolcshorvath.memorymap.settings
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.android.gms.auth.GoogleAuthException
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAuthIOException
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService.DEFAULT_EMAIL
 import com.szabolcshorvath.memorymap.fakes.FakeBackupStorage
 import com.szabolcshorvath.memorymap.screens.BottomNav
@@ -54,7 +53,7 @@ class BackupListProblemTest {
 
     @Test
     fun lapsedDriveAccessIsOfferedAgainAndThenTheListLoads() {
-        FakeBackupStorage.listFailure = GoogleAuthIOException(GoogleAuthException("NeedRemoteConsent"))
+        FakeBackupStorage.listFailure = DriveAccessNeededException(consent = null)
         openSettings()
 
         SettingsScreen.assertBackupListProblem(R.string.backup_list_needs_access)
