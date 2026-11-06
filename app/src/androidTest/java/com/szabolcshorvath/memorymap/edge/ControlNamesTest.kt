@@ -42,9 +42,10 @@ class ControlNamesTest {
         TestData.markerClustering(false)
         TestData.showFragmentMarkers(true)
         TestData.colorPresets(RED, GREEN)
-        val trip = TestData.memory(TRIP)
+        // Well inside the map's starting view: a marker near its top edge sits under the filter bar.
+        val trip = TestData.memory(TRIP, place = TestData.Place.CAPE_TOWN)
         TestData.photo(trip)
-        TestData.fragment(trip, TestData.Place.VIENNA)
+        TestData.fragment(trip, TestData.Place.ATHENS)
         TestData.signIn()
         FakeBackupStorage.add(DEFAULT_EMAIL, BACKUP, modifiedMillis = System.currentTimeMillis())
         app.launch()
