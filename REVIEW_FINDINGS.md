@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 69 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 17 open
+✅ 70 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 16 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -168,13 +168,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [TEST-2](#test-2) | Medium | Critical logic is untested |
 | ✅ | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
 
-**I18N / A11Y** · 0 of 4 fixed
+**I18N / A11Y** · 1 of 4 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ⬜ | [I18N-1](#i18n-1) | Medium | All UI text is hard-coded |
 | ⬜ | [I18N-2](#i18n-2) | Low | RTL disabled |
-| ⬜ | [A11Y-1](#a11y-1) | Medium | Missing content descriptions |
+| ✅ | [A11Y-1](#a11y-1) | Medium | Missing content descriptions |
 | ⬜ | [A11Y-2](#a11y-2) | Low | Colour is the only signal |
 
 ---
@@ -850,11 +850,16 @@ When a status changes, update the item's **Status** line, the marker in its head
 ### <a id="i18n-2"></a>⬜ I18N-2 · Low · RTL disabled
 - **Where:** `AndroidManifest.xml:29` (`supportsRtl="false"`)
 
-### <a id="a11y-1"></a>⬜ A11Y-1 · Medium · Missing content descriptions
+### <a id="a11y-1"></a>✅ A11Y-1 · Medium · Missing content descriptions
 - **What:** Only 6 `contentDescription`s among about 59 image and button views (thumbnails, colour swatches, play/pause, chevrons, pick-media, colour indicators).
 - **Note:** the map's quick-filter and colour-statistics buttons, the media thumbnails and the full-screen viewer have descriptions now (added for the UI tests). So do the colour preset swatches: their hue, saturation and brightness as the sliders show them, and whether they are selected. And the remove buttons on the Add form's picked photos ("Remove photo", "Remove video"), the video player's button ("Play", "Pause"), and the map's clusters ("4 memories nearby").
 - **Also check:** the Material sliders (the colour sliders in Settings, the Add form and the fragments) report themselves as not visible to accessibility services, so UI Automator skips them. TalkBack may skip them too; check with TalkBack whether they can be reached and changed.
 - **Compose migration ([ARCH-10](#arch-10)):** Compose's `Icon` and `Image` require a content description, so the migration forces this anyway. Better to do it before: the UI tests (TEST-3) find elements by content description so that they keep working after the migration, so descriptions added now (as string resources) help those tests and carry over to Compose unchanged.
+- **Status:** Fixed (2026-11-06). An audit of every screen found most controls named already (the descriptions added for the UI tests, many set in code). Two gaps were left, now named with string resources:
+  - The colour sliders (Add form, each fragment, Settings): a Material slider hides itself from accessibility services but shows its thumb as an element of its own, which TalkBack can reach and change. Without a content description it read only "Value, 120"; it now reads "Hue", "Saturation" or "Brightness" first.
+  - The video player's position bar ("Video position").
+  - `edge/ControlNamesTest` keeps it that way: on the map (with a marker's memories and the colour statistics), the timeline, Settings (signed in, with a backup, presets open and one being edited), the Add form (a photo, a video, a fragment, colours open), the location picker, a memory, the media viewer (photo and video) and the missing-photo sheet, every element that can be tapped, long-pressed, switched, typed into or slid has a name (`screens/ControlNames`; Google's map elements are left out).
+  - Pictures that only show a colour (the colour indicators, the timeline bars) are not controls and have no name: that colour is their only signal is [A11Y-2](#a11y-2).
 
 ### <a id="a11y-2"></a>⬜ A11Y-2 · Low · Colour is the only signal
 - **What:** Marker colour, the pie-chart stats and the timeline colour bars carry meaning only through colour. The preset outline uses fixed `Color.BLACK` / `LTGRAY` (`ColorPresetAdapter.kt:42`), which is invisible on a dark theme.
