@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
+import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
@@ -77,7 +78,8 @@ class MemoryFragment : Fragment() {
     }
 
     interface MemoryFragmentListener {
-        fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int)
+        /** Opens the media viewer on memory [memoryId]'s media, at item [mediaItemId]. */
+        fun onMediaClick(memoryId: Int, mediaItemId: Int)
         fun onBackFromMemory()
         fun onNavigateToTimeline(memoryId: Int)
         fun onNavigateToMap(lat: Double, lng: Double, id: Int)
@@ -200,8 +202,7 @@ class MemoryFragment : Fragment() {
             if (missing) {
                 MissingMediaSheet.show(childFragmentManager, item)
             } else {
-                val mediaPairs = ArrayList(viewModel.mediaItems.map { it.uri to it.type.name })
-                memoryFragmentListener?.onMediaClick(mediaPairs, position)
+                memoryFragmentListener?.onMediaClick(item.groupId, item.id)
             }
         }
     }
@@ -403,14 +404,7 @@ class MemoryFragment : Fragment() {
     private suspend fun displayMediaItems(data: MemoryGroupWithMedia) {
         val binding = _binding ?: return
         val context = context ?: return
-        viewModel.mediaItems = data.mediaItems.sortedWith { a, b ->
-            when {
-                a.order != null && b.order != null -> a.order.compareTo(b.order)
-                a.order != null -> -1
-                b.order != null -> 1
-                else -> b.dateTaken.compareTo(a.dateTaken)
-            }
-        }
+        viewModel.mediaItems = data.mediaItems.sortedWith(MediaItem.DISPLAY_ORDER)
 
         val missingIds = withContext(Dispatchers.IO) {
             viewModel.mediaItems.filter { LocalMediaUtil.hasMissingMedia(context, listOf(it)) }.mapTo(HashSet()) { it.id }

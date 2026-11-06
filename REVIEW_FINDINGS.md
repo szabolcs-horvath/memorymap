@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 70 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 16 open
+✅ 71 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 15 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -136,7 +136,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
 | ✅ | [UX-19](#ux-19) | Medium | A photo that can't be re-linked can only stay broken |
 
-**ARCH — Structure / maintainability** · 4 of 10 fixed
+**ARCH — Structure / maintainability** · 5 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -146,7 +146,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [ARCH-4](#arch-4) | Medium | Two Google auth stacks |
 | ⬜ | [ARCH-5](#arch-5) | Medium | Duplicated logic |
 | 🟡 | [ARCH-6](#arch-6) | Medium | Hand-rolled singletons, no DI |
-| ⬜ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
+| ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
 | ⬜ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (blocked until the whole UI is covered by UI tests) |
@@ -721,9 +721,10 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Hilt or Koin (or at least a small `AppContainer` in `Application`), and fix the double-checked locking.
 - **Status:** Partly fixed: `MemoryMapDatabase.getDatabase` now re-checks inside `synchronized`. `AppServices` holds the outside services behind interfaces (`accounts` for sign-in and Drive consent, `backupStorage` for Drive files), which UI tests replace with fakes. No DI framework yet: the database, repository and the rest are still singletons or created per caller.
 
-### <a id="arch-7"></a>⬜ ARCH-7 · Low · Stringly-typed data passing
+### <a id="arch-7"></a>✅ ARCH-7 · Low · Stringly-typed data passing
 - **Where:** `MemoryFragmentListener.onMediaClick(ArrayList<Pair<String,String>>)`, `MediaPagerAdapter` (`item.second == "VIDEO"`), `MediaViewerFragment` (Serializable `Pair` list in arguments, which also risks `TransactionTooLargeException` for large memories)
 - **Fix:** Pass the memory id + start index and load the media in the viewer's ViewModel.
+- **Status:** Fixed (2026-11-06). The viewer's arguments hold only the memory's id and the id of the item it opened on (`MediaViewerFragment.newInstance(memoryId, mediaItemId)`), so they stay small however many photos the memory has. `MediaViewerViewModel` loads the memory's media from the database in the memory screen's order (`MediaItem.DISPLAY_ORDER`, now shared), follows their changes, and keeps the item on screen by id in its saved state, so rotation and process death come back on the same photo. `MediaPagerAdapter` takes `MediaItem`s and checks `MediaType.VIDEO`. Covered by `MediaViewerTest.theViewerStaysOnTheSwipedToPhotoThroughRotationAndProcessDeath`.
 
 ### <a id="arch-8"></a>✅ ARCH-8 · Low · Shared entity mutated off the main thread
 - **Where:** `MapFragmentViewModel.kt:89`, `data/MemoryFragment.kt:47-48`
