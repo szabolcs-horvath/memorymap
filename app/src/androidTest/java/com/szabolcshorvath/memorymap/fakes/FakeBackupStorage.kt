@@ -30,9 +30,18 @@ object FakeBackupStorage : BackupStorage {
         return file
     }
 
-    /** What listing the backups throws instead of listing them, as Drive does when offline or when access lapsed. */
+    /** What each call throws instead of doing its work, as Drive does when offline, failing, or when access lapsed. */
     @Volatile
     var listFailure: Exception? = null
+
+    @Volatile
+    var uploadFailure: Exception? = null
+
+    @Volatile
+    var downloadFailure: Exception? = null
+
+    @Volatile
+    var deleteFailure: Exception? = null
 
     @Synchronized
     override fun list(context: Context, email: String): List<DriveFile> {
@@ -42,17 +51,20 @@ object FakeBackupStorage : BackupStorage {
 
     @Synchronized
     override fun upload(context: Context, email: String, name: String, zipFile: File) {
+        uploadFailure?.let { throw it }
         add(email, name, System.currentTimeMillis(), zipFile.readBytes())
     }
 
     @Synchronized
     override fun download(context: Context, email: String, fileId: String, target: File) {
+        downloadFailure?.let { throw it }
         val content = find(email, fileId).content ?: throw FileNotFoundException("Fake backup $fileId has no content")
         target.writeBytes(content)
     }
 
     @Synchronized
     override fun delete(context: Context, email: String, fileId: String) {
+        deleteFailure?.let { throw it }
         backups[email]?.remove(find(email, fileId))
     }
 

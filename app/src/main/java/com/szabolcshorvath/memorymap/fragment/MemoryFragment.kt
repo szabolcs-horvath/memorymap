@@ -27,6 +27,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
+import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaRelinker
@@ -350,7 +351,7 @@ class MemoryFragment : Fragment() {
         } else if (!group.address.isNullOrEmpty()) {
             group.address
         } else {
-            "${group.latitude}, ${group.longitude}"
+            Coordinates.format(group.latitude, group.longitude)
         }
         binding.tvLocation.text = locationString
 

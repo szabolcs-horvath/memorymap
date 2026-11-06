@@ -38,7 +38,7 @@ class SettingsTest {
         openSettings()
         SettingsScreen.assertSignedOut()
 
-        SettingsScreen.signIn()
+        ToastMessage.assertShownAfter(NO_ACCOUNT) { SettingsScreen.signIn() }
         SettingsScreen.assertSignedOut()
 
         FakeAccountService.signInError = null // The user tries again, and it works.
@@ -232,6 +232,7 @@ class SettingsTest {
         const val RESTORE_TITLE = "Restore Backup"
         const val DELETE_TITLE = "Delete backup?"
         const val NOT_SET_UP = "Google sign-in isn't set up in this build (missing OAuth client ID)."
+        const val NO_ACCOUNT = "There's no Google account to sign in with. Add one in the phone's settings, then try again."
         const val MINUTE_MS = 60_000L
         val PHOTO_COLOR = Color.rgb(150, 60, 170)
         val EDITED_PHOTO_COLOR = Color.rgb(40, 160, 90)

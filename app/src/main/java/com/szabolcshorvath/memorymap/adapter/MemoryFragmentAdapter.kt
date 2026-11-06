@@ -12,6 +12,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.Coordinates
 
 class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
 
@@ -58,7 +59,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         binding.tvLocation.text = if (!fragment.placeName.isNullOrEmpty()) {
             fragment.placeName
         } else {
-            "${fragment.latitude}, ${fragment.longitude}"
+            Coordinates.format(fragment.latitude, fragment.longitude)
         }
 
         val dateText = fragment.getFormattedDate()

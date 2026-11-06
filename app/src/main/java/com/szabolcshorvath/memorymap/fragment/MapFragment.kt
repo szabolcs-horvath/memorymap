@@ -46,6 +46,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.MarkerGenerator
@@ -629,7 +630,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val distinctItems = items.distinctBy { it.groupId }
         val locationName = distinctItems.firstOrNull {
             it.placeName != null
-        }?.placeName ?: "Lat: %.4f, Lng: %.4f".format(lat, lng)
+        }?.placeName ?: Coordinates.format(lat, lng)
 
         overlayAdapter?.submitList(distinctItems) {
             val transition = TransitionSet().apply {

@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 72 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 14 open
+✅ 73 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 13 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -112,7 +112,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 13 of 19 fixed
+**UX — User experience** · 14 of 19 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -129,7 +129,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-11](#ux-11) | Low | Pickers ignore the locale |
 | ⬜ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
 | ⬜ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
-| ⬜ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
+| ✅ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
 | ⬜ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
 | ✅ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
 | ✅ | [UX-17](#ux-17) | Low | A date picker ignores the picked date after process death |
@@ -611,9 +611,14 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Apply insets per view (map padding, bottom navigation).
 - **Compose migration ([ARCH-10](#arch-10)):** heavily affected. Compose handles insets itself (`Scaffold`, `WindowInsets` modifiers, `contentPadding` on the map), so per-view inset code in the XML layouts would be thrown away. Fix it screen by screen during the migration, unless it can't wait.
 
-### <a id="ux-14"></a>⬜ UX-14 · Low · Raw technical text shown to users
+### <a id="ux-14"></a>✅ UX-14 · Low · Raw technical text shown to users
 - **Where:** `SettingsFragmentViewModel.kt:65,84,101` (exception class names), `MapFragment.kt:629` ("Lat: %.4f…"), `MemoryFragment.kt:350`, `MemoryFragmentAdapter.kt:61` (raw coordinates)
 - **Fix:** Use friendly messages and formatted coordinates.
+- **Status:** Fixed (2026-11-06).
+  - A failed backup, restore or delete says what failed and why, in words the user can act on: "Backup failed. There's no internet connection…", "…Google Drive isn't responding…", "…has to be allowed to use Google Drive again: tap Allow access below" (and Settings then offers it), or "Try again. If it keeps failing, send the logs…". The reason comes from `DriveProblem.reason`; a restore the app rejects (too new, unreadable) keeps its own message. The exception itself is only logged, for "Send logs". A file that isn't there no longer counts as a connection problem (`DriveProblem` `OTHER`).
+  - Sign-in: a cancelled account picker shows nothing, no account on the phone says so, and anything else asks to check the connection and try again; the details are logged.
+  - Coordinates of a place without a name are shown the same way everywhere (the map's overlay, the memory screen, its fragments, the Add form and its fragment cards): "47.4979° N, 19.0402° E", with the phone's decimal separator (`util/Coordinates`).
+  - The new text is in `strings.xml`. Covered by `CoordinatesTest`, `DriveProblemTest`, `BackupErrorTest` and `SettingsTest`.
 
 ### <a id="ux-15"></a>⬜ UX-15 · Low · Placeholder icons and joke version name
 - **Where:** `res/menu/bottom_nav_menu.xml` (`@android:drawable/ic_dialog_map` and similar), `app/build.gradle.kts:35` (`versionName = "Debugolunk, debugolunk"`)
