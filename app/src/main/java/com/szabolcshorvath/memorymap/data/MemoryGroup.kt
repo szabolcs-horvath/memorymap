@@ -1,11 +1,11 @@
 package com.szabolcshorvath.memorymap.data
 
+import android.content.Context
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.ZonedDateTime
 
 @Entity(
@@ -35,12 +35,9 @@ data class MemoryGroup(
 ) : Markerable {
     override val groupId: Int get() = id
 
-    override fun getFormattedDate(): String {
-        val dateFormatter = dateFormatter()
-        val timeFormatter = timeFormatter()
-
-        val startDay = startDate.format(dateFormatter)
-        val endDay = endDate.format(dateFormatter)
+    override fun getFormattedDate(context: Context): String {
+        val startDay = DateTimeFormatterUtil.date(startDate)
+        val endDay = DateTimeFormatterUtil.date(endDate)
 
         if (isAllDay) {
             return if (startDay == endDay) {
@@ -49,8 +46,8 @@ data class MemoryGroup(
                 "$startDay - $endDay"
             }
         } else {
-            val startTime = startDate.format(timeFormatter)
-            val endTime = endDate.format(timeFormatter)
+            val startTime = DateTimeFormatterUtil.time(context, startDate)
+            val endTime = DateTimeFormatterUtil.time(context, endDate)
 
             return if (startDay == endDay) {
                 "$startDay $startTime - $endTime"

@@ -64,6 +64,19 @@ class MemoryMapAppRule : TestRule {
         Ui.device.executeShellCommand("settings put secure $INTERACTIVE_TIMEOUT ${seconds * MS_PER_SECOND}")
     }
 
+    private var clockBefore: String? = null
+
+    /**
+     * Sets the phone's clock to 12 or 24 [hours], as the "Use 24-hour format" switch in Android's date and time
+     * settings does. The app reads it whenever it shows a time, so a test can switch it while the app is open. The
+     * rule puts back the setting from before the first call after the test, or removes it if it wasn't set, so the
+     * language decides again.
+     */
+    fun useClock(hours: Int) {
+        if (clockBefore == null) clockBefore = Ui.device.executeShellCommand("settings get system $TIME_12_24").trim()
+        Ui.device.executeShellCommand("settings put system $TIME_12_24 $hours")
+    }
+
     /** Puts a setting back to [before], as `settings get` printed it: "null" when it wasn't set. */
     private fun restoreSetting(namespace: String, key: String, before: String) {
         if (before.isEmpty() || before == "null") {
@@ -187,6 +200,7 @@ class MemoryMapAppRule : TestRule {
         if (isDarkModeOn) runCatching { Ui.device.executeShellCommand("cmd uimode night no") }
         animationScaleBefore?.let { before -> runCatching { restoreSetting("global", ANIMATOR_SCALE, before) } }
         interactiveTimeoutBefore?.let { before -> runCatching { restoreSetting("secure", INTERACTIVE_TIMEOUT, before) } }
+        clockBefore?.let { before -> runCatching { restoreSetting("system", TIME_12_24, before) } }
         if (isOffline) {
             runCatching {
                 Ui.device.executeShellCommand("svc wifi enable")
@@ -239,6 +253,7 @@ class MemoryMapAppRule : TestRule {
         const val NETWORK_TIMEOUT_MS = 30_000L
         const val ANIMATOR_SCALE = "animator_duration_scale"
         const val INTERACTIVE_TIMEOUT = "accessibility_interactive_ui_timeout_ms"
+        const val TIME_12_24 = "time_12_24"
         const val MS_PER_SECOND = 1_000
         const val SET_ALWAYS_FINISH = "android.permission.SET_ALWAYS_FINISH"
     }

@@ -59,7 +59,7 @@ class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
     }
 
     private fun bindDate(binding: ItemMemoryOverlayBinding, item: Markerable) {
-        val dateText = item.getFormattedDate()
+        val dateText = item.getFormattedDate(binding.root.context)
         binding.tvMemoryDate.text = dateText
         binding.tvMemoryDate.visibility = if (dateText.isNullOrEmpty()) View.GONE else View.VISIBLE
     }

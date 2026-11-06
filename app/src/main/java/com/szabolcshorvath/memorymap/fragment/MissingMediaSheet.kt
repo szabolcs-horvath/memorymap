@@ -28,13 +28,12 @@ import com.szabolcshorvath.memorymap.databinding.SheetMissingMediaBinding
 import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel.Outcome
 import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel.State
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.NearbyFile
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * For a photo or video of a memory that can't be re-linked: looks for it once more, then suggests what was taken
@@ -145,7 +144,7 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
         nearbyAdapter.type = item.type
         binding.tvMissingTitle.setText(if (item.type == MediaType.VIDEO) R.string.missing_video_title else R.string.missing_photo_title)
         val date = if (item.dateTaken > 0) {
-            DATE_FORMAT.format(Instant.ofEpochMilli(item.dateTaken).atZone(ZoneId.systemDefault()))
+            DateTimeFormatterUtil.dateTime(context, Instant.ofEpochMilli(item.dateTaken).atZone(ZoneId.systemDefault()))
         } else {
             getString(R.string.missing_media_unknown_date)
         }
@@ -223,7 +222,6 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
         private const val URI = "uri"
         private const val USE_REQUEST = "use_nearby_media"
         private const val REMOVE_REQUEST = "remove_missing_media"
-        private val DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
 
         /** Shows the sheet for [item] in [manager], unless one is already open. */
         fun show(manager: FragmentManager, item: MediaItem) {

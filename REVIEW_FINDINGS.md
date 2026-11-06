@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 73 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 13 open
+✅ 74 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 12 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -112,7 +112,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 14 of 19 fixed
+**UX — User experience** · 15 of 19 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -126,7 +126,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-8](#ux-8) | Medium | Full-screen images are decoded at screen size |
 | ✅ | [UX-9](#ux-9) | Medium | Map date filter excludes memories that overlap the range |
 | ✅ | [UX-10](#ux-10) | Low | Transitive clustering merges distant points |
-| ⬜ | [UX-11](#ux-11) | Low | Pickers ignore the locale |
+| ✅ | [UX-11](#ux-11) | Low | Pickers ignore the locale |
 | ⬜ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
 | ⬜ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
 | ✅ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
@@ -593,11 +593,17 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Anchor the threshold to a centroid, and require distance as well as the name.
 - **Status:** Fixed. `MarkerClustering` gives each pin an anchor: the first marker, in list order, that fit no existing pin. A marker joins the nearest pin whose anchor is under 20 m away, or under 100 m when both have the same place name and address (same label alone no longer merges). Distances are measured to the anchor, never between members, so pins don't chain: two markers of one pin are under 40 m apart (200 m for the same place). The anchor stays fixed rather than following the centroid, which would let earlier members drift out of range; the pin is drawn at the centroid of its markers (across the 180th meridian too). Covered by `MarkerClusteringTest`, which also checks random markers against the rules one by one.
 
-### <a id="ux-11"></a>⬜ UX-11 · Low · Pickers ignore the locale
+### <a id="ux-11"></a>✅ UX-11 · Low · Pickers ignore the locale
 - **Where:** `AddMemoryGroupFragment.kt:750-751`, `MemoryFragmentEditAdapter.kt:569-570`, `DateFilterOption.kt:15`, `MediaAdapter.kt:78`
 - **What:** 24-hour clock forced, "This week" always starts on Monday, and a fixed `yyyy.MM.dd` format in the media error overlay.
 - **Fix:** Use `DateFormat.is24HourFormat(context)`, `WeekFields.of(locale)` and localized formatters.
-- **Compose migration ([ARCH-10](#arch-10)):** partly affected. The 24-hour clock is set where the time pickers are built, and the migration replaces them with Material 3 Compose pickers, so set it there (from the system setting) instead of fixing it twice. "This week" in `DateFilterOption` and the date format are not UI code and can be fixed independently.
+- **Status:** Fixed (2026-11-06).
+  - The time pickers show the clock the phone is set to (Android's "Use 24-hour format" switch, or else its language), and so does every time the app shows as text: the Add form and its fragments, the memory screen, the timeline, the map's overlay, the missing-photo sheet and the backup list.
+  - Shown dates and times are formatted by Android's ICU library (`DateTimeFormatterUtil`), as the rest of the phone formats them: with the digits of the phone's language (Arabic, Persian, Hindi…) and the calendar chosen for it (Buddhist, Japanese…), which `java.time` ignored. Stored and logged dates (backup file names, `metadata.json`, the database, the logs, the relink diagnostics) keep their fixed formats.
+  - "This week" on the map, and the weeks in every date picker, start on the first day of the week of the phone's region, or the one chosen in Android's regional preferences (`util/PhoneCalendar.kt`, through `LocalePreferences`).
+  - The media error tiles show the date and time in the phone's own format instead of `yyyy.MM.dd HH:mm`.
+  - Covered by `PhoneDateFormatsTest`, `DateFilterOptionTest` and `AddMemoryTest` (both clocks; the UI tests' time picker handles both).
+- **Compose migration ([ARCH-10](#arch-10)):** the Material 3 Compose pickers that replace these need the same settings: `is24Hour` from `DateFormat.is24HourFormat` and the first day of the week from `firstDayOfWeek()`.
 
 ### <a id="ux-12"></a>⬜ UX-12 · Low · Media viewer is not immersive
 - **Where:** `MainActivity.kt:304-319`, `res/layout/fragment_media_viewer.xml`
@@ -776,7 +782,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Behaviour built up over many commits has to be carried over (see the rule above): unsaved changes and edit mode on the Add tab, pending cross-tab requests, map padding around the overlay and the Google logo, the undo Snackbar and its grant release, and asking for location only from a "my location" button.
   - The APK gets a few MB bigger, and the Firebase Perf traces for tab switching (`main_activity_navigate_to_tab_*`) need new names.
 - **Related findings** (each has a "Compose migration" note):
-  - Likely made redundant, or fixed differently, by the migration: [UX-8](#ux-8) (zoomed images), [UX-13](#ux-13) (insets), [UX-12](#ux-12) (immersive viewer), the UI parts of [ARCH-5](#arch-5) (shared colour and date components), the picker part of [UX-11](#ux-11), and the preset outline in [A11Y-2](#a11y-2).
+  - Likely made redundant, or fixed differently, by the migration: [UX-8](#ux-8) (zoomed images), [UX-13](#ux-13) (insets), [UX-12](#ux-12) (immersive viewer), the UI parts of [ARCH-5](#arch-5) (shared colour and date components), and the preset outline in [A11Y-2](#a11y-2).
   - Part of the migration, or better done before it: [ARCH-2](#arch-2) (step 2), [A11Y-1](#a11y-1) (the UI tests rely on content descriptions), [I18N-1](#i18n-1) (the resources carry over).
   - Same test gate, and the shell question in step 5: [ARCH-1](#arch-1), [PERF-7](#perf-7).
 - **Plan** (not started; **blocked until the precondition above is met**):

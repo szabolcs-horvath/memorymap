@@ -1,14 +1,16 @@
 package com.szabolcshorvath.memorymap.adapter
 
+import android.content.Context
 import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.timepicker.MaterialTimePicker
-import com.google.android.material.timepicker.TimeFormat
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
 import com.szabolcshorvath.memorymap.util.findTimePicker
+import com.szabolcshorvath.memorymap.util.onPhonesClock
 import com.szabolcshorvath.memorymap.util.reattachDatePicker
 import com.szabolcshorvath.memorymap.util.setOnPicked
+import com.szabolcshorvath.memorymap.util.startingWeeksOnPhonesFirstDay
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -26,7 +28,7 @@ class FragmentEditPickers(
         // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
         // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
         val item = fragments[index]
-        val builder = MaterialDatePicker.Builder.dateRangePicker()
+        val builder = MaterialDatePicker.Builder.dateRangePicker().startingWeeksOnPhonesFirstDay()
             .setTitleText("Select Date Range")
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
         val start = item.startDate ?: ZonedDateTime.now()
@@ -51,7 +53,7 @@ class FragmentEditPickers(
         val item = fragments[index]
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
 
-        val builder = MaterialDatePicker.Builder.datePicker()
+        val builder = MaterialDatePicker.Builder.datePicker().startingWeeksOnPhonesFirstDay()
             .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
             .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
 
@@ -61,7 +63,7 @@ class FragmentEditPickers(
         picker.show(getChildFragmentManager(), pickerTag(if (isStart) START_DATE_PICKER else END_DATE_PICKER, localId))
     }
 
-    fun pickTime(index: Int, isStart: Boolean) {
+    fun pickTime(context: Context, index: Int, isStart: Boolean) {
         if (index == RecyclerView.NO_POSITION) return
         // Read from backing collection (fragments[index]) rather than getItem(index) to ensure
         // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
@@ -69,7 +71,7 @@ class FragmentEditPickers(
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
 
         val picker = MaterialTimePicker.Builder()
-            .setTimeFormat(TimeFormat.CLOCK_24H)
+            .onPhonesClock(context)
             .setHour(current.hour)
             .setMinute(current.minute)
             .setTitleText(if (isStart) "Select Start Time" else "Select End Time")

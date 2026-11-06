@@ -79,7 +79,7 @@ object TimelineScreen : TabScreen {
     }
 
     /** The header the timeline shows above the memories of [date]. */
-    fun dayHeader(date: LocalDate): String = date.format(DateTimeFormatterUtil.dateFormatter())
+    fun dayHeader(date: LocalDate): String = DateTimeFormatterUtil.date(date)
 
     /** Day headers and memory titles appear in this order, from top to bottom (all on screen). */
     fun assertTopToBottom(vararg texts: String) {

@@ -62,7 +62,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
             Coordinates.format(fragment.latitude, fragment.longitude)
         }
 
-        val dateText = fragment.getFormattedDate()
+        val dateText = fragment.getFormattedDate(binding.root.context)
         if (dateText != null) {
             binding.tvTime.text = dateText
             binding.tvTime.visibility = View.VISIBLE

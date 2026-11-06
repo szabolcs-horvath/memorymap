@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.data
 
+import android.content.Context
 import androidx.recyclerview.widget.DiffUtil
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
@@ -19,7 +20,8 @@ interface Markerable {
     val markerSaturation: Float?
     val markerBrightness: Float?
 
-    fun getFormattedDate(): String?
+    /** The date or date range, with times unless it is all-day, as the phone shows dates and times. */
+    fun getFormattedDate(context: Context): String?
 
     /**
      * A fragment as the map shows it: under its memory's [title]. Room's objects are shared with every screen that

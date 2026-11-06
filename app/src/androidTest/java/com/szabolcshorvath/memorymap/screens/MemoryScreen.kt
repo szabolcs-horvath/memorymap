@@ -76,7 +76,7 @@ object MemoryScreen {
      */
     fun assertFragmentStartsOn(date: LocalDate) {
         val text = fragmentCard().findObject(By.res(Ui.APP_PACKAGE, "tv_time"))?.text.orEmpty()
-        val day = date.format(DateTimeFormatterUtil.dateFormatter())
+        val day = DateTimeFormatterUtil.date(date)
         assertTrue("The fragment's dates \"$text\" don't start on $day", text.startsWith(day))
     }
 

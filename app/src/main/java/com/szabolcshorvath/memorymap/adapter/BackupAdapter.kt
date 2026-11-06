@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.ListAdapter
 import com.google.android.material.listitem.ListItemViewHolder
 import com.google.api.services.drive.model.File
 import com.szabolcshorvath.memorymap.databinding.ItemBackupBinding
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateTimeFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.Instant
 import java.time.ZoneId
 
@@ -41,7 +41,7 @@ class BackupAdapter(
         val formattedDate = backup.modifiedTime?.value?.let { millis ->
             val instant = Instant.ofEpochMilli(millis)
             val zonedDateTime = instant.atZone(ZoneId.systemDefault())
-            dateTimeFormatter().format(zonedDateTime)
+            DateTimeFormatterUtil.dateTime(binding.root.context, zonedDateTime, withSeconds = true)
         } ?: "Unknown date"
         binding.tvBackupDate.text = formattedDate
 

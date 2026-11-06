@@ -97,8 +97,7 @@ class FragmentsAndColorTest {
         AddScreen.save()
 
         MemoryScreen.assertShowing(VIENNA)
-        val format = DateTimeFormatterUtil.dateFormatter()
-        MemoryScreen.assertFragmentDates("${start.format(format)} - ${end.format(format)}")
+        MemoryScreen.assertFragmentDates("${DateTimeFormatterUtil.date(start)} - ${DateTimeFormatterUtil.date(end)}")
     }
 
     @Test

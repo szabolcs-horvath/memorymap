@@ -29,7 +29,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.timepicker.MaterialTimePicker
-import com.google.android.material.timepicker.TimeFormat
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
@@ -42,12 +41,13 @@ import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.Coordinates
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.findTimePicker
+import com.szabolcshorvath.memorymap.util.onPhonesClock
 import com.szabolcshorvath.memorymap.util.reattachDatePicker
 import com.szabolcshorvath.memorymap.util.setOnPicked
+import com.szabolcshorvath.memorymap.util.startingWeeksOnPhonesFirstDay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -643,8 +643,8 @@ class AddMemoryGroupFragment : Fragment() {
             binding.tvEndDate.visibility = View.GONE
             binding.btDateRange.visibility = View.VISIBLE
 
-            val startStr = viewModel.startDateTime.format(dateFormatter())
-            val endStr = viewModel.endDateTime.format(dateFormatter())
+            val startStr = DateTimeFormatterUtil.date(viewModel.startDateTime)
+            val endStr = DateTimeFormatterUtil.date(viewModel.endDateTime)
             val dateRangeStr = if (startStr == endStr) startStr else "$startStr - $endStr"
             binding.btDateRange.text = dateRangeStr
             binding.tvDateSummary.text = dateRangeStr
@@ -655,10 +655,10 @@ class AddMemoryGroupFragment : Fragment() {
             binding.tvEndDate.visibility = View.VISIBLE
             binding.btDateRange.visibility = View.GONE
 
-            val startDStr = viewModel.startDateTime.format(dateFormatter())
-            val startTStr = viewModel.startDateTime.format(timeFormatter())
-            val endDStr = viewModel.endDateTime.format(dateFormatter())
-            val endTStr = viewModel.endDateTime.format(timeFormatter())
+            val startDStr = DateTimeFormatterUtil.date(viewModel.startDateTime)
+            val startTStr = DateTimeFormatterUtil.time(binding.root.context, viewModel.startDateTime)
+            val endDStr = DateTimeFormatterUtil.date(viewModel.endDateTime)
+            val endTStr = DateTimeFormatterUtil.time(binding.root.context, viewModel.endDateTime)
 
             binding.btStartDate.text = startDStr
             binding.btEndDate.text = endDStr
@@ -676,7 +676,7 @@ class AddMemoryGroupFragment : Fragment() {
     }
 
     private fun pickDateRange() {
-        val builder = MaterialDatePicker.Builder.dateRangePicker()
+        val builder = MaterialDatePicker.Builder.dateRangePicker().startingWeeksOnPhonesFirstDay()
             .setTitleText("Select Date Range")
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
 
@@ -694,7 +694,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun pickDate(isStart: Boolean) {
         val current = if (isStart) viewModel.startDateTime else viewModel.endDateTime
-        val builder = MaterialDatePicker.Builder.datePicker()
+        val builder = MaterialDatePicker.Builder.datePicker().startingWeeksOnPhonesFirstDay()
             .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
             .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
 
@@ -706,7 +706,7 @@ class AddMemoryGroupFragment : Fragment() {
     private fun pickTime(isStart: Boolean) {
         val current = if (isStart) viewModel.startDateTime else viewModel.endDateTime
         val picker = MaterialTimePicker.Builder()
-            .setTimeFormat(TimeFormat.CLOCK_24H)
+            .onPhonesClock(requireContext())
             .setHour(current.hour)
             .setMinute(current.minute)
             .setTitleText(if (isStart) "Select Start Time" else "Select End Time")
