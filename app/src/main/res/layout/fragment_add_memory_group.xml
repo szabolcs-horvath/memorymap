@@ -364,6 +364,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/slider_hue"
+                            android:contentDescription="@string/color_slider_hue"
                             android:saveEnabled="false"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
@@ -408,6 +409,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/slider_saturation"
+                            android:contentDescription="@string/color_slider_saturation"
                             android:saveEnabled="false"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"
@@ -452,6 +454,7 @@
 
                         <com.google.android.material.slider.Slider
                             android:id="@+id/slider_brightness"
+                            android:contentDescription="@string/color_slider_brightness"
                             android:saveEnabled="false"
                             style="@style/Widget.Material3Expressive.Slider.Xsmall"
                             android:layout_width="match_parent"

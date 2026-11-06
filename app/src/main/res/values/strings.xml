@@ -42,6 +42,7 @@
     <string name="remove_video">Remove video</string>
     <string name="play_video">Play</string>
     <string name="pause_video">Pause</string>
+    <string name="video_position">Video position</string>
     <string name="cluster_title">%1$d memories nearby</string>
     <string name="color_preset_description">Color preset: hue %1$d, saturation %2$.2f, brightness %3$.2f</string>
     <string name="location_rationale_title">Use your location?</string>
@@ -85,4 +86,8 @@
     <string name="nearby_looks_alike">Looks alike</string>
     <string name="nearby_use_alike">Use the one taken %1$s, which looks alike</string>
     <string name="location_unavailable">Your location isn\'t available right now. Check that location is turned on.</string>
+    <!-- The colour sliders, as screen readers name them (followed by the value). -->
+    <string name="color_slider_hue">Hue</string>
+    <string name="color_slider_saturation">Saturation</string>
+    <string name="color_slider_brightness">Brightness</string>
 </resources>
