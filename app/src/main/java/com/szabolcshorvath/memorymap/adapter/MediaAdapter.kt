@@ -15,6 +15,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaThumbnailBinding
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 
 class MediaAdapter(
     private var currentDeviceId: String?,
@@ -106,8 +107,7 @@ class MediaAdapter(
             val typeStr = mediaItem.type.name
             val sizeStr = if (mediaItem.fileSize > 0) android.text.format.Formatter.formatFileSize(context, mediaItem.fileSize) else "Unknown size"
             val dateStr = if (mediaItem.dateTaken > 0) {
-                val zdt = java.time.Instant.ofEpochMilli(mediaItem.dateTaken).atZone(java.time.ZoneId.systemDefault())
-                zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd\nHH:mm", java.util.Locale.getDefault()))
+                DateTimeFormatterUtil.twoLineDateTime(context, mediaItem.dateTaken)
             } else {
                 "Unknown date"
             }

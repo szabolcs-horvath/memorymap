@@ -15,6 +15,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaSelectedBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 
 class SelectedMediaAdapter(private var currentDeviceId: String?, private val onRemove: (SelectedMedia) -> Unit) :
     ListAdapter<SelectedMedia, SelectedMediaAdapter.SelectedMediaViewHolder>(
@@ -37,8 +38,7 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
         val typeStr = item.type.name
         val sizeStr = if (item.fileSize > 0) android.text.format.Formatter.formatFileSize(context, item.fileSize) else "Unknown size"
         val dateStr = if (item.dateTaken > 0) {
-            val zdt = java.time.Instant.ofEpochMilli(item.dateTaken).atZone(java.time.ZoneId.systemDefault())
-            zdt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd\nHH:mm", java.util.Locale.getDefault()))
+            DateTimeFormatterUtil.twoLineDateTime(context, item.dateTaken)
         } else {
             "Unknown date"
         }

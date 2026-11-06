@@ -90,8 +90,7 @@ object MapScreen : TabScreen {
 
     /** The date filter button shows the dates from [start] to [end], as the app writes them. */
     fun assertFilter(start: LocalDate, end: LocalDate) {
-        val formatter = DateTimeFormatterUtil.dateFormatter()
-        assertFilter("${start.format(formatter)} - ${end.format(formatter)}")
+        assertFilter("${DateTimeFormatterUtil.date(start)} - ${DateTimeFormatterUtil.date(end)}")
     }
 
     /** Opens the calendar for picking the dates to show ([DateRangePickerDialog]). */

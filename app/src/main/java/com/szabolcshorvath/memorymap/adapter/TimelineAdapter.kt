@@ -17,7 +17,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.LocalDate
 
 class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
@@ -105,7 +105,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
                 binding.tvMemoryDescription.visibility = View.GONE
             }
 
-            binding.tvMemoryDate.text = memoryGroup.getFormattedDate()
+            binding.tvMemoryDate.text = memoryGroup.getFormattedDate(binding.root.context)
 
             binding.colorIndicator.setBackgroundColor(
                 ColorUtil.hsvToColor(
@@ -147,7 +147,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
     class DateSeparatorViewHolder(private val binding: ItemTimelineDateSeparatorBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(date: LocalDate) {
-            binding.tvDate.text = date.format(dateFormatter())
+            binding.tvDate.text = DateTimeFormatterUtil.date(date)
         }
     }
 

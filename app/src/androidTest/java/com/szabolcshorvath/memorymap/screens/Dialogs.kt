@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.screens
 
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.textAsString
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -94,20 +95,50 @@ object DateRangePickerDialog {
     }
 }
 
-/** The clock dialog for picking a time. */
+/** The clock dialog for picking a time, on the 12- or 24-hour clock the phone is set to. */
 object TimePickerDialog {
     /** Picks the hour after the one shown, so the time always changes, and returns it (0-23). */
     fun pickNextHour(): Int {
-        val hour = (Ui.find { hasId("material_hour_tv") }.text.toInt() + 1) % HOURS_PER_DAY
+        val hour = (shownHour() + 1) % HOURS_PER_DAY
         pickHour(hour)
         return hour
     }
 
-    /** Picks [hour] (0-23) on the 24-hour clock. */
+    /** Picks [hour] (0-23): on a 12-hour clock, its half of the day first. */
     fun pickHour(hour: Int) {
-        Ui.find { hasDescription("$hour hours") }.click()
+        if (isTwelveHourClock()) {
+            Ui.find { hasId(if (hour < HALF_DAY) AM_BUTTON else PM_BUTTON) }.click()
+            val onClock = (hour % HALF_DAY).let { if (it == 0) HALF_DAY else it }
+            Ui.find { hasDescription("$onClock o'clock") }.click()
+        } else {
+            Ui.find { hasDescription("$hour hours") }.click()
+        }
         Ui.device.waitForIdle()
     }
 
+    fun assertTwelveHourClock() = assertTrue("The clock does not show AM and PM", isTwelveHourClock())
+
+    fun assertTwentyFourHourClock() {
+        assertFalse("The clock shows AM and PM", isTwelveHourClock())
+        Ui.assertShown("The clock's hour 23") { hasDescription("23 hours") }
+    }
+
+    /** The hour the dialog shows (0-23). */
+    private fun shownHour(): Int {
+        val shown = Ui.find { hasId("material_hour_tv") }.text.toInt()
+        if (!isTwelveHourClock()) return shown
+        val afternoon = Ui.find { hasId(PM_BUTTON) }.isChecked
+        return shown % HALF_DAY + if (afternoon) HALF_DAY else 0
+    }
+
+    /** Whether the dialog has the AM and PM buttons. It waits for the dialog, then checks once. */
+    private fun isTwelveHourClock(): Boolean {
+        Ui.find { hasId("material_hour_tv") }
+        return Ui.findOrNull(timeoutMs = 0) { hasId("material_clock_period_toggle") } != null
+    }
+
     private const val HOURS_PER_DAY = 24
+    private const val HALF_DAY = 12
+    private const val AM_BUTTON = "material_clock_period_am_button"
+    private const val PM_BUTTON = "material_clock_period_pm_button"
 }

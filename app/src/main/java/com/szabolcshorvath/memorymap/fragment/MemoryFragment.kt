@@ -340,7 +340,7 @@ class MemoryFragment : Fragment() {
             binding.tvDescription.visibility = View.GONE
         }
 
-        binding.tvDate.text = group.getFormattedDate()
+        binding.tvDate.text = group.getFormattedDate(binding.root.context)
 
         val locationString = if (!group.placeName.isNullOrEmpty()) {
             if (!group.address.isNullOrEmpty()) {

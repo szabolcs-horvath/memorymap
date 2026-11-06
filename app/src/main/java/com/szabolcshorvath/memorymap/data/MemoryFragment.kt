@@ -1,12 +1,12 @@
 package com.szabolcshorvath.memorymap.data
 
+import android.content.Context
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.ZonedDateTime
 
 @Entity(
@@ -46,13 +46,11 @@ data class MemoryFragment(
     /** A fragment has no title of its own: the map shows it under its memory's ([Markerable.FragmentMarker]). */
     override val title: String? get() = null
 
-    override fun getFormattedDate(): String? {
+    override fun getFormattedDate(context: Context): String? {
         if (startDate == null || endDate == null) return null
-        val dateFormatter = dateFormatter()
-        val timeFormatter = timeFormatter()
 
-        val startDay = startDate.format(dateFormatter)
-        val endDay = endDate.format(dateFormatter)
+        val startDay = DateTimeFormatterUtil.date(startDate)
+        val endDay = DateTimeFormatterUtil.date(endDate)
 
         return if (isAllDay) {
             if (startDay == endDay) {
@@ -61,8 +59,8 @@ data class MemoryFragment(
                 "$startDay - $endDay"
             }
         } else {
-            val startTime = startDate.format(timeFormatter)
-            val endTime = endDate.format(timeFormatter)
+            val startTime = DateTimeFormatterUtil.time(context, startDate)
+            val endTime = DateTimeFormatterUtil.time(context, endDate)
 
             if (startDay == endDay) {
                 "$startDay $startTime - $endTime"

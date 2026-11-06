@@ -233,6 +233,27 @@ class AddMemoryTest {
         assertFalse("The all-day memory shows a time: \"$allDay\"", allDay.contains(":"))
     }
 
+    @Test
+    fun timesFollowThePhonesTwelveOrTwentyFourHourClock() {
+        app.useClock(24) // In US English, where the language alone would choose 12 hours.
+        TestData.memory(VIENNA)
+        openForEditing(VIENNA)
+
+        AddScreen.openStartTimePicker()
+        TimePickerDialog.assertTwentyFourHourClock()
+        TimePickerDialog.pickHour(LATE_HOUR)
+        Dialog.tap("OK")
+        AddScreen.assertStartTime(Regex("$LATE_HOUR:\\d{2}"))
+
+        app.useClock(12)
+        AddScreen.openEndTimePicker()
+        TimePickerDialog.assertTwelveHourClock()
+        TimePickerDialog.pickHour(LATER_HOUR)
+        Dialog.tap("OK")
+        AddScreen.assertEndTime(Regex("${LATER_HOUR - HALF_DAY}:\\d{2} PM"))
+        AddScreen.assertStartTime(Regex("${LATE_HOUR - HALF_DAY}:\\d{2} PM"))
+    }
+
     private fun openAdd() {
         app.launch()
         BottomNav.open(Tab.ADD)

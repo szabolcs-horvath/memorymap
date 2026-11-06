@@ -17,8 +17,7 @@ import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryGroupListener
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.Coordinates
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.ZonedDateTime
 import java.util.Locale
 import java.util.UUID
@@ -274,13 +273,13 @@ class MemoryFragmentEditAdapter(
             pickers.pickDate(holder.bindingAdapterPosition, true)
         }
         binding.btStartTime.setOnClickListener {
-            pickers.pickTime(holder.bindingAdapterPosition, true)
+            pickers.pickTime(holder.itemView.context, holder.bindingAdapterPosition, true)
         }
         binding.btEndDate.setOnClickListener {
             pickers.pickDate(holder.bindingAdapterPosition, false)
         }
         binding.btEndTime.setOnClickListener {
-            pickers.pickTime(holder.bindingAdapterPosition, false)
+            pickers.pickTime(holder.itemView.context, holder.bindingAdapterPosition, false)
         }
         binding.btDateRange.setOnClickListener {
             pickers.pickDateRange(holder.bindingAdapterPosition)
@@ -372,8 +371,7 @@ class MemoryFragmentEditAdapter(
 
         binding.timePickersLayout.visibility = if (item.isTimeVisible) View.VISIBLE else View.GONE
 
-        val dateFormatter = dateFormatter()
-        val timeFormatter = timeFormatter()
+        val context = binding.root.context
 
         if (!item.isTimeVisible) {
             binding.tvDateSummary.text = "Inherited from group"
@@ -386,8 +384,8 @@ class MemoryFragmentEditAdapter(
                 binding.endDateTimeLayout.visibility = View.GONE
                 binding.btDateRange.visibility = View.VISIBLE
 
-                val startStr = start.format(dateFormatter)
-                val endStr = end.format(dateFormatter)
+                val startStr = DateTimeFormatterUtil.date(start)
+                val endStr = DateTimeFormatterUtil.date(end)
                 val summary = if (startStr == endStr) startStr else "$startStr - $endStr"
                 binding.btDateRange.text = summary
                 binding.tvDateSummary.text = summary
@@ -396,10 +394,10 @@ class MemoryFragmentEditAdapter(
                 binding.endDateTimeLayout.visibility = View.VISIBLE
                 binding.btDateRange.visibility = View.GONE
 
-                val startDStr = start.format(dateFormatter)
-                val startTStr = start.format(timeFormatter)
-                val endDStr = end.format(dateFormatter)
-                val endTStr = end.format(timeFormatter)
+                val startDStr = DateTimeFormatterUtil.date(start)
+                val startTStr = DateTimeFormatterUtil.time(context, start)
+                val endDStr = DateTimeFormatterUtil.date(end)
+                val endTStr = DateTimeFormatterUtil.time(context, end)
 
                 binding.btStartDate.text = startDStr
                 binding.btStartTime.text = startTStr

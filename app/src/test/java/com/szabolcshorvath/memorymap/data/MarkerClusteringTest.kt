@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.data
 
+import android.content.Context
 import com.szabolcshorvath.memorymap.data.MarkerClustering.SAME_LOCATION_METERS
 import com.szabolcshorvath.memorymap.data.MarkerClustering.SAME_PLACE_METERS
 import com.szabolcshorvath.memorymap.data.MarkerClustering.distanceMeters
@@ -25,7 +26,7 @@ class MarkerClusteringTest {
         override val markerHue: Float? = null
         override val markerSaturation: Float? = null
         override val markerBrightness: Float? = null
-        override fun getFormattedDate(): String? = null
+        override fun getFormattedDate(context: Context): String? = null
     }
 
     private val metersPerDegreeLatitude = distanceMeters(0.0, 0.0, 1.0, 0.0)

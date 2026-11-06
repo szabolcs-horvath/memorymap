@@ -48,7 +48,7 @@ import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateFilterOption
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.MarkerGenerator
 import com.szabolcshorvath.memorymap.util.MarkerSync
 import com.szabolcshorvath.memorymap.util.MyLocationAction
@@ -57,6 +57,7 @@ import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import com.szabolcshorvath.memorymap.util.reattachDatePicker
 import com.szabolcshorvath.memorymap.util.setOnPicked
+import com.szabolcshorvath.memorymap.util.startingWeeksOnPhonesFirstDay
 import ir.mahozad.android.PieChart.Slice
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -201,7 +202,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         popup.setOnMenuItemClickListener { menuItem ->
             val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
-            val (start, end) = selectedOption.dateRangeProvider(LocalDate.now())
+            val (start, end) = selectedOption.dateRange(LocalDate.now())
             if (start != viewModel.filterStartDate.value || end != viewModel.filterEndDate.value) {
                 shouldAdjustCameraOnUpdate = true
             }
@@ -212,7 +213,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun showDateRangePicker() {
-        val builder = MaterialDatePicker.Builder.dateRangePicker()
+        val builder = MaterialDatePicker.Builder.dateRangePicker().startingWeeksOnPhonesFirstDay()
             .setTitleText("Select dates")
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
 
@@ -257,12 +258,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             return
         }
 
-        val dateFormatter = dateFormatter()
         if (start != null && end != null) {
             if (start != end) {
-                binding.btDateRange.text = "${dateFormatter.format(start)} - ${dateFormatter.format(end)}"
+                binding.btDateRange.text = "${DateTimeFormatterUtil.date(start)} - ${DateTimeFormatterUtil.date(end)}"
             } else {
-                binding.btDateRange.text = "${dateFormatter.format(start)}"
+                binding.btDateRange.text = "${DateTimeFormatterUtil.date(start)}"
             }
         } else {
             binding.btDateRange.text = DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label

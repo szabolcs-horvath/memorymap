@@ -48,7 +48,6 @@ import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.DateFilterOption
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateTimeFormatter
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.LogManager
 import com.szabolcshorvath.memorymap.util.MediaRelinker
@@ -63,6 +62,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 import com.google.api.services.drive.model.File as DriveFile
 
@@ -678,7 +679,7 @@ class SettingsFragment : Fragment() {
                     val lastBackupDate = lastBackup?.modifiedTime?.value?.let { millis ->
                         val instant = Instant.ofEpochMilli(millis)
                         val zonedDateTime = instant.atZone(ZoneId.systemDefault())
-                        dateTimeFormatter().format(zonedDateTime)
+                        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.getDefault()).format(zonedDateTime)
                     }
                     LogManager.sendDebugLogs(context, lastBackupDate)
                 } finally {

@@ -58,7 +58,7 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val defaultOption = DateFilterOption.getFromDataStore(application.dataStore)
             if (!_isDateFilterLoaded.value) {
-                val (start, end) = defaultOption.dateRangeProvider(LocalDate.now())
+                val (start, end) = defaultOption.dateRange(LocalDate.now())
                 updateDateFilter(start, end, defaultOption.label)
             }
         }

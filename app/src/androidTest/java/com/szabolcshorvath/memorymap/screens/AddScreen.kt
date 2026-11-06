@@ -140,6 +140,16 @@ object AddScreen : TabScreen {
         assertTrue("$what \"$text\" is not at hour $hour", shown == hour || shown == twelveHour)
     }
 
+    /** The start time reads as [time] in full, such as `20:\d{2}` on a 24-hour clock (spaces before AM and PM are plain). */
+    fun assertStartTime(time: Regex) = assertTime("The start time", dateSectionText("bt_startTime"), time)
+
+    fun assertEndTime(time: Regex) = assertTime("The end time", dateSectionText("bt_endTime"), time)
+
+    private fun assertTime(what: String, text: String?, time: Regex) {
+        val shown = text.orEmpty().replace(' ', ' ')
+        assertTrue("$what \"$text\" doesn't read as $time", time.matches(shown))
+    }
+
     /**
      * Opens the memory's "Date & Time" section if it is closed. Just after a date or time dialog closes, the section's
      * buttons can be off screen for a moment, or a tap can land on the closing dialog, so this checks again after
