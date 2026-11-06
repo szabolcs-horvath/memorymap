@@ -1,10 +1,13 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.app.Application
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
@@ -22,7 +25,9 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
     sealed class BackupRestoreOperationResult {
         data class Success(val message: String? = null) : BackupRestoreOperationResult()
         data class RestoreSuccess(val message: String? = null) : BackupRestoreOperationResult()
-        data class Error(val message: String) : BackupRestoreOperationResult()
+
+        /** [cause]: what failed, for Settings to offer Drive access when that is what is missing. */
+        data class Error(val message: String, val cause: Throwable? = null) : BackupRestoreOperationResult()
     }
 
     private val _operationStatus = MutableStateFlow<String?>(null)
@@ -67,8 +72,8 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
                     _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup successful"))
                 },
                 onFailure = { e ->
-                    val errorMsg = "Backup failed: ${e.javaClass.simpleName}${e.message?.let { " - $it" } ?: ""}"
-                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg))
+                    val errorMsg = failureMessage(R.string.backup_failed, e)
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg, e))
                 }
             )
         }
@@ -86,12 +91,13 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
                     _backupRestoreOperationResult.send(BackupRestoreOperationResult.RestoreSuccess("Restore successful"))
                 },
                 onFailure = { e ->
+                    // A rejected backup says why itself, for the user (too new, unreadable), and is no Drive problem.
                     val errorMsg = if (e is RestoreRejectedException) {
-                        "Restore failed: ${e.message}"
+                        app.getString(R.string.operation_failed, app.getString(R.string.restore_failed), e.message)
                     } else {
-                        "Restore failed: ${e.javaClass.simpleName}${e.message?.let { " - $it" } ?: ""}"
+                        failureMessage(R.string.restore_failed, e)
                     }
-                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg))
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg, e))
                 }
             )
         }
@@ -107,10 +113,19 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
                     _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup deleted"))
                 },
                 onFailure = { e ->
-                    val errorMsg = "Failed to delete backup: ${e.javaClass.simpleName}${e.message?.let { " - $it" } ?: ""}"
-                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg))
+                    val errorMsg = failureMessage(R.string.delete_backup_failed, e)
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Error(errorMsg, e))
                 }
             )
         }
     }
+
+    private val app get() = getApplication<Application>()
+
+    /**
+     * What failed ([what], such as "Backup failed.") and why, in words the user can act on. The exception itself is
+     * logged where it happened, for "Send logs".
+     */
+    private fun failureMessage(@StringRes what: Int, e: Throwable): String =
+        app.getString(R.string.operation_failed, app.getString(what), app.getString(DriveProblem.of(e).reason))
 }

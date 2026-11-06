@@ -14,7 +14,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
-import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -208,6 +208,11 @@ class SettingsFragment : Fragment() {
 
                         is SettingsFragmentViewModel.BackupRestoreOperationResult.Error -> {
                             showBackupStatus(result.message, true)
+                            // The message points to "Allow access", which the backup list then offers.
+                            if (result.cause?.let(DriveProblem::of) == DriveProblem.NEEDS_ACCESS) {
+                                viewModel.backupListFailure = result.cause
+                                showBackupListProblem()
+                            }
                         }
                     }
                 }
@@ -628,12 +633,12 @@ class SettingsFragment : Fragment() {
                             }
                         }
 
-                        is NoCredentialException,
-                        is GetCredentialException -> {
-                            Log.w(TAG, "Sign in failed", e)
-                            context?.let {
-                                Toast.makeText(it, "Sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
-                            }
+                        // The user closed the account picker: nothing to tell them.
+                        is GetCredentialCancellationException -> Log.i(TAG, "Sign in cancelled")
+
+                        is NoCredentialException -> {
+                            Log.w(TAG, "Sign in failed: no account", e)
+                            context?.let { Toast.makeText(it, R.string.sign_in_no_account, Toast.LENGTH_LONG).show() }
                         }
 
                         is CancellationException -> {
@@ -641,15 +646,10 @@ class SettingsFragment : Fragment() {
                             throw e
                         }
 
+                        // The details are in the log, for "Send logs".
                         else -> {
-                            Log.e(TAG, "Unexpected sign in error", e)
-                            context?.let {
-                                Toast.makeText(
-                                    it,
-                                    "Unexpected sign in error: ${e.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
+                            Log.e(TAG, "Sign in failed", e)
+                            context?.let { Toast.makeText(it, R.string.sign_in_failed, Toast.LENGTH_LONG).show() }
                         }
                     }
                     setLoadingState(false)

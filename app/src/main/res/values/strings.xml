@@ -96,4 +96,21 @@
     <string name="backup_list_drive_unavailable">Couldn\'t load the backups: Google Drive isn\'t responding. Pull the list down to try again.</string>
     <string name="backup_list_failed">Couldn\'t load the backups. Pull the list down to try again.</string>
     <string name="allow_drive_access">Allow access</string>
+
+    <!-- A failed backup, restore or delete: what failed (operation_failed's first part), then why (its second part). -->
+    <string name="operation_failed">%1$s %2$s</string>
+    <string name="backup_failed">Backup failed.</string>
+    <string name="restore_failed">Restore failed.</string>
+    <string name="delete_backup_failed">Couldn\'t delete the backup.</string>
+    <string name="drive_failure_no_connection">There\'s no internet connection. Try again when you\'re online.</string>
+    <string name="drive_failure_unavailable">Google Drive isn\'t responding. Try again later.</string>
+    <string name="drive_failure_needs_access">Memory Map has to be allowed to use Google Drive again: tap Allow access below.</string>
+    <string name="drive_failure_other">Try again. If it keeps failing, send the logs from the bottom of this screen.</string>
+
+    <!-- Sign-in failures. -->
+    <string name="sign_in_no_account">There\'s no Google account to sign in with. Add one in the phone\'s settings, then try again.</string>
+    <string name="sign_in_failed">Sign-in didn\'t work. Check the internet connection and try again.</string>
+
+    <!-- Coordinates, where a place has no name: "47.4979° N, 19.0402° E". -->
+    <string name="location_coordinates">Coordinates: %1$s</string>
 </resources>

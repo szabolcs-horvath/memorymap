@@ -41,6 +41,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentAddMemoryGroupBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
+import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
@@ -616,7 +617,7 @@ class AddMemoryGroupFragment : Fragment() {
         if (viewModel.address != null) locationString.append(viewModel.address).append(System.lineSeparator())
         if (locationString.isEmpty()) {
             if (lat != null && lng != null) {
-                locationString.append("Coordinates: $lat, $lng")
+                locationString.append(getString(R.string.location_coordinates, Coordinates.format(lat, lng)))
             } else {
                 locationString.append("No location selected")
             }

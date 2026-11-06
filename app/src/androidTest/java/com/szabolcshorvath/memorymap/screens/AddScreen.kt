@@ -7,6 +7,7 @@ import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.textAsString
 import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.testing.TestData.Place
+import com.szabolcshorvath.memorymap.util.Coordinates
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -71,7 +72,7 @@ object AddScreen : TabScreen {
      */
     fun assertLocationIs(place: Place) {
         val text = locationText().orEmpty()
-        val coordinates = "${place.latitude}, ${place.longitude}"
+        val coordinates = Coordinates.format(place.latitude, place.longitude)
         assertTrue(
             "The location \"$text\" is not ${place.name}",
             place.name?.let { it in text } == true || coordinates in text

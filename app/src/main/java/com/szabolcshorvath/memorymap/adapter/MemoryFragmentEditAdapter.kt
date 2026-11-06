@@ -11,10 +11,12 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.listitem.ListItemViewHolder
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentEditBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.AddMemoryGroupListener
 import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.dateFormatter
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.timeFormatter
 import java.time.ZonedDateTime
@@ -180,7 +182,7 @@ class MemoryFragmentEditAdapter(
         binding.tvLocation.text = if (!item.placeName.isNullOrEmpty()) {
             if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
         } else if (item.lat != null && item.lng != null) {
-            "Coordinates: ${item.lat} ${item.lng}"
+            binding.root.context.getString(R.string.location_coordinates, Coordinates.format(item.lat, item.lng))
         } else {
             "No location selected"
         }

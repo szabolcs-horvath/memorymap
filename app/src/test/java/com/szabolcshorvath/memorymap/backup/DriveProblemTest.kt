@@ -9,6 +9,7 @@ import com.szabolcshorvath.memorymap.auth.DriveAuthorizationFailedException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -33,6 +34,11 @@ class DriveProblemTest {
         assertEquals(DriveProblem.DRIVE_UNAVAILABLE, DriveProblem.of(driveError(429)))
         assertEquals(DriveProblem.OTHER, DriveProblem.of(driveError(403)))
         assertEquals(DriveProblem.OTHER, DriveProblem.of(driveError(404)))
+    }
+
+    @Test
+    fun `a file that isn't there is no connection problem either`() {
+        assertEquals(DriveProblem.OTHER, DriveProblem.of(FileNotFoundException("backup.zip")))
     }
 
     @Test
