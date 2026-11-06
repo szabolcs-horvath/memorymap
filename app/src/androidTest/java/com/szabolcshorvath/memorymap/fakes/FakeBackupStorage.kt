@@ -30,9 +30,15 @@ object FakeBackupStorage : BackupStorage {
         return file
     }
 
+    /** What listing the backups throws instead of listing them, as Drive does when offline or when access lapsed. */
+    @Volatile
+    var listFailure: Exception? = null
+
     @Synchronized
-    override fun list(context: Context, email: String): List<DriveFile> =
-        backups[email].orEmpty().map { it.file }.sortedByDescending { it.modifiedTime.value }
+    override fun list(context: Context, email: String): List<DriveFile> {
+        listFailure?.let { throw it }
+        return backups[email].orEmpty().map { it.file }.sortedByDescending { it.modifiedTime.value }
+    }
 
     @Synchronized
     override fun upload(context: Context, email: String, name: String, zipFile: File) {

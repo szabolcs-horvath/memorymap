@@ -42,7 +42,7 @@ class BackupManager(private val context: Context) {
                 ?: return@trace AutomaticBackupOutcome.NOT_SIGNED_IN
             performBackup(email, db, isAutomatic = true) { Log.d(TAG, "Automatic backup progress: $it") }.fold(
                 onSuccess = { AutomaticBackupOutcome.SUCCEEDED },
-                onFailure = { e -> if (AutomaticBackups.isRetryable(e)) AutomaticBackupOutcome.RETRY else AutomaticBackupOutcome.FAILED }
+                onFailure = { e -> if (DriveProblem.of(e).isRetryable) AutomaticBackupOutcome.RETRY else AutomaticBackupOutcome.FAILED }
             )
         }
     }
@@ -169,15 +169,17 @@ class BackupManager(private val context: Context) {
         AppServices.backupStorage.upload(context, email, name, zipFile)
     }
 
-    suspend fun listBackups(email: String): List<DriveFile> {
-        return withContext(Dispatchers.IO) {
-            trace("backup_manager_list_backups") {
-                try {
-                    return@withContext AppServices.backupStorage.list(context, email)
-                } catch (e: IOException) {
-                    Log.e(TAG, "Failed to list backups", e)
-                    return@withContext emptyList()
-                }
+    /**
+     * Every backup of [email], newest first, or the failure ([DriveProblem.of] tells what kind). A failure is never an
+     * empty list: that would look as if the backups were gone.
+     */
+    suspend fun listBackups(email: String): Result<List<DriveFile>> = withContext(Dispatchers.IO) {
+        trace("backup_manager_list_backups") {
+            try {
+                Result.success(AppServices.backupStorage.list(context, email))
+            } catch (e: IOException) {
+                Log.e(TAG, "Failed to list backups", e)
+                Result.failure(e)
             }
         }
     }

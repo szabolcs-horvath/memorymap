@@ -37,6 +37,9 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
     var newlyAddedPresetId: Int? = null
     var backupsLoadedForEmail: String? = null
     var lastLoadedBackups: List<DriveFile> = emptyList()
+
+    /** Why the backup list last failed to load, or null; the list shown before stays. */
+    var backupListFailure: Throwable? = null
     var isBackupRequested: Boolean = false
     var pendingRestoreFile: DriveFile? = null
 

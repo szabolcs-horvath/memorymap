@@ -90,4 +90,10 @@
     <string name="color_slider_hue">Hue</string>
     <string name="color_slider_saturation">Saturation</string>
     <string name="color_slider_brightness">Brightness</string>
+    <!-- Why the backup list could not be loaded. The list shown before stays under it. -->
+    <string name="backup_list_needs_access">Memory Map can no longer reach your backups in Google Drive. Allow access again to see them.</string>
+    <string name="backup_list_no_connection">Couldn\'t load the backups: no internet connection. Pull the list down to try again.</string>
+    <string name="backup_list_drive_unavailable">Couldn\'t load the backups: Google Drive isn\'t responding. Pull the list down to try again.</string>
+    <string name="backup_list_failed">Couldn\'t load the backups. Pull the list down to try again.</string>
+    <string name="allow_drive_access">Allow access</string>
 </resources>
