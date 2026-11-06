@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.adapter
 
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
@@ -18,9 +19,11 @@ import coil3.size.Scale
 import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.databinding.ItemMediaFullBinding
 
-class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.MediaViewHolder>(
+class MediaPagerAdapter : ListAdapter<MediaItem, MediaPagerAdapter.MediaViewHolder>(
     MediaPageDiffCallback()
 ) {
 
@@ -38,121 +41,126 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
             }
         }
 
-        fun bind(item: Pair<String, String>) {
+        fun bind(item: MediaItem) {
             resetState()
-            val uri = item.first.toUri()
-            val isVideo = item.second == "VIDEO"
+            val uri = item.uri.toUri()
+            val isVideo = item.type == MediaType.VIDEO
             val description = binding.root.context.getString(if (isVideo) R.string.video else R.string.photo)
             binding.fullImageView.contentDescription = description
             binding.fullVideoView.contentDescription = description
 
-            if (isVideo) {
-                binding.fullImageView.visibility = View.VISIBLE
-                binding.fullImageView.isZoomable = false
-                binding.fullVideoView.visibility = View.GONE
-                binding.videoControlsContainer.visibility = View.VISIBLE
-                showPlayButton(isPlaying = false)
+            binding.root.setOnClickListener(null)
+            if (isVideo) bindVideo(uri) else bindPhoto(uri)
+        }
 
-                binding.fullVideoView.setZOrderMediaOverlay(true)
+        private fun bindVideo(uri: Uri) {
+            binding.fullImageView.visibility = View.VISIBLE
+            binding.fullImageView.isZoomable = false
+            binding.fullVideoView.visibility = View.GONE
+            binding.videoControlsContainer.visibility = View.VISIBLE
+            showPlayButton(isPlaying = false)
 
-                val displayMetrics = binding.root.context.resources.displayMetrics
-                val screenWidth = displayMetrics.widthPixels
-                val screenHeight = displayMetrics.heightPixels
+            binding.fullVideoView.setZOrderMediaOverlay(true)
 
-                binding.fullImageView.load(uri) {
-                    // Full size video preview image
-                    memoryCacheKey("${uri}_full")
-                    size(screenWidth, screenHeight)
-                    scale(Scale.FIT)
-                    crossfade(true)
-                    videoFrameMicros(0)
-                    decoderFactory { result, options, _ ->
-                        VideoFrameDecoder(result.source, options)
-                    }
+            val displayMetrics = binding.root.context.resources.displayMetrics
+            val screenWidth = displayMetrics.widthPixels
+            val screenHeight = displayMetrics.heightPixels
+
+            binding.fullImageView.load(uri) {
+                // Full size video preview image
+                memoryCacheKey("${uri}_full")
+                size(screenWidth, screenHeight)
+                scale(Scale.FIT)
+                crossfade(true)
+                videoFrameMicros(0)
+                decoderFactory { result, options, _ ->
+                    VideoFrameDecoder(result.source, options)
                 }
+            }
 
-                binding.fullVideoView.setOnPreparedListener { mp ->
-                    binding.videoScrubber.max = maxOf(mp.duration, 0)
-                    binding.videoScrubber.progress = 0
-                }
+            binding.fullVideoView.setOnPreparedListener { mp ->
+                binding.videoScrubber.max = maxOf(mp.duration, 0)
+                binding.videoScrubber.progress = 0
+            }
 
-                binding.fullVideoView.setOnInfoListener { _, what, _ ->
-                    if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-                        binding.fullVideoView.alpha = 1f
-                        binding.fullImageView.animate()
-                            .alpha(0f)
-                            .setDuration(THUMBNAIL_TO_VIDEO_TRANSITION_TIME)
-                            .withEndAction {
-                                binding.fullImageView.visibility = View.GONE
-                                binding.fullImageView.alpha = 1f
-                            }
-                            .start()
-                    }
-                    false
-                }
-
-                binding.fullVideoView.setVideoURI(uri)
-
-                binding.videoScrubber.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                        if (fromUser) {
-                            binding.fullVideoView.seekTo(progress)
+            binding.fullVideoView.setOnInfoListener { _, what, _ ->
+                if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+                    binding.fullVideoView.alpha = 1f
+                    binding.fullImageView.animate()
+                        .alpha(0f)
+                        .setDuration(THUMBNAIL_TO_VIDEO_TRANSITION_TIME)
+                        .withEndAction {
+                            binding.fullImageView.visibility = View.GONE
+                            binding.fullImageView.alpha = 1f
                         }
-                    }
+                        .start()
+                }
+                false
+            }
 
-                    override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                        seekBar?.parent?.requestDisallowInterceptTouchEvent(true)
-                    }
+            binding.fullVideoView.setVideoURI(uri)
+            setUpVideoControls()
+        }
 
-                    override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                        seekBar?.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                })
-
-                binding.btnPlayPause.setOnClickListener {
-                    if (binding.fullVideoView.isPlaying) {
-                        binding.fullVideoView.pause()
-                        showPlayButton(isPlaying = false)
-                        stopProgressUpdates()
-                    } else {
-                        if (!binding.fullVideoView.isVisible) {
-                            binding.fullVideoView.visibility = View.VISIBLE
-                            binding.fullVideoView.alpha = 0f
-                        }
-                        binding.fullVideoView.start()
-                        showPlayButton(isPlaying = true)
-                        startProgressUpdates()
+        private fun setUpVideoControls() {
+            binding.videoScrubber.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (fromUser) {
+                        binding.fullVideoView.seekTo(progress)
                     }
                 }
 
-                binding.root.setOnClickListener(null)
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                    seekBar?.parent?.requestDisallowInterceptTouchEvent(true)
+                }
 
-                binding.fullVideoView.setOnCompletionListener {
-                    binding.fullVideoView.visibility = View.GONE
-                    binding.fullImageView.visibility = View.VISIBLE
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    seekBar?.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+            })
+
+            binding.btnPlayPause.setOnClickListener {
+                if (binding.fullVideoView.isPlaying) {
+                    binding.fullVideoView.pause()
                     showPlayButton(isPlaying = false)
-                    binding.videoScrubber.progress = 0
-                    binding.fullVideoView.seekTo(0)
                     stopProgressUpdates()
+                } else {
+                    if (!binding.fullVideoView.isVisible) {
+                        binding.fullVideoView.visibility = View.VISIBLE
+                        binding.fullVideoView.alpha = 0f
+                    }
+                    binding.fullVideoView.start()
+                    showPlayButton(isPlaying = true)
+                    startProgressUpdates()
                 }
-            } else {
+            }
+
+            binding.fullVideoView.setOnCompletionListener {
                 binding.fullVideoView.visibility = View.GONE
                 binding.fullImageView.visibility = View.VISIBLE
-                binding.fullImageView.isZoomable = true
-                binding.videoControlsContainer.visibility = View.GONE
+                showPlayButton(isPlaying = false)
+                binding.videoScrubber.progress = 0
+                binding.fullVideoView.seekTo(0)
+                stopProgressUpdates()
+            }
+        }
 
-                val displayMetrics = binding.root.context.resources.displayMetrics
-                val screenWidth = displayMetrics.widthPixels
-                val screenHeight = displayMetrics.heightPixels
+        private fun bindPhoto(uri: Uri) {
+            binding.fullVideoView.visibility = View.GONE
+            binding.fullImageView.visibility = View.VISIBLE
+            binding.fullImageView.isZoomable = true
+            binding.videoControlsContainer.visibility = View.GONE
 
-                binding.fullImageView.load(uri) {
-                    // Full size image view
-                    memoryCacheKey("${uri}_full")
-                    size(screenWidth, screenHeight)
-                    scale(Scale.FIT)
-                    crossfade(true)
-                }
-                binding.root.setOnClickListener(null)
+            val displayMetrics = binding.root.context.resources.displayMetrics
+            val screenWidth = displayMetrics.widthPixels
+            val screenHeight = displayMetrics.heightPixels
+
+            binding.fullImageView.load(uri) {
+                // Full size image view
+                memoryCacheKey("${uri}_full")
+                size(screenWidth, screenHeight)
+                scale(Scale.FIT)
+                crossfade(true)
             }
         }
 
@@ -214,10 +222,12 @@ class MediaPagerAdapter : ListAdapter<Pair<String, String>, MediaPagerAdapter.Me
         holder.bind(getItem(position))
     }
 
-    private class MediaPageDiffCallback : DiffUtil.ItemCallback<Pair<String, String>>() {
-        override fun areItemsTheSame(oldItem: Pair<String, String>, newItem: Pair<String, String>): Boolean = oldItem.first == newItem.first
+    private class MediaPageDiffCallback : DiffUtil.ItemCallback<MediaItem>() {
+        override fun areItemsTheSame(oldItem: MediaItem, newItem: MediaItem): Boolean = oldItem.id == newItem.id
 
-        override fun areContentsTheSame(oldItem: Pair<String, String>, newItem: Pair<String, String>): Boolean = oldItem == newItem
+        // Only what a page shows: a new order or newly read details must not reload a photo or stop a video.
+        override fun areContentsTheSame(oldItem: MediaItem, newItem: MediaItem): Boolean =
+            oldItem.uri == newItem.uri && oldItem.type == newItem.type
     }
 
     companion object {

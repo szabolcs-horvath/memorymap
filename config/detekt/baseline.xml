@@ -13,7 +13,6 @@
     <ID>LongMethod:AddMemoryGroupFragment.kt$AddMemoryGroupFragment$fun setEditMode(memoryId: Int)</ID>
     <ID>LongMethod:AddMemoryGroupFragment.kt$AddMemoryGroupFragment$override fun onViewCreated(view: View, savedInstanceState: Bundle?)</ID>
     <ID>LongMethod:MapFragment.kt$MapFragment$override fun onMapReady(googleMap: GoogleMap)</ID>
-    <ID>LongMethod:MediaPagerAdapter.kt$MediaPagerAdapter.MediaViewHolder$fun bind(item: Pair&lt;String, String&gt;)</ID>
     <ID>LongMethod:SettingsFragment.kt$SettingsFragment$override fun onViewCreated(view: View, savedInstanceState: Bundle?)</ID>
     <ID>LongMethod:SettingsFragment.kt$SettingsFragment$private fun setupColorPresetsSection()</ID>
     <ID>LongMethod:SettingsFragment.kt$SettingsFragment$private fun setupSignInAndOutButtons()</ID>

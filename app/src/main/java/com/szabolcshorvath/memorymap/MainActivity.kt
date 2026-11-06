@@ -316,8 +316,8 @@ class MainActivity :
         transaction.addToBackStack(null).commit()
     }
 
-    override fun onMediaClick(mediaItems: ArrayList<Pair<String, String>>, startPosition: Int) {
-        val fragment = MediaViewerFragment.newInstance(mediaItems, startPosition)
+    override fun onMediaClick(memoryId: Int, mediaItemId: Int) {
+        val fragment = MediaViewerFragment.newInstance(memoryId, mediaItemId)
         val memoryPagerFragment = supportFragmentManager.findFragmentByTag(MemoryPagerFragment.TAG)
 
         val transaction = supportFragmentManager.beginTransaction()

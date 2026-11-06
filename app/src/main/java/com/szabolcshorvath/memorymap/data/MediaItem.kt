@@ -39,7 +39,19 @@ data class MediaItem(
     val durationMs: Long? = null,
     /** A 64-bit dHash of the picture (`MediaDetails.perceptualHash`), to rank look-alikes. Never used to link on its own. */
     val perceptualHash: Long? = null
-)
+) {
+    companion object {
+        /** The order a memory shows its media in: by `order`, and items without one after them, the newest first. */
+        val DISPLAY_ORDER: Comparator<MediaItem> = Comparator { a, b ->
+            when {
+                a.order != null && b.order != null -> a.order.compareTo(b.order)
+                a.order != null -> -1
+                b.order != null -> 1
+                else -> b.dateTaken.compareTo(a.dateTaken)
+            }
+        }
+    }
+}
 
 enum class MediaType {
     IMAGE, VIDEO

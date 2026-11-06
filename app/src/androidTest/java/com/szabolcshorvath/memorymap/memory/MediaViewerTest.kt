@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MediaViewerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
+import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import org.junit.Rule
@@ -36,6 +37,29 @@ class MediaViewerTest {
         MediaViewerScreen.swipeToPrevious()
         MediaViewerScreen.swipeToPrevious()
         MediaViewerScreen.assertColorAt(RED)
+    }
+
+    /** The viewer loads the memory's media itself and remembers which one is shown, not where it opened. */
+    @Test
+    fun theViewerStaysOnTheSwipedToPhotoThroughRotationAndProcessDeath() {
+        val trip = TestData.memory(TRIP)
+        TestData.photo(trip, RED, order = 0)
+        TestData.photo(trip, GREEN, order = 1)
+        TestData.photo(trip, BLUE, order = 2)
+        openMemory()
+        MemoryScreen.openPhoto(1)
+        MediaViewerScreen.swipeToNext()
+        MediaViewerScreen.assertColorAt(BLUE)
+
+        Ui.rotateToLandscape()
+        MediaViewerScreen.assertColorAt(BLUE)
+        Ui.rotateToPortrait()
+        MediaViewerScreen.assertColorAt(BLUE)
+
+        app.simulateProcessDeath()
+        MediaViewerScreen.assertColorAt(BLUE)
+        MediaViewerScreen.swipeToPrevious()
+        MediaViewerScreen.assertColorAt(GREEN)
     }
 
     @Test
