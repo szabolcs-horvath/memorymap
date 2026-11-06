@@ -170,7 +170,6 @@ dependencies {
     // Auth
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
-    implementation(libs.google.api.client.android)
     implementation(libs.googleid)
     implementation(libs.play.services.auth)
 

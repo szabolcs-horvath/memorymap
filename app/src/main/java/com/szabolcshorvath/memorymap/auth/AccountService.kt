@@ -14,8 +14,8 @@ interface AccountService {
 
     suspend fun signOut(context: Context)
 
-    /** Asks for access to the app's files on Drive. Throws if the request fails. */
-    suspend fun authorizeDrive(context: Context): DriveAuthorization
+    /** Asks for access to the app's files on [email]'s Drive. Throws if the request fails. */
+    suspend fun authorizeDrive(context: Context, email: String): DriveAuthorization
 
     /** Checks the result of the consent screen from [DriveAuthorization.NeedsConsent]. Throws if access wasn't allowed. */
     fun checkDriveConsentResult(context: Context, data: Intent?)

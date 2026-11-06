@@ -30,11 +30,11 @@ import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.common.api.ApiException
 import com.google.android.material.color.MaterialColors
-import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.BackupAdapter
 import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
+import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
 import com.szabolcshorvath.memorymap.auth.DriveAuthorization
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
@@ -89,12 +89,6 @@ class SettingsFragment : Fragment() {
     private lateinit var backupAdapter: BackupAdapter
     private lateinit var colorPresetAdapter: ColorPresetAdapter
     private var allPresets: List<HSVPreset> = emptyList()
-
-    // The consent screen Drive's own sign-in offers when listing backups fails for lack of access.
-    private val recoverDriveAccessLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
-        (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
-    }
 
     private val relinkPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -949,25 +943,31 @@ class SettingsFragment : Fragment() {
     }
 
     /**
-     * Asks for Drive access again, then reloads the list. Drive's own sign-in, which the backup calls go through, may
-     * come with the consent screen that fixes its error; otherwise the app's usual Drive consent is asked for.
+     * Asks for Drive access again, then reloads the list: on the consent screen the failed call came with, or else as
+     * the app usually does (which may find that access was granted meanwhile, or show the consent screen itself).
      */
     private fun allowDriveAccessAgain() {
-        val consent = (viewModel.backupListFailure as? UserRecoverableAuthIOException)?.intent
+        val consent = (viewModel.backupListFailure as? DriveAccessNeededException)?.consent
         if (consent != null) {
-            recoverDriveAccessLauncher.launch(consent)
+            viewModel.isBackupRequested = false
+            startAuthorizationIntent.launch(IntentSenderRequest.Builder(consent).build())
         } else {
             requestDriveAuthorization(isBackup = false)
         }
     }
 
     private fun requestDriveAuthorization(isBackup: Boolean) {
-        val context = context ?: return
-        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
+        val context = context
+        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value
+        val email = _binding?.tvAccountName?.tag as? String
+        if (context == null || viewLifecycleOwner == null || email == null) {
+            setLoadingState(false)
+            return
+        }
         viewModel.isBackupRequested = isBackup
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                when (val authorization = AppServices.accounts.authorizeDrive(context)) {
+                when (val authorization = AppServices.accounts.authorizeDrive(context, email)) {
                     DriveAuthorization.Granted -> successfulAuthorization()
 
                     is DriveAuthorization.NeedsConsent -> startAuthorizationIntent.launch(

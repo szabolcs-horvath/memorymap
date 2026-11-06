@@ -1,7 +1,8 @@
 package com.szabolcshorvath.memorymap.backup
 
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAuthIOException
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
+import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
+import com.szabolcshorvath.memorymap.auth.DriveAuthorizationFailedException
 import java.io.IOException
 
 /** What went wrong in a call to Google Drive, sorted by what the user (or a retry) can do about it. */
@@ -22,14 +23,19 @@ enum class DriveProblem {
     val isRetryable: Boolean get() = this == NO_CONNECTION || this == DRIVE_UNAVAILABLE
 
     companion object {
+        private const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val HTTP_SERVER_ERROR = 500
 
-        // The more specific IOExceptions first: both Drive's own errors are IOExceptions too.
+        // The more specific IOExceptions first: the app's own access errors and Drive's errors are IOExceptions too.
         fun of(e: Throwable): DriveProblem = when (e) {
-            is GoogleAuthIOException -> NEEDS_ACCESS
-            is GoogleJsonResponseException ->
-                if (e.statusCode == HTTP_TOO_MANY_REQUESTS || e.statusCode >= HTTP_SERVER_ERROR) DRIVE_UNAVAILABLE else OTHER
+            is DriveAccessNeededException -> NEEDS_ACCESS
+            is DriveAuthorizationFailedException -> OTHER
+            is GoogleJsonResponseException -> when {
+                e.statusCode == HTTP_UNAUTHORIZED -> NEEDS_ACCESS
+                e.statusCode == HTTP_TOO_MANY_REQUESTS || e.statusCode >= HTTP_SERVER_ERROR -> DRIVE_UNAVAILABLE
+                else -> OTHER
+            }
             is IOException -> NO_CONNECTION
             else -> OTHER
         }

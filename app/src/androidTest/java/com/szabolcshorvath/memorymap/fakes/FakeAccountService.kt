@@ -23,7 +23,7 @@ object FakeAccountService : AccountService {
 
     override suspend fun signOut(context: Context) = Unit
 
-    override suspend fun authorizeDrive(context: Context): DriveAuthorization = DriveAuthorization.Granted
+    override suspend fun authorizeDrive(context: Context, email: String): DriveAuthorization = DriveAuthorization.Granted
 
     override fun checkDriveConsentResult(context: Context, data: Intent?) = Unit
 }
