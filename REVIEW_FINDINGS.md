@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 74 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 12 open
+✅ 75 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 11 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -151,13 +151,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
 | ⬜ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (blocked until the whole UI is covered by UI tests) |
 
-**BUILD — Build, CI, tooling** · 3 of 4 fixed
+**BUILD — Build, CI, tooling** · 4 of 4 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ✅ | [BUILD-1](#build-1) | Medium | CI never runs the tests |
 | ✅ | [BUILD-2](#build-2) | Medium | `MAPS_API_KEY` wiring is inconsistent |
-| ⬜ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
+| ✅ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
 | ✅ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
 
 **TEST — Coverage gaps** · 1 of 3 fixed
@@ -810,8 +810,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Pick one source (the secrets plugin with an explicit `propertiesFileName` and an `ignoreList`), and remove the other.
 - **Status:** Fixed as part of SEC-1. The secrets plugin is gone; the placeholder comes from `local.properties`, falling back to the env var.
 
-### <a id="build-3"></a>⬜ BUILD-3 · Low · Supply-chain hygiene
+### <a id="build-3"></a>✅ BUILD-3 · Low · Supply-chain hygiene
 - **What:** GitHub Actions are pinned to tags (`@v4`) rather than SHAs; `gradle-wrapper.properties` has no `distributionSha256Sum`.
+- **Status:** Fixed (2026-11-06).
+  - Every action in the workflows is pinned to the commit its tag pointed to, with the exact version in a comment (`actions/checkout@3d3c42e… # v7.0.1`), so a tag moved to other code can't change what CI runs.
+  - `gradle-wrapper.properties` has the distribution's `distributionSha256Sum`, from Gradle's published checksum: the wrapper refuses a download that doesn't match (checked with a wrong value). The wrapper jar itself is checked on every CI run by `setup-gradle` (`validate-wrappers`, on by default).
 
 ### <a id="build-4"></a>✅ BUILD-4 · Low · Robolectric cannot run against `targetSdk 37`
 - **Where:** noted in the re-linking design notes (then `SIGNATURE_FIX_PLAN.md` §5)
