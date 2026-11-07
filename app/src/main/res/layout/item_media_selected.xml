@@ -18,7 +18,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="center"
-        android:src="@android:drawable/ic_media_play"
+        android:src="@drawable/ic_play_arrow"
         android:visibility="gone"
         app:tint="@android:color/white"
         tools:alpha="0.5"
@@ -38,7 +38,7 @@
             android:id="@+id/errorIcon"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@android:drawable/ic_dialog_alert"
+            android:src="@drawable/ic_warning"
             app:tint="@android:color/holo_red_light" />
 
         <TextView
@@ -57,7 +57,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="top|end"
-        app:icon="@android:drawable/ic_menu_close_clear_cancel"
+        app:icon="@drawable/ic_close"
         app:iconGravity="textStart"
         app:iconTint="@android:color/holo_red_light" />
 

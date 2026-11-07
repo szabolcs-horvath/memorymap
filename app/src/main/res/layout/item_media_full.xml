@@ -53,7 +53,7 @@
             style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            app:icon="@android:drawable/ic_media_pause"
+            app:icon="@drawable/ic_pause"
             app:iconGravity="textStart"
             app:iconTint="@android:color/white" />
 

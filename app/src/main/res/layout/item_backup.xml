@@ -73,7 +73,7 @@
                 android:contentDescription="Restore"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
-                app:icon="@android:drawable/ic_menu_revert"
+                app:icon="@drawable/ic_settings_backup_restore"
                 app:iconGravity="textStart"
                 app:iconSize="24dp"
                 app:iconTint="?attr/colorPrimary" />
@@ -86,7 +86,7 @@
                 android:contentDescription="Delete"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
-                app:icon="@android:drawable/ic_menu_delete"
+                app:icon="@drawable/ic_delete"
                 app:iconGravity="textStart"
                 app:iconSize="24dp"
                 app:iconTint="?attr/colorError" />

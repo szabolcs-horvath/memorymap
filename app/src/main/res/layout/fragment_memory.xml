@@ -41,7 +41,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:contentDescription="Edit Memory"
-                    app:icon="@android:drawable/ic_menu_edit"
+                    app:icon="@drawable/ic_edit"
                     app:iconGravity="textStart"
                     app:iconSize="24dp"
                     app:iconTint="?attr/colorOnSurfaceVariant" />
@@ -52,7 +52,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:contentDescription="Delete Memory"
-                    app:icon="@android:drawable/ic_menu_delete"
+                    app:icon="@drawable/ic_delete"
                     app:iconGravity="textStart"
                     app:iconSize="24dp"
                     app:iconTint="?attr/colorError" />
@@ -78,7 +78,7 @@
                 <com.google.android.material.imageview.ShapeableImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_my_calendar"
+                    android:src="@drawable/ic_calendar_month"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.textview.MaterialTextView
@@ -115,7 +115,7 @@
                 <com.google.android.material.imageview.ShapeableImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_mapmode"
+                    android:src="@drawable/ic_location_on"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.textview.MaterialTextView

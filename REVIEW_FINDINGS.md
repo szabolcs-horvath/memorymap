@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 75 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 11 open
+✅ 76 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 10 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -112,7 +112,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 15 of 19 fixed
+**UX — User experience** · 16 of 19 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -130,7 +130,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
 | ⬜ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
 | ✅ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
-| ⬜ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
+| ✅ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
 | ✅ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
 | ✅ | [UX-17](#ux-17) | Low | A date picker ignores the picked date after process death |
 | ✅ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
@@ -626,10 +626,13 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Coordinates of a place without a name are shown the same way everywhere (the map's overlay, the memory screen, its fragments, the Add form and its fragment cards): "47.4979° N, 19.0402° E", with the phone's decimal separator (`util/Coordinates`).
   - The new text is in `strings.xml`. Covered by `CoordinatesTest`, `DriveProblemTest`, `BackupErrorTest` and `SettingsTest`.
 
-### <a id="ux-15"></a>⬜ UX-15 · Low · Placeholder icons and joke version name
+### <a id="ux-15"></a>✅ UX-15 · Low · Placeholder icons and joke version name
 - **Where:** `res/menu/bottom_nav_menu.xml` (`@android:drawable/ic_dialog_map` and similar), `app/build.gradle.kts:35` (`versionName = "Debugolunk, debugolunk"`)
 - **What:** Legacy framework drawables look out of place in Material 3, and the version name is shown in system settings and the store.
 - **Fix:** Use Material Symbols vector icons and semantic versioning.
+- **Status:** Fixed (2026-11-06).
+  - Every framework drawable (`@android:drawable/…`, `android.R.drawable.…`) is replaced by a Material Symbols Outlined vector (`res/drawable/ic_*.xml`), keeping each control's tint, size and content description. The bottom bar shows the selected tab's icon filled (`nav_*.xml` selectors), as Material 3 does.
+  - The version name stays a release nickname on purpose (the owner's choice); `versionCode` is what Android and the Play Store compare.
 
 ### <a id="ux-16"></a>✅ UX-16 · Low · Confirmation dialogs close when the phone is turned
 - **Where:** `SettingsFragment.kt` (restore, delete backup, delete preset, media access), `MemoryFragment.kt` (delete), `AddMemoryGroupFragment.kt` (clear or discard, replacing an edit), `util/MyLocationAction.kt` (explanation, open settings)
@@ -777,6 +780,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - `ItemTouchHelper` drag-to-reorder (memory fragments, media, colour presets) → not built in, needs a library (for example `sh.calvin.reorderable`).
   - Material date and time pickers → Material 3 `DatePicker` / `TimePicker`, which removes the rotation workaround in `util/PickerListeners.kt`.
   - `ListAdapter` / `DiffUtil` → `LazyColumn` with stable keys. Places autocomplete does not depend on Views and stays.
+  - Icons: the Material Symbols vector drawables (`res/drawable/ic_*.xml`) work in Compose as they are, through `painterResource(R.drawable.ic_map)`. Another option is pulling in Compose's Material icons library (`androidx.compose.material:material-icons-extended`, used as `Icons.Outlined.Map`), which needs no files of our own. Decide when the migration starts: that library has the older Material Icons, not Material Symbols, so some icons look slightly different. Also check that it is still updated, and keep R8 on so its thousands of unused icons don't end up in the APK.
 - **Caveats:**
   - Compose does not fix PERF-7 by itself. A `NavHost` also throws away screens that aren't shown, so keeping the map alive is still a deliberate decision (see ARCH-1).
   - Behaviour built up over many commits has to be carried over (see the rule above): unsaved changes and edit mode on the Add tab, pending cross-tab requests, map padding around the overlay and the Google logo, the undo Snackbar and its grant release, and asking for location only from a "my location" button.
