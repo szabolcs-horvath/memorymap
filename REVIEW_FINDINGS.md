@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 76 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 9 open
+✅ 77 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 8 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -160,12 +160,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
 | ✅ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
 
-**TEST — Coverage gaps** · 1 of 3 fixed
+**TEST — Coverage gaps** · 2 of 3 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | 🟡 | [TEST-1](#test-1) | High | No Room migration tests |
-| ⬜ | [TEST-2](#test-2) | Medium | Critical logic is untested |
+| ✅ | [TEST-2](#test-2) | Medium | Critical logic is untested |
 | ✅ | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
 
 **I18N / A11Y** · 1 of 4 fixed
@@ -845,8 +845,15 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** 18 schema versions, 4 manual migrations (two of them broken below API 34, DATA-9) and the destructive fallback (DATA-1), with no `MigrationTestHelper` test. The exported schemas are already in `app/schemas`.
 - **Status:** Partly covered. `RestoreCompatibilityTest` builds a database of every version a backup can have (6 to `DB_VERSION`) from `app/schemas`, migrates it with the app's configuration and checks the data. Versions 1 to 5 (only very old installs, never backups) and per-migration edge cases are still untested.
 
-### <a id="test-2"></a>⬜ TEST-2 · Medium · Critical logic is untested
+### <a id="test-2"></a>✅ TEST-2 · Medium · Critical logic is untested
 - **What:** No tests for `MediaHasher` (BUG-9), backup zip/unzip/restore (SEC-3, SEC-4, DATA-5), the clustering and date filter in `MapFragmentViewModel` (UX-9, UX-10), `saveMediaItems` dedup and grant release, the DAO queries, or the undo flow (DATA-2).
+- **Status:** Fixed (2026-11-07). Every area listed has tests:
+  - `MediaHasher`: `MediaHasherTest`.
+  - Backup zip, unzip and restore: `BackupZipTest`, `BackupCompatibilityTest` and `RestoreCompatibilityTest`.
+  - Clustering and the date filter: `MarkerClusteringTest` and `MapFragmentViewModelTest`.
+  - DAO queries and the undo of a delete: `MemoryGroupDaoTest`.
+  - Saving a memory's media: `SaveMediaTest` saves the Add form into an in-memory database. It covers the same photo picked through two links (saved once), a photo whose file can't be read, the numbering without gaps, photos kept through an edit keeping their signature and details, and an edit giving up the grants of the photos it removed or merged, unless another memory still uses them.
+  - Making that test possible changed two things. `PerfUtil.trace` runs its work untraced where Firebase isn't set up (unit tests), so tracing can never fail the work it measures. `releaseUriGrantsIfUnused` walks a copy of the grant list: Robolectric hands out its live list, so releasing a grant threw, and `UriGrantReleaseTest` had only passed because the grant it released came second to last.
 
 ### <a id="test-3"></a>✅ TEST-3 · Low · No UI or instrumentation tests
 - **What:** Only the template `ExampleInstrumentedTest` exists. Espresso is declared but unused.
