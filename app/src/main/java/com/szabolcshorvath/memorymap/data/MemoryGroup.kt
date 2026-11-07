@@ -1,11 +1,9 @@
 package com.szabolcshorvath.memorymap.data
 
-import android.content.Context
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.ZonedDateTime
 
 @Entity(
@@ -34,26 +32,4 @@ data class MemoryGroup(
     override val markerBrightness: Float? = 1.0f
 ) : Markerable {
     override val groupId: Int get() = id
-
-    override fun getFormattedDate(context: Context): String {
-        val startDay = DateTimeFormatterUtil.date(startDate)
-        val endDay = DateTimeFormatterUtil.date(endDate)
-
-        if (isAllDay) {
-            return if (startDay == endDay) {
-                startDay
-            } else {
-                "$startDay - $endDay"
-            }
-        } else {
-            val startTime = DateTimeFormatterUtil.time(context, startDate)
-            val endTime = DateTimeFormatterUtil.time(context, endDate)
-
-            return if (startDay == endDay) {
-                "$startDay $startTime - $endTime"
-            } else {
-                "$startDay $startTime - $endDay $endTime"
-            }
-        }
-    }
 }

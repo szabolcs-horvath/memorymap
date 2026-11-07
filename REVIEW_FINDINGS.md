@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 76 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 10 open
+✅ 76 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 9 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -144,7 +144,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [ARCH-2](#arch-2) | High | Business logic lives in Fragments and the Activity |
 | ✅ | [ARCH-3](#arch-3) | High | Background work tied to UI scopes |
 | ✅ | [ARCH-4](#arch-4) | Medium | Two Google auth stacks |
-| ⬜ | [ARCH-5](#arch-5) | Medium | Duplicated logic |
+| 🟡 | [ARCH-5](#arch-5) | Medium | Duplicated logic |
 | 🟡 | [ARCH-6](#arch-6) | Medium | Hand-rolled singletons, no DI |
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
@@ -718,7 +718,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Recoverable auth errors are surfaced: `listBackups` returned an empty list on any `IOException`: lapsed consent, but also no connection or a Drive outage, and a failed refresh wiped a list already shown. To the user it looked as if the backups were gone. It now returns a `Result`, and `DriveProblem` sorts the failure (needs access, no connection, Drive unavailable, other). Settings keeps the list it showed and says why under "Available Backups"; when access lapsed it offers "Allow access", then reloads the list. Automatic backups decide what to retry with the same `DriveProblem`. Covered by `DriveProblemTest` and `BackupListProblemTest` (with the fake Drive failing).
   - One auth stack (2026-11-06): Drive calls send the access token `AuthorizationClient` gives for the signed-in account (`GoogleAccountService.driveAccessToken`; the consent request names that account too), instead of `GoogleAccountCredential` and the account name. When access has to be allowed first, the token request throws `DriveAccessNeededException` with the consent screen, which "Allow access" opens through the app's consent launcher; a background backup can't show it, so it stops retrying. A token Drive rejects (401) is cleared (`AuthorizationClient.clearToken`) and replaced once; rejected again, access is needed. `google-api-client-android` is no longer a dependency. Covered by `DriveBackupStorageTest` (the token retry), `DriveProblemTest` and `BackupListProblemTest`, and checked by hand with a real account on the test emulator: sign-in, the backup list, Backup now, an automatic backup, restore, delete, and access removed in the Google account (the list says so, and "Allow access" brings it back).
 
-### <a id="arch-5"></a>⬜ ARCH-5 · Medium · Duplicated logic
+### <a id="arch-5"></a>🟡 ARCH-5 · Medium · Duplicated logic
 - **What and where:**
   - Relink trigger + progress UI: `MainActivity.kt:70-81`, `MemoryFragment.kt:51-89`, `SettingsFragment.kt:77-128, 192-213`
   - HSV slider + preset + animation UI ×3: `AddMemoryGroupFragment`, `MemoryFragmentEditAdapter`, `SettingsFragment`
@@ -731,6 +731,14 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Selected-media metadata query ×2: `AddMemoryGroupFragment.kt:104-115`, `AddMemoryGroupFragmentViewModel.kt:194-215`
 - **Fix:** Extract shared components (a `ColorPickerView`, a `DateRangeEditor`) and helpers.
 - **Compose migration ([ARCH-10](#arch-10)):** the UI items (the HSV slider, preset and animation UI ×3, the date and time pickers ×2, `showError` ×2) become shared composables during the migration. A `ColorPickerView` or `DateRangeEditor` built as a View now would be thrown away, so build those as composables then. The non-UI items (comparators, `getFormattedDate`, `hsvToColor`, the media metadata query, the relink trigger logic) don't depend on the migration and can be done any time.
+- **Status:** Partly fixed (2026-11-07). The non-UI items each have one shared version:
+  - Comparators: `MediaItem.DISPLAY_ORDER` and `MemoryFragment.DISPLAY_ORDER` (data), used by the memory screen, the media viewer and the Add form (`DisplayOrderTest`).
+  - `getFormattedDate`: one implementation in `Markerable`, through `DateTimeFormatterUtil.dateRange` (`PhoneDateFormatsTest`).
+  - Default colours: `Markerable.markerColor()` replaces the repeated `hsvToColor(h ?: DEFAULT…)` calls on the map, timeline, overlay and memory screen (`ColorUtilTest`).
+  - Media metadata query: the Add form's pick and save use `LocalMediaUtil.queryMetadata`, which re-linking already used: three copies, not two.
+  - Relink trigger: the memory screen's and Settings' Re-link buttons share `util/RelinkAction` (run with full access, or ask for it first and run with what was granted). Each screen keeps its own progress display, which is UI. The start-up re-link in `MainActivity` does something else (it offers access in a Snackbar only when there is none) and stays as it is.
+  - Location permission handling was already shared (`util/MyLocationAction`, used by the map and the location picker).
+  - Left for the Compose migration, as planned above: the HSV slider, preset and animation UI ×3, the date and time pickers ×2 and `showError` ×2.
 
 ### <a id="arch-6"></a>🟡 ARCH-6 · Medium · Hand-rolled singletons, no DI
 - **Where:** `CommonRepository`, `MemoryMapDatabase`, `InstallationIdentifier`, `BackupManager(context)` created per fragment

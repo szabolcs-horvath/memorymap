@@ -2,6 +2,8 @@ package com.szabolcshorvath.memorymap.util
 
 import android.graphics.Color
 import androidx.core.graphics.ColorUtils
+import com.szabolcshorvath.memorymap.data.Markerable
+import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.util.ColorUtil.HSV_BLACK
 import com.szabolcshorvath.memorymap.util.ColorUtil.HSV_WHITE
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -122,5 +124,17 @@ class ColorUtilTest {
             "Contrast $contrast is not sufficient for primary color $primaryColor" +
                 " (H:$hue, S:$saturation, V:$value) and secondary color $secondaryColor"
         )
+    }
+
+    @Test
+    fun `a marker without a colour of its own takes the default`() {
+        val fragment = MemoryFragment(groupId = 1, latitude = 0.0, longitude = 0.0, placeName = null, address = null, startDate = null, endDate = null)
+        val unset = fragment.copy(markerHue = null, markerSaturation = null, markerBrightness = null)
+        val green = fragment.copy(markerHue = 120f, markerSaturation = 0.5f, markerBrightness = 0.8f)
+        val default = ColorUtil.hsvToColor(ColorUtil.DEFAULT_MARKER_HUE, ColorUtil.DEFAULT_MARKER_SATURATION, ColorUtil.DEFAULT_MARKER_BRIGHTNESS)
+
+        assertEquals(default, unset.markerColor())
+        assertEquals(ColorUtil.hsvToColor(120f, 0.5f, 0.8f), green.markerColor())
+        assertEquals(green.markerColor(), Markerable.FragmentMarker(green, "Trip").markerColor())
     }
 }

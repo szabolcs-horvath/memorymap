@@ -53,6 +53,7 @@ import com.szabolcshorvath.memorymap.util.LogManager
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
+import com.szabolcshorvath.memorymap.util.RelinkAction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -91,16 +92,7 @@ class SettingsFragment : Fragment() {
     private lateinit var colorPresetAdapter: ColorPresetAdapter
     private var allPresets: List<HSVPreset> = emptyList()
 
-    private val relinkPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
-        // Partial ("selected photos") access is enough to re-link the photos the user selected.
-        val ctx = context ?: return@registerForActivityResult
-        if (PermissionUtil.hasAnyMediaPermission(ctx)) {
-            triggerBackgroundRelink()
-        }
-    }
+    private val relinkAction = RelinkAction(this) { triggerBackgroundRelink() }
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -137,7 +129,7 @@ class SettingsFragment : Fragment() {
             if (PermissionUtil.hasAllMediaPermissions(requireContext())) executeRestore(file) else showPermissionInfoDialog(file)
         }
         ConfirmDialog.listen(this, RESTORE_ACCESS_REQUEST) { launchPermissionRequest(driveFileOf(it)) }
-        ConfirmDialog.listen(this, MORE_ACCESS_REQUEST) { relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions()) }
+        ConfirmDialog.listen(this, MORE_ACCESS_REQUEST) { relinkAction.askForAccess() }
         ConfirmDialog.listen(this, DELETE_BACKUP_REQUEST) { executeDeleteBackup(driveFileOf(it)) }
     }
 
@@ -158,14 +150,7 @@ class SettingsFragment : Fragment() {
         setupDefaultFilterDropdown()
         updateColorPresetsUI()
 
-        binding.btRelinkMedia.setOnClickListener {
-            val ctx = requireContext()
-            if (!PermissionUtil.hasAllMediaPermissions(ctx)) {
-                relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
-            } else {
-                triggerBackgroundRelink()
-            }
-        }
+        binding.btRelinkMedia.setOnClickListener { relinkAction.start() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -22,20 +21,17 @@ import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.FragmentMemoryBinding
-import com.szabolcshorvath.memorymap.util.ColorUtil
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaRelinker
-import com.szabolcshorvath.memorymap.util.PermissionUtil
+import com.szabolcshorvath.memorymap.util.RelinkAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Collections
+import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
 class MemoryFragment : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
@@ -47,15 +43,7 @@ class MemoryFragment : Fragment() {
     private var memoryId: Int = -1
     private var memoryFragmentListener: MemoryFragmentListener? = null
 
-    private val relinkPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        // Partial ("selected photos") access is enough to re-link the photos the user selected.
-        val ctx = context ?: return@registerForActivityResult
-        if (PermissionUtil.hasAnyMediaPermission(ctx)) {
-            triggerBackgroundRelink()
-        }
-    }
+    private val relinkAction = RelinkAction(this) { triggerBackgroundRelink() }
 
     private fun triggerBackgroundRelink() {
         val ctx = context
@@ -173,14 +161,7 @@ class MemoryFragment : Fragment() {
         binding.rvMedia.layoutManager = GridLayoutManager(context, MEDIA_GRID_SPAN_COUNT)
         binding.rvMedia.adapter = mediaAdapter
 
-        binding.btRelinkMedia.setOnClickListener {
-            val ctx = context ?: return@setOnClickListener
-            if (!PermissionUtil.hasAllMediaPermissions(ctx)) {
-                relinkPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
-            } else {
-                triggerBackgroundRelink()
-            }
-        }
+        binding.btRelinkMedia.setOnClickListener { relinkAction.start() }
 
         fragmentsAdapter = MemoryFragmentAdapter { fragment ->
             memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
@@ -355,11 +336,7 @@ class MemoryFragment : Fragment() {
         }
         binding.tvLocation.text = locationString
 
-        binding.divider.dividerColor = ColorUtil.hsvToColor(
-            group.markerHue ?: DEFAULT_MARKER_HUE,
-            group.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-            group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-        )
+        binding.divider.dividerColor = group.markerColor()
 
         binding.btShowOnTimeline.setOnClickListener {
             memoryFragmentListener?.onNavigateToTimeline(group.id)
@@ -372,23 +349,7 @@ class MemoryFragment : Fragment() {
 
     private fun displayMemoryFragments(data: MemoryGroupWithMedia) {
         val binding = _binding ?: return
-        viewModel.fragmentItems = data.fragments.sortedWith { a, b ->
-            when {
-                a.order != null && b.order != null -> a.order.compareTo(b.order)
-                a.order != null -> -1
-                b.order != null -> 1
-                else -> {
-                    val dateA = a.startDate
-                    val dateB = b.startDate
-                    when {
-                        dateA != null && dateB != null -> dateA.compareTo(dateB)
-                        dateA != null -> -1
-                        dateB != null -> 1
-                        else -> 0
-                    }
-                }
-            }
-        }
+        viewModel.fragmentItems = data.fragments.sortedWith(MemoryFragmentEntity.DISPLAY_ORDER)
 
         if (viewModel.fragmentItems.isEmpty()) {
             binding.fragmentsSection.visibility = View.GONE

@@ -8,10 +8,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.listitem.ListItemViewHolder
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryFragmentBinding
-import com.szabolcshorvath.memorymap.util.ColorUtil
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.Coordinates
 
 class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Unit) : RecyclerView.Adapter<MemoryFragmentAdapter.MemoryFragmentViewHolder>() {
@@ -70,13 +66,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
             binding.tvTime.visibility = View.GONE
         }
 
-        binding.colorIndicator.setBackgroundColor(
-            ColorUtil.hsvToColor(
-                fragment.markerHue ?: DEFAULT_MARKER_HUE,
-                fragment.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                fragment.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-            )
-        )
+        binding.colorIndicator.setBackgroundColor(fragment.markerColor())
 
         binding.btShowOnMap.setOnClickListener {
             onShowOnMapClick(fragment)

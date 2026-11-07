@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.util
 
 import android.content.Context
 import android.provider.Settings
+import com.szabolcshorvath.memorymap.data.MemoryFragment
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -92,6 +93,39 @@ class PhoneDateFormatsTest {
         assertEquals("Nov 7, 2026", DateTimeFormatterUtil.date(lateInUtc.withZoneSameInstant(ZoneId.of("Asia/Tokyo"))))
         assertEquals("Nov 7, 2026", DateTimeFormatterUtil.date(lateInUtc.withZoneSameInstant(ZoneOffset.ofHours(9))))
         assertEquals("Nov 6, 2026", DateTimeFormatterUtil.date(lateInUtc))
+    }
+
+    @Test
+    fun `a date range shows a shared day once, and times unless it is all day`() {
+        useClock("24")
+        val evening = afternoon.withHour(19)
+        val twoDaysLater = afternoon.plusDays(2)
+
+        assertEquals("Nov 6, 2026 15:05 - 19:05", DateTimeFormatterUtil.dateRange(context, afternoon, evening, isAllDay = false))
+        assertEquals(
+            "Nov 6, 2026 15:05 - Nov 8, 2026 15:05",
+            DateTimeFormatterUtil.dateRange(context, afternoon, twoDaysLater, isAllDay = false)
+        )
+        assertEquals("Nov 6, 2026", DateTimeFormatterUtil.dateRange(context, afternoon, evening, isAllDay = true))
+        assertEquals("Nov 6, 2026 - Nov 8, 2026", DateTimeFormatterUtil.dateRange(context, afternoon, twoDaysLater, isAllDay = true))
+    }
+
+    @Test
+    fun `memories and fragments show their dates as a range, and a fragment without dates shows none`() {
+        val fragment = MemoryFragment(
+            groupId = 1,
+            latitude = 0.0,
+            longitude = 0.0,
+            placeName = null,
+            address = null,
+            startDate = afternoon,
+            endDate = afternoon.plusDays(2),
+            isAllDay = true
+        )
+
+        assertEquals("Nov 6, 2026 - Nov 8, 2026", fragment.getFormattedDate(context))
+        assertEquals(null, fragment.copy(startDate = null).getFormattedDate(context))
+        assertEquals(null, fragment.copy(endDate = null).getFormattedDate(context))
     }
 
     @Test

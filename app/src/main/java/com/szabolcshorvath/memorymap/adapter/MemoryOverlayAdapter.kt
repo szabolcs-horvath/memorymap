@@ -8,10 +8,6 @@ import androidx.recyclerview.widget.ListAdapter
 import com.google.android.material.listitem.ListItemViewHolder
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.databinding.ItemMemoryOverlayBinding
-import com.szabolcshorvath.memorymap.util.ColorUtil
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 
 class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
     ListAdapter<Markerable, MemoryOverlayAdapter.MemoryOverlayViewHolder>(Markerable.MarkerableDiffCallback()) {
@@ -65,12 +61,6 @@ class MemoryOverlayAdapter(private val onDetailsClick: (Int) -> Unit) :
     }
 
     private fun bindColor(binding: ItemMemoryOverlayBinding, item: Markerable) {
-        binding.colorIndicator.backgroundTintList = ColorStateList.valueOf(
-            ColorUtil.hsvToColor(
-                item.markerHue ?: DEFAULT_MARKER_HUE,
-                item.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                item.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-            )
-        )
+        binding.colorIndicator.backgroundTintList = ColorStateList.valueOf(item.markerColor())
     }
 }
