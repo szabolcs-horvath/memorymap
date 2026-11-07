@@ -299,7 +299,8 @@ object LocalMediaUtil {
         val candidates = uris.filterNotTo(HashSet()) { it in referenced }
         val resolver = context.contentResolver
         var released = 0
-        for (permission in resolver.persistedUriPermissions) {
+        // A copy: releasing a grant must not change the list being walked (Android returns a new list, Robolectric its own).
+        for (permission in resolver.persistedUriPermissions.toList()) {
             if (permission.uri.toString() !in candidates) continue
             try {
                 resolver.releasePersistableUriPermission(permission.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
