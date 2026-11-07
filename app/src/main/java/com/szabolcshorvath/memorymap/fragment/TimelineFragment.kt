@@ -97,13 +97,9 @@ class TimelineFragment : Fragment() {
         binding.rvTimeline.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-                val layoutManager = recyclerView.layoutManager as? LinearLayoutManager ?: return
-                val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
-                if (firstVisibleItemPosition > 0) {
-                    binding.fabTop.show()
-                } else {
-                    binding.fabTop.hide()
-                }
+                // A jump to a memory (Show on Timeline) is reported during layout. Shown there for the first time, the
+                // button can be laid out before it is measured, at 0 × 0, and stay invisible, so update it afterwards.
+                recyclerView.post { updateScrollToTopButton() }
             }
         })
 
@@ -112,6 +108,13 @@ class TimelineFragment : Fragment() {
             binding.rvTimeline.smoothScrollToPosition(0)
             binding.appBar.setExpanded(true, true)
         }
+    }
+
+    /** Shows the Scroll to top button while the list's first row is scrolled out of view. */
+    private fun updateScrollToTopButton() {
+        val binding = _binding ?: return
+        val layoutManager = binding.rvTimeline.layoutManager as? LinearLayoutManager ?: return
+        if (layoutManager.findFirstVisibleItemPosition() > 0) binding.fabTop.show() else binding.fabTop.hide()
     }
 
     private fun setupRecyclerView() {
