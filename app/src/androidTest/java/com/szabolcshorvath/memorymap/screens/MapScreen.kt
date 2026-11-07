@@ -1,7 +1,10 @@
 package com.szabolcshorvath.memorymap.screens
 
 import android.graphics.Point
+import android.graphics.Rect
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.test.uiautomator.StaleObjectException
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -56,17 +59,67 @@ object MapScreen : TabScreen {
         Ui.device.waitForIdle()
     }
 
-    /** Whether a cluster ("4 memories nearby") is on the map. */
-    fun isClusterShown(timeoutMs: Long = 0): Boolean = Ui.isShown(timeoutMs) { isCluster() }
-
     fun assertClusterShown() = Ui.assertShown("A cluster of memories", Ui.SLOW_TIMEOUT_MS) { isCluster() }
 
-    /** Taps a cluster, which zooms the map in on it, and waits until the map shows other markers. */
-    fun tapCluster() {
-        val before = mapMarkerTitles()
-        Ui.find { isCluster() }.click()
-        Ui.device.waitForIdle()
-        Ui.waitUntil(CAMERA_MOVE_TIMEOUT_MS) { mapMarkerTitles() != before }
+    /**
+     * Taps a cluster ("4 memories nearby") if the map shows one once it has stopped moving, and returns whether it
+     * did. The tap zooms the map in on the cluster; this then waits until the markers have changed and stopped
+     * moving again. A cluster seen while the map still zooms in can split up before it is tapped, so the map has
+     * to settle before it is looked for.
+     */
+    fun tapClusterIfShown(): Boolean {
+        var tapped: Boolean? = null
+        var attempts = 0
+        while (tapped == null && attempts++ < CLUSTER_TAP_ATTEMPTS) tapped = tapSettledCluster()
+        return tapped == true
+    }
+
+    /**
+     * Taps a cluster once the map has settled: true if it did, false if the map shows none, and null if the cluster
+     * went away while being tapped (the map was still changing after all, so it should look again).
+     */
+    private fun tapSettledCluster(): Boolean? {
+        val before = awaitMarkersSettled()
+        val cluster = Ui.findOrNull(timeoutMs = 0) { isCluster() } ?: return false
+        val tapped = try {
+            cluster.click()
+            true
+        } catch (_: StaleObjectException) {
+            null
+        }
+        if (tapped == true) {
+            Ui.device.waitForIdle()
+            Ui.waitUntil(CAMERA_MOVE_TIMEOUT_MS) { mapMarkers() != before }
+            awaitMarkersSettled()
+        }
+        return tapped
+    }
+
+    /**
+     * Waits until the map's markers (their descriptions and places on screen) have stayed the same for
+     * [MARKERS_STILL_MS], and returns them. The camera's zoom and the clustering after it both change them.
+     */
+    private fun awaitMarkersSettled(): List<Pair<String, Rect>>? {
+        var last = mapMarkers()
+        var since = SystemClock.uptimeMillis()
+        Ui.waitUntil(MARKERS_SETTLE_TIMEOUT_MS) {
+            val now = mapMarkers()
+            if (now == null || now != last) {
+                last = now
+                since = SystemClock.uptimeMillis()
+            }
+            SystemClock.uptimeMillis() - since >= MARKERS_STILL_MS
+        }
+        return last
+    }
+
+    /** The map's markers as description and place on screen, or null when one went away while being read. */
+    private fun mapMarkers(): List<Pair<String, Rect>>? = try {
+        Ui.findOrNull(timeoutMs = 0) { hasDescription(GOOGLE_MAP) }?.children.orEmpty().mapNotNull { marker ->
+            marker.contentDescription?.let { it to marker.visibleBounds }
+        }
+    } catch (_: StaleObjectException) {
+        null
     }
 
     /** No markers or clusters are on the map. */
@@ -148,4 +201,7 @@ object MapScreen : TabScreen {
     private const val EMPTY_SPOT_DIVISOR = 10
     private const val CHART_GRID = 12
     private const val CAMERA_MOVE_TIMEOUT_MS = 3_000L
+    private const val MARKERS_SETTLE_TIMEOUT_MS = 10_000L
+    private const val MARKERS_STILL_MS = 1_500L
+    private const val CLUSTER_TAP_ATTEMPTS = 3
 }

@@ -109,8 +109,7 @@ class MapTest {
         MapScreen.assertClusterShown()
 
         var taps = 0
-        while (MapScreen.isClusterShown(timeoutMs = CLUSTER_WAIT_MS) && taps < MAX_CLUSTER_TAPS) {
-            MapScreen.tapCluster()
+        while (taps < MAX_CLUSTER_TAPS && MapScreen.tapClusterIfShown()) {
             taps++
         }
 
@@ -300,6 +299,5 @@ class MapTest {
         const val NEARBY_STEP_DEGREES = 0.0005 // About 55 metres.
         const val SPREAD_STEP_DEGREES = 0.27 // About 30 km.
         const val MAX_CLUSTER_TAPS = 12
-        const val CLUSTER_WAIT_MS = 2_000L
     }
 }
