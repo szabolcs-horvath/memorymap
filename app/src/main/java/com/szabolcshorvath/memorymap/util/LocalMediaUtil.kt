@@ -89,7 +89,11 @@ object LocalMediaUtil {
         return storedSize <= 0 || actual.size <= 0 || storedSize == actual.size || storedDateTaken > 0 && storedDateTaken == actual.dateTaken
     }
 
-    private fun queryMetadata(context: Context, uri: Uri): MediaMetadata? = try {
+    /**
+     * The size and date taken the provider reports for [uri] (0 for one it doesn't), or null when it can't be read.
+     * Does a content resolver call: not on the main thread.
+     */
+    fun queryMetadata(context: Context, uri: Uri): MediaMetadata? = try {
         context.contentResolver.query(uri, METADATA_PROJECTION, null, null, null)?.use { c ->
             if (!c.moveToFirst()) return@use null
             val sizeCol = c.getColumnIndex(MediaStore.MediaColumns.SIZE)

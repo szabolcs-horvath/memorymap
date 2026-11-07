@@ -1,9 +1,12 @@
 package com.szabolcshorvath.memorymap.data
 
 import android.content.Context
+import androidx.annotation.ColorInt
 import androidx.recyclerview.widget.DiffUtil
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
+import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.ZonedDateTime
 
 interface Markerable {
@@ -20,8 +23,20 @@ interface Markerable {
     val markerSaturation: Float?
     val markerBrightness: Float?
 
-    /** The date or date range, with times unless it is all-day, as the phone shows dates and times. */
-    fun getFormattedDate(context: Context): String?
+    /** The date or date range, with times unless it is all-day, as the phone shows dates and times. Null without dates. */
+    fun getFormattedDate(context: Context): String? {
+        val start = startDate
+        val end = endDate
+        return if (start != null && end != null) DateTimeFormatterUtil.dateRange(context, start, end, isAllDay) else null
+    }
+
+    /** The marker's colour, with the default for any part of it that isn't set. */
+    @ColorInt
+    fun markerColor(): Int = ColorUtil.hsvToColor(
+        markerHue ?: ColorUtil.DEFAULT_MARKER_HUE,
+        markerSaturation ?: ColorUtil.DEFAULT_MARKER_SATURATION,
+        markerBrightness ?: ColorUtil.DEFAULT_MARKER_BRIGHTNESS
+    )
 
     /**
      * A fragment as the map shows it: under its memory's [title]. Room's objects are shared with every screen that

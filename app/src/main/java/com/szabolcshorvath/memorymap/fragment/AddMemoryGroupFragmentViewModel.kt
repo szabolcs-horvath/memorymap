@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.fragment
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.VisibleForTesting
@@ -300,14 +299,14 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
 
         selectedMedia.clear()
         selectedMedia.addAll(
-            data.mediaItems.sortedWith(MediaItemComparator()).map {
+            data.mediaItems.sortedWith(MediaItem.DISPLAY_ORDER).map {
                 AddMemoryGroupFragment.SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
             }
         )
 
         fragments.clear()
         fragments.addAll(
-            data.fragments.sortedWith(MemoryFragmentComparator()).map {
+            data.fragments.sortedWith(MemoryFragment.DISPLAY_ORDER).map {
                 MemoryFragmentEditAdapter.FragmentEditState(
                     id = it.id,
                     lat = it.latitude,
@@ -452,25 +451,12 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
             var date = selected.dateTaken
 
             if (size == 0L) {
-                try {
-                    context.contentResolver.query(
-                        uri,
-                        arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN),
-                        null,
-                        null,
-                        null
-                    )?.use { cursor ->
-                        if (cursor.moveToFirst()) {
-                            val sizeCol = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-                            val dateCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
-                            if (sizeCol != -1) size = cursor.getLong(sizeCol)
-                            if (dateCol != -1) date = cursor.getLong(dateCol)
-                        }
-                    }
-                } catch (e: SecurityException) {
-                    Log.e("AddMemoryVM", "Error querying media store info for $uri", e)
-                } catch (e: java.io.IOException) {
-                    Log.e("AddMemoryVM", "Error querying media store info for $uri", e)
+                val metadata = LocalMediaUtil.queryMetadata(context, uri)
+                if (metadata != null) {
+                    size = metadata.size
+                    date = metadata.dateTaken
+                } else {
+                    Log.w("AddMemoryVM", "Could not read the size and date of $uri")
                 }
             }
 
@@ -543,38 +529,5 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         const val FRAGMENTS_EXPANDED = "fragments_expanded"
         const val COLOR_EXPANDED = "color_expanded"
         const val DATE_EXPANDED = "date_expanded"
-    }
-}
-
-private class MediaItemComparator : Comparator<MediaItem> {
-    override fun compare(a: MediaItem, b: MediaItem): Int {
-        // Sort media items based on order or dateTaken
-        return when {
-            a.order != null && b.order != null -> a.order.compareTo(b.order)
-            a.order != null -> -1
-            b.order != null -> 1
-            else -> b.dateTaken.compareTo(a.dateTaken)
-        }
-    }
-}
-
-private class MemoryFragmentComparator : Comparator<MemoryFragment> {
-    override fun compare(a: MemoryFragment, b: MemoryFragment): Int {
-        // Sort fragments based on order or startDate
-        return when {
-            a.order != null && b.order != null -> a.order.compareTo(b.order)
-            a.order != null -> -1
-            b.order != null -> 1
-            else -> {
-                val dateA = a.startDate
-                val dateB = b.startDate
-                when {
-                    dateA != null && dateB != null -> dateA.compareTo(dateB)
-                    dateA != null -> -1
-                    dateB != null -> 1
-                    else -> 0
-                }
-            }
-        }
     }
 }

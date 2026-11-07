@@ -13,10 +13,6 @@ import com.google.android.material.listitem.ListItemViewHolder
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineDateSeparatorBinding
 import com.szabolcshorvath.memorymap.databinding.ItemTimelineMemoryBinding
-import com.szabolcshorvath.memorymap.util.ColorUtil
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.LocalDate
 
@@ -107,13 +103,7 @@ class TimelineAdapter(private val onMemoryClick: (MemoryGroup) -> Unit) :
 
             binding.tvMemoryDate.text = memoryGroup.getFormattedDate(binding.root.context)
 
-            binding.colorIndicator.setBackgroundColor(
-                ColorUtil.hsvToColor(
-                    memoryGroup.markerHue ?: DEFAULT_MARKER_HUE,
-                    memoryGroup.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    memoryGroup.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
-            )
+            binding.colorIndicator.setBackgroundColor(memoryGroup.markerColor())
 
             binding.root.setOnClickListener { onMemoryClick(memoryGroup) }
         }

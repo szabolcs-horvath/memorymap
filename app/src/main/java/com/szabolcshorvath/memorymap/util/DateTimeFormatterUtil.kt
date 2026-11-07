@@ -37,6 +37,21 @@ object DateTimeFormatterUtil {
     fun dateTime(context: Context, time: ZonedDateTime, withSeconds: Boolean = false): String =
         format(DATE_SKELETON + clockSkeleton(is24HourClock(context), withSeconds), time)
 
+    /**
+     * A memory's or fragment's dates: the days, with the times unless it is [isAllDay], and a day only once when
+     * both ends fall on it ("Nov 6, 2026 3:05 PM - 5:00 PM", "Nov 6, 2026 - Nov 8, 2026").
+     */
+    fun dateRange(context: Context, start: ZonedDateTime, end: ZonedDateTime, isAllDay: Boolean): String {
+        val startDay = date(start)
+        val endDay = date(end)
+        return when {
+            isAllDay && startDay == endDay -> startDay
+            isAllDay -> "$startDay - $endDay"
+            startDay == endDay -> "$startDay ${time(context, start)} - ${time(context, end)}"
+            else -> "$startDay ${time(context, start)} - $endDay ${time(context, end)}"
+        }
+    }
+
     /** The day on one line and the time on the next, for a small tile ("Nov 6, 2026" / "3:05 PM"). */
     fun twoLineDateTime(context: Context, epochMillis: Long): String {
         val time = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())

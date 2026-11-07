@@ -42,10 +42,6 @@ import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
-import com.szabolcshorvath.memorymap.util.ColorUtil
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
-import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
@@ -580,13 +576,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val binding = _binding ?: return
         val totalCount = filteredItems.size.toFloat()
         if (totalCount > 0) {
-            val colorStats = filteredItems.groupBy {
-                ColorUtil.hsvToColor(
-                    it.markerHue ?: DEFAULT_MARKER_HUE,
-                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
-            }.mapValues { it.value.size }.toSortedMap()
+            val colorStats = filteredItems.groupBy { it.markerColor() }.mapValues { it.value.size }.toSortedMap()
 
             val sliceList = colorStats.map { (color, count) ->
                 Slice(count / totalCount, color, label = count.toString())
@@ -679,21 +669,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         ) {
             val representative = cluster.items.first()
             if (cluster.items.size > 1) {
-                val colors = cluster.items.map {
-                    ColorUtil.hsvToColor(
-                        it.markerHue ?: DEFAULT_MARKER_HUE,
-                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                    )
-                }.sorted()
+                val colors = cluster.items.map { it.markerColor() }.sorted()
                 advancedMarkerOptions.icon(MarkerGenerator.multiColorBitmapPinIcon(colors, cluster.items.size, resources.displayMetrics.density))
                 advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             } else {
-                val color = ColorUtil.hsvToColor(
-                    representative.markerHue ?: DEFAULT_MARKER_HUE,
-                    representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
+                val color = representative.markerColor()
                 advancedMarkerOptions.icon(MarkerGenerator.singleColorPinConfigIcon(color))
                 advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             }
@@ -706,21 +686,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         ) {
             val representative = cluster.items.first()
             if (cluster.items.size > 1) {
-                val colors = cluster.items.map {
-                    ColorUtil.hsvToColor(
-                        it.markerHue ?: DEFAULT_MARKER_HUE,
-                        it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                        it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                    )
-                }.sorted()
+                val colors = cluster.items.map { it.markerColor() }.sorted()
                 marker.setIcon(MarkerGenerator.multiColorBitmapPinIcon(colors, cluster.items.size, resources.displayMetrics.density))
                 marker.setAnchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             } else {
-                val color = ColorUtil.hsvToColor(
-                    representative.markerHue ?: DEFAULT_MARKER_HUE,
-                    representative.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    representative.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
+                val color = representative.markerColor()
                 marker.setIcon(MarkerGenerator.singleColorPinConfigIcon(color))
                 marker.setAnchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             }
@@ -732,13 +702,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             advancedMarkerOptions: AdvancedMarkerOptions
         ) {
             val allItems = cluster.items.flatMap { it.items }
-            val colors = allItems.map {
-                ColorUtil.hsvToColor(
-                    it.markerHue ?: DEFAULT_MARKER_HUE,
-                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
-            }.sorted()
+            val colors = allItems.map { it.markerColor() }.sorted()
 
             advancedMarkerOptions.icon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
             advancedMarkerOptions.anchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
@@ -751,13 +715,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             marker: AdvancedMarker
         ) {
             val allItems = cluster.items.flatMap { it.items }
-            val colors = allItems.map {
-                ColorUtil.hsvToColor(
-                    it.markerHue ?: DEFAULT_MARKER_HUE,
-                    it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
-                    it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-                )
-            }.sorted()
+            val colors = allItems.map { it.markerColor() }.sorted()
 
             marker.setIcon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
             marker.setAnchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)

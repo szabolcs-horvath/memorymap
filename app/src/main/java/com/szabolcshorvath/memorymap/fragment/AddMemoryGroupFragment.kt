@@ -1,12 +1,10 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.animation.ValueAnimator
-import android.content.ContentResolver
 import android.content.Context
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -43,6 +41,7 @@ import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
+import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.findTimePicker
 import com.szabolcshorvath.memorymap.util.onPhonesClock
 import com.szabolcshorvath.memorymap.util.reattachDatePicker
@@ -102,7 +101,7 @@ class AddMemoryGroupFragment : Fragment() {
                         }
                     }
                     val deviceId = knownDeviceId ?: InstallationIdentifier.getInstallationIdentifier(context)
-                    uris.map { uri -> readPickedMedia(contentResolver, uri, deviceId) }
+                    uris.map { uri -> readPickedMedia(context, uri, deviceId) }
                 }
                 viewModel.onMediaPicked(uris.map { it.toString() })
                 val newItems = pickedItems.filter { picked -> viewModel.selectedMedia.none { it.uri == picked.uri } }
@@ -113,22 +112,12 @@ class AddMemoryGroupFragment : Fragment() {
         }
 
     /** Reads the type, size and date taken of a picked item. Does content resolver calls: not on the main thread. */
-    private fun readPickedMedia(contentResolver: ContentResolver, uri: Uri, deviceId: String): SelectedMedia {
-        val type = contentResolver.getType(uri)
+    private fun readPickedMedia(context: Context, uri: Uri, deviceId: String): SelectedMedia {
+        val type = context.contentResolver.getType(uri)
         val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-        val projection = arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN)
-        val (size, date) = try {
-            contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-                if (!cursor.moveToFirst()) return@use null
-                val sizeCol = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
-                val dateCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
-                (if (sizeCol != -1) cursor.getLong(sizeCol) else 0L) to (if (dateCol != -1) cursor.getLong(dateCol) else 0L)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error querying picked media info", e)
-            null
-        } ?: (0L to 0L)
-        return SelectedMedia(uri, mediaType, deviceId, size, date)
+        val metadata = LocalMediaUtil.queryMetadata(context, uri)
+        if (metadata == null) Log.w(TAG, "Could not read the size and date of picked media $uri")
+        return SelectedMedia(uri, mediaType, deviceId, metadata?.size ?: 0L, metadata?.dateTaken ?: 0L)
     }
 
     interface AddMemoryGroupListener {
