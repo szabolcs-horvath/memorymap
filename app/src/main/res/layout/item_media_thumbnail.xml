@@ -20,7 +20,7 @@
         android:id="@+id/videoIcon"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:src="@android:drawable/ic_media_play"
+        android:src="@drawable/ic_play_arrow"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/thumbnailImage"
         app:layout_constraintEnd_toEndOf="@+id/thumbnailImage"
@@ -46,7 +46,7 @@
             android:id="@+id/errorIcon"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@android:drawable/ic_dialog_alert"
+            android:src="@drawable/ic_warning"
             app:tint="@android:color/holo_red_light" />
 
         <TextView

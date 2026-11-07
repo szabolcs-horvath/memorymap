@@ -184,7 +184,7 @@ class MediaPagerAdapter : ListAdapter<MediaItem, MediaPagerAdapter.MediaViewHold
 
         /** Shows "Pause" while the video plays and "Play" while it doesn't, as an icon with a matching description. */
         private fun showPlayButton(isPlaying: Boolean) {
-            val icon = if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+            val icon = if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow
             binding.btnPlayPause.setIconResource(icon)
             binding.btnPlayPause.contentDescription =
                 binding.root.context.getString(if (isPlaying) R.string.pause_video else R.string.play_video)

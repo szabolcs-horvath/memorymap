@@ -531,7 +531,7 @@
                                 android:gravity="start|center_vertical"
                                 android:paddingHorizontal="16dp"
                                 android:text="Add a Memory Fragment"
-                                app:icon="@android:drawable/ic_input_add" />
+                                app:icon="@drawable/ic_add" />
 
                             <androidx.recyclerview.widget.RecyclerView
                                 android:id="@+id/rv_fragments"

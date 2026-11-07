@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bottom bar icon: filled for the selected tab, outlined for the others (Material 3). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_settings_filled" android:state_checked="true" />
+    <item android:drawable="@drawable/ic_settings" />
+</selector>

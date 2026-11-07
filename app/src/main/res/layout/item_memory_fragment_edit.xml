@@ -39,7 +39,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:contentDescription="Remove fragment"
-                    app:icon="@android:drawable/ic_menu_delete"
+                    app:icon="@drawable/ic_delete"
                     app:iconGravity="textStart"
                     app:iconSize="24dp"
                     app:iconTint="?attr/colorError" />
