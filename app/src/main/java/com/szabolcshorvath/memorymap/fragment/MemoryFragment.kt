@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MediaAdapter
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
@@ -325,7 +326,7 @@ class MemoryFragment : Fragment() {
 
         val locationString = if (!group.placeName.isNullOrEmpty()) {
             if (!group.address.isNullOrEmpty()) {
-                "${group.placeName}\n${group.address}"
+                getString(R.string.place_and_address, group.placeName, group.address)
             } else {
                 group.placeName
             }
@@ -375,8 +376,7 @@ class MemoryFragment : Fragment() {
         mediaAdapter.updateMissing(missingIds)
         binding.cardMediaWarning.visibility = if (hasMissingMedia) View.VISIBLE else View.GONE
         if (hasMissingMedia) {
-            binding.tvMediaWarningText.text =
-                "Some media items could not be loaded. They may have been deleted or are from a different device."
+            binding.tvMediaWarningText.text = getString(R.string.media_could_not_load)
         }
         // A tile that can't be loaded shows the photo's stored thumbnail, if it has one. Also when the check above
         // doesn't know yet: a photo deleted from the gallery while the app runs fails only when it loads.
@@ -390,10 +390,10 @@ class MemoryFragment : Fragment() {
         ConfirmDialog.show(
             childFragmentManager,
             DELETE_REQUEST,
-            title = "Delete Memory",
-            message = "Are you sure you want to delete this memory?",
-            confirm = "Delete",
-            cancel = "Cancel"
+            title = getString(R.string.delete_memory),
+            message = getString(R.string.delete_memory_message),
+            confirm = getString(R.string.delete),
+            cancel = getString(R.string.cancel)
         )
     }
 

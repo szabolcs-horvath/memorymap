@@ -40,7 +40,7 @@
                     style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:contentDescription="Edit Memory"
+                    android:contentDescription="@string/edit_memory"
                     app:icon="@drawable/ic_edit"
                     app:iconGravity="textStart"
                     app:iconSize="24dp"
@@ -51,7 +51,7 @@
                     style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:contentDescription="Delete Memory"
+                    android:contentDescription="@string/delete_memory"
                     app:icon="@drawable/ic_delete"
                     app:iconGravity="textStart"
                     app:iconSize="24dp"
@@ -101,7 +101,7 @@
                     android:minWidth="0dp"
                     android:minHeight="0dp"
                     android:padding="0dp"
-                    android:text="Show on Timeline" />
+                    android:text="@string/show_on_timeline" />
             </LinearLayout>
 
             <LinearLayout
@@ -138,7 +138,7 @@
                     android:minWidth="0dp"
                     android:minHeight="0dp"
                     android:padding="0dp"
-                    android:text="Show on Map" />
+                    android:text="@string/show_on_map" />
             </LinearLayout>
 
             <!-- Memory Fragments Section -->
@@ -175,7 +175,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Memory Fragments"
+                            android:text="@string/memory_fragments"
                             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                         <com.google.android.material.imageview.ShapeableImageView
@@ -216,7 +216,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:text="Media"
+                android:text="@string/media"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="?attr/colorOnSurface" />
 
@@ -243,7 +243,7 @@
                         android:id="@+id/tv_mediaWarningText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Some media items could not be loaded. They may have been deleted or are from a different device."
+                        android:text="@string/media_could_not_load"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="#E65100" />
 
@@ -259,7 +259,7 @@
                             style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Re-link Media Files"
+                            android:text="@string/relink_media_files"
                             android:textColor="#E65100"
                             app:strokeColor="#E65100" />
 

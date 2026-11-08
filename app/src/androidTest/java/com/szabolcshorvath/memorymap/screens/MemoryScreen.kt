@@ -233,7 +233,7 @@ object MemoryScreen {
      */
     fun assertPhotoNotLoaded() {
         Ui.assertShown("The error tile of a photo that could not be loaded") {
-            hasId("tvErrorDetails") && textAsString().orEmpty().startsWith("IMAGE")
+            hasId("tvErrorDetails") && textAsString().orEmpty().startsWith("Photo")
         }
         Ui.assertShown("The could-not-load warning") { isMediaWarning() }
     }
