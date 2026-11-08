@@ -236,12 +236,14 @@ class AddMemoryGroupFragment : Fragment() {
         binding.btClear.setOnClickListener { showClearConfirmationDialog() }
 
         binding.btSave.setOnClickListener {
-            try {
-                require(viewModel.title?.isNotBlank() ?: false) { "The title must not be blank!" }
-                require(viewModel.lat != null && viewModel.lng != null) { "The location must be specified!" }
-                require(viewModel.fragments.all { it.lat != null && it.lng != null }) { "The location must be specified for all fragments!" }
-            } catch (e: IllegalArgumentException) {
-                context.let { Toast.makeText(it, e.message, Toast.LENGTH_SHORT).show() }
+            val missing = when {
+                viewModel.title.isNullOrBlank() -> R.string.save_needs_title
+                viewModel.lat == null || viewModel.lng == null -> R.string.save_needs_location
+                viewModel.fragments.any { it.lat == null || it.lng == null } -> R.string.save_needs_fragment_locations
+                else -> null
+            }
+            if (missing != null) {
+                Toast.makeText(requireContext(), missing, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             viewModel.saveMemoryGroup(commonViewModel.getDb())
@@ -312,7 +314,7 @@ class AddMemoryGroupFragment : Fragment() {
     private fun updateMediaUI() {
         // We pass a new list instance (toList()) to ensure it detects the change.
         mediaAdapter.submitList(viewModel.selectedMedia.toList())
-        binding.tvSelectedMediaCount.text = "${viewModel.selectedMedia.size} items selected"
+        binding.tvSelectedMediaCount.text = resources.getQuantityString(R.plurals.items_selected, viewModel.selectedMedia.size, viewModel.selectedMedia.size)
     }
 
     private fun toggleDateSection() {
@@ -454,14 +456,14 @@ class AddMemoryGroupFragment : Fragment() {
         ConfirmDialog.show(
             childFragmentManager,
             CLEAR_REQUEST,
-            title = if (isEditing) "Discard Changes" else "Clear Fields",
+            title = getString(if (isEditing) R.string.discard_changes_title else R.string.clear_fields_title),
             message = if (isEditing) {
-                "Are you sure you want to discard your changes?"
+                getString(R.string.discard_changes_message)
             } else {
-                "Are you sure you want to clear all fields? This action cannot be undone."
+                getString(R.string.clear_fields_message)
             },
-            confirm = if (isEditing) "Discard" else "Clear",
-            cancel = "Cancel"
+            confirm = getString(if (isEditing) R.string.discard else R.string.clear),
+            cancel = getString(R.string.cancel)
         )
     }
 
@@ -608,7 +610,7 @@ class AddMemoryGroupFragment : Fragment() {
             if (lat != null && lng != null) {
                 locationString.append(getString(R.string.location_coordinates, Coordinates.format(requireContext(), lat, lng)))
             } else {
-                locationString.append("No location selected")
+                locationString.append(getString(R.string.no_location_selected))
             }
         }
         binding.tvLocation.text = locationString.toString()
@@ -634,7 +636,7 @@ class AddMemoryGroupFragment : Fragment() {
 
             val startStr = DateTimeFormatterUtil.date(viewModel.startDateTime)
             val endStr = DateTimeFormatterUtil.date(viewModel.endDateTime)
-            val dateRangeStr = if (startStr == endStr) startStr else "$startStr - $endStr"
+            val dateRangeStr = if (startStr == endStr) startStr else getString(R.string.date_range, startStr, endStr)
             binding.btDateRange.text = dateRangeStr
             binding.tvDateSummary.text = dateRangeStr
         } else {
@@ -654,19 +656,19 @@ class AddMemoryGroupFragment : Fragment() {
             binding.btStartTime.text = startTStr
             binding.btEndTime.text = endTStr
 
-            val startFull = "$startDStr, $startTStr"
-            val endFull = "$endDStr, $endTStr"
+            val startFull = getString(R.string.date_comma_time, startDStr, startTStr)
+            val endFull = getString(R.string.date_comma_time, endDStr, endTStr)
             binding.tvDateSummary.text = if (startDStr == endDStr) {
-                "$startDStr, $startTStr - $endTStr"
+                getString(R.string.date_comma_time_range, startDStr, startTStr, endTStr)
             } else {
-                "$startFull - $endFull"
+                getString(R.string.date_range, startFull, endFull)
             }
         }
     }
 
     private fun pickDateRange() {
         val builder = MaterialDatePicker.Builder.dateRangePicker().startingWeeksOnPhonesFirstDay()
-            .setTitleText("Select Date Range")
+            .setTitleText(R.string.select_date_range)
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
 
         // MaterialDatePicker expects UTC midnight millis
@@ -684,7 +686,7 @@ class AddMemoryGroupFragment : Fragment() {
     private fun pickDate(isStart: Boolean) {
         val current = if (isStart) viewModel.startDateTime else viewModel.endDateTime
         val builder = MaterialDatePicker.Builder.datePicker().startingWeeksOnPhonesFirstDay()
-            .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
+            .setTitleText(if (isStart) R.string.select_start_date else R.string.select_end_date)
             .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
 
         val picker = builder.build()
@@ -698,7 +700,7 @@ class AddMemoryGroupFragment : Fragment() {
             .onPhonesClock(requireContext())
             .setHour(current.hour)
             .setMinute(current.minute)
-            .setTitleText(if (isStart) "Select Start Time" else "Select End Time")
+            .setTitleText(if (isStart) R.string.select_start_time else R.string.select_end_time)
             .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
             .build()
 

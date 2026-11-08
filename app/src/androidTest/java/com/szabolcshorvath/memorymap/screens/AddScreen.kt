@@ -6,6 +6,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.textAsString
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.testing.TestData.Place
 import com.szabolcshorvath.memorymap.util.Coordinates
@@ -187,10 +188,12 @@ object AddScreen : TabScreen {
     /** Taps "Add Photos/Videos", which opens the photo picker (the fake one in the tests). */
     fun addPhotos() = tap("Add Photos/Videos")
 
-    /** The form shows "[count] items selected" under its photos. */
+    /** The form shows "[count] items selected" ("1 item selected") under its photos. */
     fun assertSelectedCount(count: Int) {
-        Ui.scrollTo { hasText("$count items selected") }
-        Ui.assertShown("$count picked photos") { hasText("$count items selected") }
+        val text = InstrumentationRegistry.getInstrumentation().targetContext.resources
+            .getQuantityString(R.plurals.items_selected, count, count)
+        Ui.scrollTo { hasText(text) }
+        Ui.assertShown("$count picked photos") { hasText(text) }
     }
 
     fun removeFirstPhoto() = tap { hasDescription("Remove photo") }
