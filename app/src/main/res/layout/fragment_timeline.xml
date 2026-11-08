@@ -35,7 +35,7 @@
                 android:id="@+id/et_search"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Search memories..."
+                android:hint="@string/timeline_search"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:paddingTop="16dp"
@@ -72,7 +72,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:contentDescription="Scroll to top"
+        android:contentDescription="@string/scroll_to_top"
         android:rotation="270"
         android:visibility="gone"
         app:srcCompat="@drawable/ic_chevron_right" />
