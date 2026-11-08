@@ -32,10 +32,12 @@ subprojects {
         "detektPlugins"(rootProject.libs.detekt.formatting)
     }
 
+    // Only what CI reads: SARIF for GitHub code scanning, Markdown for the job summary. Locally, the console lists
+    // every finding. Detekt writes every report unless told not to.
     tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         reports {
-            html.required.set(true)
-            xml.required.set(true)
+            html.required.set(false)
+            xml.required.set(false)
             txt.required.set(false)
             sarif.required.set(true)
             md.required.set(true)
