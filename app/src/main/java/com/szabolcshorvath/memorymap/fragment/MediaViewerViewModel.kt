@@ -1,11 +1,16 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.szabolcshorvath.memorymap.data.CommonRepository
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MemoryRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -16,11 +21,11 @@ import kotlinx.coroutines.flow.stateIn
  * many photos the memory has; the media themselves come from the database, in the order the memory screen shows them,
  * and follow its changes (a re-link, a reorder, a removal).
  */
-class MediaViewerViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
+class MediaViewerViewModel(private val savedState: SavedStateHandle, memories: MemoryRepository) : ViewModel() {
 
     /** The memory's media, or null until they are loaded. An empty list: the memory or its media are gone. */
-    val mediaItems: StateFlow<List<MediaItem>?> = CommonRepository.getInstance(application)
-        .getGroupWithMedia(savedState.get<Int>(ARG_MEMORY_ID) ?: -1)
+    val mediaItems: StateFlow<List<MediaItem>?> = memories
+        .groupWithMediaFlow(savedState.get<Int>(ARG_MEMORY_ID) ?: -1)
         .map { group -> group?.mediaItems?.sortedWith(MediaItem.DISPLAY_ORDER).orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), null)
 
@@ -40,5 +45,9 @@ class MediaViewerViewModel(application: Application, private val savedState: Sav
         private const val CURRENT_ITEM_ID = "current_item_id"
         private const val NO_ITEM = -1
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
+
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer { MediaViewerViewModel(createSavedStateHandle(), this[APPLICATION_KEY]!!.appContainer.memories) }
+        }
     }
 }

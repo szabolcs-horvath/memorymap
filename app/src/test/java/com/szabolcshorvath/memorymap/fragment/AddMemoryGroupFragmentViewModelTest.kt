@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.fragment
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
@@ -25,7 +26,7 @@ class AddMemoryGroupFragmentViewModelTest {
     // Created on first use: the Robolectric application only exists once a test runs.
     private val viewModel by lazy { newForm() }
 
-    private fun newForm() = AddMemoryGroupFragmentViewModel(RuntimeEnvironment.getApplication(), SavedStateHandle())
+    private fun newForm() = RuntimeEnvironment.getApplication().let { AddMemoryGroupFragmentViewModel(it, SavedStateHandle(), it.appContainer.memories) }
 
     /** The URIs the form asked to release, in the background. (Grants that saved media use: `UriGrantReleaseTest`.) */
     private val released = ConcurrentLinkedQueue<String>()

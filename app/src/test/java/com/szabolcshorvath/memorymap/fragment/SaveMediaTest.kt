@@ -14,6 +14,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
@@ -45,7 +46,7 @@ class SaveMediaTest {
     private lateinit var db: MemoryMapDatabase
     private lateinit var dao: MemoryGroupDao
     private val context get() = RuntimeEnvironment.getApplication()
-    private val form by lazy { AddMemoryGroupFragmentViewModel(context, SavedStateHandle()).also { it.releaseGrants = {} } }
+    private val form by lazy { AddMemoryGroupFragmentViewModel(context, SavedStateHandle(), MemoryRepository(context, db)).also { it.releaseGrants = {} } }
 
     @BeforeEach
     fun setUp() {
@@ -159,7 +160,7 @@ class SaveMediaTest {
 
     /** Saves the form as the Save button does, and returns the saved memory. */
     private fun save(): MemoryGroupWithMedia {
-        form.saveMemoryGroup(db)
+        form.saveMemoryGroup()
         // The save runs in the background and finishes on the main thread, which the test thread stands in for.
         val deadline = System.currentTimeMillis() + SAVE_TIMEOUT_MS
         while (form.isSaving.value && System.currentTimeMillis() < deadline) {

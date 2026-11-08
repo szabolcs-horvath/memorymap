@@ -61,8 +61,8 @@ class AddMemoryGroupFragment : Fragment() {
 
     private var _binding: FragmentAddMemoryGroupBinding? = null
     private val binding get() = _binding!!
-    private val commonViewModel: CommonViewModel by activityViewModels()
-    private val viewModel: AddMemoryGroupFragmentViewModel by viewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
+    private val viewModel: AddMemoryGroupFragmentViewModel by viewModels { AddMemoryGroupFragmentViewModel.Factory }
 
     data class SelectedMedia(
         val uri: Uri,
@@ -246,7 +246,7 @@ class AddMemoryGroupFragment : Fragment() {
                 Toast.makeText(requireContext(), missing, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            viewModel.saveMemoryGroup(commonViewModel.getDb())
+            viewModel.saveMemoryGroup()
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -531,7 +531,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun loadForEditing(memoryId: Int, viewLifecycleOwner: LifecycleOwner) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val groupWithMedia = withContext(Dispatchers.IO) { commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) }
+            val groupWithMedia = viewModel.loadForEditing(memoryId)
             if (viewModel.pendingEditMemoryId != memoryId) return@launch // A newer request replaced this one.
             viewModel.pendingEditMemoryId = null
             groupWithMedia?.let(::showForEditing) // Null if the memory was deleted meanwhile: then the form stays as it is.

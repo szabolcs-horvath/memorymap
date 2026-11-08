@@ -6,9 +6,14 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.MissingMedia
@@ -28,7 +33,7 @@ import kotlinx.coroutines.withContext
  * The state of [MissingMediaSheet] for one media item that can't be re-linked. It survives a rotation; after process
  * death the sheet starts again from the item's id.
  */
-class MissingMediaSheetViewModel(application: Application) : AndroidViewModel(application) {
+class MissingMediaSheetViewModel(application: Application, private val memories: MemoryRepository) : AndroidViewModel(application) {
 
     sealed interface State {
         /** Reading the item. */
@@ -70,7 +75,6 @@ class MissingMediaSheetViewModel(application: Application) : AndroidViewModel(ap
     private var checking: Job? = null
 
     private val app get() = getApplication<Application>()
-    private val db get() = MemoryMapDatabase.getDatabase(app)
 
     /** Starts with item [itemId], once: a rotation keeps what was found. */
     fun start(itemId: Int) {
@@ -110,7 +114,7 @@ class MissingMediaSheetViewModel(application: Application) : AndroidViewModel(ap
         } ?: return@act Outcome.UNREADABLE
         val others = memoryItems.filter { it.id != item.id }
         if (others.any { it.uri == file.uri || it.mediaSignature == file.signature }) {
-            withContext(Dispatchers.IO) { LocalMediaUtil.releaseUriGrantsIfUnused(app, db.memoryGroupDao(), listOf(file.uri)) }
+            memories.releaseGrantsIfUnused(listOf(file.uri))
             return@act Outcome.ALREADY_IN_MEMORY
         }
         replace(item, file)
@@ -158,11 +162,10 @@ class MissingMediaSheetViewModel(application: Application) : AndroidViewModel(ap
     }
 
     /** Reads the item and the rest of its memory's media. Null if the item is gone. */
-    private suspend fun load(itemId: Int): MediaItem? = withContext(Dispatchers.IO) {
-        val loaded = db.mediaItemDao().getMediaItem(itemId) ?: return@withContext null
-        memoryItems = db.memoryGroupDao().getGroupWithMedia(loaded.groupId)?.mediaItems.orEmpty()
-        thumbnail = loaded.mediaSignature.takeIf { it.isNotEmpty() }
-            ?.let { db.mediaThumbnailDao().getThumbnails(listOf(it)).firstOrNull()?.jpeg }
+    private suspend fun load(itemId: Int): MediaItem? = run {
+        val loaded = memories.getMediaItem(itemId) ?: return@run null
+        memoryItems = memories.getGroupWithMedia(loaded.groupId)?.mediaItems.orEmpty()
+        thumbnail = memories.getThumbnails(listOf(loaded.mediaSignature))[loaded.mediaSignature]
         loaded
     }.also { item = it }
 
@@ -171,7 +174,14 @@ class MissingMediaSheetViewModel(application: Application) : AndroidViewModel(ap
     private suspend fun findNearby(item: MediaItem, windowMs: Long) =
         withContext(Dispatchers.IO) { NearbyMedia.find(app, item, memoryItems, windowMs) }
 
-    private companion object {
-        const val TAG = "MissingMediaSheetVM"
+    companion object {
+        private const val TAG = "MissingMediaSheetVM"
+
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY]!!
+                MissingMediaSheetViewModel(app, app.appContainer.memories)
+            }
+        }
     }
 }

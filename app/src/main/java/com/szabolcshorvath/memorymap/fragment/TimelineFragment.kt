@@ -29,7 +29,7 @@ class TimelineFragment : Fragment() {
     private lateinit var adapter: TimelineAdapter
     private var timelineListener: TimelineListener? = null
 
-    private val commonViewModel: CommonViewModel by activityViewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
     private val viewModel: TimelineFragmentViewModel by viewModels()
 
     interface TimelineListener {

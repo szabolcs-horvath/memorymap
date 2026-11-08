@@ -21,7 +21,7 @@ class MediaViewerFragment : Fragment() {
     private var _binding: FragmentMediaViewerBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: MediaViewerViewModel by viewModels()
+    private val viewModel: MediaViewerViewModel by viewModels { MediaViewerViewModel.Factory }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMediaViewerBinding.inflate(inflater, container, false)
