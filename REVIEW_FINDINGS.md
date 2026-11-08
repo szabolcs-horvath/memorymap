@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 77 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 8 open
+✅ 78 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 7 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -168,11 +168,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [TEST-2](#test-2) | Medium | Critical logic is untested |
 | ✅ | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
 
-**I18N / A11Y** · 1 of 4 fixed
+**I18N / A11Y** · 2 of 4 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
-| ⬜ | [I18N-1](#i18n-1) | Medium | All UI text is hard-coded |
+| ✅ | [I18N-1](#i18n-1) | Medium | All UI text is hard-coded |
 | ⬜ | [I18N-2](#i18n-2) | Low | RTL disabled |
 | ✅ | [A11Y-1](#a11y-1) | Medium | Missing content descriptions |
 | ⬜ | [A11Y-2](#a11y-2) | Low | Colour is the only signal |
@@ -879,10 +879,17 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## I18N / A11Y
 
-### <a id="i18n-1"></a>⬜ I18N-1 · Medium · All UI text is hard-coded
+### <a id="i18n-1"></a>✅ I18N-1 · Medium · All UI text is hard-coded
 - **Where:** `res/values/strings.xml` holds only `app_name` and `map_id`. There are about 70 literal `android:text` values in layouts, plus Kotlin literals (Toasts, dialogs, status messages, `DateFilterOption` labels, "N Memories" in `Markerable.kt:48`, which is also not pluralized).
 - **Fix:** Move the text to `strings.xml` and `plurals`. Store `DateFilterOption` by enum name (already done) and look up labels from resources.
 - **Compose migration ([ARCH-10](#arch-10)):** the about 70 literals in layouts go away with the XML. Moving them to `strings.xml` first is not wasted, since Compose reads the same resources (`stringResource`). At the latest, each migrated screen must take all its text from resources and add no new literals.
+- **Status:** Fixed (2026-11-08). Every text the app shows comes from `res/values/strings.xml`, so adding a language is a `values-xx/strings.xml` (there are no translations yet).
+  - Counts use plurals (`memories_here`, `memories_nearby`, `items_selected`, the re-link results). Text built from parts uses patterns with placeholders: date ranges, "Signed in as", coordinates and their hemisphere letters, a place above its address.
+  - Each date filter option names a string resource (`DateFilterOption.label`); the map and Settings keep the option itself, never its label, so a translated label can't break the stored default filter.
+  - Messages that helpers hand to the screens (re-link progress and results, backup and restore progress) are read from resources where they are made.
+  - The missing-photo sheet's time differences are written by ICU's `MeasureFormat` in the phone's language, as the dates are. The hue next to the colour sliders follows the phone's digits, like saturation and brightness.
+  - The texts stay the same, except: "..." became "…"; a photo that can't be shown says "Photo" or "Video" on its tile instead of the code's "IMAGE" or "VIDEO"; one picked photo reads "1 item selected"; time differences read "7 sec" and "1 hr, 5 min" instead of "7 s" and "1 h 5 min". The UI tests that read these follow.
+  - Fixed on purpose: what is stored or looked up rather than shown (the Drive folder name, backup file names, saved-state and dialog keys), the logs and the re-link diagnostics.
 
 ### <a id="i18n-2"></a>⬜ I18N-2 · Low · RTL disabled
 - **Where:** `AndroidManifest.xml:29` (`supportsRtl="false"`)
