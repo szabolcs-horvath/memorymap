@@ -539,7 +539,7 @@ class SettingsFragment : Fragment() {
         binding.sliderSaturation.thumbTintList = colorStateList
         binding.sliderBrightness.thumbTintList = colorStateList
 
-        binding.tvHueValue.text = hue.toInt().toString()
+        binding.tvHueValue.text = String.format(Locale.getDefault(), "%d", hue.toInt())
         binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", saturation)
         binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", brightness)
     }
