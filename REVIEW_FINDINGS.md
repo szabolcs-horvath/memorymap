@@ -817,7 +817,8 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Checked: the whole suite passes against it (116 tests), unchanged apart from `TimelineScreen` finding the search field by its tag. Screenshots and element bounds of both versions were compared in light and dark theme, portrait and landscape, scrolled, searching, empty, pressed and with the Scroll to top button: the same layout, colours, corners, flash, lifted search bar and keyboard behaviour; text follows Compose's type scale, a few pixels taller per line than a `TextView`.
   - Deliberate changes: the search field's placeholder uses Material 3's placeholder colour (`onSurfaceVariant`) instead of the old 38 % hint colour, about 2.3:1 contrast on the field, below the 4.5:1 text needs; and the field is Material 3's 56 dp high instead of 53.7 dp. Kept as found: the list's end sits below the screen while the search bar shows, as with the View version's `CoordinatorLayout`.
   - Found on the way: `MainActivity` had no `windowSoftInputMode`, so the keyboard resized the window only because the visible screen had a View scroll container; it is now `adjustResize` explicitly.
-  - Next: review the Timeline against Material 3 Expressive (step 3), then the same review and the move for Settings.
+  - Timeline reviewed against Material 3 Expressive (step 3), each change looked at on the emulator before it was kept: Material 3's `TopSearchBar` (the list scrolls beneath it), a segmented list of filled items with day labels instead of dividers, and a tonal Scroll to top button plus tapping the tab again. Tried and dropped: a pin icon instead of the colour strip (blander). Not adopted: the focused search bar's narrower margins, which `TopSearchBar` in Material3 1.4 shows only in its expanded search view.
+  - Next: review Settings against Material 3 Expressive, then move it.
 
 [↑ Back to index](#index)
 
