@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.screens
 
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.UiObject2
@@ -72,7 +73,7 @@ object AddScreen : TabScreen {
      */
     fun assertLocationIs(place: Place) {
         val text = locationText().orEmpty()
-        val coordinates = Coordinates.format(place.latitude, place.longitude)
+        val coordinates = Coordinates.format(InstrumentationRegistry.getInstrumentation().targetContext, place.latitude, place.longitude)
         assertTrue(
             "The location \"$text\" is not ${place.name}",
             place.name?.let { it in text } == true || coordinates in text

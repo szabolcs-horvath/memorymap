@@ -613,7 +613,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val distinctItems = items.distinctBy { it.groupId }
         val locationName = distinctItems.firstOrNull {
             it.placeName != null
-        }?.placeName ?: Coordinates.format(lat, lng)
+        }?.placeName ?: Coordinates.format(binding.root.context, lat, lng)
 
         overlayAdapter?.submitList(distinctItems) {
             val transition = TransitionSet().apply {

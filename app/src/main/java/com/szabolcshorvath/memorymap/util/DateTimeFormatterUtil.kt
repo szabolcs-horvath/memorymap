@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.util
 import android.content.Context
 import android.icu.text.DateFormat
 import android.icu.util.TimeZone
+import com.szabolcshorvath.memorymap.R
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -46,16 +47,20 @@ object DateTimeFormatterUtil {
         val endDay = date(end)
         return when {
             isAllDay && startDay == endDay -> startDay
-            isAllDay -> "$startDay - $endDay"
-            startDay == endDay -> "$startDay ${time(context, start)} - ${time(context, end)}"
-            else -> "$startDay ${time(context, start)} - $endDay ${time(context, end)}"
+            isAllDay -> context.getString(R.string.date_range, startDay, endDay)
+            startDay == endDay -> context.getString(R.string.date_with_time_range, startDay, time(context, start), time(context, end))
+            else -> context.getString(
+                R.string.date_range,
+                context.getString(R.string.date_and_time, startDay, time(context, start)),
+                context.getString(R.string.date_and_time, endDay, time(context, end))
+            )
         }
     }
 
     /** The day on one line and the time on the next, for a small tile ("Nov 6, 2026" / "3:05 PM"). */
     fun twoLineDateTime(context: Context, epochMillis: Long): String {
         val time = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
-        return "${date(time)}\n${time(context, time)}"
+        return context.getString(R.string.two_line_date_time, date(time), time(context, time))
     }
 
     /**

@@ -55,7 +55,7 @@ class MemoryFragmentAdapter(private val onShowOnMapClick: (MemoryFragment) -> Un
         binding.tvLocation.text = if (!fragment.placeName.isNullOrEmpty()) {
             fragment.placeName
         } else {
-            Coordinates.format(fragment.latitude, fragment.longitude)
+            Coordinates.format(binding.root.context, fragment.latitude, fragment.longitude)
         }
 
         val dateText = fragment.getFormattedDate(binding.root.context)

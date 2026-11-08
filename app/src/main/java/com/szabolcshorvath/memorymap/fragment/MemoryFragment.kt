@@ -332,7 +332,7 @@ class MemoryFragment : Fragment() {
         } else if (!group.address.isNullOrEmpty()) {
             group.address
         } else {
-            Coordinates.format(group.latitude, group.longitude)
+            Coordinates.format(binding.root.context, group.latitude, group.longitude)
         }
         binding.tvLocation.text = locationString
 

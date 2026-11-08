@@ -125,7 +125,7 @@ class ControlNamesTest {
         Flows.openMemory(LOST)
         MemoryScreen.openFirstPhoto()
         MissingPhotoSheet.assertShown()
-        MissingPhotoSheet.assertSuggestions("30 s later")
+        MissingPhotoSheet.assertSuggestions("30 sec later")
         names.check("missing photo sheet")
 
         names.assertAllNamed()
