@@ -364,7 +364,7 @@ class AddMemoryGroupFragment : Fragment() {
 
     private fun updateValueTexts(h: Float, s: Float, v: Float) {
         val binding = _binding ?: return
-        binding.tvHueValue.text = h.toInt().toString()
+        binding.tvHueValue.text = String.format(Locale.getDefault(), "%d", h.toInt())
         binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", s)
         binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", v)
     }

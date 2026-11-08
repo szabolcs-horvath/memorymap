@@ -338,7 +338,7 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun updateValueTexts(binding: ItemMemoryFragmentEditBinding, h: Float, s: Float, v: Float) {
-        binding.tvHueValue.text = h.toInt().toString()
+        binding.tvHueValue.text = String.format(Locale.getDefault(), "%d", h.toInt())
         binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", s)
         binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", v)
     }
