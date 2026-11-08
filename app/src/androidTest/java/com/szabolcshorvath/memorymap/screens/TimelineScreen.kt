@@ -12,7 +12,9 @@ import java.time.LocalDate
 
 /** The Timeline tab. */
 object TimelineScreen : TabScreen {
-    private const val SEARCH = "Search memories…"
+    // Compose shows a text field's placeholder ("Search memories…") as text inside the field, not as its hint, so the
+    // field is found by its id.
+    private const val SEARCH_FIELD = "et_search"
     private const val FLASH_WATCH_MS = 8_000L
     private const val CARD_SPOT_PERCENT = 90
 
@@ -60,17 +62,17 @@ object TimelineScreen : TabScreen {
     }
 
     fun search(text: String) {
-        Ui.find { hasHint(SEARCH) && isEditable }.text = text
+        Ui.find { hasId(SEARCH_FIELD) && isEditable }.text = text
         Ui.device.waitForIdle()
     }
 
     /** Taps the search field, which opens the keyboard, and types [text] in it. */
     fun typeInSearch(text: String) {
-        Ui.find { hasHint(SEARCH) && isEditable }.click()
+        Ui.find { hasId(SEARCH_FIELD) && isEditable }.click()
         search(text)
     }
 
-    fun assertSearch(text: String) = Ui.assertShown("The search \"$text\"") { hasHint(SEARCH) && hasText(text) }
+    fun assertSearch(text: String) = Ui.assertShown("The search \"$text\"") { hasId(SEARCH_FIELD) && hasText(text) }
 
     fun assertEmpty() = Ui.assertShown("The empty timeline message") { hasText("No memories yet. Add some!") }
 

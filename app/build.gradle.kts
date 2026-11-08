@@ -5,6 +5,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
@@ -53,6 +54,7 @@ kotlin {
         buildFeatures {
             buildConfig = true
             viewBinding = true
+            compose = true
         }
 
         signingConfigs {
@@ -148,6 +150,13 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.material)
     implementation(libs.pie.chart)
+
+    // Jetpack Compose (the screens moved from XML Views so far: ARCH-10)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.lifecycle.runtime.compose)
+    debugImplementation(libs.compose.ui.tooling)
 
     // Google Maps
     implementation(libs.google.places)

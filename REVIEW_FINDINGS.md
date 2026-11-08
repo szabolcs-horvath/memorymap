@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 78 fixed · 🟡 6 partly fixed · ❔ 0 to verify · ⬜ 6 open
+✅ 78 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 5 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -149,7 +149,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| ⬜ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (blocked until the whole UI is covered by UI tests) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline is moved) |
 
 **BUILD — Build, CI, tooling** · 4 of 4 fixed
 
@@ -709,6 +709,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - The ViewModels that use data take their repository in the constructor, through a `Factory` ([ARCH-6](#arch-6)). `SaveMediaTest` builds the Add form's with an in-memory database.
   - The backup triggers already had their own classes (`AutomaticBackups`, [ARCH-3](#arch-3)), as did re-linking (`MediaRelinker`, `RelinkAction`) and the location permission flow (`MyLocationAction`).
   - Left for the Compose migration, one screen at a time (step 2 of [ARCH-10](#arch-10)): immutable `StateFlow<UiState>` plus intents instead of the ViewModels' `var`s, and the `MutableList` the Add form's ViewModel shares with `MemoryFragmentEditAdapter`.
+  - Done for the Timeline (2026-11-08): `TimelineFragmentViewModel` exposes one `StateFlow<TimelineUiState>` (the search, the memories grouped by day, a pending Show on Timeline) and takes intents (`onQueryChange`, `requestScrollTo`, `onScrollHandled`).
 
 ### <a id="arch-3"></a>✅ ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
@@ -779,11 +780,11 @@ When a status changes, update the item's **Status** line, the marker in its head
   - `SIGNATURE_FIX_PLAN.md` became `docs/media-relinking.md`, trimmed to the evidence, the reasons behind the rules and the known limits; the rules themselves are in AGENTS.md.
   - The Add form highlights the preset that matches the memory's colour, and each fragment's picker its own (`ColorPresetAdapter.setSelectedColor`, `HSVPreset.hasColor`), so the highlight follows a preset tap, a slider and a memory loaded for editing. Covered by `FragmentsAndColorTest.thePresetOfTheFormsColorIsHighlightedUntilTheColorChanges`.
 
-### <a id="arch-10"></a>⬜ ARCH-10 · Medium · UI built on XML Views, not Jetpack Compose
+### <a id="arch-10"></a>🟡 ARCH-10 · Medium · UI built on XML Views, not Jetpack Compose
 - **Where:** all of `fragment/`, `adapter/`, `MainActivity.kt`, `view/MaxHeightCardView.kt` and `res/layout/`. As of `28df90b` that is about 6,000 lines of Kotlin and 2,900 lines of layout XML.
 - **What:** The UI uses XML layouts, ViewBinding, fragments and RecyclerView adapters. Views now mostly get maintenance, while Google builds new UI features for Compose first. Several rules in AGENTS.md exist only because of the View system: `_binding ?: return` and `viewLifecycleOwnerLiveData`, launchers as property initializers, the Slider listener trap, the picker tags and `setOnPicked` after rotation, and the `DiffUtil` adapters. This is about upkeep, not a bug users see.
 - **⛔ HARD PRECONDITION: do not start any part of this migration, not even a pilot screen, until the ENTIRE UI is covered by UI tests (TEST-3).** That means every screen, every user flow, and as many edge cases as possible, all passing on the current View UI. Partial coverage, "the main flows" or "the screen being migrated" is NOT enough. Until TEST-3 is done this item stays blocked, whatever the order of other work. The tests must also run unchanged against each migrated screen (see TEST-3 for how), because they are the only proof that behaviour stayed the same.
-- **Same behaviour and look, unless objectively better:** a migrated screen must behave and look the same as before. The only allowed exception is a change that is objectively better than the old behaviour or look: for example fixing a bug, an open finding (such as UX-8 or UX-13), an accessibility problem, or a mismatch with Material 3 guidance. "Easier to build in Compose" or a matter of taste does not count. When in doubt, keep the old behaviour or look and propose the change separately. Each such change must be:
+- **Same behaviour; the look follows Material 3 Expressive:** a migrated screen must behave as before (the UI tests prove it). Its look does not have to match the old View version pixel for pixel: where the Compose version is better looking or more idiomatic (Material 3 Expressive as [m3.material.io](https://m3.material.io/) describes it, Compose's own defaults, Android conventions), keep it, and don't spend time matching small differences such as a few pixels of text height or spacing. Screenshots of both versions are compared to catch regressions (something missing, a wrong colour, a broken layout), not offsets. Before a screen moves, review it against Material 3 Expressive (plan step 3), and let that review, not the old screen, decide its look. A change in behaviour is allowed only when it is objectively better: fixing a bug, an open finding (such as UX-8 or UX-13), an accessibility problem, or a mismatch with Material 3 guidance; "easier to build in Compose" does not count. Each change in behaviour, and each visible change from the review, must be:
   - deliberate, never a side effect noticed afterwards
   - named, with the reason, in the commit message
   - covered by updating the affected UI tests in the same commit, so the tests describe the new behaviour; never edit a test only to make it pass.
@@ -802,13 +803,21 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Related findings** (each has a "Compose migration" note):
   - Likely made redundant, or fixed differently, by the migration: [UX-8](#ux-8) (zoomed images), [UX-13](#ux-13) (insets), [UX-12](#ux-12) (immersive viewer), the UI parts of [ARCH-5](#arch-5) (shared colour and date components), and the preset outline in [A11Y-2](#a11y-2).
   - Part of the migration, or better done before it: [ARCH-2](#arch-2) (step 2), [A11Y-1](#a11y-1) (the UI tests rely on content descriptions), [I18N-1](#i18n-1) (the resources carry over).
-  - Same test gate, and the shell question in step 5: [ARCH-1](#arch-1), [PERF-7](#perf-7).
-- **Plan** (not started; **blocked until the precondition above is met**):
+  - Same test gate, and the shell question in step 6: [ARCH-1](#arch-1), [PERF-7](#perf-7).
+- **Plan** (in progress since 2026-11-08, the precondition met: see Status):
   1. Gate check: confirm TEST-3 is complete and the whole suite passes on the local test emulator (docs/ui-tests.md), as listed there. If anything is missing, stop and finish the tests first.
   2. Per screen: first move its ViewModel to an immutable `StateFlow<UiState>` plus intents (ARCH-2). Then replace the fragment's layout with a `ComposeView`, keeping the fragment and `MainActivity`'s tab handling. This works with or without the ARCH-1 change.
-  3. Screens, easiest first: Timeline (pilot), Settings, memory detail with pager and media viewer, Add/Edit, then the location picker and the Map.
-  4. After each screen: run the full UI test suite (not only that screen's tests), the unit tests, `detekt` and `lintDebug`, and check on a device. Compare screenshots of the screen before and after, in light and dark theme, in portrait and landscape; any difference must be an objectively better change as defined above. Delete the old layout, adapter and any dependency that is no longer used, and remove the View-only rules from AGENTS.md. One screen per commit.
-  5. Last, and only if it is worth it: replace the fragment shell with a Compose scaffold and decide then how hidden tabs stay alive (ARCH-1, PERF-7).
+  3. Right before each screen moves: review it against Material 3 Expressive. [m3.material.io](https://m3.material.io/) is the source of truth (the component's specs and guidelines: layout, colour roles, shapes, type scale, states, accessibility), together with idiomatic Android and Compose conventions. List what doesn't conform, with the M3 page for each, decide with the user which to adopt, and build the Compose version that way. The Timeline was moved before this step existed: review it too, before Settings.
+  4. Screens, easiest first: Timeline (pilot), Settings, memory detail with pager and media viewer, Add/Edit, then the location picker and the Map.
+  5. After each screen: run the full UI test suite (not only that screen's tests), the unit tests, `detekt` and `lintDebug`, and check on a device. Compare screenshots of the screen before and after, in light and dark theme, in portrait and landscape, for regressions (see the rule above). Delete the old layout, adapter and any dependency that is no longer used, and remove the View-only rules from AGENTS.md. One screen per commit.
+  6. Last, and only if it is worth it: replace the fragment shell with a Compose scaffold and decide then how hidden tabs stay alive (ARCH-1, PERF-7).
+- **Status:** In progress (2026-11-08).
+  - Gate check passed: the whole suite (116 tests) passed on master's View UI on the test emulator, none without a result.
+  - Timeline moved (pilot): `ui/timeline/TimelineContent.kt` in `TimelineFragment`'s `ComposeView`, its ViewModel on `StateFlow<TimelineUiState>` ([ARCH-2](#arch-2)). `TimelineAdapter` and the three Timeline layouts are gone. Compose came in with the BOM, Material 3 and `lifecycle-runtime-compose`; `ui/theme/MemoryMapTheme` takes the colours and corner sizes from the XML theme and uses Compose's Material 3 type scale, for the screens that follow (AGENTS.md, "Compose").
+  - Checked: the whole suite passes against it (116 tests), unchanged apart from `TimelineScreen` finding the search field by its tag. Screenshots and element bounds of both versions were compared in light and dark theme, portrait and landscape, scrolled, searching, empty, pressed and with the Scroll to top button: the same layout, colours, corners, flash, lifted search bar and keyboard behaviour; text follows Compose's type scale, a few pixels taller per line than a `TextView`.
+  - Deliberate changes: the search field's placeholder uses Material 3's placeholder colour (`onSurfaceVariant`) instead of the old 38 % hint colour, about 2.3:1 contrast on the field, below the 4.5:1 text needs; and the field is Material 3's 56 dp high instead of 53.7 dp. Kept as found: the list's end sits below the screen while the search bar shows, as with the View version's `CoordinatorLayout`.
+  - Found on the way: `MainActivity` had no `windowSoftInputMode`, so the keyboard resized the window only because the visible screen had a View scroll container; it is now `adjustResize` explicitly.
+  - Next: review the Timeline against Material 3 Expressive (step 3), then the same review and the move for Settings.
 
 [↑ Back to index](#index)
 
