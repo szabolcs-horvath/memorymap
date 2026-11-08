@@ -32,6 +32,7 @@ import org.robolectric.Shadows.shadowOf
 import tech.apter.junit.jupiter.robolectric.RobolectricExtension
 import java.io.File
 import java.time.ZonedDateTime
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * What saving the Add form does with its photos: the same photo is stored once, a memory's photos are numbered without
@@ -92,9 +93,9 @@ class SaveMediaTest {
     }
 
     @Test
-    fun `photos kept through an edit keep their signature and details, in the order the form shows`() = runBlocking {
+    fun `photos kept through an edit keep their signature and details, in the order the form shows`() {
         val id = storedMemory(stored(PICKER_1, signature = "100_aaa", order = 1), stored(PICKER_2, signature = "200_bbb", order = 2))
-        form.fillForEditing(dao.getGroupWithMedia(id)!!)
+        fillFormForEditing(id)
         form.selectedMedia.reverse()
 
         val saved = save()
@@ -111,11 +112,11 @@ class SaveMediaTest {
     }
 
     @Test
-    fun `an edit gives up the grants of the photos it removed, but not of one another memory still shows`() = runBlocking {
+    fun `an edit gives up the grants of the photos it removed, but not of one another memory still shows`() {
         val id = storedMemory(stored(PICKER_1, "100_aaa", 1), stored(PICKER_2, "200_bbb", 2), stored(PICKER_3, "300_ccc", 3))
         storedMemory(stored(PICKER_3, "300_ccc", 1))
         grant(PICKER_1, PICKER_2, PICKER_3, UNRELATED)
-        form.fillForEditing(dao.getGroupWithMedia(id)!!)
+        fillFormForEditing(id)
         form.selectedMedia.removeAll { it.uri.toString() != PICKER_1 }
 
         val saved = save()
@@ -125,11 +126,11 @@ class SaveMediaTest {
     }
 
     @Test
-    fun `two links to the same photo in one memory become one item, and the dropped link's grant is given up`() = runBlocking {
+    fun `two links to the same photo in one memory become one item, and the dropped link's grant is given up`() {
         // As after re-linking: two items of one memory may end up pointing to the same file.
         val id = storedMemory(stored(PICKER_1, "100_aaa", 1), stored(PICKER_2, "100_aaa", 2), stored(PICKER_3, "300_ccc", 3))
         grant(PICKER_1, PICKER_2, PICKER_3)
-        form.fillForEditing(dao.getGroupWithMedia(id)!!)
+        fillFormForEditing(id)
 
         val saved = save()
 
@@ -167,7 +168,7 @@ class SaveMediaTest {
         }
         shadowOf(Looper.getMainLooper()).idle()
         return runBlocking {
-            val result = withTimeout(SAVE_TIMEOUT_MS) { form.saveResult.first() }
+            val result = withTimeout(SAVE_TIMEOUT_MS.milliseconds) { form.saveResult.first() }
             check(result is AddMemoryGroupFragmentViewModel.SaveResult.Success) { "The save failed: $result" }
             dao.getGroupWithMedia(result.groupId)!!
         }
@@ -179,11 +180,14 @@ class SaveMediaTest {
 
     private fun photoFile(name: String, bytes: ByteArray): Uri = File(context.cacheDir, name).apply { writeBytes(bytes) }.toUri()
 
-    private suspend fun storedMemory(vararg media: MediaItem): Int {
+    private fun storedMemory(vararg media: MediaItem): Int = runBlocking {
         val id = dao.insertGroup(group()).toInt()
         dao.insertMediaItems(media.map { it.copy(groupId = id) })
-        return id
+        id
     }
+
+    /** Opens stored memory [id] in the form, as Edit does. */
+    private fun fillFormForEditing(id: Int) = form.fillForEditing(runBlocking { dao.getGroupWithMedia(id)!! })
 
     private fun stored(uri: String, signature: String, order: Int) = MediaItem(
         groupId = 0,
