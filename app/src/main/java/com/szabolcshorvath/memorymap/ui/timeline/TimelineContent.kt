@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -39,7 +38,6 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -64,16 +62,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -319,26 +313,26 @@ private fun MemoryList(
     }
 }
 
+/** The label above a day's group of memories, lined up with their text. */
 @Composable
 private fun DayHeader(day: TimelineDay) {
-    Row(
-        Modifier
+    Text(
+        text = DateTimeFormatterUtil.date(day.date),
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        HorizontalDivider(Modifier.weight(1f))
-        Text(
-            text = DateTimeFormatterUtil.date(day.date),
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .testTag(TAG_DAY),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        HorizontalDivider(Modifier.weight(1f))
-    }
+            .padding(start = LIST_MARGIN + ITEM_PADDING, end = LIST_MARGIN, top = 16.dp, bottom = 8.dp)
+            .testTag(TAG_DAY),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+    )
 }
+
+/** The list's side margin, and the space inside a list item before its text (Material 3's list item padding). */
+private val LIST_MARGIN = 16.dp
+private val ITEM_PADDING = 16.dp
+
+/** The gap between the items of one day's group (Material 3 Expressive's segmented list). */
+private val SEGMENT_GAP = 2.dp
 
 /** Where a card is among its day's cards: the outer corners of a day's group are round, the inner ones small. */
 private enum class Segment(val roundTop: Boolean, val roundBottom: Boolean) {
@@ -375,18 +369,18 @@ private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState,
         flashProgress.snapTo(0f)
         flash.end(myFlash)
     }
-    val cardColor = flashColor(flashProgress.value, colors.surfaceBright, colors.secondaryContainer)
-    val outlineColor = colors.outlineVariant
+    // A filled item, set apart from the next one by a small gap, as Material 3 Expressive's segmented lists are.
+    val itemColor = flashColor(flashProgress.value, colors.surfaceContainer, colors.secondaryContainer)
 
     CompositionLocalProvider(LocalContentColor provides colors.onSurface) {
-        // The text keeps its padding from the card's edge, not from the colour strip, as in the View version.
         Box(
             Modifier
-                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .padding(horizontal = LIST_MARGIN)
+                .padding(top = if (segment.roundTop) 0.dp else SEGMENT_GAP)
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .drawBehind { drawCard(shape, cardColor, outlineColor) }
                 .clip(shape)
+                .background(itemColor)
                 .clickable(interactionSource, ripple(), onClick = onClick)
         ) {
             Box(
@@ -404,7 +398,7 @@ private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState,
 @Composable
 private fun MemoryText(memory: MemoryGroup) {
     val colors = MaterialTheme.colorScheme
-    Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+    Column(Modifier.padding(horizontal = ITEM_PADDING, vertical = 12.dp)) {
         Text(
             text = memory.title,
             modifier = Modifier.testTag(TAG_MEMORY_TITLE),
@@ -433,16 +427,6 @@ private fun MemoryText(memory: MemoryGroup) {
             style = MaterialTheme.typography.bodySmall,
             color = colors.onSurfaceVariant,
         )
-    }
-}
-
-/** Fills the card and draws its 1 dp outline inside its edge, under the content (the colour strip covers it). */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCard(shape: Shape, fill: Color, outline: Color) {
-    drawOutline(shape.createOutline(size, layoutDirection, this), fill)
-    val stroke = 1.dp.toPx()
-    translate(stroke / 2, stroke / 2) {
-        val inner = Size(size.width - stroke, size.height - stroke)
-        drawOutline(shape.createOutline(inner, layoutDirection, this), outline, style = Stroke(stroke))
     }
 }
 
