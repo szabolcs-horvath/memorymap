@@ -142,4 +142,39 @@
     <string name="pick_location_fetching">Fetching location…</string>
     <string name="pick_location_loading">Loading details…</string>
     <string name="pick_location_selected">Selected Location</string>
+
+    <!-- Dates and places, as the app writes them. -->
+    <!-- A day and a time: "Nov 6, 2026 3:05 PM". -->
+    <string name="date_and_time">%1$s %2$s</string>
+    <!-- One day with a start and an end time: "Nov 6, 2026 3:05 PM - 5:00 PM". -->
+    <string name="date_with_time_range">%1$s %2$s - %3$s</string>
+    <!-- A date above its time, on a small tile. -->
+    <string name="two_line_date_time">%1$s\n%2$s</string>
+    <!-- A latitude or longitude with its hemisphere, then both: "47.4979° N, 19.0402° E". -->
+    <string name="latitude_north">%1$s° N</string>
+    <string name="latitude_south">%1$s° S</string>
+    <string name="longitude_east">%1$s° E</string>
+    <string name="longitude_west">%1$s° W</string>
+    <string name="coordinates">%1$s, %2$s</string>
+    <!-- Two sentences one after the other. -->
+    <string name="two_sentences">%1$s %2$s</string>
+
+    <!-- Re-linking photos to the files on this phone: progress, then the result. -->
+    <string name="relink_scanning">Scanning local media library…</string>
+    <string name="relink_progress">Re-linking photo %1$d of %2$d…</string>
+    <string name="relink_all_valid">All media items are valid</string>
+    <string name="relink_needs_access">Permission required to re-link media</string>
+    <string name="relink_none_found">No matching photos found to re-link.</string>
+    <plurals name="relink_done">
+        <item quantity="one">Media re-linking complete. Re-linked %d item.</item>
+        <item quantity="other">Media re-linking complete. Re-linked %d items.</item>
+    </plurals>
+    <plurals name="relink_done_with_edited">
+        <item quantity="one">Media re-linking complete. Re-linked %1$d item (%2$d to an edited version).</item>
+        <item quantity="other">Media re-linking complete. Re-linked %1$d items, %2$d of them to an edited version.</item>
+    </plurals>
+    <plurals name="relink_duplicates_removed">
+        <item quantity="one">Removed %d duplicate photo.</item>
+        <item quantity="other">Removed %d duplicate photos.</item>
+    </plurals>
 </resources>

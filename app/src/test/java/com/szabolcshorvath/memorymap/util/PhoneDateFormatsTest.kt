@@ -129,6 +129,16 @@ class PhoneDateFormatsTest {
     }
 
     @Test
+    fun `lengths of time are rounded down to seconds, minutes, or hours and minutes, in the phone's language`() {
+        assertEquals("0 sec", NearbyMedia.span(400, Locale.US))
+        assertEquals("7 sec", NearbyMedia.span(-7_900, Locale.US))
+        assertEquals("3 min", NearbyMedia.span(3 * 60_000L + 59_000, Locale.US))
+        assertEquals("1 hr", NearbyMedia.span(60 * 60_000L, Locale.US))
+        assertEquals("1 hr, 5 min", NearbyMedia.span(65 * 60_000L, Locale.US))
+        assertEquals("1 Std., 5 Min.", NearbyMedia.span(65 * 60_000L, Locale.GERMANY))
+    }
+
+    @Test
     fun `a day is shown as that day`() {
         assertEquals("Nov 6, 2026", DateTimeFormatterUtil.date(LocalDate.of(2026, 11, 6)))
     }

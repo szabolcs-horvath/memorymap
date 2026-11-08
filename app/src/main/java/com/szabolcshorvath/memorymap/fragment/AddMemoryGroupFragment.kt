@@ -606,7 +606,7 @@ class AddMemoryGroupFragment : Fragment() {
         if (viewModel.address != null) locationString.append(viewModel.address).append(System.lineSeparator())
         if (locationString.isEmpty()) {
             if (lat != null && lng != null) {
-                locationString.append(getString(R.string.location_coordinates, Coordinates.format(lat, lng)))
+                locationString.append(getString(R.string.location_coordinates, Coordinates.format(requireContext(), lat, lng)))
             } else {
                 locationString.append("No location selected")
             }

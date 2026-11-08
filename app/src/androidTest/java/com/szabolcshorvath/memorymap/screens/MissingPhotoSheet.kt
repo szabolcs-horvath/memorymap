@@ -29,7 +29,7 @@ object MissingPhotoSheet {
     fun assertMessage(text: String) = Ui.assertShown("The message \"$text\"") { hasId("tvMissingMessage") && hasText(text) }
 
     /**
-     * Waits until the suggestions are, from the top, the photos taken [whenTaken] ("7 s later", "3 min earlier"). The
+     * Waits until the suggestions are, from the top, the photos taken [whenTaken] ("7 sec later", "3 min earlier"). The
      * sheet looks for the photo first, which can take a while.
      */
     fun assertSuggestions(vararg whenTaken: String) {

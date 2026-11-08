@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
 import com.google.firebase.perf.trace
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil.needsRelink
@@ -153,12 +154,12 @@ object LocalMediaUtil {
             val result = when {
                 itemsNeedingFix.isEmpty() -> {
                     Log.d(TAG, "All ${mediaItems.size} media items are valid on this device.")
-                    RelinkResult(0, "All media items are valid")
+                    RelinkResult(0, context.getString(R.string.relink_all_valid))
                 }
 
                 !PermissionUtil.hasAnyMediaPermission(context) -> {
                     Log.w(TAG, "Storage permission not granted. Skipping MediaStore candidate re-linking.")
-                    RelinkResult(itemsNeedingFix.size, "Permission required to re-link media")
+                    RelinkResult(itemsNeedingFix.size, context.getString(R.string.relink_needs_access))
                 }
 
                 else -> {
@@ -177,7 +178,7 @@ object LocalMediaUtil {
         installationIdentifier: String,
         onProgress: ((String) -> Unit)?
     ): RelinkResult {
-        onProgress?.invoke("Scanning local media library...")
+        onProgress?.invoke(context.getString(R.string.relink_scanning))
         Log.d(
             TAG,
             "RE-LINK START: installationId=$installationIdentifier, " +
@@ -193,7 +194,7 @@ object LocalMediaUtil {
         val replacedUris = mutableListOf<String>()
 
         for ((index, item) in itemsNeedingFix.withIndex()) {
-            onProgress?.invoke("Re-linking photo ${index + 1} of ${itemsNeedingFix.size}...")
+            onProgress?.invoke(context.getString(R.string.relink_progress, index + 1, itemsNeedingFix.size))
 
             val link = findBySignature(item, candidatePool, sigs)?.let { Link(it.uri, item.fileSize, item.mediaSignature) }
                 ?: findEditedVersion(context, item, installationIdentifier)
@@ -233,7 +234,7 @@ object LocalMediaUtil {
         val removedDuplicates = deduplicateMediaItems(context, dao)
         stillMissing -= removedDuplicates.mapTo(HashSet()) { it.id }
 
-        return RelinkResult(stillMissing.size, relinkSummary(relinkedCount, editedCount, removedDuplicates.size))
+        return RelinkResult(stillMissing.size, relinkSummary(context, relinkedCount, editedCount, removedDuplicates.size))
     }
 
     /** The file an item is re-linked to. Its size and signature differ from the item's only for an edited version. */
@@ -267,13 +268,16 @@ object LocalMediaUtil {
         return if (metadata != null && signature != null) Link(uri.toString(), metadata.size, signature) else null
     }
 
-    private fun relinkSummary(relinkedCount: Int, editedCount: Int, duplicateCount: Int): String {
+    private fun relinkSummary(context: Context, relinkedCount: Int, editedCount: Int, duplicateCount: Int): String {
+        val resources = context.resources
         val summary = when {
-            relinkedCount == 0 -> "No matching photos found to re-link."
-            editedCount == 0 -> "Media re-linking complete. Re-linked $relinkedCount items."
-            else -> "Media re-linking complete. Re-linked $relinkedCount items, $editedCount of them to an edited version."
+            relinkedCount == 0 -> context.getString(R.string.relink_none_found)
+            editedCount == 0 -> resources.getQuantityString(R.plurals.relink_done, relinkedCount, relinkedCount)
+            else -> resources.getQuantityString(R.plurals.relink_done_with_edited, relinkedCount, relinkedCount, editedCount)
         }
-        return if (duplicateCount > 0) "$summary Removed $duplicateCount duplicate photos." else summary
+        if (duplicateCount == 0) return summary
+        val duplicates = resources.getQuantityString(R.plurals.relink_duplicates_removed, duplicateCount, duplicateCount)
+        return context.getString(R.string.two_sentences, summary, duplicates)
     }
 
     private fun findBySignature(

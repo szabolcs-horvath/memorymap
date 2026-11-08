@@ -33,14 +33,14 @@ class MissingPhotoTest {
         TestData.grantMediaAccess()
         openMissingPhoto()
 
-        MissingPhotoSheet.assertSuggestions("7 s later", "3 min earlier")
-        MissingPhotoSheet.pick("7 s later")
+        MissingPhotoSheet.assertSuggestions("7 sec later", "3 min earlier")
+        MissingPhotoSheet.pick("7 sec later")
         Dialog.assertShown(MissingPhotoSheet.USE_TITLE)
         Dialog.tap("Cancel")
         Dialog.assertGone(MissingPhotoSheet.USE_TITLE)
         MissingPhotoSheet.assertShown()
 
-        MissingPhotoSheet.pick("7 s later")
+        MissingPhotoSheet.pick("7 sec later")
         Dialog.tap("Use it")
 
         MissingPhotoSheet.assertGone()
@@ -56,7 +56,7 @@ class MissingPhotoTest {
         TestData.grantMediaAccess()
         openMissingPhoto()
 
-        MissingPhotoSheet.assertSuggestions("3 min earlier, which looks alike", "7 s later")
+        MissingPhotoSheet.assertSuggestions("3 min earlier, which looks alike", "7 sec later")
     }
 
     @Test
@@ -91,7 +91,7 @@ class MissingPhotoTest {
         MissingPhotoSheet.allowAccess()
         PermissionDialog.allowAll()
 
-        MissingPhotoSheet.assertSuggestions("7 s later")
+        MissingPhotoSheet.assertSuggestions("7 sec later")
     }
 
     @Test
@@ -146,15 +146,15 @@ class MissingPhotoTest {
         TestData.missingPhoto(TestData.memory(TRIP), taken)
         TestData.grantMediaAccess()
         openMissingPhoto()
-        MissingPhotoSheet.assertSuggestions("7 s later")
+        MissingPhotoSheet.assertSuggestions("7 sec later")
 
         Ui.rotateToLandscape()
         MissingPhotoSheet.assertShown()
         Ui.rotateToPortrait()
-        MissingPhotoSheet.assertSuggestions("7 s later")
+        MissingPhotoSheet.assertSuggestions("7 sec later")
 
         app.simulateProcessDeath()
-        MissingPhotoSheet.assertSuggestions("7 s later")
+        MissingPhotoSheet.assertSuggestions("7 sec later")
     }
 
     @Test

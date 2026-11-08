@@ -181,7 +181,7 @@ class MemoryFragmentEditAdapter(
         binding.tvLocation.text = if (!item.placeName.isNullOrEmpty()) {
             if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
         } else if (item.lat != null && item.lng != null) {
-            binding.root.context.getString(R.string.location_coordinates, Coordinates.format(item.lat, item.lng))
+            binding.root.context.getString(R.string.location_coordinates, Coordinates.format(binding.root.context, item.lat, item.lng))
         } else {
             "No location selected"
         }

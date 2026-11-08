@@ -2,12 +2,16 @@ package com.szabolcshorvath.memorymap.util
 
 import android.content.ContentUris
 import android.content.Context
+import android.icu.text.MeasureFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
+import java.util.Locale
 import kotlin.math.abs
 
 /** A photo or video on this phone, from MediaStore. Times are in milliseconds. */
@@ -65,16 +69,20 @@ internal object NearbyMedia {
             .toList()
     }
 
-    /** How long [ms] is, roughly, without a sign: "7 s", "3 min", "1 h 5 min". */
-    fun span(ms: Long): String {
+    /**
+     * How long [ms] is, roughly, without a sign, in the phone's language ([locale]) as Android's ICU library writes
+     * lengths of time: "7 sec", "3 min", "1 hr, 5 min".
+     */
+    fun span(ms: Long, locale: Locale = Locale.getDefault()): String {
         val seconds = abs(ms) / MILLIS_PER_SECOND
         val minutes = seconds / SECONDS_PER_MINUTE
         val hours = minutes / MINUTES_PER_HOUR
+        val format = MeasureFormat.getInstance(locale, MeasureFormat.FormatWidth.SHORT)
         return when {
-            minutes == 0L -> "$seconds s"
-            hours == 0L -> "$minutes min"
-            minutes % MINUTES_PER_HOUR == 0L -> "$hours h"
-            else -> "$hours h ${minutes % MINUTES_PER_HOUR} min"
+            minutes == 0L -> format.formatMeasures(Measure(seconds, MeasureUnit.SECOND))
+            hours == 0L -> format.formatMeasures(Measure(minutes, MeasureUnit.MINUTE))
+            minutes % MINUTES_PER_HOUR == 0L -> format.formatMeasures(Measure(hours, MeasureUnit.HOUR))
+            else -> format.formatMeasures(Measure(hours, MeasureUnit.HOUR), Measure(minutes % MINUTES_PER_HOUR, MeasureUnit.MINUTE))
         }
     }
 

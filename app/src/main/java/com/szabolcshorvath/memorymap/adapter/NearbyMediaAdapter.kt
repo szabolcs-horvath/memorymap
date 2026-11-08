@@ -59,7 +59,7 @@ internal class NearbyMediaAdapter(private val onPick: (NearbyFile) -> Unit) :
             override fun areContentsTheSame(oldItem: NearbyFile, newItem: NearbyFile) = oldItem == newItem
         }
 
-        /** "7 s later", "3 min earlier" or "at the same time", for a file taken [deltaMs] after the missing one. */
+        /** "7 sec later", "3 min earlier" or "at the same time", for a file taken [deltaMs] after the missing one. */
         fun whenTaken(context: Context, deltaMs: Long): String {
             return when {
                 abs(deltaMs) < MILLIS_PER_SECOND -> context.getString(R.string.nearby_same_time)

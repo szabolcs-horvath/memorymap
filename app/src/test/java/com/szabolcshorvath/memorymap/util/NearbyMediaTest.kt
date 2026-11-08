@@ -75,15 +75,6 @@ class NearbyMediaTest {
         assertEquals(nearest, NearbyMedia.rankByLooks(missing, nearest) { 0L })
     }
 
-    @Test
-    fun `spans are rounded down to seconds, minutes or hours and minutes`() {
-        assertEquals("0 s", NearbyMedia.span(400))
-        assertEquals("7 s", NearbyMedia.span(-7_900))
-        assertEquals("3 min", NearbyMedia.span(3 * 60_000L + 59_000))
-        assertEquals("1 h", NearbyMedia.span(60 * 60_000L))
-        assertEquals("1 h 5 min", NearbyMedia.span(65 * 60_000L))
-    }
-
     private fun uri(n: Int) = "content://media/external/images/media/$n"
 
     private fun file(n: Int, offset: Long) = NearbyFile(uri(n), size = 2_000_000, dateTaken = TAKEN + offset)
