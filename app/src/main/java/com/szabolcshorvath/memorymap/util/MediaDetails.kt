@@ -10,6 +10,7 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
 import android.util.Size
+import androidx.core.graphics.scale
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import java.io.ByteArrayOutputStream
@@ -101,7 +102,7 @@ object MediaDetails {
 
     /** A 64-bit difference hash of [bitmap]: its 9×8 greyscale copy, one bit per pair of neighbouring pixels in a row. */
     fun perceptualHash(bitmap: Bitmap): Long {
-        val small = Bitmap.createScaledBitmap(bitmap, HASH_WIDTH, HASH_HEIGHT, true)
+        val small = bitmap.scale(HASH_WIDTH, HASH_HEIGHT)
         val pixels = IntArray(HASH_WIDTH * HASH_HEIGHT)
         small.getPixels(pixels, 0, HASH_WIDTH, 0, 0, HASH_WIDTH, HASH_HEIGHT)
         if (small !== bitmap) small.recycle()
@@ -133,7 +134,7 @@ object MediaDetails {
     private fun encodeThumbnail(bitmap: Bitmap): ByteArray {
         val scale = THUMBNAIL_SIZE.toFloat() / max(bitmap.width, bitmap.height)
         val scaled = if (scale < 1f) {
-            Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).roundToInt().coerceAtLeast(1), (bitmap.height * scale).roundToInt().coerceAtLeast(1), true)
+            bitmap.scale((bitmap.width * scale).roundToInt().coerceAtLeast(1), (bitmap.height * scale).roundToInt().coerceAtLeast(1))
         } else {
             bitmap
         }
