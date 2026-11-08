@@ -50,9 +50,9 @@ internal object SchemaDatabases {
 
     private fun createTable(db: SQLiteDatabase, entity: JSONObject) {
         val table = entity.getString("tableName")
-        db.execSQL(entity.getString("createSql").replace("\${TABLE_NAME}", table))
+        db.execSQL(entity.getString("createSql").replace($$"${TABLE_NAME}", table))
         entity.optJSONArray("indices")?.objects()?.forEach { index ->
-            db.execSQL(index.getString("createSql").replace("\${TABLE_NAME}", table))
+            db.execSQL(index.getString("createSql").replace($$"${TABLE_NAME}", table))
         }
     }
 
