@@ -85,6 +85,23 @@ class TimelineTest {
         TimelineScreen.assertFlashesAfter(CONCERT) { MemoryScreen.showOnTimeline() }
     }
 
+    @Test
+    fun tappingTheTimelineTabAgainGoesBackToTheNewest() {
+        // The scroll back is animated: with animations off it would end at once, and an animation that gets cancelled
+        // would go unnoticed.
+        app.useAnimations()
+        addManyMemories()
+        openTimeline()
+        TimelineScreen.scrollDown()
+        TimelineScreen.scrollDown()
+        TimelineScreen.assertMemoryGone(memoryTitle(1))
+
+        BottomNav.select(Tab.TIMELINE)
+
+        TimelineScreen.assertMemoryShown(memoryTitle(1))
+        TimelineScreen.assertScrollToTopGone()
+    }
+
     /** Opens the newest memory, swipes to memory [n], and checks that Show on Timeline scrolls the list to it. */
     private fun showOnTimelineScrollsTo(n: Int) {
         addManyMemories()

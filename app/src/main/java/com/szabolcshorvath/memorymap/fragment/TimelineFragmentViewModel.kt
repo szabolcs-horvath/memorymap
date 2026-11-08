@@ -25,6 +25,8 @@ data class TimelineUiState(
     val days: List<TimelineDay>? = null,
     /** A memory to scroll to and flash once the tab is shown and the list has it (Show on Timeline). */
     val pendingScrollMemoryId: Int? = null,
+    /** The list should go back to its top (the Timeline tab tapped again while shown). */
+    val scrollToTopRequested: Boolean = false,
 )
 
 /** The memories that start on [date], in the timeline's order. */
@@ -34,10 +36,11 @@ class TimelineFragmentViewModel(memories: MemoryRepository) : ViewModel() {
 
     private val query = MutableStateFlow("")
     private val pendingScrollMemoryId = MutableStateFlow<Int?>(null)
+    private val scrollToTopRequested = MutableStateFlow(false)
 
     val uiState: StateFlow<TimelineUiState> =
-        combine(memories.allGroups, query, pendingScrollMemoryId) { groups, query, pendingScroll ->
-            TimelineUiState(query, groupByDay(filterGroups(groups, query)), pendingScroll)
+        combine(memories.allGroups, query, pendingScrollMemoryId, scrollToTopRequested) { groups, query, pendingScroll, toTop ->
+            TimelineUiState(query, groupByDay(filterGroups(groups, query)), pendingScroll, toTop)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), TimelineUiState())
 
     fun onQueryChange(query: String) {
@@ -52,6 +55,15 @@ class TimelineFragmentViewModel(memories: MemoryRepository) : ViewModel() {
     /** The screen scrolled to memory [memoryId]; a newer request made meanwhile stays pending. */
     fun onScrollHandled(memoryId: Int) {
         pendingScrollMemoryId.update { if (it == memoryId) null else it }
+    }
+
+    /** Asks for the list to go back to its top. */
+    fun requestScrollToTop() {
+        scrollToTopRequested.value = true
+    }
+
+    fun onScrollToTopHandled() {
+        scrollToTopRequested.value = false
     }
 
     companion object {
