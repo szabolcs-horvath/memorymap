@@ -5,6 +5,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.timepicker.MaterialTimePicker
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
 import com.szabolcshorvath.memorymap.util.findTimePicker
 import com.szabolcshorvath.memorymap.util.onPhonesClock
@@ -29,7 +30,7 @@ class FragmentEditPickers(
         // consistency with synchronous mutations and avoid potential ListAdapter snapshot lag.
         val item = fragments[index]
         val builder = MaterialDatePicker.Builder.dateRangePicker().startingWeeksOnPhonesFirstDay()
-            .setTitleText("Select Date Range")
+            .setTitleText(R.string.select_date_range)
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
         val start = item.startDate ?: ZonedDateTime.now()
         val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
@@ -54,7 +55,7 @@ class FragmentEditPickers(
         val current = (if (isStart) item.startDate else item.endDate) ?: ZonedDateTime.now()
 
         val builder = MaterialDatePicker.Builder.datePicker().startingWeeksOnPhonesFirstDay()
-            .setTitleText(if (isStart) "Select Start Date" else "Select End Date")
+            .setTitleText(if (isStart) R.string.select_start_date else R.string.select_end_date)
             .setSelection(current.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli())
 
         val picker = builder.build()
@@ -74,7 +75,7 @@ class FragmentEditPickers(
             .onPhonesClock(context)
             .setHour(current.hour)
             .setMinute(current.minute)
-            .setTitleText(if (isStart) "Select Start Time" else "Select End Time")
+            .setTitleText(if (isStart) R.string.select_start_time else R.string.select_end_time)
             .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
             .build()
 

@@ -114,7 +114,6 @@
     <string name="location_coordinates">Coordinates: %1$s</string>
 
     <!-- Map. -->
-    <string name="map_select_date_range">Select Date Range</string>
     <string name="map_pick_dates">Select dates</string>
     <!-- A range of two days, as the phone shows dates: "Nov 6, 2026 - Nov 8, 2026". -->
     <string name="date_range">%1$s - %2$s</string>
@@ -210,4 +209,47 @@
     <string name="media_tile_details">%1$s\n%2$s\n%3$s</string>
     <string name="unknown_size">Unknown size</string>
     <string name="unknown_date">Unknown date</string>
+
+    <!-- Add and Edit form. -->
+    <string name="title_hint">Title</string>
+    <string name="description_hint">Description</string>
+    <string name="no_location_selected">No location selected</string>
+    <string name="select_on_map">Select on Map</string>
+    <string name="location_label">Location:</string>
+    <string name="date_and_time_heading">Date &amp; Time</string>
+    <string name="all_day">All Day?</string>
+    <string name="select_date_range">Select Date Range</string>
+    <string name="start_label">Start:</string>
+    <string name="end_label">End:</string>
+    <string name="start">Start</string>
+    <string name="end">End</string>
+    <string name="date">Date</string>
+    <string name="time">Time</string>
+    <string name="select_start_date">Select Start Date</string>
+    <string name="select_end_date">Select End Date</string>
+    <string name="select_start_time">Select Start Time</string>
+    <string name="select_end_time">Select End Time</string>
+    <!-- A day and a time, then one day with a start and an end time: "Nov 6, 2026, 3:05 PM - 5:00 PM". -->
+    <string name="date_comma_time">%1$s, %2$s</string>
+    <string name="date_comma_time_range">%1$s, %2$s - %3$s</string>
+    <string name="marker_color">Marker Color</string>
+    <string name="add_fragment">Add a Memory Fragment</string>
+    <string name="remove_fragment">Remove fragment</string>
+    <string name="fragment_own_time">Use specific time for this fragment</string>
+    <!-- A fragment without dates of its own has its memory's. -->
+    <string name="inherited_from_group">Inherited from group</string>
+    <string name="add_photos">Add Photos/Videos</string>
+    <plurals name="items_selected">
+        <item quantity="one">%d item selected</item>
+        <item quantity="other">%d items selected</item>
+    </plurals>
+    <string name="clear">Clear</string>
+    <string name="clear_fields_title">Clear Fields</string>
+    <string name="clear_fields_message">Are you sure you want to clear all fields? This action cannot be undone.</string>
+    <string name="discard_changes_title">Discard Changes</string>
+    <string name="discard_changes_message">Are you sure you want to discard your changes?</string>
+    <!-- What a save still needs. -->
+    <string name="save_needs_title">The title must not be blank!</string>
+    <string name="save_needs_location">The location must be specified!</string>
+    <string name="save_needs_fragment_locations">The location must be specified for all fragments!</string>
 </resources>

@@ -35,14 +35,18 @@ class SelectedMediaAdapter(private var currentDeviceId: String?, private val onR
     private fun showError(binding: ItemMediaSelectedBinding, item: SelectedMedia) {
         binding.errorContainer.visibility = View.VISIBLE
         val context = binding.root.context
-        val typeStr = item.type.name
-        val sizeStr = if (item.fileSize > 0) android.text.format.Formatter.formatFileSize(context, item.fileSize) else "Unknown size"
+        val typeStr = context.getString(if (item.type == MediaType.VIDEO) R.string.video else R.string.photo)
+        val sizeStr = if (item.fileSize > 0) {
+            android.text.format.Formatter.formatFileSize(context, item.fileSize)
+        } else {
+            context.getString(R.string.unknown_size)
+        }
         val dateStr = if (item.dateTaken > 0) {
             DateTimeFormatterUtil.twoLineDateTime(context, item.dateTaken)
         } else {
-            "Unknown date"
+            context.getString(R.string.unknown_date)
         }
-        binding.tvErrorDetails.text = "$typeStr\n$sizeStr\n$dateStr"
+        binding.tvErrorDetails.text = context.getString(R.string.media_tile_details, typeStr, sizeStr, dateStr)
     }
 
     private fun hideError(binding: ItemMediaSelectedBinding) {

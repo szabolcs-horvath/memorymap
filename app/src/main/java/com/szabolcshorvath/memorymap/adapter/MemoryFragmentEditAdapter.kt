@@ -178,12 +178,13 @@ class MemoryFragmentEditAdapter(
     }
 
     private fun bindLocation(binding: ItemMemoryFragmentEditBinding, item: FragmentEditState) {
+        val context = binding.root.context
         binding.tvLocation.text = if (!item.placeName.isNullOrEmpty()) {
-            if (!item.address.isNullOrEmpty()) "${item.placeName}\n${item.address}" else item.placeName
+            if (!item.address.isNullOrEmpty()) context.getString(R.string.place_and_address, item.placeName, item.address) else item.placeName
         } else if (item.lat != null && item.lng != null) {
-            binding.root.context.getString(R.string.location_coordinates, Coordinates.format(binding.root.context, item.lat, item.lng))
+            context.getString(R.string.location_coordinates, Coordinates.format(context, item.lat, item.lng))
         } else {
-            "No location selected"
+            context.getString(R.string.no_location_selected)
         }
     }
 
@@ -374,7 +375,7 @@ class MemoryFragmentEditAdapter(
         val context = binding.root.context
 
         if (!item.isTimeVisible) {
-            binding.tvDateSummary.text = "Inherited from group"
+            binding.tvDateSummary.text = context.getString(R.string.inherited_from_group)
         } else {
             val start = item.startDate ?: ZonedDateTime.now()
             val end = item.endDate ?: ZonedDateTime.now().plusHours(1)
@@ -386,7 +387,7 @@ class MemoryFragmentEditAdapter(
 
                 val startStr = DateTimeFormatterUtil.date(start)
                 val endStr = DateTimeFormatterUtil.date(end)
-                val summary = if (startStr == endStr) startStr else "$startStr - $endStr"
+                val summary = if (startStr == endStr) startStr else context.getString(R.string.date_range, startStr, endStr)
                 binding.btDateRange.text = summary
                 binding.tvDateSummary.text = summary
             } else {
@@ -405,9 +406,13 @@ class MemoryFragmentEditAdapter(
                 binding.btEndTime.text = endTStr
 
                 binding.tvDateSummary.text = if (startDStr == endDStr) {
-                    "$startDStr, $startTStr - $endTStr"
+                    context.getString(R.string.date_comma_time_range, startDStr, startTStr, endTStr)
                 } else {
-                    "$startDStr, $startTStr - $endDStr, $endTStr"
+                    context.getString(
+                        R.string.date_range,
+                        context.getString(R.string.date_comma_time, startDStr, startTStr),
+                        context.getString(R.string.date_comma_time, endDStr, endTStr)
+                    )
                 }
             }
         }

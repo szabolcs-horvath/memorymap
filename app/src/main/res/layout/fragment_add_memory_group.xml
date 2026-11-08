@@ -26,7 +26,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Title">
+                android:hint="@string/title_hint">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/titleInput"
@@ -43,7 +43,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="Description">
+                android:hint="@string/description_hint">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/descriptionInput"
@@ -70,7 +70,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="No location selected"
+                    android:text="@string/no_location_selected"
                     android:textAppearance="?attr/textAppearanceBodySmall"
                     android:textColor="?attr/colorOnSurface" />
 
@@ -79,7 +79,7 @@
                     style="@style/Widget.Material3Expressive.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Select on Map" />
+                    android:text="@string/select_on_map" />
             </LinearLayout>
 
             <Space
@@ -123,7 +123,7 @@
                             <com.google.android.material.textview.MaterialTextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Date &amp; Time"
+                                android:text="@string/date_and_time_heading"
                                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                             <com.google.android.material.textview.MaterialTextView
@@ -160,7 +160,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:minHeight="48dp"
-                            android:text="All Day?"
+                            android:text="@string/all_day"
                             android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                         <com.google.android.material.button.MaterialButton
@@ -169,7 +169,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Select Date Range"
+                            android:text="@string/select_date_range"
                             android:visibility="gone"
                             tools:visibility="visible" />
 
@@ -187,7 +187,7 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="end"
                                 android:paddingEnd="8dp"
-                                android:text="Start:"
+                                android:text="@string/start_label"
                                 android:textAppearance="?attr/textAppearanceLabelLarge"
                                 android:textColor="?attr/colorOnSurface" />
 
@@ -197,7 +197,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Date" />
+                                android:text="@string/date" />
 
                             <View
                                 android:layout_width="4dp"
@@ -209,7 +209,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="0.8"
-                                android:text="Time" />
+                                android:text="@string/time" />
                         </LinearLayout>
 
                         <LinearLayout
@@ -226,7 +226,7 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="end"
                                 android:paddingEnd="8dp"
-                                android:text="End:"
+                                android:text="@string/end_label"
                                 android:textAppearance="?attr/textAppearanceLabelLarge"
                                 android:textColor="?attr/colorOnSurface" />
 
@@ -236,7 +236,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Date" />
+                                android:text="@string/date" />
 
                             <View
                                 android:layout_width="4dp"
@@ -248,7 +248,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="0.8"
-                                android:text="Time" />
+                                android:text="@string/time" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
@@ -296,7 +296,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Marker Color"
+                            android:text="@string/marker_color"
                             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                         <com.google.android.material.imageview.ShapeableImageView
@@ -340,7 +340,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Hue"
+                                android:text="@string/color_slider_hue"
                                 android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                             <com.google.android.material.card.MaterialCardView
@@ -385,7 +385,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Saturation"
+                                android:text="@string/color_slider_saturation"
                                 android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                             <com.google.android.material.card.MaterialCardView
@@ -430,7 +430,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Brightness"
+                                android:text="@string/color_slider_brightness"
                                 android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                             <com.google.android.material.card.MaterialCardView
@@ -505,7 +505,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Memory Fragments"
+                                android:text="@string/memory_fragments"
                                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                             <com.google.android.material.imageview.ShapeableImageView
@@ -530,7 +530,7 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="start|center_vertical"
                                 android:paddingHorizontal="16dp"
-                                android:text="Add a Memory Fragment"
+                                android:text="@string/add_fragment"
                                 app:icon="@drawable/ic_add" />
 
                             <androidx.recyclerview.widget.RecyclerView
@@ -554,14 +554,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Add Photos/Videos" />
+                android:text="@string/add_photos" />
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/tv_selectedMediaCount"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="0 items selected"
+                tools:text="0 items selected"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -588,7 +588,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
                     android:layout_weight="1"
-                    android:text="Clear" />
+                    android:text="@string/clear" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="0dp"
