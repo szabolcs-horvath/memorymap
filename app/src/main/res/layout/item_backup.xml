@@ -50,7 +50,7 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text=" • "
+                        android:text="@string/list_separator"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="12sp" />
 
@@ -70,7 +70,7 @@
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:contentDescription="Restore"
+                android:contentDescription="@string/restore"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 app:icon="@drawable/ic_settings_backup_restore"
@@ -83,7 +83,7 @@
                 style="@style/Widget.Material3Expressive.Button.IconButton.Outlined"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:contentDescription="Delete"
+                android:contentDescription="@string/delete"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 app:icon="@drawable/ic_delete"

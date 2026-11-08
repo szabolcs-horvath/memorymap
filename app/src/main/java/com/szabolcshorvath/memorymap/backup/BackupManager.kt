@@ -54,29 +54,29 @@ class BackupManager(private val context: Context) {
         onProgress: (String) -> Unit
     ): Result<Unit> {
         return withContext(Dispatchers.IO) {
-            if (backupLock.isLocked) onProgress("Waiting for the running backup to finish...")
+            if (backupLock.isLocked) onProgress(context.getString(R.string.backup_waiting))
             backupLock.withLock {
                 trace("backup_manager_perform_backup") {
                     var tempDir: File? = null
                     try {
                         tempFiles.deleteStale()
 
-                        onProgress("Preparing database...")
+                        onProgress(context.getString(R.string.backup_preparing))
                         prepareDatabaseForBackup(db)
 
                         tempDir = tempFiles.newBackupDir()
                         val snapshotDir = File(tempDir, "snapshot").apply { mkdirs() }
                         val snapshot = snapshotDatabase(db, snapshotDir)
 
-                        onProgress("Checking backup...")
+                        onProgress(context.getString(R.string.backup_checking))
                         verifyDatabaseCopy(snapshot)
 
                         val metadataFile = createMetadataFile(snapshot, isAutomatic, tempDir)
 
-                        onProgress("Compressing data...")
+                        onProgress(context.getString(R.string.backup_compressing))
                         val zipFile = zipBackup(snapshotDir, metadataFile, File(tempDir, "backup.zip"))
 
-                        onProgress("Uploading backup...")
+                        onProgress(context.getString(R.string.backup_uploading))
                         uploadBackup(email, isAutomatic, zipFile)
 
                         Result.success(Unit)
@@ -196,7 +196,7 @@ class BackupManager(private val context: Context) {
         onProgress: (String) -> Unit
     ): Result<Unit> {
         return withContext(Dispatchers.IO) {
-            if (backupLock.isLocked) onProgress("Waiting for the running backup to finish...")
+            if (backupLock.isLocked) onProgress(context.getString(R.string.backup_waiting))
             backupLock.withLock {
                 trace("backup_manager_restore_backup") {
                     var tempDir: File? = null
@@ -204,20 +204,20 @@ class BackupManager(private val context: Context) {
                         tempFiles.deleteStale()
                         tempDir = tempFiles.newRestoreDir()
 
-                        onProgress("Downloading backup...")
+                        onProgress(context.getString(R.string.restore_downloading))
                         val zipFile = downloadBackup(email, fileId, File(tempDir, "backup.zip"))
                         val extractDir = File(tempDir, "files").apply { mkdirs() }
 
-                        onProgress("Uncompressing backup...")
+                        onProgress(context.getString(R.string.restore_uncompressing))
                         unzipBackup(zipFile, extractDir)
 
-                        onProgress("Verifying backup metadata...")
+                        onProgress(context.getString(R.string.restore_verifying))
                         verifyBackupMetadata(extractDir)
 
-                        onProgress("Checking backup...")
+                        onProgress(context.getString(R.string.backup_checking))
                         val contents = readBackupContents(File(extractDir, BackupZip.DATABASE))
 
-                        onProgress("Restoring database...")
+                        onProgress(context.getString(R.string.restore_restoring))
                         trace("backup_manager_replace_database_contents") {
                             contents.replaceAllIn(db.databaseContentsDao())
                         }

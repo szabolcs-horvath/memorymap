@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import com.google.android.material.listitem.ListItemViewHolder
 import com.google.api.services.drive.model.File
+import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.databinding.ItemBackupBinding
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.Instant
@@ -33,8 +34,8 @@ class BackupAdapter(
 
         val name = backup.name
         binding.tvBackupName.text = when {
-            name.startsWith("MemoryMap_Automatic_Backup_") -> "Automatic Backup"
-            name.startsWith("MemoryMap_Manual_Backup_") -> "Manual Backup"
+            name.startsWith("MemoryMap_Automatic_Backup_") -> binding.root.context.getString(R.string.backup_automatic)
+            name.startsWith("MemoryMap_Manual_Backup_") -> binding.root.context.getString(R.string.backup_manual)
             else -> name
         }
 
@@ -42,7 +43,7 @@ class BackupAdapter(
             val instant = Instant.ofEpochMilli(millis)
             val zonedDateTime = instant.atZone(ZoneId.systemDefault())
             DateTimeFormatterUtil.dateTime(binding.root.context, zonedDateTime, withSeconds = true)
-        } ?: "Unknown date"
+        } ?: binding.root.context.getString(R.string.unknown_date)
         binding.tvBackupDate.text = formattedDate
 
         // Need to use `getSize()` as the size property resolves to `AbstractMap.size` not the size of the file

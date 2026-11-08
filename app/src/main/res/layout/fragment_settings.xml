@@ -25,7 +25,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="2dp"
-                android:text="Settings"
+                android:text="@string/settings_title"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:checked="false"
                 android:minHeight="48dp"
-                android:text="Show Memory Fragment Markers"
+                android:text="@string/show_fragment_markers"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
@@ -45,7 +45,7 @@
                 android:layout_height="wrap_content"
                 android:checked="true"
                 android:minHeight="48dp"
-                android:text="Enable Marker Clustering"
+                android:text="@string/enable_marker_clustering"
                 android:textAppearance="?attr/textAppearanceBodyMedium" />
 
             <LinearLayout
@@ -58,7 +58,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Default Map Date Filter"
+                    android:text="@string/default_map_filter"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnSurface" />
 
@@ -118,7 +118,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Color presets"
+                            android:text="@string/color_presets"
                             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                         <com.google.android.material.imageview.ShapeableImageView
@@ -158,7 +158,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginBottom="16dp"
-                            android:text="Add current as new preset" />
+                            android:text="@string/add_preset" />
 
                         <!-- Hue Slider -->
                         <LinearLayout
@@ -171,7 +171,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Hue"
+                                android:text="@string/color_slider_hue"
                                 android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                             <com.google.android.material.card.MaterialCardView
@@ -217,7 +217,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Saturation"
+                                android:text="@string/color_slider_saturation"
                                 android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                             <com.google.android.material.card.MaterialCardView
@@ -263,7 +263,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="Brightness"
+                                android:text="@string/color_slider_brightness"
                                 android:textAppearance="?attr/textAppearanceLabelLarge" />
 
                             <com.google.android.material.card.MaterialCardView
@@ -310,7 +310,7 @@
                                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Delete Preset"
+                                android:text="@string/delete_preset"
                                 android:textColor="?attr/colorError"
                                 android:visibility="gone"
                                 tools:visibility="visible" />
@@ -327,7 +327,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginEnd="8dp"
                                 android:enabled="false"
-                                android:text="Undo" />
+                                android:text="@string/undo" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/bt_savePresets"
@@ -335,7 +335,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:enabled="false"
-                                android:text="Save" />
+                                android:text="@string/save" />
 
                         </LinearLayout>
                     </LinearLayout>
@@ -346,7 +346,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginVertical="12dp"
-                android:text="Backup &amp; Restore (Google Drive)"
+                android:text="@string/backup_section_title"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -356,7 +356,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:text="Sign in to Google Drive to enable cloud backups."
+                android:text="@string/backup_description"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.button.MaterialButton
@@ -365,7 +365,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:text="Connect to Google Drive" />
+                android:text="@string/connect_drive" />
 
             <LinearLayout
                 android:id="@+id/backupControls"
@@ -380,7 +380,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    android:text="Signed in as: user@example.com"
+                    tools:text="Signed in as: user@example.com"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.button.MaterialButton
@@ -389,7 +389,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    android:text="Backup Now" />
+                    android:text="@string/backup_now" />
 
                 <LinearLayout
                     android:id="@+id/autoBackupStatus"
@@ -448,7 +448,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:text="Available Backups"
+                    android:text="@string/available_backups"
                     android:textColor="?attr/colorOnSurface"
                     android:textStyle="bold" />
 
@@ -492,7 +492,7 @@
                     style="@style/Widget.Material3Expressive.Button.TonalButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Disconnect"
+                    android:text="@string/disconnect"
                     android:textColor="?attr/colorOnError"
                     app:backgroundTint="?attr/colorError" />
 
@@ -503,7 +503,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="4dp"
-                android:text="Media Library Maintenance"
+                android:text="@string/media_maintenance_title"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -512,7 +512,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:text="Re-scan local gallery storage to locate and re-link missing photo or video files."
+                android:text="@string/media_maintenance_description"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <com.google.android.material.button.MaterialButton
@@ -520,7 +520,7 @@
                 style="@style/Widget.Material3Expressive.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Re-link Gallery Photos" />
+                android:text="@string/relink_gallery_photos" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/bt_sendLogs"
@@ -528,7 +528,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Send Debug Logs" />
+                android:text="@string/send_logs" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

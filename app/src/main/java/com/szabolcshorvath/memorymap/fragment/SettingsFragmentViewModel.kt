@@ -62,14 +62,14 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
 
     fun performBackup(email: String, database: MemoryMapDatabase, backupManager: BackupManager) {
         viewModelScope.launch {
-            _operationStatus.value = "Starting backup..."
+            _operationStatus.value = app.getString(R.string.backup_starting)
             val result = backupManager.performBackup(email, database, isAutomatic = false) { status ->
                 _operationStatus.value = status
             }
             _operationStatus.value = null
             result.fold(
                 onSuccess = {
-                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup successful"))
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success(app.getString(R.string.backup_succeeded)))
                 },
                 onFailure = { e ->
                     val errorMsg = failureMessage(R.string.backup_failed, e)
@@ -81,14 +81,14 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
 
     fun restoreBackup(email: String, fileId: String, database: MemoryMapDatabase, backupManager: BackupManager) {
         viewModelScope.launch {
-            _operationStatus.value = "Starting restore..."
+            _operationStatus.value = app.getString(R.string.restore_starting)
             val result = backupManager.restoreBackup(email, fileId, database) { status ->
                 _operationStatus.value = status
             }
             _operationStatus.value = null
             result.fold(
                 onSuccess = {
-                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.RestoreSuccess("Restore successful"))
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.RestoreSuccess(app.getString(R.string.restore_succeeded)))
                 },
                 onFailure = { e ->
                     // A rejected backup says why itself, for the user (too new, unreadable), and is no Drive problem.
@@ -105,12 +105,12 @@ class SettingsFragmentViewModel(application: Application) : AndroidViewModel(app
 
     fun deleteBackup(email: String, fileId: String, backupManager: BackupManager) {
         viewModelScope.launch {
-            _operationStatus.value = "Deleting backup..."
+            _operationStatus.value = app.getString(R.string.backup_deleting)
             val result = backupManager.deleteBackup(email, fileId)
             _operationStatus.value = null
             result.fold(
                 onSuccess = {
-                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success("Backup deleted"))
+                    _backupRestoreOperationResult.send(BackupRestoreOperationResult.Success(app.getString(R.string.backup_deleted)))
                 },
                 onFailure = { e ->
                     val errorMsg = failureMessage(R.string.delete_backup_failed, e)
