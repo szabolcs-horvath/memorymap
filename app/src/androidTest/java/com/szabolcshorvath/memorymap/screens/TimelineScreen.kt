@@ -12,7 +12,7 @@ import java.time.LocalDate
 
 /** The Timeline tab. */
 object TimelineScreen : TabScreen {
-    private const val SEARCH = "Search memories..."
+    private const val SEARCH = "Search memories…"
     private const val FLASH_WATCH_MS = 8_000L
     private const val CARD_SPOT_PERCENT = 90
 

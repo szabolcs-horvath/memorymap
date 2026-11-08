@@ -177,4 +177,19 @@
         <item quantity="one">Removed %d duplicate photo.</item>
         <item quantity="other">Removed %d duplicate photos.</item>
     </plurals>
+
+    <!-- The bottom bar's tabs. -->
+    <string name="tab_map">Map</string>
+    <string name="tab_timeline">Timeline</string>
+    <string name="tab_add">Add</string>
+    <string name="tab_settings">Settings</string>
+    <string name="undo">Undo</string>
+    <string name="memory_deleted">Memory deleted</string>
+    <!-- At start-up, when photos that came from another phone can't be linked without photo access. -->
+    <string name="relink_needs_access_message">Some photos need permission to re-link to your gallery</string>
+    <string name="relink_grant">Grant</string>
+
+    <!-- Timeline. -->
+    <string name="timeline_search">Search memories…</string>
+    <string name="scroll_to_top">Scroll to top</string>
 </resources>

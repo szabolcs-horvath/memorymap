@@ -278,11 +278,11 @@ class MainActivity :
                     withContext(Dispatchers.Main) {
                         val snackbar = Snackbar.make(
                             binding.root,
-                            "Some photos need permission to re-link to your gallery",
+                            getString(R.string.relink_needs_access_message),
                             Snackbar.LENGTH_LONG
                         )
                         snackbar.anchorView = binding.bottomNavigation
-                        snackbar.setAction("Grant") {
+                        snackbar.setAction(R.string.relink_grant) {
                             mediaPermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
                         }
                         snackbar.show()
@@ -380,9 +380,9 @@ class MainActivity :
         // (which also dismisses the Snackbar).
         val app = application as MemoryMapApplication
         val db = commonViewModel.getDb()
-        val snackbar = Snackbar.make(binding.root, "Memory deleted", Snackbar.LENGTH_LONG)
+        val snackbar = Snackbar.make(binding.root, R.string.memory_deleted, Snackbar.LENGTH_LONG)
         snackbar.anchorView = binding.bottomNavigation
-        snackbar.setAction("Undo") {
+        snackbar.setAction(R.string.undo) {
             app.applicationScope.launch {
                 db.memoryGroupDao().restoreDeletedGroup(deleted)
                 AutomaticBackups.schedule(app)
