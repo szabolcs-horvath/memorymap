@@ -48,7 +48,7 @@ object MediaDetails {
     /** Whether [item] still lacks the details this reads (older items, or ones whose file couldn't be read). */
     fun isMissing(item: MediaItem, hasThumbnail: Boolean): Boolean = item.perceptualHash == null || item.displayName == null || !hasThumbnail
 
-    /** [item] with [details] filled in where they are known; what [details] doesn't know is kept. */
+    /** This item with [details] filled in where they are known; what [details] doesn't know is kept. */
     fun MediaItem.withDetails(details: Details): MediaItem = copy(
         displayName = details.info.displayName ?: displayName,
         width = details.info.width ?: width,

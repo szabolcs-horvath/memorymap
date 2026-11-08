@@ -197,7 +197,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         getApplication<MemoryMapApplication>().applicationScope.launch { releaseGrants(dropped) }
     }
 
-    /** Releases the grants of [uris] that no saved media item uses. Tests replace it to see what the form releases. */
+    /** Releases the grants of the given URIs that no saved media item uses. Tests replace it to see what the form releases. */
     @VisibleForTesting
     internal var releaseGrants: suspend (Set<String>) -> Unit = { uris ->
         val app = getApplication<Application>()
@@ -419,7 +419,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         return previousUris - mediaItems.mapTo(HashSet()) { it.uri }
     }
 
-    /** [prepared] media with the details of the newly picked ones, and their thumbnails. */
+    /** The prepared media with the details of the newly picked ones, and their thumbnails. */
     private class WithDetails(val items: List<MediaItem>, val thumbnails: List<MediaThumbnail>)
 
     /**
