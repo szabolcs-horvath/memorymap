@@ -31,8 +31,8 @@ kotlin {
             applicationId = "com.szabolcshorvath.memorymap"
             minSdk = 34
             targetSdk = 37
-            versionCode = 38
-            versionName = "minSdk 34"
+            versionCode = 39
+            versionName = "Te vagy a legcukibb."
 
             // Installs fakes for sign-in and Drive before the app starts (androidTest).
             testInstrumentationRunner = "com.szabolcshorvath.memorymap.MemoryMapTestRunner"
