@@ -1,7 +1,6 @@
 package com.szabolcshorvath.memorymap.ui.timeline
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.animate
@@ -15,18 +14,18 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,27 +34,26 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopSearchBar
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,7 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
@@ -76,21 +74,19 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -105,7 +101,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.pow
-import kotlin.math.roundToInt
 
 // The UI tests find these elements by these names (screens/TimelineScreen), the names the View version's ids had.
 private const val TAG_LIST = "rv_timeline"
@@ -114,8 +109,6 @@ private const val TAG_DAY = "tv_date"
 private const val TAG_MEMORY_TITLE = "tv_memoryTitle"
 private const val TAG_SEARCH = "et_search"
 
-/** How far below the top of the list Show on Timeline puts the memory, in pixels (as the View version did). */
-private const val SCROLL_TO_MEMORY_OFFSET_PX = 100
 private const val FLASH_MILLIS = 1000
 private const val FLASH_PEAK = 0.5f
 
@@ -128,6 +121,7 @@ private const val GAMMA = 2.2f
  * [onScrollHandled] is called once a Show on Timeline request has been scrolled to.
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun TimelineContent(
     state: TimelineUiState,
     onQueryChange: (String) -> Unit,
@@ -138,7 +132,11 @@ fun TimelineContent(
     LaunchedEffect(query) { snapshotFlow { query.text.toString() }.collect(onQueryChange) }
 
     val listState = rememberLazyListState()
-    val searchBar = rememberSearchBarState()
+    // Material's search bar: it scrolls away with the list and comes back as soon as the list scrolls up.
+    val searchBarState = rememberSearchBarState()
+    val scrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
+    var searchBarHeight by remember { mutableIntStateOf(0) }
+    var searchFocused by rememberSaveable { mutableStateOf(false) }
     val flash = remember { FlashState() }
     val scope = rememberCoroutineScope()
 
@@ -149,9 +147,7 @@ fun TimelineContent(
         val memoryId = state.pendingScrollMemoryId ?: return@LaunchedEffect
         val index = days?.indexOfMemory(memoryId) ?: -1
         if (!shown || index < 0) return@LaunchedEffect
-        // Hide the search bar, as scrolling by hand does: while it shows, the end of the list is below the screen.
-        searchBar.collapse()
-        listState.scrollToItem(index, -SCROLL_TO_MEMORY_OFFSET_PX)
+        listState.scrollToItem(index)
         flash.start(memoryId)
         onScrollHandled(memoryId)
     }
@@ -160,28 +156,36 @@ fun TimelineContent(
         Modifier
             .fillMaxSize()
             .semantics { testTagsAsResourceId = true }
-            .nestedScroll(searchBar.nestedScroll)
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
-        // Lifted, in a darker colour, while the list is scrolled under it, as Material's app bars are.
-        SearchBar(query, searchBar, lifted = days?.isNotEmpty() == true && listState.canScrollBackward)
         when {
             days == null -> Unit
 
             days.isEmpty() -> EmptyMessage(state.query)
 
+            // The list scrolls beneath the search bar, and starts below it.
             else -> MemoryList(
                 days = days,
                 listState = listState,
                 flash = flash,
                 onMemoryClick = onMemoryClick,
-                modifier = Modifier.offset { IntOffset(0, searchBar.bottom) },
+                contentPadding = PaddingValues(top = with(LocalDensity.current) { searchBarHeight.toDp() }),
             )
         }
+        TopSearchBar(
+            state = searchBarState,
+            inputField = { SearchField(query, searchFocused) { searchFocused = it } },
+            modifier = Modifier
+                .onSizeChanged { searchBarHeight = it.height }
+                .padding(horizontal = SEARCH_BAR_MARGIN - TOP_SEARCH_BAR_PADDING),
+            windowInsets = WindowInsets(0),
+            scrollBehavior = scrollBehavior,
+        )
         ScrollToTopButton(
             visible = days?.isNotEmpty() == true && listState.isScrolledPastFirstItem(),
             onClick = {
                 scope.launch { listState.animateScrollToItem(0) }
-                scope.launch { searchBar.expand() }
+                scope.launch { animate(scrollBehavior.scrollOffset, 0f) { value, _ -> scrollBehavior.scrollOffset = value } }
             },
             modifier = Modifier.align(Alignment.BottomEnd),
         )
@@ -225,59 +229,24 @@ private fun LazyListState.isScrolledPastFirstItem(): Boolean {
 }
 
 /**
- * Where the search bar is: it scrolls away when the list scrolls down and comes back as soon as it scrolls up, and
- * the list sits right below it. Its offset is kept through rotation and process death.
+ * The search bar's field. It filters the list below as the user types, so it never opens a separate search view: the
+ * field is "expanded" only while it has [focused], and Back (or Search on the keyboard) takes the focus away.
  */
-private class SearchBarState(initialOffset: Float) {
-    var height by mutableIntStateOf(0)
-
-    /** From -[height] (scrolled away) to 0 (fully shown). */
-    var offset by mutableFloatStateOf(initialOffset)
-
-    /** The y coordinate of the bar's bottom edge, where the list starts. */
-    val bottom get() = (height + offset).roundToInt()
-
-    /** Moves the bar before the list scrolls, either way. */
-    val nestedScroll = object : NestedScrollConnection {
-        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            val before = offset
-            offset = (offset + available.y).coerceIn(-height.toFloat(), 0f)
-            return Offset(0f, offset - before)
-        }
-    }
-
-    fun collapse() {
-        offset = -height.toFloat()
-    }
-
-    suspend fun expand() {
-        animate(offset, 0f) { value, _ -> offset = value }
-    }
-}
-
 @Composable
-private fun rememberSearchBarState(): SearchBarState {
-    var saved by rememberSaveable { mutableFloatStateOf(0f) }
-    val state = remember { SearchBarState(saved) }
-    LaunchedEffect(state) { snapshotFlow { state.offset }.collect { saved = it } }
-    return state
-}
-
-@Composable
-private fun SearchBar(query: TextFieldState, bar: SearchBarState, lifted: Boolean) {
-    val colors = MaterialTheme.colorScheme
-    val background by animateColorAsState(if (lifted) colors.surfaceContainer else colors.surface, label = "lift")
-    val interactionSource = remember { MutableInteractionSource() }
-    val focused by interactionSource.collectIsFocusedAsState()
-    TextField(
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SearchField(query: TextFieldState, focused: Boolean, onFocusedChange: (Boolean) -> Unit) {
+    val focusManager = LocalFocusManager.current
+    SearchBarDefaults.InputField(
         state = query,
+        onSearch = { focusManager.clearFocus() },
+        expanded = focused,
+        onExpandedChange = { expanded ->
+            onFocusedChange(expanded)
+            if (!expanded) focusManager.clearFocus()
+        },
         modifier = Modifier
-            .offset { IntOffset(0, bar.offset.roundToInt()) }
-            .onSizeChanged { bar.height = it.height }
-            .testTag(TAG_SEARCH)
-            .background(background)
-            .padding(16.dp)
-            .fillMaxWidth(),
+            .onFocusChanged { onFocusedChange(it.hasFocus) }
+            .testTag(TAG_SEARCH),
         placeholder = { Text(stringResource(R.string.timeline_search)) },
         leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
         trailingIcon = if (focused && query.text.isNotEmpty()) {
@@ -289,22 +258,17 @@ private fun SearchBar(query: TextFieldState, bar: SearchBarState, lifted: Boolea
         } else {
             null
         },
-        lineLimits = TextFieldLineLimits.SingleLine,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        shape = RoundedCornerShape(SEARCH_CORNER),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        ),
-        interactionSource = interactionSource,
     )
 }
 
-private val SEARCH_CORNER = 28.dp
+/**
+ * The margin Material 3 Expressive gives a search bar. (Focused, it would narrow to 12 dp, but `TopSearchBar` in
+ * Material3 1.4 widens only into its expanded search view, which this in-place search doesn't use.)
+ */
+private val SEARCH_BAR_MARGIN = 24.dp
+
+/** The padding `TopSearchBar` keeps around its bar on every side (its internal `SearchBarAsTopBarPadding`). */
+private val TOP_SEARCH_BAR_PADDING = 8.dp
 
 @Composable
 private fun EmptyMessage(query: String) {
@@ -331,13 +295,14 @@ private fun MemoryList(
     listState: LazyListState,
     flash: FlashState,
     onMemoryClick: (Int) -> Unit,
-    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues,
 ) {
     LazyColumn(
         state = listState,
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .testTag(TAG_LIST),
+        contentPadding = contentPadding,
     ) {
         for (day in days) {
             item(key = "date_${day.date}", contentType = "day") { DayHeader(day) }
