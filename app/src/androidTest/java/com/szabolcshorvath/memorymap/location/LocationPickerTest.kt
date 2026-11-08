@@ -73,7 +73,8 @@ class LocationPickerTest {
     @Test
     fun offlineAPickedSpotIsKeptAsCoordinates() {
         openPickerForANewMemory()
-        // The map has loaded what it shows; without a network, the address of a spot can't be looked up.
+        // Go offline once the map has loaded what it shows: without a network a spot's address can't be looked up.
+        LocationPickerScreen.awaitMapDrawn()
         app.goOffline()
 
         // A spot no other test taps (in the Sahara on the map's first view): Google Play services keeps the addresses it
