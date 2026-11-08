@@ -104,14 +104,18 @@ class MediaAdapter(
             binding.errorContainer.setBackgroundColor(
                 context.getColor(if (thumbnail != null) R.color.missing_media_scrim_over_thumbnail else R.color.missing_media_scrim)
             )
-            val typeStr = mediaItem.type.name
-            val sizeStr = if (mediaItem.fileSize > 0) android.text.format.Formatter.formatFileSize(context, mediaItem.fileSize) else "Unknown size"
+            val typeStr = context.getString(if (mediaItem.type == MediaType.VIDEO) R.string.video else R.string.photo)
+            val sizeStr = if (mediaItem.fileSize > 0) {
+                android.text.format.Formatter.formatFileSize(context, mediaItem.fileSize)
+            } else {
+                context.getString(R.string.unknown_size)
+            }
             val dateStr = if (mediaItem.dateTaken > 0) {
                 DateTimeFormatterUtil.twoLineDateTime(context, mediaItem.dateTaken)
             } else {
-                "Unknown date"
+                context.getString(R.string.unknown_date)
             }
-            binding.tvErrorDetails.text = "$typeStr\n$sizeStr\n$dateStr"
+            binding.tvErrorDetails.text = context.getString(R.string.media_tile_details, typeStr, sizeStr, dateStr)
         }
 
         private fun hideError(binding: ItemMediaThumbnailBinding) {
