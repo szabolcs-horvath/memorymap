@@ -43,7 +43,6 @@
     <string name="play_video">Play</string>
     <string name="pause_video">Pause</string>
     <string name="video_position">Video position</string>
-    <string name="cluster_title">%1$d memories nearby</string>
     <string name="color_preset_description">Color preset: hue %1$d, saturation %2$.2f, brightness %3$.2f</string>
     <string name="location_rationale_title">Use your location?</string>
     <string name="location_rationale_message">Memory Map uses your location to show where you are on the map and to pick it for a memory. It\'s only used while the app is open.</string>
@@ -113,4 +112,34 @@
 
     <!-- Coordinates, where a place has no name: "47.4979° N, 19.0402° E". -->
     <string name="location_coordinates">Coordinates: %1$s</string>
+
+    <!-- Map. -->
+    <string name="map_select_date_range">Select Date Range</string>
+    <string name="map_pick_dates">Select dates</string>
+    <!-- A range of two days, as the phone shows dates: "Nov 6, 2026 - Nov 8, 2026". -->
+    <string name="date_range">%1$s - %2$s</string>
+    <string name="filter_last_7_days">Last 7 Days</string>
+    <string name="filter_last_30_days">Last 30 Days</string>
+    <string name="filter_last_365_days">Last 365 Days</string>
+    <string name="filter_this_week">This Week</string>
+    <string name="filter_this_month">This Month</string>
+    <string name="filter_this_year">This Year</string>
+    <string name="filter_all_time">All Time</string>
+    <!-- A pin for several memories at one spot. -->
+    <plurals name="memories_here">
+        <item quantity="one">%d Memory</item>
+        <item quantity="other">%d Memories</item>
+    </plurals>
+    <!-- A cluster of pins that splits up when the map zooms in. -->
+    <plurals name="memories_nearby">
+        <item quantity="one">%d memory nearby</item>
+        <item quantity="other">%d memories nearby</item>
+    </plurals>
+
+    <!-- Location picker. -->
+    <string name="pick_location_search">Search Location</string>
+    <string name="pick_location_confirm">Confirm Location</string>
+    <string name="pick_location_fetching">Fetching location…</string>
+    <string name="pick_location_loading">Loading details…</string>
+    <string name="pick_location_selected">Selected Location</string>
 </resources>

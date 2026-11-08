@@ -54,7 +54,7 @@ interface Markerable {
         }
 
         override val title: String?
-            get() = if (items.size == 1) items.first().title else "${items.size} Memories"
+            get() = if (items.size == 1) items.first().title else null // The map names a pin of several memories itself, in the phone's language.
 
         override val snippet: String? = null
 
