@@ -263,9 +263,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val map = mMap ?: return
         map.clear()
         val markerTitle = when {
-            isLoading -> "Loading details..."
+            isLoading -> getString(R.string.pick_location_loading)
             title != null -> title
-            else -> "Selected Location"
+            else -> getString(R.string.pick_location_selected)
         }
         map.addMarker(
             MarkerOptions()
@@ -282,9 +282,9 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val binding = _binding ?: return
         binding.btConfirm.isEnabled = !isLoading
         binding.btConfirm.text = if (isLoading) {
-            "Fetching location..."
+            getString(R.string.pick_location_fetching)
         } else {
-            "Confirm Location"
+            getString(R.string.pick_location_confirm)
         }
 
         // Use solid colors to avoid transparency over the map when disabled

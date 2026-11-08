@@ -293,7 +293,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupDefaultFilterDropdown() {
-        val options = DateFilterOption.allLabels()
+        val options = DateFilterOption.entries.map { getString(it.label) }
         val context = context ?: return
         val adapter = ArrayAdapter(context, R.layout.item_dropdown, options)
         binding.spinnerDefaultFilter.setAdapter(adapter)
@@ -304,15 +304,15 @@ class SettingsFragment : Fragment() {
                 context.dataStore.data
                     .map { DateFilterOption.ofStoredName(it[PreferencesKeys.DEFAULT_DATE_FILTER]) }
                     .distinctUntilChanged()
-                    .collect { _binding?.spinnerDefaultFilter?.setText(it.label, false) }
+                    .collect { _binding?.spinnerDefaultFilter?.setText(getString(it.label), false) }
             }
         }
 
         binding.spinnerDefaultFilter.setOnItemClickListener { _, _, position, _ ->
-            val selectedOption = options[position]
+            val selectedOption = DateFilterOption.entries[position]
             viewLifecycleOwner.lifecycleScope.launch {
                 context.dataStore.edit { preferences ->
-                    preferences[PreferencesKeys.DEFAULT_DATE_FILTER] = DateFilterOption.ofLabel(selectedOption).name
+                    preferences[PreferencesKeys.DEFAULT_DATE_FILTER] = selectedOption.name
                 }
             }
         }

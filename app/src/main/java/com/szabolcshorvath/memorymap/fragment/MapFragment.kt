@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
@@ -153,11 +154,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 combine(
                     viewModel.filterStartDate,
                     viewModel.filterEndDate,
-                    viewModel.appliedFilterLabel
-                ) { start, end, label ->
-                    Triple(start, end, label)
-                }.collect { (start, end, label) ->
-                    updateDateRangeButtonText(start, end, label)
+                    viewModel.appliedFilter
+                ) { start, end, option ->
+                    Triple(start, end, option)
+                }.collect { (start, end, option) ->
+                    updateDateRangeButtonText(start, end, option)
                 }
             }
         }
@@ -193,16 +194,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val context = context ?: return
         val popup = PopupMenu(context, binding.btQuickFilter)
         DateFilterOption.entries.forEach { option ->
-            popup.menu.add(option.label)
+            popup.menu.add(Menu.NONE, option.ordinal, option.ordinal, option.label)
         }
 
         popup.setOnMenuItemClickListener { menuItem ->
-            val selectedOption = DateFilterOption.ofLabel(menuItem.title.toString())
+            val selectedOption = DateFilterOption.entries[menuItem.itemId]
             val (start, end) = selectedOption.dateRange(LocalDate.now())
             if (start != viewModel.filterStartDate.value || end != viewModel.filterEndDate.value) {
                 shouldAdjustCameraOnUpdate = true
             }
-            viewModel.updateDateFilter(start, end, selectedOption.label)
+            viewModel.updateDateFilter(start, end, selectedOption)
             true
         }
         popup.show()
@@ -210,7 +211,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun showDateRangePicker() {
         val builder = MaterialDatePicker.Builder.dateRangePicker().startingWeeksOnPhonesFirstDay()
-            .setTitleText("Select dates")
+            .setTitleText(R.string.map_pick_dates)
             .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
 
         val currentStart = viewModel.filterStartDate.value
@@ -247,21 +248,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         binding.statsOverlayCard.visibility = if (viewModel.isStatsVisible) View.VISIBLE else View.GONE
     }
 
-    private fun updateDateRangeButtonText(start: LocalDate?, end: LocalDate?, label: String?) {
+    private fun updateDateRangeButtonText(start: LocalDate?, end: LocalDate?, option: DateFilterOption?) {
         val binding = _binding ?: return
-        if (label != null) {
-            binding.btDateRange.text = label
-            return
-        }
-
-        if (start != null && end != null) {
-            if (start != end) {
-                binding.btDateRange.text = "${DateTimeFormatterUtil.date(start)} - ${DateTimeFormatterUtil.date(end)}"
-            } else {
-                binding.btDateRange.text = "${DateTimeFormatterUtil.date(start)}"
-            }
-        } else {
-            binding.btDateRange.text = DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label
+        binding.btDateRange.text = when {
+            option != null -> getString(option.label)
+            start == null || end == null -> getString(DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label)
+            start == end -> DateTimeFormatterUtil.date(start)
+            else -> getString(R.string.date_range, DateTimeFormatterUtil.date(start), DateTimeFormatterUtil.date(end))
         }
     }
 
@@ -677,7 +670,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 advancedMarkerOptions.icon(MarkerGenerator.singleColorPinConfigIcon(color))
                 advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
             }
-            advancedMarkerOptions.title(cluster.title)
+            advancedMarkerOptions.title(pinTitle(cluster))
         }
 
         override fun onClusterItemUpdated(
@@ -722,7 +715,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             marker.title = clusterTitle(allItems.size)
         }
 
-        private fun clusterTitle(count: Int) = resources.getString(R.string.cluster_title, count)
+        private fun clusterTitle(count: Int) = resources.getQuantityString(R.plurals.memories_nearby, count, count)
+
+        /** A pin's title: its memory's, or how many memories are at its spot. */
+        private fun pinTitle(pin: Markerable.MarkerableCluster): String? =
+            if (pin.items.size == 1) pin.items.first().title else resources.getQuantityString(R.plurals.memories_here, pin.items.size, pin.items.size)
     }
 
     companion object {

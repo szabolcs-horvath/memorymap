@@ -46,8 +46,9 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
     private val _filterEndDate = MutableStateFlow<LocalDate?>(null)
     val filterEndDate: StateFlow<LocalDate?> = _filterEndDate.asStateFlow()
 
-    private val _appliedFilterLabel = MutableStateFlow<String?>(null)
-    val appliedFilterLabel: StateFlow<String?> = _appliedFilterLabel.asStateFlow()
+    /** The quick filter option applied, or null for dates picked by hand. */
+    private val _appliedFilter = MutableStateFlow<DateFilterOption?>(null)
+    val appliedFilter: StateFlow<DateFilterOption?> = _appliedFilter.asStateFlow()
 
     private val _isDateFilterLoaded = MutableStateFlow(false)
     val isDateFilterLoaded: StateFlow<Boolean> = _isDateFilterLoaded.asStateFlow()
@@ -59,15 +60,15 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
             val defaultOption = DateFilterOption.getFromDataStore(application.dataStore)
             if (!_isDateFilterLoaded.value) {
                 val (start, end) = defaultOption.dateRange(LocalDate.now())
-                updateDateFilter(start, end, defaultOption.label)
+                updateDateFilter(start, end, defaultOption)
             }
         }
     }
 
-    fun updateDateFilter(start: LocalDate?, end: LocalDate?, label: String? = null) {
+    fun updateDateFilter(start: LocalDate?, end: LocalDate?, option: DateFilterOption? = null) {
         _filterStartDate.value = start
         _filterEndDate.value = end
-        _appliedFilterLabel.value = label
+        _appliedFilter.value = option
         _isDateFilterLoaded.value = true
     }
 

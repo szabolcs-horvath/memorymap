@@ -52,7 +52,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
-            android:text="Select Date Range"
+            android:text="@string/map_select_date_range"
             app:cornerRadius="8dp"
             app:icon="@drawable/ic_calendar_month"
             app:layout_constraintBottom_toBottomOf="parent"
