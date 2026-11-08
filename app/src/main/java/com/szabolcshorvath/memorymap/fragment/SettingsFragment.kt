@@ -108,12 +108,12 @@ class SettingsFragment : Fragment() {
         val ctx = context ?: return
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            setLoadingState(true, "Scanning local media library...", hideBackupStatus = true)
+            setLoadingState(true, getString(R.string.relink_scanning), hideBackupStatus = true)
             try {
                 MediaRelinker.relink(ctx) { status -> setLoadingState(true, status, hideBackupStatus = true) }
             } finally {
                 setLoadingState(false, hideBackupStatus = false)
-                Toast.makeText(ctx, "Media re-linking complete", Toast.LENGTH_SHORT).show()
+                Toast.makeText(ctx, R.string.relink_complete, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -179,7 +179,7 @@ class SettingsFragment : Fragment() {
                             // The restore replaced the database contents in place; re-link its media to this device.
                             // The result line stays meanwhile, so the user still sees that the restore worked.
                             viewLifecycleOwner.lifecycleScope.launch {
-                                setLoadingState(true, "Scanning local media library...", hideBackupStatus = false)
+                                setLoadingState(true, getString(R.string.relink_scanning), hideBackupStatus = false)
                                 try {
                                     MediaRelinker.relink(context) { status ->
                                         setLoadingState(true, status, hideBackupStatus = false)
@@ -245,7 +245,7 @@ class SettingsFragment : Fragment() {
         binding.btBackupNow.setOnClickListener {
             val email = binding.tvAccountName.tag as? String
             if (email != null) {
-                setLoadingState(true, "Starting backup...")
+                setLoadingState(true, getString(R.string.backup_starting))
                 requestDriveAuthorization(true)
             }
         }
@@ -400,7 +400,7 @@ class SettingsFragment : Fragment() {
                         viewModel.originalPreset = preset.copy()
                         viewModel.editingPreset = preset.copy()
                         checkForChanges()
-                        context?.let { Toast.makeText(it, "Preset saved", Toast.LENGTH_SHORT).show() }
+                        context?.let { Toast.makeText(it, R.string.preset_saved, Toast.LENGTH_SHORT).show() }
                     }
                 }
             }
@@ -455,10 +455,10 @@ class SettingsFragment : Fragment() {
         ConfirmDialog.show(
             childFragmentManager,
             DELETE_PRESET_REQUEST,
-            title = "Delete Preset",
-            message = "Are you sure you want to delete this color preset?",
-            confirm = "Delete",
-            cancel = "Cancel",
+            title = getString(R.string.delete_preset),
+            message = getString(R.string.delete_preset_message),
+            confirm = getString(R.string.delete),
+            cancel = getString(R.string.cancel),
             extras = bundleOf(PRESET_ID to presetToDelete.id)
         )
     }
@@ -474,7 +474,7 @@ class SettingsFragment : Fragment() {
                     clearPresetSelection()
                     updateVisualsFromSliders()
                 }
-                context?.let { Toast.makeText(it, "Preset deleted", Toast.LENGTH_SHORT).show() }
+                context?.let { Toast.makeText(it, R.string.preset_deleted, Toast.LENGTH_SHORT).show() }
             }
         }
     }
@@ -595,7 +595,7 @@ class SettingsFragment : Fragment() {
     private fun setupSignInAndOutButtons() {
         val viewLifecycleOwner = viewLifecycleOwner
         binding.btGoogleSignIn.setOnClickListener {
-            setLoadingState(true, "Signing in...")
+            setLoadingState(true, getString(R.string.signing_in))
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val email = AppServices.accounts.signIn(requireContext())
@@ -658,7 +658,7 @@ class SettingsFragment : Fragment() {
             val viewLifecycleOwner = viewLifecycleOwner
             val context = context ?: return@setOnClickListener
             viewLifecycleOwner.lifecycleScope.launch {
-                setLoadingState(true, "Preparing logs...")
+                setLoadingState(true, getString(R.string.preparing_logs))
                 try {
                     val lastBackup = backupAdapter.currentList.firstOrNull()
                     val lastBackupDate = lastBackup?.modifiedTime?.value?.let { millis ->
@@ -759,7 +759,7 @@ class SettingsFragment : Fragment() {
                 btGoogleSignIn.visibility = View.GONE
                 tvBackupDescription.visibility = View.GONE
                 backupControls.visibility = View.VISIBLE
-                tvAccountName.text = "Signed in as: $email"
+                tvAccountName.text = getString(R.string.signed_in_as, email)
                 tvAccountName.tag = email
                 if (!alreadyLoaded || backupAdapter.itemCount == 0) {
                     if (alreadyLoaded && viewModel.lastLoadedBackups.isNotEmpty()) {
@@ -891,7 +891,7 @@ class SettingsFragment : Fragment() {
         val viewLifecycleOwner = viewLifecycleOwner
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                if (!quiet) setLoadingState(true, "Loading backups...", hideBackupStatus = false)
+                if (!quiet) setLoadingState(true, getString(R.string.loading_backups), hideBackupStatus = false)
                 backupManager.listBackups(email).fold(
                     onSuccess = { backups ->
                         backupAdapter.submitList(backups)
@@ -996,11 +996,10 @@ class SettingsFragment : Fragment() {
         ConfirmDialog.show(
             childFragmentManager,
             RESTORE_REQUEST,
-            title = "Restore Backup",
-            message = "Are you sure you want to restore from the backup '${file.name}'?\n\n" +
-                "This action will overwrite all your current data and it cannot be undone!",
-            confirm = "Restore",
-            cancel = "Cancel",
+            title = getString(R.string.restore_backup_title),
+            message = getString(R.string.restore_backup_message, file.name),
+            confirm = getString(R.string.restore),
+            cancel = getString(R.string.cancel),
             extras = extrasOf(file)
         )
     }
