@@ -1,5 +1,12 @@
+# Text files use Unix line endings, in the repository and in every checkout, whatever core.autocrlf says.
+* text=auto eol=lf
 # Shell scripts must keep Unix line endings to run in bash, also in a Windows checkout.
 *.sh text eol=lf
 gradlew text eol=lf
 # Batch files need Windows line endings for cmd.exe.
 *.bat text eol=crlf
+# Never converted.
+*.jar binary
+*.png binary
+*.webp binary
+*.db binary
