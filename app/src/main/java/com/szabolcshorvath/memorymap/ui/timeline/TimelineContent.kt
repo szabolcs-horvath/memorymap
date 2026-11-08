@@ -26,18 +26,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -63,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -91,6 +94,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.fragment.TimelineDay
 import com.szabolcshorvath.memorymap.fragment.TimelineUiState
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -111,8 +115,9 @@ private const val GAMMA = 2.2f
 
 /**
  * The Timeline tab: a search field that scrolls away with the list, the memories grouped by day, newest first, and a
- * Scroll to top button. [onQueryChange] gets the search as typed (also the one restored after process death), and
- * [onScrollHandled] is called once a Show on Timeline request has been scrolled to.
+ * Scroll to top button. [onQueryChange] gets the search as typed (also the one restored after process death),
+ * [onScrollHandled] is called once a Show on Timeline request has been scrolled to, and [onScrollToTopHandled] once a
+ * request to go back to the top has.
  */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,6 +126,7 @@ fun TimelineContent(
     onQueryChange: (String) -> Unit,
     onMemoryClick: (Int) -> Unit,
     onScrollHandled: (Int) -> Unit,
+    onScrollToTopHandled: () -> Unit,
 ) {
     val query = rememberTextFieldState()
     LaunchedEffect(query) { snapshotFlow { query.text.toString() }.collect(onQueryChange) }
@@ -144,6 +150,18 @@ fun TimelineContent(
         listState.scrollToItem(index)
         flash.start(memoryId)
         onScrollHandled(memoryId)
+    }
+
+    // Back to the top, with the search bar shown again: the Scroll to top button, or the Timeline tab tapped again.
+    suspend fun scrollToTop() = coroutineScope {
+        launch { listState.animateScrollToItem(0) }
+        launch { animate(scrollBehavior.scrollOffset, 0f) { value, _ -> scrollBehavior.scrollOffset = value } }
+    }
+    LaunchedEffect(state.scrollToTopRequested, shown) {
+        if (!state.scrollToTopRequested || !shown) return@LaunchedEffect
+        // In the screen's scope: marking the request handled restarts this effect, which would cancel the animation.
+        scope.launch { scrollToTop() }
+        onScrollToTopHandled()
     }
 
     Box(
@@ -177,10 +195,7 @@ fun TimelineContent(
         )
         ScrollToTopButton(
             visible = days?.isNotEmpty() == true && listState.isScrolledPastFirstItem(),
-            onClick = {
-                scope.launch { listState.animateScrollToItem(0) }
-                scope.launch { animate(scrollBehavior.scrollOffset, 0f) { value, _ -> scrollBehavior.scrollOffset = value } }
-            },
+            onClick = { scope.launch { scrollToTop() } },
             modifier = Modifier.align(Alignment.BottomEnd),
         )
     }
@@ -479,7 +494,14 @@ private fun ScrollToTopButton(visible: Boolean, onClick: () -> Unit, modifier: M
         enter = scaleIn() + fadeIn(),
         exit = scaleOut() + fadeOut(),
     ) {
-        FloatingActionButton(onClick = onClick) {
+        // A filled tonal icon button, not a FAB: Material 3 keeps FABs for a screen's main action, and this is a minor
+        // one. The shadow sets it apart from the list it floats over.
+        FilledTonalIconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(SCROLL_TO_TOP_SIZE)
+                .shadow(SCROLL_TO_TOP_ELEVATION, CircleShape),
+        ) {
             Icon(
                 painterResource(R.drawable.ic_chevron_right),
                 contentDescription = stringResource(R.string.scroll_to_top),
@@ -491,3 +513,7 @@ private fun ScrollToTopButton(visible: Boolean, onClick: () -> Unit, modifier: M
 
 /** Turns the right-pointing chevron to point up. */
 private const val UP = 270f
+
+/** A medium icon button: 48 dp, the size of a touch target. */
+private val SCROLL_TO_TOP_SIZE = 48.dp
+private val SCROLL_TO_TOP_ELEVATION = 3.dp

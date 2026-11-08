@@ -46,6 +46,7 @@ class TimelineFragment : Fragment() {
                         onQueryChange = viewModel::onQueryChange,
                         onMemoryClick = { id -> timelineListener?.onMemoryClicked(id) },
                         onScrollHandled = viewModel::onScrollHandled,
+                        onScrollToTopHandled = viewModel::onScrollToTopHandled,
                     )
                 }
             }
@@ -56,6 +57,9 @@ class TimelineFragment : Fragment() {
      * list contains the memory, so it can be made while the tab is hidden, with or without a view, or still being shown.
      */
     fun requestScrollToAndFlash(memoryId: Int) = viewModel.requestScrollTo(memoryId)
+
+    /** Scrolls the list back to its top, and brings the search bar back (the Timeline tab tapped again). */
+    fun requestScrollToTop() = viewModel.requestScrollToTop()
 
     override fun onDetach() {
         super.onDetach()

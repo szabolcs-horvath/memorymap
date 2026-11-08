@@ -132,6 +132,13 @@ class MainActivity :
             navigateToTab(item.itemId)
             true
         }
+        // The tab tapped again: back to its own screen (closing a memory opened over it), and the Timeline, when it is
+        // already shown, back to its top, as navigation bars do.
+        binding.bottomNavigation.setOnItemReselectedListener { item ->
+            val detailOpen = supportFragmentManager.backStackEntryCount > 0
+            navigateToTab(item.itemId)
+            if (item.itemId == R.id.navigation_timeline && !detailOpen) timelineFragment?.requestScrollToTop()
+        }
     }
 
     private fun navigateToTab(itemId: Int) {
