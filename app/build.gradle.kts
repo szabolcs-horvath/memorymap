@@ -166,6 +166,7 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.video)
     implementation(libs.photoview)
+    implementation(libs.androidx.exifinterface)
 
     // Auth
     implementation(libs.credentials)

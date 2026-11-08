@@ -30,6 +30,7 @@ room = "2.8.5"
 # Media
 coil = "3.6.3"
 photoview = "2.3.0"
+exifinterface = "1.4.2"
 
 # Auth
 credentials = "1.6.0"
@@ -102,6 +103,7 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 coil = { group = "io.coil-kt.coil3", name = "coil", version.ref = "coil" }
 coil-video = { group = "io.coil-kt.coil3", name = "coil-video", version.ref = "coil" }
 photoview = { group = "com.github.chrisbanes", name = "PhotoView", version.ref = "photoview" }
+androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
 
 # Auth
 credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }

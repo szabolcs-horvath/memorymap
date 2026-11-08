@@ -7,12 +7,12 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.database.Cursor
-import android.media.ExifInterface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
+import androidx.exifinterface.media.ExifInterface
 import com.google.firebase.perf.trace
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
