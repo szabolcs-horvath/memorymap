@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.screens
 
+import android.graphics.Point
 import org.junit.Assert.assertTrue
 
 /** The location picker opened from the Add form. */
@@ -11,6 +12,35 @@ object LocationPickerScreen {
     private const val DEFAULT_DOWN = 0.25f
 
     fun assertShown() = Ui.assertShown("The location picker") { hasText(CONFIRM) }
+
+    /**
+     * Waits until the map has drawn what it shows and stopped loading. Until the map has fetched what it needs from
+     * Google it shows one plain colour, and without a network it may never get further. The map draws without
+     * anything a screen reader can read, so this reads its colours from screenshots, on a grid across its middle (away
+     * from the buttons above and below it and the zoom controls): they must show more than one colour (land and sea)
+     * and stay the same between two reads.
+     */
+    fun awaitMapDrawn() {
+        val map = Ui.find { hasDescription(GOOGLE_MAP) }.visibleBounds
+        val grid = (0 until DRAWN_GRID).flatMap { i ->
+            (0 until DRAWN_GRID).map { j ->
+                Point(
+                    map.left + (map.width() * (DRAWN_LEFT + DRAWN_WIDTH * i / (DRAWN_GRID - 1))).toInt(),
+                    map.top + (map.height() * (DRAWN_TOP + DRAWN_HEIGHT * j / (DRAWN_GRID - 1))).toInt()
+                )
+            }
+        }
+        var previous = emptyList<Int>()
+        fun List<Int>.isDrawn() = any { !ScreenColors.isClose(it, first()) }
+        fun List<Int>.isSettled() = size == previous.size && indices.all { ScreenColors.isClose(this[it], previous[it]) }
+        val shown = Ui.eventually(Ui.SLOW_TIMEOUT_MS, DRAWN_POLL_MS, read = { ScreenColors.at(grid) }) { colors ->
+            (colors.isDrawn() && colors.isSettled()).also { previous = colors }
+        }
+        assertTrue(
+            "The location picker's map has not drawn anything: it shows only ${shown.distinct().map(ScreenColors::hex)}",
+            shown.isDrawn()
+        )
+    }
 
     fun assertGone() = Ui.assertGone("The location picker") { hasText(CONFIRM) }
 
@@ -67,5 +97,11 @@ object LocationPickerScreen {
         assertTrue("A location was picked", !Ui.waitUntil(NOTHING_PICKED_WAIT_MS) { mapMarkerTitles().isNotEmpty() })
 
     private const val MY_LOCATION = "My location"
+    private const val DRAWN_GRID = 5
+    private const val DRAWN_LEFT = 0.1f
+    private const val DRAWN_WIDTH = 0.7f
+    private const val DRAWN_TOP = 0.2f
+    private const val DRAWN_HEIGHT = 0.5f
+    private const val DRAWN_POLL_MS = 500L
     private const val NOTHING_PICKED_WAIT_MS = 3_000L
 }
