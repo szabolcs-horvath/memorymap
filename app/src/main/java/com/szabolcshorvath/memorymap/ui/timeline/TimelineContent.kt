@@ -84,6 +84,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -181,7 +182,7 @@ fun TimelineContent(
                 listState = listState,
                 flash = flash,
                 onMemoryClick = onMemoryClick,
-                contentPadding = PaddingValues(top = with(LocalDensity.current) { searchBarHeight.toDp() }),
+                top = with(LocalDensity.current) { searchBarHeight.toDp() },
             )
         }
         TopSearchBar(
@@ -304,14 +305,14 @@ private fun MemoryList(
     listState: LazyListState,
     flash: FlashState,
     onMemoryClick: (Int) -> Unit,
-    contentPadding: PaddingValues,
+    top: Dp,
 ) {
     LazyColumn(
         state = listState,
         modifier = Modifier
             .fillMaxSize()
             .testTag(TAG_LIST),
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(top = top, bottom = LIST_BOTTOM_PADDING),
     ) {
         for (day in days) {
             item(key = "date_${day.date}", contentType = "day") { DayHeader(day) }
@@ -347,7 +348,10 @@ private val LIST_MARGIN = 16.dp
 private val ITEM_PADDING = 16.dp
 
 /** The gap between the items of one day's group (Material 3 Expressive's segmented list). */
-private val SEGMENT_GAP = 2.dp
+private val SEGMENT_GAP = 4.dp
+
+/** Space below the last memory: a margin, and room for the Scroll to top button (48 dp and its 16 dp margin). */
+private val LIST_BOTTOM_PADDING = 80.dp
 
 /** Where a card is among its day's cards: the outer corners of a day's group are round, the inner ones small. */
 private enum class Segment(val roundTop: Boolean, val roundBottom: Boolean) {
