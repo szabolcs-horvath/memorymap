@@ -1,0 +1,6 @@
+# Line endings for editors (Android Studio writes new files with these). Git applies the same rules: .gitattributes.
+[*]
+end_of_line = lf
+
+[*.bat]
+end_of_line = crlf
