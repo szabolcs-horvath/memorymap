@@ -7,8 +7,6 @@ import java.time.ZonedDateTime
 
 class TimelineFragmentViewModelTest {
 
-    private val viewModel = TimelineFragmentViewModel()
-
     private val memories = listOf(
         MemoryGroup(
             id = 1,
@@ -50,27 +48,27 @@ class TimelineFragmentViewModelTest {
 
     @Test
     fun `filterGroups returns all when query is empty`() {
-        val result = viewModel.filterGroups(memories, "")
+        val result = TimelineFragmentViewModel.filterGroups(memories, "")
         assertEquals(3, result.size)
     }
 
     @Test
     fun `filterGroups filters by title`() {
-        val result = viewModel.filterGroups(memories, "Paris")
+        val result = TimelineFragmentViewModel.filterGroups(memories, "Paris")
         assertEquals(1, result.size)
         assertEquals("Trip to Paris", result[0].title)
     }
 
     @Test
     fun `filterGroups filters by description`() {
-        val result = viewModel.filterGroups(memories, "friends")
+        val result = TimelineFragmentViewModel.filterGroups(memories, "friends")
         assertEquals(1, result.size)
         assertEquals("Birthday Party", result[0].title)
     }
 
     @Test
     fun `filterGroups is case insensitive`() {
-        val result = viewModel.filterGroups(memories, "paris")
+        val result = TimelineFragmentViewModel.filterGroups(memories, "paris")
         assertEquals(1, result.size)
         assertEquals("Trip to Paris", result[0].title)
     }
@@ -78,7 +76,7 @@ class TimelineFragmentViewModelTest {
     @Test
     fun `filterGroups filters by place name`() {
         // Place name of memory 3 is "Barcelona"
-        val result = viewModel.filterGroups(memories, "Barcelona")
+        val result = TimelineFragmentViewModel.filterGroups(memories, "Barcelona")
         assertEquals(1, result.size)
         assertEquals("Summer vacation", result[0].title)
     }
@@ -86,8 +84,24 @@ class TimelineFragmentViewModelTest {
     @Test
     fun `filterGroups filters by address`() {
         // Address of memory 3 contains "Rambla"
-        val result = viewModel.filterGroups(memories, "Rambla")
+        val result = TimelineFragmentViewModel.filterGroups(memories, "Rambla")
         assertEquals(1, result.size)
         assertEquals("Summer vacation", result[0].title)
+    }
+
+    @Test
+    fun `groupByDay puts the newest day first and keeps each day's memories newest first`() {
+        val day1 = ZonedDateTime.parse("2026-05-01T08:00:00+02:00[Europe/Budapest]")
+        val day2 = day1.plusDays(3)
+        val groups = listOf(
+            memories[0].copy(id = 1, startDate = day1.plusHours(1)),
+            memories[1].copy(id = 2, startDate = day2),
+            memories[2].copy(id = 3, startDate = day1.plusHours(5)),
+        )
+
+        val days = TimelineFragmentViewModel.groupByDay(groups)
+
+        assertEquals(listOf(day2.toLocalDate(), day1.toLocalDate()), days.map { it.date })
+        assertEquals(listOf(listOf(2), listOf(3, 1)), days.map { day -> day.memories.map { it.id } })
     }
 }

@@ -5,32 +5,22 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.doOnPreDraw
-import androidx.core.widget.doOnTextChanged
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.adapter.TimelineAdapter
-import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.databinding.FragmentTimelineBinding
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
+import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
+import com.szabolcshorvath.memorymap.ui.timeline.TimelineContent
 
+/** The Timeline tab, built with Compose ([TimelineContent]). */
 class TimelineFragment : Fragment() {
 
-    private var _binding: FragmentTimelineBinding? = null
-    private val binding get() = _binding!!
-    private lateinit var adapter: TimelineAdapter
     private var timelineListener: TimelineListener? = null
 
-    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
-    private val viewModel: TimelineFragmentViewModel by viewModels()
+    private val viewModel: TimelineFragmentViewModel by viewModels { TimelineFragmentViewModel.Factory }
 
     interface TimelineListener {
         fun onMemoryClicked(id: Int)
@@ -43,152 +33,36 @@ class TimelineFragment : Fragment() {
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentTimelineBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        val viewLifecycleOwner = viewLifecycleOwner
-        setupRecyclerView()
-        setupSearchBar()
-        setupScrollBehavior()
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(commonViewModel.allGroups, viewModel.searchQuery) { groups, query ->
-                    viewModel.filterGroups(groups, query) to query
-                }.collect { (filteredGroups, query) ->
-                    val sortedGroups = filteredGroups.sortedByDescending { it.startDate }
-                    adapter.updateData(sortedGroups) {
-                        // A hidden tab keeps its list up to date, but scrolls and flashes only once it is shown.
-                        if (isResumed) {
-                            viewModel.pendingScrollMemoryId?.let { id ->
-                                performScrollAndFlash(id)
-                                viewModel.pendingScrollMemoryId = null
-                            }
-                        }
-                    }
-                    if (sortedGroups.isEmpty()) {
-                        binding.emptyView.text = if (query.isBlank()) {
-                            getString(R.string.timeline_empty)
-                        } else {
-                            getString(R.string.timeline_no_matches, query.trim())
-                        }
-                        binding.emptyView.visibility = View.VISIBLE
-                        binding.rvTimeline.visibility = View.GONE
-                    } else {
-                        binding.emptyView.visibility = View.GONE
-                        binding.rvTimeline.visibility = View.VISIBLE
-                    }
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
+        ComposeView(inflater.context).apply {
+            // Compose keeps its saved state (the search, the scroll position) under the view's id.
+            id = R.id.timeline_content
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                MemoryMapTheme {
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    TimelineContent(
+                        state = state,
+                        onQueryChange = viewModel::onQueryChange,
+                        onMemoryClick = { id -> timelineListener?.onMemoryClicked(id) },
+                        onScrollHandled = viewModel::onScrollHandled,
+                    )
                 }
             }
         }
-    }
-
-    private fun setupSearchBar() {
-        binding.etSearch.doOnTextChanged { text, _, _, _ ->
-            viewModel.updateSearchQuery(text?.toString() ?: "")
-        }
-    }
-
-    private fun setupScrollBehavior() {
-        binding.rvTimeline.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                super.onScrolled(recyclerView, dx, dy)
-                // A jump to a memory (Show on Timeline) is reported during layout. Shown there for the first time, the
-                // button can be laid out before it is measured, at 0 × 0, and stay invisible, so update it afterwards.
-                recyclerView.post { updateScrollToTopButton() }
-            }
-        })
-
-        binding.fabTop.setOnClickListener {
-            binding.rvTimeline.stopScroll()
-            binding.rvTimeline.smoothScrollToPosition(0)
-            binding.appBar.setExpanded(true, true)
-        }
-    }
-
-    /** Shows the Scroll to top button while the list's first row is scrolled out of view. */
-    private fun updateScrollToTopButton() {
-        val binding = _binding ?: return
-        val layoutManager = binding.rvTimeline.layoutManager as? LinearLayoutManager ?: return
-        if (layoutManager.findFirstVisibleItemPosition() > 0) binding.fabTop.show() else binding.fabTop.hide()
-    }
-
-    private fun setupRecyclerView() {
-        adapter = TimelineAdapter { memoryGroup ->
-            timelineListener?.onMemoryClicked(memoryGroup.id)
-        }
-        binding.rvTimeline.layoutManager = LinearLayoutManager(requireContext())
-        binding.rvTimeline.adapter = adapter
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Once the shown list is laid out: a tab that kept its view while hidden is shown in this same frame.
-        val view = view ?: return
-        view.doOnPreDraw { if (isResumed) scrollToPendingMemory() }
-    }
 
     /**
      * Scrolls to memory [memoryId] and flashes it. The request is kept in the ViewModel until the tab is shown and its
      * list contains the memory, so it can be made while the tab is hidden, with or without a view, or still being shown.
      */
-    fun requestScrollToAndFlash(memoryId: Int) {
-        viewModel.pendingScrollMemoryId = memoryId
-        if (isResumed) scrollToPendingMemory()
-    }
+    fun requestScrollToAndFlash(memoryId: Int) = viewModel.requestScrollTo(memoryId)
 
-    /** Handles the pending scroll request, if this view's list has the memory yet. */
-    private fun scrollToPendingMemory() {
-        val memoryId = viewModel.pendingScrollMemoryId ?: return
-        // The adapter belongs to the current view, so only use it while there is one.
-        if (_binding != null && adapter.getPositionForId(memoryId) != -1) {
-            viewModel.pendingScrollMemoryId = null
-            performScrollAndFlash(memoryId)
-        }
-    }
-
-    private fun performScrollAndFlash(memoryId: Int) {
-        val binding = _binding ?: return
-        val position = adapter.getPositionForId(memoryId)
-        if (position != -1) {
-            // Hide the search bar, as scrolling by hand does: while it shows, the end of the list is below the screen.
-            binding.appBar.setExpanded(false, false)
-            (binding.rvTimeline.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, SCROLL_TO_POSITION_OFFSET)
-
-            binding.rvTimeline.post {
-                val postBinding = _binding ?: return@post
-                val viewHolder = postBinding.rvTimeline.findViewHolderForAdapterPosition(position)
-                if (viewHolder is TimelineAdapter.TimelineViewHolder) {
-                    viewHolder.flash()
-                } else {
-                    postBinding.rvTimeline.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                        override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                            if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                                val vh = _binding?.rvTimeline?.findViewHolderForAdapterPosition(position)
-                                if (vh is TimelineAdapter.TimelineViewHolder) {
-                                    vh.flash()
-                                }
-                                recyclerView.removeOnScrollListener(this)
-                            }
-                        }
-                    })
-                }
-            }
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    override fun onDetach() {
+        super.onDetach()
+        timelineListener = null
     }
 
     companion object {
         const val TAG = "TimelineFragment"
-
-        private const val SCROLL_TO_POSITION_OFFSET = 100
     }
 }

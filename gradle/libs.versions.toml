@@ -14,6 +14,8 @@ datastorePreferences = "1.3.0"
 fragmentKtx = "1.9.1"
 material = "1.14.0"
 swiperefreshlayout = "1.2.0"
+composeBom = "2026.09.00"
+lifecycleCompose = "2.11.0"
 work = "2.12.0"
 kotlinxCoroutines = "1.11.0"
 pieChart = "0.7.0"
@@ -65,6 +67,7 @@ leakcanary = "1.0.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlinGradlePlugin" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlytics" }
 firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerf" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
@@ -88,6 +91,11 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 pie-chart = { group = "ir.mahozad.android", name = "pie-chart", version.ref = "pieChart" }
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleCompose" }
 
 # Google Maps
 google-places = { group = "com.google.android.libraries.places", name = "places", version.ref = "places" }

@@ -1,0 +1,544 @@
+package com.szabolcshorvath.memorymap.ui.timeline
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
+import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.fragment.TimelineDay
+import com.szabolcshorvath.memorymap.fragment.TimelineUiState
+import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
+import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.roundToInt
+
+// The UI tests find these elements by these names (screens/TimelineScreen), the names the View version's ids had.
+private const val TAG_LIST = "rv_timeline"
+private const val TAG_EMPTY = "emptyView"
+private const val TAG_DAY = "tv_date"
+private const val TAG_MEMORY_TITLE = "tv_memoryTitle"
+private const val TAG_SEARCH = "et_search"
+
+/** How far below the top of the list Show on Timeline puts the memory, in pixels (as the View version did). */
+private const val SCROLL_TO_MEMORY_OFFSET_PX = 100
+private const val FLASH_MILLIS = 1000
+private const val FLASH_PEAK = 0.5f
+
+/** The gamma Android's `ArgbEvaluator` blends colours in, which the flash copies. */
+private const val GAMMA = 2.2f
+
+/**
+ * The Timeline tab: a search field that scrolls away with the list, the memories grouped by day, newest first, and a
+ * Scroll to top button. [onQueryChange] gets the search as typed (also the one restored after process death), and
+ * [onScrollHandled] is called once a Show on Timeline request has been scrolled to.
+ */
+@Composable
+fun TimelineContent(
+    state: TimelineUiState,
+    onQueryChange: (String) -> Unit,
+    onMemoryClick: (Int) -> Unit,
+    onScrollHandled: (Int) -> Unit,
+) {
+    val query = rememberTextFieldState()
+    LaunchedEffect(query) { snapshotFlow { query.text.toString() }.collect(onQueryChange) }
+
+    val listState = rememberLazyListState()
+    val searchBar = rememberSearchBarState()
+    val flash = remember { FlashState() }
+    val scope = rememberCoroutineScope()
+
+    // A hidden tab keeps its list up to date, but scrolls and flashes only once it is shown.
+    val shown = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.RESUMED)
+    val days = state.days
+    LaunchedEffect(state.pendingScrollMemoryId, days, shown) {
+        val memoryId = state.pendingScrollMemoryId ?: return@LaunchedEffect
+        val index = days?.indexOfMemory(memoryId) ?: -1
+        if (!shown || index < 0) return@LaunchedEffect
+        // Hide the search bar, as scrolling by hand does: while it shows, the end of the list is below the screen.
+        searchBar.collapse()
+        listState.scrollToItem(index, -SCROLL_TO_MEMORY_OFFSET_PX)
+        flash.start(memoryId)
+        onScrollHandled(memoryId)
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .semantics { testTagsAsResourceId = true }
+            .nestedScroll(searchBar.nestedScroll)
+    ) {
+        // Lifted, in a darker colour, while the list is scrolled under it, as Material's app bars are.
+        SearchBar(query, searchBar, lifted = days?.isNotEmpty() == true && listState.canScrollBackward)
+        when {
+            days == null -> Unit
+
+            days.isEmpty() -> EmptyMessage(state.query)
+
+            else -> MemoryList(
+                days = days,
+                listState = listState,
+                flash = flash,
+                onMemoryClick = onMemoryClick,
+                modifier = Modifier.offset { IntOffset(0, searchBar.bottom) },
+            )
+        }
+        ScrollToTopButton(
+            visible = days?.isNotEmpty() == true && listState.isScrolledPastFirstItem(),
+            onClick = {
+                scope.launch { listState.animateScrollToItem(0) }
+                scope.launch { searchBar.expand() }
+            },
+            modifier = Modifier.align(Alignment.BottomEnd),
+        )
+    }
+}
+
+/** A Show on Timeline flash of memory [memoryId]; [serial] tells two flashes of the same memory apart. */
+private data class Flash(val memoryId: Int, val serial: Int)
+
+/** The flash running or about to run, if any. The card it is for plays it, also if it scrolls into view later. */
+private class FlashState {
+    var current by mutableStateOf<Flash?>(null)
+        private set
+
+    fun start(memoryId: Int) {
+        current = Flash(memoryId, (current?.serial ?: 0) + 1)
+    }
+
+    /** The card played [flash]: forget it, unless a newer one has started meanwhile. */
+    fun end(flash: Flash) {
+        if (current == flash) current = null
+    }
+}
+
+/** The position of memory [memoryId] among the list's rows (a day header, then its memories), or -1. */
+private fun List<TimelineDay>.indexOfMemory(memoryId: Int): Int {
+    var index = 0
+    for (day in this) {
+        index++ // The day's header.
+        val inDay = day.memories.indexOfFirst { it.id == memoryId }
+        if (inDay >= 0) return index + inDay
+        index += day.memories.size
+    }
+    return -1
+}
+
+@Composable
+private fun LazyListState.isScrolledPastFirstItem(): Boolean {
+    val scrolled by remember(this) { derivedStateOf { firstVisibleItemIndex > 0 } }
+    return scrolled
+}
+
+/**
+ * Where the search bar is: it scrolls away when the list scrolls down and comes back as soon as it scrolls up, and
+ * the list sits right below it. Its offset is kept through rotation and process death.
+ */
+private class SearchBarState(initialOffset: Float) {
+    var height by mutableIntStateOf(0)
+
+    /** From -[height] (scrolled away) to 0 (fully shown). */
+    var offset by mutableFloatStateOf(initialOffset)
+
+    /** The y coordinate of the bar's bottom edge, where the list starts. */
+    val bottom get() = (height + offset).roundToInt()
+
+    /** Moves the bar before the list scrolls, either way. */
+    val nestedScroll = object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            val before = offset
+            offset = (offset + available.y).coerceIn(-height.toFloat(), 0f)
+            return Offset(0f, offset - before)
+        }
+    }
+
+    fun collapse() {
+        offset = -height.toFloat()
+    }
+
+    suspend fun expand() {
+        animate(offset, 0f) { value, _ -> offset = value }
+    }
+}
+
+@Composable
+private fun rememberSearchBarState(): SearchBarState {
+    var saved by rememberSaveable { mutableFloatStateOf(0f) }
+    val state = remember { SearchBarState(saved) }
+    LaunchedEffect(state) { snapshotFlow { state.offset }.collect { saved = it } }
+    return state
+}
+
+@Composable
+private fun SearchBar(query: TextFieldState, bar: SearchBarState, lifted: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    val background by animateColorAsState(if (lifted) colors.surfaceContainer else colors.surface, label = "lift")
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    TextField(
+        state = query,
+        modifier = Modifier
+            .offset { IntOffset(0, bar.offset.roundToInt()) }
+            .onSizeChanged { bar.height = it.height }
+            .testTag(TAG_SEARCH)
+            .background(background)
+            .padding(16.dp)
+            .fillMaxWidth(),
+        placeholder = { Text(stringResource(R.string.timeline_search)) },
+        leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
+        trailingIcon = if (focused && query.text.isNotEmpty()) {
+            {
+                IconButton(onClick = { query.clearText() }) {
+                    Icon(painterResource(R.drawable.ic_cancel), stringResource(R.string.clear_search))
+                }
+            }
+        } else {
+            null
+        },
+        lineLimits = TextFieldLineLimits.SingleLine,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        shape = RoundedCornerShape(SEARCH_CORNER),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        interactionSource = interactionSource,
+    )
+}
+
+private val SEARCH_CORNER = 28.dp
+
+@Composable
+private fun EmptyMessage(query: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = if (query.isBlank()) {
+                stringResource(R.string.timeline_empty)
+            } else {
+                stringResource(R.string.timeline_no_matches, query.trim())
+            },
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .testTag(TAG_EMPTY),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun MemoryList(
+    days: List<TimelineDay>,
+    listState: LazyListState,
+    flash: FlashState,
+    onMemoryClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier
+            .fillMaxSize()
+            .testTag(TAG_LIST),
+    ) {
+        for (day in days) {
+            item(key = "date_${day.date}", contentType = "day") { DayHeader(day) }
+            items(day.memories.size, key = { "memory_${day.memories[it].id}" }, contentType = { "memory" }) { i ->
+                val memory = day.memories[i]
+                MemoryCard(
+                    memory = memory,
+                    segment = Segment.of(i, day.memories.size),
+                    flash = flash,
+                    onClick = { onMemoryClick(memory.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayHeader(day: TimelineDay) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(Modifier.weight(1f))
+        Text(
+            text = DateTimeFormatterUtil.date(day.date),
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .testTag(TAG_DAY),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        HorizontalDivider(Modifier.weight(1f))
+    }
+}
+
+/** Where a card is among its day's cards: the outer corners of a day's group are round, the inner ones small. */
+private enum class Segment(val roundTop: Boolean, val roundBottom: Boolean) {
+    SINGLE(true, true),
+    FIRST(true, false),
+    MIDDLE(false, false),
+    LAST(false, true);
+
+    companion object {
+        fun of(position: Int, count: Int) = when {
+            count == 1 -> SINGLE
+            position == 0 -> FIRST
+            position == count - 1 -> LAST
+            else -> MIDDLE
+        }
+    }
+}
+
+@Composable
+private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    // A pressed card rounds all its corners, as Material's segmented list items do.
+    val roundness by animateFloatAsState(if (pressed) 1f else 0f, spring(), label = "corners")
+    val shape = SegmentedShape(segment, roundness, MaterialTheme.shapes.large, MaterialTheme.shapes.extraSmall)
+
+    val flashProgress = remember { Animatable(0f) }
+    val myFlash = flash.current?.takeIf { it.memoryId == memory.id }
+    LaunchedEffect(myFlash) {
+        if (myFlash == null) return@LaunchedEffect
+        flashProgress.snapTo(0f)
+        flashProgress.animateTo(1f, tween(FLASH_MILLIS, easing = AccelerateDecelerate))
+        flashProgress.snapTo(0f)
+        flash.end(myFlash)
+    }
+    val cardColor = flashColor(flashProgress.value, colors.surfaceBright, colors.secondaryContainer)
+    val outlineColor = colors.outlineVariant
+
+    CompositionLocalProvider(LocalContentColor provides colors.onSurface) {
+        // The text keeps its padding from the card's edge, not from the colour strip, as in the View version.
+        Box(
+            Modifier
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .drawBehind { drawCard(shape, cardColor, outlineColor) }
+                .clip(shape)
+                .clickable(interactionSource, ripple(), onClick = onClick)
+        ) {
+            Box(
+                Modifier
+                    .width(8.dp)
+                    .fillMaxHeight()
+                    .background(Color(memory.markerColor()))
+            )
+            MemoryText(memory)
+        }
+    }
+}
+
+/** A card's text: the title, the place (its name, else its address), the description and the dates. */
+@Composable
+private fun MemoryText(memory: MemoryGroup) {
+    val colors = MaterialTheme.colorScheme
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+        Text(
+            text = memory.title,
+            modifier = Modifier.testTag(TAG_MEMORY_TITLE),
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.onSurface,
+        )
+        val location = memory.placeName?.takeIf { it.isNotEmpty() } ?: memory.address?.takeIf { it.isNotEmpty() }
+        if (location != null) {
+            Spacer(Modifier.height(2.dp))
+            Text(location, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        }
+        val description = memory.description
+        if (!description.isNullOrEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        Text(
+            text = memory.getFormattedDate(LocalContext.current).orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
+        )
+    }
+}
+
+/** Fills the card and draws its 1 dp outline inside its edge, under the content (the colour strip covers it). */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCard(shape: Shape, fill: Color, outline: Color) {
+    drawOutline(shape.createOutline(size, layoutDirection, this), fill)
+    val stroke = 1.dp.toPx()
+    translate(stroke / 2, stroke / 2) {
+        val inner = Size(size.width - stroke, size.height - stroke)
+        drawOutline(shape.createOutline(inner, layoutDirection, this), outline, style = Stroke(stroke))
+    }
+}
+
+/**
+ * The card's shape: [large] corners on the outer side of its day's group, [small] ones inside, and all [large] as
+ * [roundness] goes to 1 (pressed).
+ */
+private class SegmentedShape(
+    private val segment: Segment,
+    private val roundness: Float,
+    private val large: CornerBasedShape,
+    private val small: CornerBasedShape,
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val largePx = large.topStart.toPx(size, density)
+        val smallPx = small.topStart.toPx(size, density)
+        fun corner(round: Boolean) = if (round) largePx else smallPx + (largePx - smallPx) * roundness
+        val top = corner(segment.roundTop)
+        val bottom = corner(segment.roundBottom)
+        return RoundedCornerShape(top, top, bottom, bottom).createOutline(size, layoutDirection, density)
+    }
+}
+
+/** Android's `AccelerateDecelerateInterpolator`, which the View version's flash ran with. */
+private val AccelerateDecelerate = Easing { x -> ((1 + cos((x + 1) * PI)) / 2).toFloat() }
+
+/** The flash's colour at [progress]: from [base] to [peak] and back, blended as Android's `ArgbEvaluator` does. */
+private fun flashColor(progress: Float, base: Color, peak: Color): Color = when {
+    progress <= 0f || progress >= 1f -> base
+    progress <= FLASH_PEAK -> blend(base, peak, progress / FLASH_PEAK)
+    else -> blend(peak, base, (progress - FLASH_PEAK) / (1 - FLASH_PEAK))
+}
+
+private fun blend(from: Color, to: Color, fraction: Float): Color {
+    fun linear(channel: Float) = channel.pow(GAMMA)
+    fun mix(a: Float, b: Float) = (linear(a) + (linear(b) - linear(a)) * fraction).pow(1 / GAMMA)
+    return Color(
+        red = mix(from.red, to.red),
+        green = mix(from.green, to.green),
+        blue = mix(from.blue, to.blue),
+        alpha = from.alpha + (to.alpha - from.alpha) * fraction,
+    )
+}
+
+@Composable
+private fun ScrollToTopButton(visible: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier.padding(16.dp),
+        enter = scaleIn() + fadeIn(),
+        exit = scaleOut() + fadeOut(),
+    ) {
+        FloatingActionButton(onClick = onClick) {
+            Icon(
+                painterResource(R.drawable.ic_chevron_right),
+                contentDescription = stringResource(R.string.scroll_to_top),
+                modifier = Modifier.rotate(UP),
+            )
+        }
+    }
+}
+
+/** Turns the right-pointing chevron to point up. */
+private const val UP = 270f
