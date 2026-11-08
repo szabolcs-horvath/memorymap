@@ -22,7 +22,7 @@ pieChart = "0.7.0"
 places = "6.0.2"
 playServicesLocation = "21.4.0"
 playServicesMaps = "20.1.0"
-androidMapsUtils = "6.1.0"
+androidMapsUtils = "7.0.0"
 
 # Room
 room = "2.8.5"
