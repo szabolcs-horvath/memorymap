@@ -1,2 +1,5 @@
 # Shell scripts must keep Unix line endings to run in bash, also in a Windows checkout.
 *.sh text eol=lf
+gradlew text eol=lf
+# Batch files need Windows line endings for cmd.exe.
+*.bat text eol=crlf
