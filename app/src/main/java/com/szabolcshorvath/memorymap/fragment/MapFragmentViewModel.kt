@@ -2,13 +2,18 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.perf.metrics.AddTrace
-import com.szabolcshorvath.memorymap.data.CommonRepository
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MarkerClustering
 import com.szabolcshorvath.memorymap.data.Markerable
+import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +28,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-class MapFragmentViewModel(application: Application) : AndroidViewModel(application) {
-    private val commonRepository = CommonRepository.getInstance(application)
+class MapFragmentViewModel(application: Application, private val memories: MemoryRepository) : AndroidViewModel(application) {
 
     var selectedMemoryId: Int? = null
     var selectedMarkerPosition: LatLng? = null
@@ -79,8 +83,8 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         return combine(
-            commonRepository.allGroups,
-            commonRepository.allFragments,
+            memories.allGroups,
+            memories.allFragments,
             filterStartDate,
             filterEndDate,
             showFragmentsEnabledFlow
@@ -118,6 +122,13 @@ class MapFragmentViewModel(application: Application) : AndroidViewModel(applicat
 
     companion object {
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
+
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY]!!
+                MapFragmentViewModel(app, app.appContainer.memories)
+            }
+        }
 
         /**
          * Whether a memory from [itemStart] to [itemEnd] falls at least partly within the filter range.

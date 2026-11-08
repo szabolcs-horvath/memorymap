@@ -21,9 +21,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.perf.metrics.Trace
-import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.databinding.ActivityMainContainerBinding
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment
@@ -34,9 +32,7 @@ import com.szabolcshorvath.memorymap.fragment.MemoryPagerFragment
 import com.szabolcshorvath.memorymap.fragment.PickLocationFragment
 import com.szabolcshorvath.memorymap.fragment.SettingsFragment
 import com.szabolcshorvath.memorymap.fragment.TimelineFragment
-import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
-import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaDetailsBackfill
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PerfUtil
@@ -85,7 +81,7 @@ class MainActivity :
         binding = ActivityMainContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        commonViewModel = ViewModelProvider(this)[CommonViewModel::class.java]
+        commonViewModel = ViewModelProvider(this, CommonViewModel.Factory)[CommonViewModel::class.java]
 
         // After a recreation the FragmentManager has already restored the fragments.
         if (savedInstanceState == null) {
@@ -266,7 +262,7 @@ class MainActivity :
                 }
 
                 val needsPermissionForRelink = withContext(Dispatchers.IO) {
-                    initializeHSVPresetsIfEmpty()
+                    commonViewModel.addDefaultPresetsIfEmpty()
                     val relinkResult = MediaRelinker.relink(applicationContext)
                     MediaDetailsBackfill.start(applicationContext)
                     // Only prompt when there is no media access at all, so users who chose
@@ -291,15 +287,6 @@ class MainActivity :
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to check app status", e)
             }
-        }
-    }
-
-    private suspend fun initializeHSVPresetsIfEmpty() {
-        if (commonViewModel.getHSVPresetDao().getCount() == 0) {
-            val defaultPresets = ColorUtil.DEFAULT_HSV_PRESETS.mapIndexed { index, hsv ->
-                HSVPreset(hue = hsv[0], saturation = hsv[1], brightness = hsv[2], order = index)
-            }
-            commonViewModel.getHSVPresetDao().insertPresets(defaultPresets)
         }
     }
 
@@ -376,29 +363,15 @@ class MainActivity :
     }
 
     override fun onMemoryDeleted(deleted: MemoryGroupWithMedia) {
-        // Application scope: this work must finish even if the activity is destroyed meanwhile
-        // (which also dismisses the Snackbar).
-        val app = application as MemoryMapApplication
-        val db = commonViewModel.getDb()
         val snackbar = Snackbar.make(binding.root, R.string.memory_deleted, Snackbar.LENGTH_LONG)
         snackbar.anchorView = binding.bottomNavigation
-        snackbar.setAction(R.string.undo) {
-            app.applicationScope.launch {
-                db.memoryGroupDao().restoreDeletedGroup(deleted)
-                AutomaticBackups.schedule(app)
-            }
-        }
+        snackbar.setAction(R.string.undo) { commonViewModel.undoDelete(deleted) }
         snackbar.addCallback(object : Snackbar.Callback() {
             override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                 if (event == DISMISS_EVENT_ACTION) return // Undone; the undo above backs up.
                 // The delete is final now: the media grants can't be needed for an undo any more. An edit of the
                 // memory still open on the Add tab saves it again as a new memory, so its media keep their grants.
-                val keptByForm = addMemoryFragment?.mediaUrisInForm().orEmpty()
-                val released = deleted.mediaItems.map { it.uri }.filterNot { it in keptByForm }
-                app.applicationScope.launch {
-                    LocalMediaUtil.releaseUriGrantsIfUnused(app, db.memoryGroupDao(), released)
-                    AutomaticBackups.schedule(app)
-                }
+                commonViewModel.finishDelete(deleted, addMemoryFragment?.mediaUrisInForm().orEmpty())
             }
         })
         snackbar.show()

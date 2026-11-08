@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 78 fixed · 🟡 5 partly fixed · ❔ 0 to verify · ⬜ 7 open
+✅ 78 fixed · 🟡 6 partly fixed · ❔ 0 to verify · ⬜ 6 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -141,7 +141,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ✅ | [ARCH-1](#arch-1) | High | Manual fragment management fights the framework |
-| ⬜ | [ARCH-2](#arch-2) | High | Business logic lives in Fragments and the Activity |
+| 🟡 | [ARCH-2](#arch-2) | High | Business logic lives in Fragments and the Activity |
 | ✅ | [ARCH-3](#arch-3) | High | Background work tied to UI scopes |
 | ✅ | [ARCH-4](#arch-4) | Medium | Two Google auth stacks |
 | 🟡 | [ARCH-5](#arch-5) | Medium | Duplicated logic |
@@ -698,11 +698,17 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Compose migration ([ARCH-10](#arch-10)):** both wait for the same complete UI test suite (TEST-3). The migration keeps the fragments for most of its steps, so this plan still applies alongside it. Only its last, optional step replaces `MainActivity`'s fragment handling with a Compose shell, which would throw this work away and solve PERF-7 there instead. Once TEST-3 is done, decide: if the Compose shell is planned soon, skip this plan and solve PERF-7 in that step; otherwise do this plan first.
 - **Status:** Fixed (2026-11-04), as planned, keeping the manual tab management; the Compose shell isn't planned soon. `navigateToTab` caps a hidden tab that has a view at `STARTED` and one never shown at `CREATED`, and loops only over the tabs and the picker. `onMemoryClicked` adds the memory over the shown screen and hides it at `STARTED`; the media viewer and the location picker hide the memory and the form at `STARTED` too, and the picker goes back to `CREATED` when it closes. After a recreation, `releaseHiddenViews` puts every hidden screen back to `CREATED`. Show on Map and Show in Timeline run in `onResume` (at once if already resumed); Edit still runs as soon as the form has a view, since filling a hidden form shows nothing. The stale-data points: the Settings switches and default filter now follow DataStore; the Add tab's save result is handled only while the tab is shown (a save error waits for it, and a save that finished elsewhere shows the cleared form, or an edit opened meanwhile); the keyboard is closed whenever a screen is hidden. Hidden tabs still update on data changes; the map now changes only the markers that changed (PERF-8). New UI test: `DetailNavigationTest.theKeyboardClosesAndTheSearchStaysWhenAMemoryOrAnotherTabIsShown`.
 
-### <a id="arch-2"></a>⬜ ARCH-2 · High · Business logic lives in Fragments and the Activity
+### <a id="arch-2"></a>🟡 ARCH-2 · High · Business logic lives in Fragments and the Activity
 - **Where:** `SettingsFragment.kt` (1041 lines), `AddMemoryGroupFragment.kt` (786), `MapFragment.kt` (778), `MainActivity.kt`
 - **What:** DAO writes (preset CRUD, delete, undo transaction), backup triggers, relink orchestration and permission flows are written inline in UI classes. `CommonViewModel` hands raw `getDb()` and `getMemoryGroupDao()` to the UI. ViewModels expose mutable `var`s and a `MutableList` shared directly with an adapter (`viewModel.fragments` → `MemoryFragmentEditAdapter`).
 - **Fix:** Add repository and use-case classes (`MemoryRepository.save/delete/restore`, `BackupScheduler`, `MediaRelinker`). ViewModels expose immutable `StateFlow<UiState>` and take intents.
 - **Compose migration ([ARCH-10](#arch-10)):** the ViewModel part (`StateFlow<UiState>` plus intents) is step 2 of the migration, done one screen at a time right before that screen moves to Compose. Doing it earlier is fine and makes the migration smaller. The repository and use-case part does not depend on the migration.
+- **Status:** Partly fixed (2026-11-08): the repository part.
+  - No screen touches the database or a DAO any more. `MemoryRepository` (save, reorder, delete, undo, the final delete's grant release, thumbnails) and `PresetRepository` (add, save, delete, reorder, the first-start defaults) do the writes, and each schedules the automatic backup itself. `CommonViewModel` no longer hands out `getDb()` or DAOs, and `CommonRepository` is gone.
+  - Moved out of UI classes: the Add form's save transaction (from its ViewModel), the delete and the thumbnail lookup (`MemoryFragment`), the undo and the final delete (`MainActivity`), the preset writes, the backup list and the missing-media check (`SettingsFragment`), the default presets (`MainActivity`), and the missing-photo sheet's reads.
+  - The ViewModels that use data take their repository in the constructor, through a `Factory` ([ARCH-6](#arch-6)). `SaveMediaTest` builds the Add form's with an in-memory database.
+  - The backup triggers already had their own classes (`AutomaticBackups`, [ARCH-3](#arch-3)), as did re-linking (`MediaRelinker`, `RelinkAction`) and the location permission flow (`MyLocationAction`).
+  - Left for the Compose migration, one screen at a time (step 2 of [ARCH-10](#arch-10)): immutable `StateFlow<UiState>` plus intents instead of the ViewModels' `var`s, and the `MutableList` the Add form's ViewModel shares with `MemoryFragmentEditAdapter`.
 
 ### <a id="arch-3"></a>✅ ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
@@ -744,7 +750,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `CommonRepository`, `MemoryMapDatabase`, `InstallationIdentifier`, `BackupManager(context)` created per fragment
 - **What:** `MemoryMapDatabase.getDatabase` has no second null check inside `synchronized`, so two threads can build two databases (`MemoryMapDatabase.kt:94-107`). The DAO cache fields are not volatile.
 - **Fix:** Hilt or Koin (or at least a small `AppContainer` in `Application`), and fix the double-checked locking.
-- **Status:** Partly fixed: `MemoryMapDatabase.getDatabase` now re-checks inside `synchronized`. `AppServices` holds the outside services behind interfaces (`accounts` for sign-in and Drive consent, `backupStorage` for Drive files), which UI tests replace with fakes. No DI framework yet: the database, repository and the rest are still singletons or created per caller.
+- **Status:** Partly fixed: `MemoryMapDatabase.getDatabase` now re-checks inside `synchronized`. `AppServices` holds the outside services behind interfaces (`accounts` for sign-in and Drive consent, `backupStorage` for Drive files), which UI tests replace with fakes. `AppContainer` (2026-11-08, in `MemoryMapApplication`) builds the database, `MemoryRepository`, `PresetRepository` and one `BackupManager`, and the ViewModels that need them get them through their constructor (a `Factory`), so `CommonRepository`'s singleton and the per-fragment `BackupManager` are gone. Left: no DI framework (a small container was enough so far), and code outside the UI (re-linking, `MissingMedia`, the details backfill, the backup worker, the relink diagnostics) still reaches the database through `MemoryMapDatabase.getDatabase` instead of the container.
 
 ### <a id="arch-7"></a>✅ ARCH-7 · Low · Stringly-typed data passing
 - **Where:** `MemoryFragmentListener.onMediaClick(ArrayList<Pair<String,String>>)`, `MediaPagerAdapter` (`item.second == "VIDEO"`), `MediaViewerFragment` (Serializable `Pair` list in arguments, which also risks `TransactionTooLargeException` for large memories)

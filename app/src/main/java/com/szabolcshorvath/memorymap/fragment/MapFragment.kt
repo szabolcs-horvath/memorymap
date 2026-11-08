@@ -75,8 +75,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var mapListener: MapListener? = null
     private var overlayAdapter: MemoryOverlayAdapter? = null
 
-    private val commonViewModel: CommonViewModel by activityViewModels()
-    private val viewModel: MapFragmentViewModel by viewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
+    private val viewModel: MapFragmentViewModel by viewModels { MapFragmentViewModel.Factory }
 
     private val clustersFlow by lazy {
         viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled)

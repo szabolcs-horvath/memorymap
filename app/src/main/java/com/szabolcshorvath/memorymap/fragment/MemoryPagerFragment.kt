@@ -20,7 +20,7 @@ class MemoryPagerFragment : Fragment() {
 
     private var _binding: FragmentMemoryPagerBinding? = null
     private val binding get() = _binding!!
-    private val commonViewModel: CommonViewModel by activityViewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
     private val viewModel: MemoryPagerFragmentViewModel by viewModels()
     private var initialMemoryId: Int = -1
     private var pagerAdapter: MemoryPagerAdapter? = null

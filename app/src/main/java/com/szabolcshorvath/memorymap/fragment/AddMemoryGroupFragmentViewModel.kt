@@ -9,27 +9,29 @@ import androidx.annotation.VisibleForTesting
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.szabolcshorvath.memorymap.MemoryMapApplication
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
-import com.szabolcshorvath.memorymap.backup.AutomaticBackups
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaThumbnail
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaDetails
 import com.szabolcshorvath.memorymap.util.MediaDetails.withDetails
-import com.szabolcshorvath.memorymap.util.MediaDetails.withDetailsOf
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
-import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +43,11 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-class AddMemoryGroupFragmentViewModel(application: Application, savedState: SavedStateHandle) : AndroidViewModel(application) {
+class AddMemoryGroupFragmentViewModel(
+    application: Application,
+    savedState: SavedStateHandle,
+    private val memories: MemoryRepository
+) : AndroidViewModel(application) {
 
     /** Handled while the Add screen is shown: one that comes while another screen is shown waits for it. */
     sealed class SaveResult {
@@ -105,7 +111,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         savedState.setSavedStateProvider(FORM_STATE, ::saveState)
     }
 
-    fun saveMemoryGroup(database: MemoryMapDatabase) {
+    fun saveMemoryGroup() {
         if (_isSaving.value) return
         _isSaving.value = true
 
@@ -126,7 +132,6 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         val snapshotEditingId = editingMemoryId
 
         viewModelScope.launch(Dispatchers.IO) {
-            var savedAsNew = false
             try {
                 val effectiveStart = calculateEffectiveStartTime(snapshotIsAllDay, snapshotStart)
                 val effectiveEnd = calculateEffectiveEndTime(snapshotIsAllDay, snapshotEnd)
@@ -135,33 +140,14 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
                     snapshotPlaceName, snapshotAddress, effectiveStart, effectiveEnd,
                     snapshotIsAllDay, snapshotHue, snapshotSat, snapshotBri
                 )
-                val groupIdResult = trace("add_memory_group_view_model_save_memory_group") {
-                    // File reads (sizes, signatures, possibly a cloud download) happen before the transaction,
+                val saved = trace("add_memory_group_view_model_save_memory_group") {
+                    // File reads (sizes, signatures, possibly a cloud download) happen before the save's transaction,
                     // so it only writes and doesn't block other writers, such as a backup snapshot, meanwhile.
                     val preparedMedia = prepareMediaItems(getApplication(), snapshotMedia)
                     val detailed = readNewDetails(getApplication(), snapshotMedia, preparedMedia)
-                    val dao = database.memoryGroupDao()
-
-                    var removedUris: Set<String> = emptySet()
-                    val savedId = database.withTransaction("save_memory_group") {
-                        // An edit of a memory deleted meanwhile (from its own screen) updates nothing:
-                        // it is saved as a new memory, so the user's changes aren't lost.
-                        val updatedId = snapshotEditingId?.takeIf { dao.updateGroup(group) > 0 }
-                        savedAsNew = snapshotEditingId != null && updatedId == null
-                        val groupId = updatedId?.toLong() ?: dao.insertGroup(group.copy(id = 0))
-
-                        removedUris = saveMediaItems(dao, groupId.toInt(), detailed.items, updatedId)
-                        detailed.thumbnails.forEach { database.mediaThumbnailDao().insert(it) }
-                        saveMemoryFragments(dao, groupId, snapshotFragments)
-                        groupId.toInt()
-                    }
-
-                    LocalMediaUtil.releaseUriGrantsIfUnused(getApplication(), dao, removedUris)
-                    savedId
+                    memories.save(group, snapshotEditingId, detailed.items, detailed.thumbnails, toEntities(snapshotFragments))
                 }
-                // In the background: saving no longer waits for the upload.
-                AutomaticBackups.schedule(getApplication())
-                withContext(Dispatchers.Main) { onSaved(groupIdResult, savedAsNew) }
+                withContext(Dispatchers.Main) { onSaved(saved.groupId, saved.savedAsNew) }
             } catch (e: Exception) {
                 Log.e("AddMemoryVM", "Error saving memory group", e)
                 _saveResult.send(SaveResult.Error)
@@ -199,10 +185,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
 
     /** Releases the grants of the given URIs that no saved media item uses. Tests replace it to see what the form releases. */
     @VisibleForTesting
-    internal var releaseGrants: suspend (Set<String>) -> Unit = { uris ->
-        val app = getApplication<Application>()
-        LocalMediaUtil.releaseUriGrantsIfUnused(app, MemoryMapDatabase.getDatabase(app).memoryGroupDao(), uris)
-    }
+    internal var releaseGrants: suspend (Set<String>) -> Unit = { uris -> memories.releaseGrantsIfUnused(uris) }
 
     /**
      * Clears the form here, so it is empty whenever the screen is shown next. Opens the saved memory only
@@ -278,6 +261,9 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         colorExpanded = state.getBoolean(COLOR_EXPANDED)
         dateExpanded = state.getBoolean(DATE_EXPANDED, true)
     }
+
+    /** Memory [id] as stored, for editing, or null if it is gone. */
+    suspend fun loadForEditing(id: Int): MemoryGroupWithMedia? = memories.getGroupWithMedia(id)
 
     /** Fills the form with [data], a memory opened for editing. */
     fun fillForEditing(data: MemoryGroupWithMedia) {
@@ -399,32 +385,12 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
         markerBrightness = markerBrightness
     )
 
-    /**
-     * Writes the [prepared] media of group [groupId], replacing its old media when editing.
-     * Returns the URIs the group no longer uses. Database work only: runs inside the save transaction.
-     */
-    private suspend fun saveMediaItems(dao: MemoryGroupDao, groupId: Int, prepared: List<MediaItem>, editingId: Int?): Set<String> {
-        val previousUris = if (editingId != null) {
-            dao.getGroupWithMedia(groupId)?.mediaItems?.mapTo(HashSet()) { it.uri }.orEmpty()
-        } else {
-            emptySet()
-        }
-        val previous = if (editingId != null) dao.getGroupWithMedia(groupId)?.mediaItems.orEmpty().associateBy { it.uri } else emptyMap()
-        if (editingId != null) {
-            dao.deleteMediaByGroupId(groupId)
-        }
-        // Items kept through an edit keep the details they were saved with: the form doesn't carry them.
-        val mediaItems = prepared.map { item -> previous[item.uri]?.let { item.withDetailsOf(it) } ?: item }.map { it.copy(groupId = groupId) }
-        dao.insertMediaItems(mediaItems)
-        return previousUris - mediaItems.mapTo(HashSet()) { it.uri }
-    }
-
     /** The prepared media with the details of the newly picked ones, and their thumbnails. */
     private class WithDetails(val items: List<MediaItem>, val thumbnails: List<MediaThumbnail>)
 
     /**
      * Reads the details (name, size in pixels, thumbnail, perceptual hash) of the media picked in this form: they can
-     * be read now, through the pick's grant. Media loaded for editing keep theirs ([saveMediaItems]). Reads files, so it
+     * be read now, through the pick's grant. Media loaded for editing keep theirs ([MemoryRepository.save]). Reads files, so it
      * runs before the save transaction.
      */
     private fun readNewDetails(context: Context, selected: List<AddMemoryGroupFragment.SelectedMedia>, prepared: List<MediaItem>): WithDetails {
@@ -485,9 +451,9 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
             .mapIndexed { index, item -> item.copy(order = index + 1) }
     }
 
-    private suspend fun saveMemoryFragments(dao: MemoryGroupDao, groupId: Long, fragmentsToSave: List<MemoryFragmentEditAdapter.FragmentEditState>) {
-        dao.deleteFragmentsByGroupId(groupId.toInt())
-        val fragmentEntities = fragmentsToSave.mapIndexed { index, f ->
+    /** The form's fragments as they are stored (group id still 0). */
+    private fun toEntities(fragmentsToSave: List<MemoryFragmentEditAdapter.FragmentEditState>): List<MemoryFragment> =
+        fragmentsToSave.mapIndexed { index, f ->
             val saveTime = f.isTimeVisible
             val fragmentStart = if (saveTime) {
                 if (f.isAllDay) f.startDate?.toLocalDate()?.atStartOfDay(ZoneId.systemDefault()) else f.startDate
@@ -501,7 +467,7 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
             }
 
             MemoryFragment(
-                groupId = groupId.toInt(),
+                groupId = 0,
                 latitude = f.lat!!,
                 longitude = f.lng!!,
                 placeName = f.placeName,
@@ -515,19 +481,24 @@ class AddMemoryGroupFragmentViewModel(application: Application, savedState: Save
                 order = index + 1
             )
         }
-        dao.insertFragments(fragmentEntities)
-    }
 
-    private companion object {
-        const val FORM_STATE = "add_memory_form"
-        const val FORM = "form"
-        const val UNCHANGED_FORM = "unchanged_form"
-        const val EDITING_MEMORY_ID = "editing_memory_id"
-        const val PENDING_EDIT_MEMORY_ID = "pending_edit_memory_id"
-        const val ACTIVE_PICKING_INDEX = "active_picking_index"
-        const val PICKED_URIS = "picked_uris"
-        const val FRAGMENTS_EXPANDED = "fragments_expanded"
-        const val COLOR_EXPANDED = "color_expanded"
-        const val DATE_EXPANDED = "date_expanded"
+    companion object {
+        private const val FORM_STATE = "add_memory_form"
+        private const val FORM = "form"
+        private const val UNCHANGED_FORM = "unchanged_form"
+        private const val EDITING_MEMORY_ID = "editing_memory_id"
+        private const val PENDING_EDIT_MEMORY_ID = "pending_edit_memory_id"
+        private const val ACTIVE_PICKING_INDEX = "active_picking_index"
+        private const val PICKED_URIS = "picked_uris"
+        private const val FRAGMENTS_EXPANDED = "fragments_expanded"
+        private const val COLOR_EXPANDED = "color_expanded"
+        private const val DATE_EXPANDED = "date_expanded"
+
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app = this[APPLICATION_KEY]!!
+                AddMemoryGroupFragmentViewModel(app, createSavedStateHandle(), app.appContainer.memories)
+            }
+        }
     }
 }

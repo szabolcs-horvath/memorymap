@@ -26,6 +26,9 @@ class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e -> Log.e(TAG, "Background task failed", e) }
     )
 
+    /** The app's data classes, built on first use. */
+    val container: AppContainer by lazy { AppContainer(this) }
+
     override fun onCreate() {
         super.onCreate()
         applyContrastSetting()

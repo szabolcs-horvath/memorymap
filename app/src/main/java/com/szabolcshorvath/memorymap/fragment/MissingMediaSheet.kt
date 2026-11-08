@@ -42,7 +42,7 @@ import java.time.ZoneId
  */
 class MissingMediaSheet : BottomSheetDialogFragment() {
     private var _binding: SheetMissingMediaBinding? = null
-    private val viewModel: MissingMediaSheetViewModel by viewModels()
+    private val viewModel: MissingMediaSheetViewModel by viewModels { MissingMediaSheetViewModel.Factory }
     private val itemId get() = requireArguments().getInt(ITEM_ID)
     private lateinit var nearbyAdapter: NearbyMediaAdapter
 

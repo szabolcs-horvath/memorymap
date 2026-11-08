@@ -1,15 +1,17 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.szabolcshorvath.memorymap.backup.AutomaticBackups
-import com.szabolcshorvath.memorymap.data.CommonRepository
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
-import kotlinx.coroutines.Dispatchers
+import com.szabolcshorvath.memorymap.data.MemoryRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +19,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
-class MemoryFragmentViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application) {
-    private val commonRepository = CommonRepository.getInstance(application)
+class MemoryFragmentViewModel(savedStateHandle: SavedStateHandle, private val memories: MemoryRepository) : ViewModel() {
+    private val memoryId = savedStateHandle.get<Int>(ARG_MEMORY_ID) ?: -1
 
-    val groupWithMedia: StateFlow<MemoryGroupWithMedia?> = commonRepository.getGroupWithMedia(savedStateHandle.get<Int>(ARG_MEMORY_ID) ?: -1)
+    val groupWithMedia: StateFlow<MemoryGroupWithMedia?> = memories.groupWithMediaFlow(memoryId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), null)
 
     var isFragmentsExpanded: Boolean = true
@@ -31,30 +33,32 @@ class MemoryFragmentViewModel(application: Application, savedStateHandle: SavedS
     private var mediaOrderJob: Job? = null
     private var fragmentsOrderJob: Job? = null
 
-    fun saveNewMediaOrder(items: List<MediaItem>, database: MemoryMapDatabase) {
+    /** Stores [mediaItems] in the order shown. */
+    fun saveMediaOrder() {
         mediaOrderJob?.cancel()
-        val updatedItems = items.mapIndexed { index, item ->
-            item.copy(order = index + 1)
-        }
-        mediaOrderJob = viewModelScope.launch(Dispatchers.IO) {
-            database.memoryGroupDao().updateMediaItems(updatedItems)
-            AutomaticBackups.schedule(getApplication())
-        }
+        val items = mediaItems
+        mediaOrderJob = viewModelScope.launch { memories.saveMediaOrder(items) }
     }
 
-    fun saveNewFragmentsOrder(fragments: List<MemoryFragmentEntity>, database: MemoryMapDatabase) {
+    /** Stores [fragmentItems] in the order shown. */
+    fun saveFragmentsOrder() {
         fragmentsOrderJob?.cancel()
-        val updatedFragments = fragments.mapIndexed { index, item ->
-            item.copy(order = index + 1)
-        }
-        fragmentsOrderJob = viewModelScope.launch(Dispatchers.IO) {
-            database.memoryGroupDao().updateFragments(updatedFragments)
-            AutomaticBackups.schedule(getApplication())
-        }
+        val fragments = fragmentItems
+        fragmentsOrderJob = viewModelScope.launch { memories.saveFragmentsOrder(fragments) }
     }
+
+    /** The stored thumbnails of [items], by signature. */
+    suspend fun thumbnails(items: List<MediaItem>): Map<String, ByteArray> = memories.getThumbnails(items.map { it.mediaSignature })
+
+    /** Deletes the memory, and returns what was deleted for the undo, or null if it was already gone. */
+    suspend fun delete(): MemoryGroupWithMedia? = memories.delete(memoryId)
 
     companion object {
         const val ARG_MEMORY_ID = "memory_id"
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
+
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer { MemoryFragmentViewModel(createSavedStateHandle(), this[APPLICATION_KEY]!!.appContainer.memories) }
+        }
     }
 }

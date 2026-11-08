@@ -37,8 +37,8 @@ import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 class MemoryFragment : Fragment() {
     private var _binding: FragmentMemoryBinding? = null
     private val binding get() = _binding!!
-    private val commonViewModel: CommonViewModel by activityViewModels()
-    private val viewModel: MemoryFragmentViewModel by viewModels()
+    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
+    private val viewModel: MemoryFragmentViewModel by viewModels { MemoryFragmentViewModel.Factory }
     private lateinit var mediaAdapter: MediaAdapter
     private lateinit var fragmentsAdapter: MemoryFragmentAdapter
     private var memoryId: Int = -1
@@ -297,11 +297,11 @@ class MemoryFragment : Fragment() {
     }
 
     private fun saveNewMediaOrder() {
-        viewModel.saveNewMediaOrder(viewModel.mediaItems, commonViewModel.getDb())
+        viewModel.saveMediaOrder()
     }
 
     private fun saveNewFragmentsOrder() {
-        viewModel.saveNewFragmentsOrder(viewModel.fragmentItems, commonViewModel.getDb())
+        viewModel.saveFragmentsOrder()
     }
 
     private suspend fun displayDetails(data: MemoryGroupWithMedia) {
@@ -380,9 +380,7 @@ class MemoryFragment : Fragment() {
         }
         // A tile that can't be loaded shows the photo's stored thumbnail, if it has one. Also when the check above
         // doesn't know yet: a photo deleted from the gallery while the app runs fails only when it loads.
-        val signatures = viewModel.mediaItems.map { it.mediaSignature }.filter { it.isNotEmpty() }
-        val thumbnails = withContext(Dispatchers.IO) { commonViewModel.getDb().mediaThumbnailDao().getThumbnails(signatures) }
-        mediaAdapter.updateThumbnails(thumbnails.associate { it.signature to it.jpeg })
+        mediaAdapter.updateThumbnails(viewModel.thumbnails(viewModel.mediaItems))
         mediaAdapter.updateData(viewModel.mediaItems)
     }
 
@@ -399,14 +397,10 @@ class MemoryFragment : Fragment() {
 
     private fun deleteMemory() {
         val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val groupWithMedia = commonViewModel.getMemoryGroupDao().getGroupWithMedia(memoryId) ?: return@launch
-            commonViewModel.getMemoryGroupDao().deleteGroup(groupWithMedia.group)
-
-            withContext(Dispatchers.Main) {
-                memoryFragmentListener?.onMemoryDeleted(groupWithMedia)
-                memoryFragmentListener?.onBackFromMemory()
-            }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val deleted = viewModel.delete() ?: return@launch
+            memoryFragmentListener?.onMemoryDeleted(deleted)
+            memoryFragmentListener?.onBackFromMemory()
         }
     }
 

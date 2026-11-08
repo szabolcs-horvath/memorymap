@@ -39,7 +39,6 @@ import com.szabolcshorvath.memorymap.auth.DriveAuthorization
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
-import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.HSVPreset
@@ -48,19 +47,16 @@ import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.DateFilterOption
-import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.LogManager
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import com.szabolcshorvath.memorymap.util.RelinkAction
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -71,9 +67,8 @@ import com.google.api.services.drive.model.File as DriveFile
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
-    private val commonViewModel: CommonViewModel by activityViewModels()
-    private val viewModel: SettingsFragmentViewModel by viewModels()
-    private lateinit var backupManager: BackupManager
+    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
+    private val viewModel: SettingsFragmentViewModel by viewModels { SettingsFragmentViewModel.Factory }
     private val startAuthorizationIntent = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { activityResult ->
@@ -141,8 +136,7 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val viewLifecycleOwner = viewLifecycleOwner
-        val context = context
-        backupManager = BackupManager(context ?: return)
+        val context = context ?: return
         setupRecyclerViews()
         setupSignInAndOutButtons()
         setupShowFragmentsSwitch()
@@ -392,16 +386,12 @@ class SettingsFragment : Fragment() {
         binding.btSavePresets.setOnClickListener {
             val viewLifecycleOwner = viewLifecycleOwner
             viewModel.editingPreset?.let { preset ->
-                val appContext = requireContext().applicationContext
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    commonViewModel.getHSVPresetDao().insertPresets(listOf(preset))
-                    AutomaticBackups.schedule(appContext)
-                    withContext(Dispatchers.Main) {
-                        viewModel.originalPreset = preset.copy()
-                        viewModel.editingPreset = preset.copy()
-                        checkForChanges()
-                        context?.let { Toast.makeText(it, R.string.preset_saved, Toast.LENGTH_SHORT).show() }
-                    }
+                viewLifecycleOwner.lifecycleScope.launch {
+                    viewModel.savePreset(preset)
+                    viewModel.originalPreset = preset.copy()
+                    viewModel.editingPreset = preset.copy()
+                    checkForChanges()
+                    context?.let { Toast.makeText(it, R.string.preset_saved, Toast.LENGTH_SHORT).show() }
                 }
             }
         }
@@ -430,23 +420,15 @@ class SettingsFragment : Fragment() {
         val brightness = binding.sliderBrightness.value
 
         val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
-        val appContext = requireContext().applicationContext
         val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch {
             val newPreset = HSVPreset(
                 hue = hue,
                 saturation = saturation,
                 brightness = brightness,
                 order = nextOrder
             )
-            val ids = commonViewModel.getHSVPresetDao().insertPresets(listOf(newPreset))
-            if (ids.isNotEmpty()) AutomaticBackups.schedule(appContext)
-
-            withContext(Dispatchers.Main) {
-                if (ids.isNotEmpty()) {
-                    viewModel.newlyAddedPresetId = ids[0].toInt()
-                }
-            }
+            viewModel.addPreset(newPreset)?.let { viewModel.newlyAddedPresetId = it }
         }
     }
 
@@ -464,18 +446,14 @@ class SettingsFragment : Fragment() {
     }
 
     private fun deletePreset(preset: HSVPreset) {
-        val appContext = requireContext().applicationContext
         val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            commonViewModel.getHSVPresetDao().deletePreset(preset)
-            AutomaticBackups.schedule(appContext)
-            withContext(Dispatchers.Main) {
-                if (viewModel.editingPreset?.id == preset.id) {
-                    clearPresetSelection()
-                    updateVisualsFromSliders()
-                }
-                context?.let { Toast.makeText(it, R.string.preset_deleted, Toast.LENGTH_SHORT).show() }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.deletePreset(preset)
+            if (viewModel.editingPreset?.id == preset.id) {
+                clearPresetSelection()
+                updateVisualsFromSliders()
             }
+            context?.let { Toast.makeText(it, R.string.preset_deleted, Toast.LENGTH_SHORT).show() }
         }
     }
 
@@ -747,7 +725,7 @@ class SettingsFragment : Fragment() {
         val presets = colorPresetAdapter.currentList.mapIndexed { index, preset ->
             preset.copy(order = index)
         }
-        viewModel.saveNewPresetsOrder(presets, commonViewModel.getDb())
+        viewModel.savePresetsOrder(presets)
     }
 
     private fun updateUI(email: String?) {
@@ -892,7 +870,7 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 if (!quiet) setLoadingState(true, getString(R.string.loading_backups), hideBackupStatus = false)
-                backupManager.listBackups(email).fold(
+                viewModel.listBackups(email).fold(
                     onSuccess = { backups ->
                         backupAdapter.submitList(backups)
                         viewModel.backupsLoadedForEmail = email
@@ -985,7 +963,7 @@ class SettingsFragment : Fragment() {
 
             if (viewModel.isBackupRequested) {
                 viewModel.isBackupRequested = false
-                viewModel.performBackup(email, commonViewModel.getDb(), backupManager)
+                viewModel.performBackup(email)
             } else {
                 loadBackups(email)
             }
@@ -1021,12 +999,10 @@ class SettingsFragment : Fragment() {
      * linked. Granting it runs the re-link again.
      */
     private fun offerMoreMediaAccessIfNeeded() {
-        val ctx = context?.takeUnless { PermissionUtil.hasAllMediaPermissions(it) } ?: return
+        if (context?.let { PermissionUtil.hasAllMediaPermissions(it) } != false) return
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
         viewLifecycleOwner.lifecycleScope.launch {
-            val hasMissingMedia = withContext(Dispatchers.IO) {
-                LocalMediaUtil.hasMissingMedia(ctx, commonViewModel.getMemoryGroupDao().getAllMediaItems())
-            }
+            val hasMissingMedia = viewModel.hasMissingMedia()
             if (!hasMissingMedia || _binding == null || isStateSaved) return@launch
             ConfirmDialog.show(
                 childFragmentManager,
@@ -1046,7 +1022,7 @@ class SettingsFragment : Fragment() {
 
     private fun executeRestore(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        viewModel.restoreBackup(email, file.id, commonViewModel.getDb(), backupManager)
+        viewModel.restoreBackup(email, file.id)
     }
 
     private fun onDeleteBackup(file: DriveFile) {
@@ -1063,7 +1039,7 @@ class SettingsFragment : Fragment() {
 
     private fun executeDeleteBackup(file: DriveFile) {
         val email = _binding?.tvAccountName?.tag as? String ?: return
-        viewModel.deleteBackup(email, file.id, backupManager)
+        viewModel.deleteBackup(email, file.id)
     }
 
     /** What a question about backup [file] needs to act on it, kept with the question (see [driveFileOf]). */
