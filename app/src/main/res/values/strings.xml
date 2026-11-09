@@ -192,6 +192,7 @@
     <string name="timeline_search">Search memories…</string>
     <string name="scroll_to_top">Scroll to top</string>
     <string name="clear_search">Clear text</string>
+    <string name="close_search">Close search</string>
 
     <!-- Memory screen. -->
     <string name="edit_memory">Edit Memory</string>

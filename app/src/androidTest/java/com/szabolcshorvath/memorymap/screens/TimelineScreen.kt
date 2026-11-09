@@ -53,24 +53,43 @@ object TimelineScreen : TabScreen {
         fail("\"$title\" did not flash: its card stayed ${samples.distinct().map(ScreenColors::hex)}")
     }
 
-    fun assertMemoryShown(title: String) = Ui.assertShown("\"$title\" in the timeline") {
-        hasId("tv_memoryTitle") && hasText(title)
-    }
+    // While the search view is open, the memories are its results; the Timeline stays beneath it.
+    fun assertMemoryShown(title: String) = Ui.assertShown("\"$title\" in the ${where()}") { isMemory(title) }
 
-    fun assertMemoryGone(title: String) = Ui.assertGone("\"$title\" in the timeline") {
-        hasId("tv_memoryTitle") && hasText(title)
-    }
+    fun assertMemoryGone(title: String) = Ui.assertGone("\"$title\" in the ${where()}") { isMemory(title) }
 
+    private fun AccessibilityNodeInfo.isMemory(title: String) = hasId(titleId()) && hasText(title)
+
+    private fun titleId() = if (isSearchOpen()) RESULT_TITLE else TITLE
+
+    private fun where() = if (isSearchOpen()) "search results" else "timeline"
+
+    private fun isSearchOpen() = Ui.isShown(timeoutMs = 0) { hasId(RESULTS) || hasId(NO_RESULTS) }
+
+    /** Opens the search view (tapping the search bar), and types [text] in its field. The view stays open. */
     fun search(text: String) {
-        Ui.find { hasId(SEARCH_FIELD) && isEditable }.text = text
+        if (!isSearchOpen()) {
+            Ui.find { hasId(SEARCH_FIELD) && isEditable }.click()
+            Ui.assertShown("The search view") { hasId(RESULTS) || hasId(NO_RESULTS) }
+        }
+        Ui.find { hasId(SEARCH_FIELD) && isEditable && isFocused }.text = text
         Ui.device.waitForIdle()
     }
 
-    /** Taps the search field, which opens the keyboard, and types [text] in it. */
-    fun typeInSearch(text: String) {
-        Ui.find { hasId(SEARCH_FIELD) && isEditable }.click()
-        search(text)
+    /** Like [search]: tapping the search bar also opens the keyboard. */
+    fun typeInSearch(text: String) = search(text)
+
+    /** Closes the search view with its back arrow; the search bar keeps the search. */
+    fun closeSearch() {
+        Ui.find { hasDescription(CLOSE_SEARCH) }.click()
+        Ui.assertGone("The search view") { hasId(RESULTS) || hasId(NO_RESULTS) }
     }
+
+    private const val TITLE = "tv_memoryTitle"
+    private const val RESULTS = "search_results"
+    private const val NO_RESULTS = "search_empty"
+    private const val RESULT_TITLE = "tv_resultTitle"
+    private const val CLOSE_SEARCH = "Close search"
 
     fun assertSearch(text: String) = Ui.assertShown("The search \"$text\"") { hasId(SEARCH_FIELD) && hasText(text) }
 
@@ -107,8 +126,9 @@ object TimelineScreen : TabScreen {
     private const val SCROLL_TO_TOP = "Scroll to top"
     private const val SCROLL_PERCENT = 0.8f
 
+    /** Opens memory [title] from the timeline, or from the search results while the search view is open. */
     fun openMemory(title: String) {
-        Ui.find { hasId("tv_memoryTitle") && hasText(title) }.click()
+        Ui.find { isMemory(title) }.click()
         Ui.device.waitForIdle()
     }
 }
