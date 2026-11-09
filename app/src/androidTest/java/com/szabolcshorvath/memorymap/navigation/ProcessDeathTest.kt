@@ -101,12 +101,12 @@ class ProcessDeathTest {
         app.launch()
         BottomNav.open(Tab.SETTINGS)
         SettingsScreen.assertSignedIn(FakeAccountService.DEFAULT_EMAIL)
-        SettingsScreen.assertBackupShown("Manual Backup")
+        SettingsScreen.assertBackupShown("Manual backup")
 
         app.simulateProcessDeath()
 
         SettingsScreen.assertSignedIn(FakeAccountService.DEFAULT_EMAIL)
-        SettingsScreen.assertBackupShown("Manual Backup")
+        SettingsScreen.assertBackupShown("Manual backup")
     }
 
     @Test

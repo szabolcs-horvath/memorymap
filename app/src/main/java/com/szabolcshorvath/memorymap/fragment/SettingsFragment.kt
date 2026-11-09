@@ -1,439 +1,159 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.content.res.ColorStateList
-import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
-import android.widget.CompoundButton
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.bundleOf
-import androidx.core.view.isVisible
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.LinearSmoothScroller
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.common.api.ApiException
-import com.google.android.material.color.MaterialColors
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.adapter.BackupAdapter
-import com.szabolcshorvath.memorymap.adapter.ColorPresetAdapter
-import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
 import com.szabolcshorvath.memorymap.auth.DriveAuthorization
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
-import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
-import com.szabolcshorvath.memorymap.backup.AutomaticBackups
-import com.szabolcshorvath.memorymap.backup.DriveProblem
-import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.data.HSVPreset
-import com.szabolcshorvath.memorymap.dataStore
-import com.szabolcshorvath.memorymap.databinding.FragmentSettingsBinding
-import com.szabolcshorvath.memorymap.util.ColorUtil
+import com.szabolcshorvath.memorymap.ui.settings.ColorPresetActions
+import com.szabolcshorvath.memorymap.ui.settings.SettingsActions
+import com.szabolcshorvath.memorymap.ui.settings.SettingsContent
+import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.LogManager
-import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PermissionUtil
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import com.szabolcshorvath.memorymap.util.RelinkAction
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
-import com.google.api.services.drive.model.File as DriveFile
 
-class SettingsFragment : Fragment() {
-    private var _binding: FragmentSettingsBinding? = null
-    private val binding get() = _binding!!
-    private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
+/**
+ * The Settings tab, built with Compose ([SettingsContent]). Its state is [SettingsFragmentViewModel]'s; this fragment
+ * does what needs an activity: signing in, Drive's consent screen, permission requests, the questions asked before
+ * something is deleted or replaced, and sharing the logs.
+ */
+class SettingsFragment : Fragment(), SettingsActions, ColorPresetActions {
     private val viewModel: SettingsFragmentViewModel by viewModels { SettingsFragmentViewModel.Factory }
+
     private val startAuthorizationIntent = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { activityResult ->
         try {
             val context = context ?: return@registerForActivityResult
-            if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
             AppServices.accounts.checkDriveConsentResult(context, activityResult.data)
-            successfulAuthorization()
+            viewModel.onDriveAuthorized()
         } catch (e: ApiException) {
             Log.e(TAG, "Authorization failed", e)
             viewModel.isBackupRequested = false
-            setLoadingState(false)
+            viewModel.endBusy()
         }
     }
-    private lateinit var backupAdapter: BackupAdapter
-    private lateinit var colorPresetAdapter: ColorPresetAdapter
-    private var allPresets: List<HSVPreset> = emptyList()
 
-    private val relinkAction = RelinkAction(this) { triggerBackgroundRelink() }
+    private val relinkAction = RelinkAction(this) { viewModel.relink() }
+
+    /** The backup to restore once media access was asked for, kept with the question's answer. */
+    private var pendingRestoreId: String? = null
 
     private val restorePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
-        if (viewLifecycleOwnerLiveData.value == null) return@registerForActivityResult
         // Restoring the database needs no media access. Re-linking afterwards uses whatever was granted,
-        // and offers to grant more if photos are still missing (offerMoreMediaAccessIfNeeded).
-        viewModel.pendingRestoreFile?.let { executeRestore(it) }
-        viewModel.pendingRestoreFile = null
-    }
-
-    private fun triggerBackgroundRelink() {
-        val ctx = context ?: return
-        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            setLoadingState(true, getString(R.string.relink_scanning), hideBackupStatus = true)
-            try {
-                MediaRelinker.relink(ctx) { status -> setLoadingState(true, status, hideBackupStatus = true) }
-            } finally {
-                setLoadingState(false, hideBackupStatus = false)
-                Toast.makeText(ctx, R.string.relink_complete, Toast.LENGTH_SHORT).show()
-            }
-        }
+        // and offers to grant more if photos are still missing.
+        pendingRestoreId?.let(viewModel::restoreBackup)
+        pendingRestoreId = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingRestoreId = savedInstanceState?.getString(PENDING_RESTORE)
         // The questions come back after a rotation or process death, so what they act on comes with the answer.
-        ConfirmDialog.listen(this, DELETE_PRESET_REQUEST) { extras ->
-            allPresets.firstOrNull { it.id == extras.getInt(PRESET_ID) }?.let(::deletePreset)
-        }
+        ConfirmDialog.listen(this, DELETE_PRESET_REQUEST) { viewModel.colorPresets.delete(it.getInt(PRESET_ID)) }
         ConfirmDialog.listen(this, RESTORE_REQUEST) { extras ->
-            val file = driveFileOf(extras)
-            if (PermissionUtil.hasAllMediaPermissions(requireContext())) executeRestore(file) else showPermissionInfoDialog(file)
-        }
-        ConfirmDialog.listen(this, RESTORE_ACCESS_REQUEST) { launchPermissionRequest(driveFileOf(it)) }
-        ConfirmDialog.listen(this, MORE_ACCESS_REQUEST) { relinkAction.askForAccess() }
-        ConfirmDialog.listen(this, DELETE_BACKUP_REQUEST) { executeDeleteBackup(driveFileOf(it)) }
-    }
-
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentSettingsBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        val viewLifecycleOwner = viewLifecycleOwner
-        val context = context ?: return
-        setupRecyclerViews()
-        setupSignInAndOutButtons()
-        setupShowFragmentsSwitch()
-        setupClusterMarkersSwitch()
-        setupDefaultFilterDropdown()
-        updateColorPresetsUI()
-
-        binding.btRelinkMedia.setOnClickListener { relinkAction.start() }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.operationStatus.collect { status ->
-                    if (status != null) {
-                        setLoadingState(true, status, hideBackupStatus = true)
-                    } else {
-                        setLoadingState(false, hideBackupStatus = false)
-                    }
-                }
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.backupRestoreOperationResult.collect { result ->
-                    when (result) {
-                        is SettingsFragmentViewModel.BackupRestoreOperationResult.Success -> {
-                            result.message?.let { showBackupStatus(it, false) }
-                            (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
-                        }
-
-                        is SettingsFragmentViewModel.BackupRestoreOperationResult.RestoreSuccess -> {
-                            result.message?.let { showBackupStatus(it, false) }
-
-                            // The restore replaced the database contents in place; re-link its media to this device.
-                            // The result line stays meanwhile, so the user still sees that the restore worked.
-                            viewLifecycleOwner.lifecycleScope.launch {
-                                setLoadingState(true, getString(R.string.relink_scanning), hideBackupStatus = false)
-                                try {
-                                    MediaRelinker.relink(context) { status ->
-                                        setLoadingState(true, status, hideBackupStatus = false)
-                                    }
-                                } finally {
-                                    setLoadingState(false, hideBackupStatus = false)
-                                }
-                                offerMoreMediaAccessIfNeeded()
-                            }
-                            (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it) }
-                        }
-
-                        is SettingsFragmentViewModel.BackupRestoreOperationResult.Error -> {
-                            showBackupStatus(result.message, true)
-                            // The message points to "Allow access", which the backup list then offers.
-                            if (result.cause?.let(DriveProblem::of) == DriveProblem.NEEDS_ACCESS) {
-                                viewModel.backupListFailure = result.cause
-                                showBackupListProblem()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (viewModel.isInitialized) {
-            viewModel.editingPreset?.let {
-                updateSliders(it)
-                updateSelectionVisuals(it)
-                checkForChanges()
-            }
-        } else {
-            viewModel.isInitialized = true
-        }
-        setupColorPresetsSection()
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                var wasRunning = false
-                AutomaticBackups.status(requireContext()).collect { status ->
-                    showAutomaticBackupStatus(status)
-                    // A backup just finished: show it in the list, without blocking the screen.
-                    if (wasRunning && status != AutomaticBackupStatus.RUNNING) {
-                        (_binding?.tvAccountName?.tag as? String)?.let { loadBackups(it, quiet = true) }
-                    }
-                    wasRunning = status == AutomaticBackupStatus.RUNNING
-                }
-            }
-        }
-
-        binding.swipeRefresh.setOnRefreshListener {
-            val email = binding.tvAccountName.tag as? String
-            if (email != null) {
-                loadBackups(email)
+            val id = extras.getString(FILE_ID) ?: return@listen
+            if (PermissionUtil.hasAllMediaPermissions(requireContext())) {
+                viewModel.restoreBackup(id)
             } else {
-                binding.swipeRefresh.isRefreshing = false
+                askForMediaAccessBeforeRestore(id, extras.getString(FILE_NAME))
             }
         }
-
-        binding.btAllowDriveAccess.setOnClickListener { allowDriveAccessAgain() }
-        showBackupListProblem()
-
-        binding.btBackupNow.setOnClickListener {
-            val email = binding.tvAccountName.tag as? String
-            if (email != null) {
-                setLoadingState(true, getString(R.string.backup_starting))
-                requestDriveAuthorization(true)
-            }
+        ConfirmDialog.listen(this, RESTORE_ACCESS_REQUEST) { extras ->
+            pendingRestoreId = extras.getString(FILE_ID)
+            restorePermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
         }
+        ConfirmDialog.listen(this, MORE_ACCESS_REQUEST) { relinkAction.askForAccess() }
+        ConfirmDialog.listen(this, DELETE_BACKUP_REQUEST) { extras -> extras.getString(FILE_ID)?.let(viewModel::deleteBackup) }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                context.dataStore.data
-                    .map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }
-                    .distinctUntilChanged()
-                    .collect { email ->
-                        updateUI(email)
-                    }
-            }
-        }
-    }
-
-    private fun setupShowFragmentsSwitch() {
-        bindPreferenceSwitch(binding.switchShowFragments, PreferencesKeys.SHOW_FRAGMENT_MARKERS, PreferencesKeys.SHOW_FRAGMENT_MARKERS_DEFAULT_VALUE)
-    }
-
-    private fun setupClusterMarkersSwitch() {
-        bindPreferenceSwitch(binding.switchClusterMarkers, PreferencesKeys.MARKER_CLUSTERING_ENABLED, PreferencesKeys.MARKER_CLUSTERING_ENABLED_DEFAULT_VALUE)
-    }
-
-    /**
-     * Shows preference [key] on [switch] and stores the user's changes. It follows the stored value for as long as the
-     * view is started: the tab keeps its view while another tab is shown.
-     */
-    private fun bindPreferenceSwitch(switch: CompoundButton, key: Preferences.Key<Boolean>, default: Boolean) {
-        val context = context ?: return
-        val viewLifecycleOwner = viewLifecycleOwner
-        switch.isEnabled = false
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                context.dataStore.data.map { it[key] ?: default }.distinctUntilChanged().collect { value ->
-                    switch.setOnCheckedChangeListener(null)
-                    switch.isChecked = value
-                    switch.setOnCheckedChangeListener { _, isChecked ->
-                        viewLifecycleOwner.lifecycleScope.launch { context.dataStore.edit { it[key] = isChecked } }
-                    }
-                    switch.isEnabled = true
-                }
-            }
-        }
-    }
-
-    private fun setupDefaultFilterDropdown() {
-        val options = DateFilterOption.entries.map { getString(it.label) }
-        val context = context ?: return
-        val adapter = ArrayAdapter(context, R.layout.item_dropdown, options)
-        binding.spinnerDefaultFilter.setAdapter(adapter)
-
-        val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                context.dataStore.data
-                    .map { DateFilterOption.ofStoredName(it[PreferencesKeys.DEFAULT_DATE_FILTER]) }
-                    .distinctUntilChanged()
-                    .collect { _binding?.spinnerDefaultFilter?.setText(getString(it.label), false) }
-            }
-        }
-
-        binding.spinnerDefaultFilter.setOnItemClickListener { _, _, position, _ ->
-            val selectedOption = DateFilterOption.entries[position]
-            viewLifecycleOwner.lifecycleScope.launch {
-                context.dataStore.edit { preferences ->
-                    preferences[PreferencesKeys.DEFAULT_DATE_FILTER] = selectedOption.name
-                }
-            }
-        }
-    }
-
-    private fun setupColorPresetsSection() {
-        binding.colorPresetsHeader.setOnClickListener {
-            viewModel.colorPresetsExpanded = !viewModel.colorPresetsExpanded
-            updateColorPresetsUI()
-        }
-
-        val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                commonViewModel.allPresets.collect { presets ->
-                    allPresets = presets
-                    colorPresetAdapter.submitList(presets) {
-                        viewModel.newlyAddedPresetId?.let { id ->
-                            val index = presets.indexOfFirst { it.id == id }
-                            if (index != -1) {
-                                // Select it first to prepare the UI
-                                selectPreset(presets[index], shouldUpdateList = false)
-
-                                // Post the scroll to ensure layout is complete
-                                _binding?.rvPresetColors?.post {
-                                    smoothScrollToPresetIndex(index)
-                                }
-                            }
-                            viewModel.newlyAddedPresetId = null
-                        }
-                    }
-
-                    if (viewModel.editingPreset != null && presets.none { it.id == viewModel.editingPreset?.id }) {
-                        clearPresetSelection()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.events.collect { event ->
+                    when (event) {
+                        is SettingsEvent.Message -> Toast.makeText(requireContext(), event.text, Toast.LENGTH_SHORT).show()
+                        SettingsEvent.OfferMoreMediaAccess -> offerMoreMediaAccess()
                     }
                 }
             }
         }
-        updateVisualsFromSliders()
-
-        binding.sliderHue.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) {
-                updateVisualsFromSliders()
-                viewModel.editingPreset?.let { preset ->
-                    val updated = preset.copy(hue = value)
-                    viewModel.editingPreset = updated
-                    updateSelectionVisuals(updated)
-                    checkForChanges()
-                }
-            }
-        }
-
-        binding.sliderSaturation.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) {
-                updateVisualsFromSliders()
-                viewModel.editingPreset?.let { preset ->
-                    val updated = preset.copy(saturation = value)
-                    viewModel.editingPreset = updated
-                    updateSelectionVisuals(updated)
-                    checkForChanges()
-                }
-            }
-        }
-
-        binding.sliderBrightness.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) {
-                updateVisualsFromSliders()
-                viewModel.editingPreset?.let { preset ->
-                    val updated = preset.copy(brightness = value)
-                    viewModel.editingPreset = updated
-                    updateSelectionVisuals(updated)
-                    checkForChanges()
-                }
-            }
-        }
-
-        binding.btSavePresets.setOnClickListener {
-            val viewLifecycleOwner = viewLifecycleOwner
-            viewModel.editingPreset?.let { preset ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    viewModel.savePreset(preset)
-                    viewModel.originalPreset = preset.copy()
-                    viewModel.editingPreset = preset.copy()
-                    checkForChanges()
-                    context?.let { Toast.makeText(it, R.string.preset_saved, Toast.LENGTH_SHORT).show() }
-                }
-            }
-        }
-
-        binding.btUndoPresets.setOnClickListener {
-            viewModel.editingPreset = viewModel.originalPreset?.copy()
-            viewModel.editingPreset?.let {
-                updateSliders(it)
-                updateSelectionVisuals(it)
-            }
-            checkForChanges()
-        }
-
-        binding.btAddPreset.setOnClickListener { addNewPreset() }
-        binding.btDeletePreset.setOnClickListener { showDeletePresetConfirmation() }
     }
 
-    private fun addNewPreset() {
-        val binding = _binding ?: return
-        if (viewModel.editingPreset != null && viewModel.originalPreset != null && viewModel.editingPreset != viewModel.originalPreset) {
-            revertEditingPresetInList()
-        }
-
-        val hue = binding.sliderHue.value
-        val saturation = binding.sliderSaturation.value
-        val brightness = binding.sliderBrightness.value
-
-        val nextOrder = (allPresets.maxOfOrNull { it.order ?: 0 } ?: -1) + 1
-        val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch {
-            val newPreset = HSVPreset(
-                hue = hue,
-                saturation = saturation,
-                brightness = brightness,
-                order = nextOrder
-            )
-            viewModel.addPreset(newPreset)?.let { viewModel.newlyAddedPresetId = it }
-        }
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(PENDING_RESTORE, pendingRestoreId)
     }
 
-    private fun showDeletePresetConfirmation() {
-        val presetToDelete = viewModel.editingPreset ?: return
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
+        ComposeView(inflater.context).apply {
+            // Compose keeps its saved state (the scroll position) under the view's id.
+            id = R.id.settings_content
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                MemoryMapTheme {
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    SettingsContent(state, this@SettingsFragment, this@SettingsFragment)
+                }
+            }
+        }
+
+    // Map preferences and colour presets: the ViewModel's.
+
+    override fun setShowFragmentMarkers(show: Boolean) = viewModel.mapPreferences.setShowFragmentMarkers(show)
+
+    override fun setMarkerClustering(enabled: Boolean) = viewModel.mapPreferences.setMarkerClustering(enabled)
+
+    override fun setDefaultFilter(option: DateFilterOption) = viewModel.mapPreferences.setDefaultFilter(option)
+
+    override fun togglePresets() = viewModel.colorPresets.toggle()
+
+    override fun selectPreset(id: Int) = viewModel.colorPresets.select(id)
+
+    override fun setColor(color: Hsv) = viewModel.colorPresets.setColor(color)
+
+    override fun addPreset() = viewModel.colorPresets.add()
+
+    override fun reorderPresets(ids: List<Int>) = viewModel.colorPresets.reorder(ids)
+
+    override fun onNewPresetShown() = viewModel.colorPresets.onNewPresetShown()
+
+    override fun undoPresetChange() = viewModel.colorPresets.undo()
+
+    override fun savePreset() = viewModel.colorPresets.save()
+
+    override fun deletePreset() {
+        val id = viewModel.colorPresets.state.value.selectedPresetId ?: return
         ConfirmDialog.show(
             childFragmentManager,
             DELETE_PRESET_REQUEST,
@@ -441,477 +161,69 @@ class SettingsFragment : Fragment() {
             message = getString(R.string.delete_preset_message),
             confirm = getString(R.string.delete),
             cancel = getString(R.string.cancel),
-            extras = bundleOf(PRESET_ID to presetToDelete.id)
+            extras = bundleOf(PRESET_ID to id),
         )
     }
 
-    private fun deletePreset(preset: HSVPreset) {
-        val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.deletePreset(preset)
-            if (viewModel.editingPreset?.id == preset.id) {
-                clearPresetSelection()
-                updateVisualsFromSliders()
-            }
-            context?.let { Toast.makeText(it, R.string.preset_deleted, Toast.LENGTH_SHORT).show() }
-        }
-    }
+    // Account and backups
 
-    private fun checkForChanges() {
-        val binding = _binding ?: return
-        binding.btSavePresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
-        binding.btUndoPresets.isEnabled = viewModel.editingPreset != viewModel.originalPreset
-    }
-
-    private fun updateColorPresetsUI() {
-        val binding = _binding ?: return
-        binding.colorPresetsExpandedContent.visibility = if (viewModel.colorPresetsExpanded) View.VISIBLE else View.GONE
-        binding.colorPresetsChevron.animate()
-            .rotation(if (viewModel.colorPresetsExpanded) FACING_DOWN_ROTATION else FACING_RIGHT_ROTATION)
-            .start()
-    }
-
-    private fun smoothScrollToPresetIndex(index: Int) {
-        val binding = _binding ?: return
-        val context = context ?: return
-        val smoothScroller =
-            object : LinearSmoothScroller(context) {
-                override fun getHorizontalSnapPreference(): Int = SNAP_TO_END
-            }
-        smoothScroller.targetPosition = index
-        binding.rvPresetColors.layoutManager?.startSmoothScroll(
-            smoothScroller
-        )
-    }
-
-    private fun clearPresetSelection() {
-        viewModel.editingPreset = null
-        viewModel.originalPreset = null
-        colorPresetAdapter.setSelectedPresetId(null)
-        _binding?.btDeletePreset?.visibility = View.GONE
-    }
-
-    private fun revertEditingPresetInList() {
-        val original = viewModel.originalPreset ?: return
-        if (viewModel.editingPreset == original) return
-
-        val currentList = colorPresetAdapter.currentList
-        val index = currentList.indexOfFirst { it.id == original.id }
-        if (index != -1) {
-            val newList = currentList.toMutableList()
-            newList[index] = original
-            colorPresetAdapter.submitList(newList)
-        }
-    }
-
-    private fun updateVisualsFromSliders() {
-        val binding = _binding ?: return
-        val hue = binding.sliderHue.value
-        val saturation = binding.sliderSaturation.value
-        val brightness = binding.sliderBrightness.value
-
-        val color = ColorUtil.hsvToColor(hue, saturation, brightness)
-        binding.colorIndicator.setBackgroundColor(color)
-        val colorStateList = ColorStateList.valueOf(color)
-        binding.sliderHue.thumbTintList = colorStateList
-        binding.sliderSaturation.thumbTintList = colorStateList
-        binding.sliderBrightness.thumbTintList = colorStateList
-
-        binding.tvHueValue.text = String.format(Locale.getDefault(), "%d", hue.toInt())
-        binding.tvSaturationValue.text = String.format(Locale.getDefault(), "%.2f", saturation)
-        binding.tvBrightnessValue.text = String.format(Locale.getDefault(), "%.2f", brightness)
-    }
-
-    private fun updateSelectionVisuals(preset: HSVPreset, skipSubmitList: Boolean = false) {
-        updateVisualsFromSliders()
-
-        if (skipSubmitList) return
-
-        // To reflect slider changes in the RecyclerView immediately
-        val currentList = colorPresetAdapter.currentList
-        val index = currentList.indexOfFirst { it.id == preset.id }
-        if (index != -1) {
-            val newList = currentList.toMutableList()
-            newList[index] = preset
-            colorPresetAdapter.submitList(newList)
-        }
-    }
-
-    private fun selectPreset(preset: HSVPreset, shouldUpdateList: Boolean = true) {
-        val isSamePreset = viewModel.editingPreset?.id == preset.id
-        if (viewModel.editingPreset != null && viewModel.originalPreset != null && viewModel.editingPreset != viewModel.originalPreset) {
-            revertEditingPresetInList()
-        }
-
-        val targetPreset = if (isSamePreset) viewModel.originalPreset ?: preset else preset
-
-        viewModel.originalPreset = targetPreset
-        viewModel.editingPreset = targetPreset.copy()
-
-        colorPresetAdapter.setSelectedPresetId(targetPreset.id)
-
-        if (!viewModel.colorPresetsExpanded) {
-            viewModel.colorPresetsExpanded = true
-            updateColorPresetsUI()
-        }
-
-        updateSliders(targetPreset)
-        updateSelectionVisuals(targetPreset, skipSubmitList = !shouldUpdateList)
-        binding.btSavePresets.isEnabled = false
-        binding.btUndoPresets.isEnabled = false
-        binding.btDeletePreset.visibility = View.VISIBLE
-    }
-
-    private fun updateSliders(preset: HSVPreset) {
-        val binding = _binding ?: return
-        binding.sliderHue.value = preset.hue
-        binding.sliderSaturation.value = preset.saturation
-        binding.sliderBrightness.value = preset.brightness
-        updateVisualsFromSliders()
-    }
-
-    private fun setupSignInAndOutButtons() {
-        val viewLifecycleOwner = viewLifecycleOwner
-        binding.btGoogleSignIn.setOnClickListener {
-            setLoadingState(true, getString(R.string.signing_in))
-            viewLifecycleOwner.lifecycleScope.launch {
-                try {
-                    val email = AppServices.accounts.signIn(requireContext())
-                    val context = context
-                    if (context != null) {
-                        context.dataStore.updateData {
-                            it.toMutablePreferences().also { preferences ->
-                                preferences[PreferencesKeys.USER_EMAIL_KEY] = email
-                            }
-                        }
-                        updateUI(email)
-                        requestDriveAuthorization(false)
-                        setLoadingState(false)
-                    }
-                } catch (e: Exception) {
-                    when (e) {
-                        is SignInNotConfiguredException -> {
-                            Log.e(TAG, "Sign in is not configured", e)
-                            context?.let {
-                                Toast.makeText(it, R.string.sign_in_not_configured, Toast.LENGTH_LONG).show()
-                            }
-                        }
-
-                        // The user closed the account picker: nothing to tell them.
-                        is GetCredentialCancellationException -> Log.i(TAG, "Sign in cancelled")
-
-                        is NoCredentialException -> {
-                            Log.w(TAG, "Sign in failed: no account", e)
-                            context?.let { Toast.makeText(it, R.string.sign_in_no_account, Toast.LENGTH_LONG).show() }
-                        }
-
-                        is CancellationException -> {
-                            setLoadingState(false)
-                            throw e
-                        }
-
-                        // The details are in the log, for "Send logs".
-                        else -> {
-                            Log.e(TAG, "Sign in failed", e)
-                            context?.let { Toast.makeText(it, R.string.sign_in_failed, Toast.LENGTH_LONG).show() }
-                        }
-                    }
-                    setLoadingState(false)
-                }
-            }
-        }
-
-        binding.btSignOut.setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch {
-                AppServices.accounts.signOut(requireContext())
-                viewModel.backupsLoadedForEmail = null
-                updateUI(null)
-                context?.dataStore?.edit { preferences ->
-                    preferences.remove(PreferencesKeys.USER_EMAIL_KEY)
-                }
-            }
-        }
-
-        binding.btSendLogs.setOnClickListener {
-            val viewLifecycleOwner = viewLifecycleOwner
-            val context = context ?: return@setOnClickListener
-            viewLifecycleOwner.lifecycleScope.launch {
-                setLoadingState(true, getString(R.string.preparing_logs))
-                try {
-                    val lastBackup = backupAdapter.currentList.firstOrNull()
-                    val lastBackupDate = lastBackup?.modifiedTime?.value?.let { millis ->
-                        val instant = Instant.ofEpochMilli(millis)
-                        val zonedDateTime = instant.atZone(ZoneId.systemDefault())
-                        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.getDefault()).format(zonedDateTime)
-                    }
-                    LogManager.sendDebugLogs(context, lastBackupDate)
-                } finally {
-                    setLoadingState(false)
-                }
-            }
-        }
-    }
-
-    private fun setupRecyclerViews() {
-        backupAdapter = BackupAdapter(::onRestoreBackup, ::onDeleteBackup)
-        backupAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                _binding?.rvBackups?.scrollToPosition(positionStart)
-            }
-        })
-
-        _binding?.rvBackups?.apply {
-            val context = context ?: return@apply
-            layoutManager = LinearLayoutManager(context)
-            adapter = backupAdapter
-        }
-
-        colorPresetAdapter = ColorPresetAdapter { preset ->
-            selectPreset(preset)
-        }
-        _binding?.rvPresetColors?.adapter = colorPresetAdapter
-        setupColorPresetsTouchHelper()
-    }
-
-    private fun setupColorPresetsTouchHelper() {
-        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-            ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
-            0
-        ) {
-            private var initialOrder: List<Int>? = null
-
-            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
-                super.onSelectedChanged(viewHolder, actionState)
-                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
-                    initialOrder = colorPresetAdapter.currentList.map { it.id }
-                }
-            }
-
-            override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
-                val fromPos = viewHolder.bindingAdapterPosition
-                val toPos = target.bindingAdapterPosition
-                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION) return false
-
-                if (fromPos < toPos) {
-                    for (i in fromPos until toPos) {
-                        colorPresetAdapter.moveItem(i, i + 1)
-                    }
-                } else {
-                    for (i in fromPos downTo toPos + 1) {
-                        colorPresetAdapter.moveItem(i, i - 1)
-                    }
-                }
-                return true
-            }
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
-
-            override fun clearView(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder
-            ) {
-                super.clearView(recyclerView, viewHolder)
-                val currentOrder = colorPresetAdapter.currentList.map { it.id }
-                if (initialOrder != null && initialOrder != currentOrder) {
-                    saveNewPresetsOrder()
-                }
-                initialOrder = null
-            }
-        })
-        itemTouchHelper.attachToRecyclerView(binding.rvPresetColors)
-    }
-
-    private fun saveNewPresetsOrder() {
-        val presets = colorPresetAdapter.currentList.mapIndexed { index, preset ->
-            preset.copy(order = index)
-        }
-        viewModel.savePresetsOrder(presets)
-    }
-
-    private fun updateUI(email: String?) {
-        val binding = _binding ?: return
-        val alreadyLoaded = email != null && viewModel.backupsLoadedForEmail == email
-
-        with(binding) {
-            if (email != null) {
-                btGoogleSignIn.visibility = View.GONE
-                tvBackupDescription.visibility = View.GONE
-                backupControls.visibility = View.VISIBLE
-                tvAccountName.text = getString(R.string.signed_in_as, email)
-                tvAccountName.tag = email
-                if (!alreadyLoaded || backupAdapter.itemCount == 0) {
-                    if (alreadyLoaded && viewModel.lastLoadedBackups.isNotEmpty()) {
-                        backupAdapter.submitList(viewModel.lastLoadedBackups)
-                    } else {
-                        loadBackups(email)
-                    }
-                }
-            } else {
-                btGoogleSignIn.visibility = View.VISIBLE
-                tvBackupDescription.visibility = View.VISIBLE
-                backupControls.visibility = View.GONE
-                tvAccountName.tag = null
-                viewModel.backupsLoadedForEmail = null
-                viewModel.lastLoadedBackups = emptyList()
-                viewModel.backupListFailure = null
-                showBackupListProblem()
-                backupAdapter.submitList(emptyList())
-            }
-        }
-    }
-
-    /** A small inline line under "Backup Now": automatic backups never block the screen. */
-    private fun showAutomaticBackupStatus(status: AutomaticBackupStatus) {
-        val binding = _binding ?: return
-        val text = when (status) {
-            AutomaticBackupStatus.IDLE -> null
-            AutomaticBackupStatus.PENDING -> getString(R.string.auto_backup_pending)
-            AutomaticBackupStatus.RUNNING -> getString(R.string.auto_backup_running)
-            AutomaticBackupStatus.FAILED -> getString(R.string.auto_backup_failed)
-        }
-        binding.tvAutoBackupStatus.text = text
-        binding.pbAutoBackup.isVisible = status == AutomaticBackupStatus.RUNNING
-        binding.autoBackupStatus.isVisible = text != null
-    }
-
-    private fun setLoadingState(isLoading: Boolean, status: String? = null, hideBackupStatus: Boolean = true) {
-        val binding = _binding ?: return
-        val enabled = !isLoading
-        with(binding) {
-            btGoogleSignIn.isEnabled = enabled
-            btBackupNow.isEnabled = enabled
-            btSignOut.isEnabled = enabled
-            btSendLogs.isEnabled = enabled
-            btRelinkMedia.isEnabled = enabled
-            backupAdapter.setButtonsEnabled(enabled)
-
-            btAddPreset.isEnabled = enabled
-            btDeletePreset.isEnabled = enabled
-            sliderHue.isEnabled = enabled
-            sliderSaturation.isEnabled = enabled
-            sliderBrightness.isEnabled = enabled
-
-            if (enabled) {
-                checkForChanges()
-            } else {
-                btSavePresets.isEnabled = false
-                btUndoPresets.isEnabled = false
-            }
-
-            if (isLoading && hideBackupStatus) {
-                updateViewVisibilityWithAnimation(cardBackupStatus, false)
-            }
-
-            val showOverlay = isLoading && !swipeRefresh.isRefreshing
-
-            if (showOverlay) {
-                val hasStatus = !status.isNullOrEmpty()
-                tvStatus.isVisible = hasStatus
-                if (hasStatus) {
-                    tvStatus.text = status
-                }
-            }
-
-            updateViewVisibilityWithAnimation(loadingOverlay, showOverlay) {
-                if (!showOverlay) {
-                    tvStatus.text = ""
-                    tvStatus.isVisible = false
-                }
-            }
-        }
-    }
-
-    private fun showBackupStatus(message: String, isError: Boolean) {
-        val binding = _binding ?: return
-        with(binding) {
-            tvBackupStatusDetails.text = message
-            val color = MaterialColors.getColor(
-                binding.root,
-                if (isError) androidx.appcompat.R.attr.colorError else R.attr.colorSuccess,
-                if (isError) Color.RED else Color.GREEN
-            )
-            cardBackupStatus.setStrokeColor(ColorStateList.valueOf(color))
-            updateViewVisibilityWithAnimation(cardBackupStatus, true)
-        }
-    }
-
-    private fun updateViewVisibilityWithAnimation(view: View, isVisible: Boolean, endAction: (() -> Unit)? = null) {
-        if (isVisible) {
-            val wasVisible = view.isVisible
-            if (!wasVisible || view.alpha < 1f) {
-                view.animate().cancel()
-                if (!wasVisible) {
-                    view.alpha = 0f
-                    view.visibility = View.VISIBLE
-                }
-                view.animate()
-                    .alpha(1f)
-                    .setDuration(ANIMATION_DURATION)
-                    .start()
-            }
-        } else {
-            if (view.isVisible) {
-                view.animate().cancel()
-                view.animate()
-                    .alpha(0f)
-                    .setDuration(ANIMATION_DURATION)
-                    .withEndAction {
-                        view.visibility = View.GONE
-                        endAction?.invoke()
-                    }
-                    .start()
-            }
-        }
-    }
-
-    /** [quiet]: refresh the list without the loading overlay, for example after an automatic backup. */
-    private fun loadBackups(email: String, quiet: Boolean = false) {
-        val viewLifecycleOwner = viewLifecycleOwner
-        viewLifecycleOwner.lifecycleScope.launch {
+    override fun signIn() {
+        viewModel.startBusy(getString(R.string.signing_in))
+        lifecycleScope.launch {
             try {
-                if (!quiet) setLoadingState(true, getString(R.string.loading_backups), hideBackupStatus = false)
-                viewModel.listBackups(email).fold(
-                    onSuccess = { backups ->
-                        backupAdapter.submitList(backups)
-                        viewModel.backupsLoadedForEmail = email
-                        viewModel.lastLoadedBackups = backups
-                        viewModel.backupListFailure = null
-                    },
-                    // The list shown before stays: an empty one would look as if the backups were gone.
-                    onFailure = { viewModel.backupListFailure = it }
-                )
-                showBackupListProblem()
+                val email = AppServices.accounts.signIn(requireActivity())
+                viewModel.signedIn(email)
+                requestDriveAuthorization(isBackup = false, email = email)
+                viewModel.endBusy()
+            } catch (e: CancellationException) {
+                viewModel.endBusy()
+                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to list backups", e)
-            } finally {
-                if (!quiet) setLoadingState(false)
-                _binding?.swipeRefresh?.isRefreshing = false
+                viewModel.endBusy()
+                when (e) {
+                    is SignInNotConfiguredException -> {
+                        Log.e(TAG, "Sign in is not configured", e)
+                        toast(R.string.sign_in_not_configured)
+                    }
+
+                    // The user closed the account picker: nothing to tell them.
+                    is GetCredentialCancellationException -> Log.i(TAG, "Sign in cancelled")
+
+                    is NoCredentialException -> {
+                        Log.w(TAG, "Sign in failed: no account", e)
+                        toast(R.string.sign_in_no_account)
+                    }
+
+                    // The details are in the log, for "Send logs".
+                    else -> {
+                        Log.e(TAG, "Sign in failed", e)
+                        toast(R.string.sign_in_failed)
+                    }
+                }
             }
         }
     }
 
-    /** Says why the backup list couldn't be loaded, if it couldn't, and offers to allow Drive access when that is why. */
-    private fun showBackupListProblem() {
-        val binding = _binding ?: return
-        val problem = viewModel.backupListFailure?.let(DriveProblem::of)
-        binding.tvBackupListProblem.isVisible = problem != null
-        binding.btAllowDriveAccess.isVisible = problem == DriveProblem.NEEDS_ACCESS
-        val message = when (problem) {
-            null -> return
-            DriveProblem.NEEDS_ACCESS -> R.string.backup_list_needs_access
-            DriveProblem.NO_CONNECTION -> R.string.backup_list_no_connection
-            DriveProblem.DRIVE_UNAVAILABLE -> R.string.backup_list_drive_unavailable
-            DriveProblem.OTHER -> R.string.backup_list_failed
+    override fun signOut() {
+        lifecycleScope.launch {
+            AppServices.accounts.signOut(requireContext())
+            viewModel.signedOut()
         }
-        binding.tvBackupListProblem.setText(message)
     }
+
+    override fun backUpNow() {
+        viewModel.startBusy(getString(R.string.backup_starting))
+        requestDriveAuthorization(isBackup = true)
+    }
+
+    override fun refreshBackups() = viewModel.refreshBackups()
 
     /**
      * Asks for Drive access again, then reloads the list: on the consent screen the failed call came with, or else as
      * the app usually does (which may find that access was granted meanwhile, or show the consent screen itself).
      */
-    private fun allowDriveAccessAgain() {
-        val consent = (viewModel.backupListFailure as? DriveAccessNeededException)?.consent
+    override fun allowDriveAccess() {
+        val consent = viewModel.driveConsent()
         if (consent != null) {
             viewModel.isBackupRequested = false
             startAuthorizationIntent.launch(IntentSenderRequest.Builder(consent).build())
@@ -920,19 +232,18 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun requestDriveAuthorization(isBackup: Boolean) {
+    /** [email]: the account to authorize, the signed-in one unless the user just signed in. */
+    private fun requestDriveAuthorization(isBackup: Boolean, email: String? = viewModel.uiState.value.email) {
         val context = context
-        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value
-        val email = _binding?.tvAccountName?.tag as? String
-        if (context == null || viewLifecycleOwner == null || email == null) {
-            setLoadingState(false)
+        if (context == null || email == null) {
+            viewModel.endBusy()
             return
         }
         viewModel.isBackupRequested = isBackup
-        viewLifecycleOwner.lifecycleScope.launch {
+        lifecycleScope.launch {
             try {
                 when (val authorization = AppServices.accounts.authorizeDrive(context, email)) {
-                    DriveAuthorization.Granted -> successfulAuthorization()
+                    DriveAuthorization.Granted -> viewModel.onDriveAuthorized()
 
                     is DriveAuthorization.NeedsConsent -> startAuthorizationIntent.launch(
                         IntentSenderRequest.Builder(authorization.intentSender).build()
@@ -942,47 +253,25 @@ class SettingsFragment : Fragment() {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to authorize", e)
-                setLoadingState(false)
                 viewModel.isBackupRequested = false
+                viewModel.endBusy()
             }
         }
     }
 
-    private fun successfulAuthorization() {
-        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
-        val context = context ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            val email = context.dataStore.data.map { preferences -> preferences[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull()
-                ?: (_binding?.tvAccountName?.tag as? String)
-
-            if (email == null) {
-                setLoadingState(false)
-                viewModel.isBackupRequested = false
-                return@launch
-            }
-
-            if (viewModel.isBackupRequested) {
-                viewModel.isBackupRequested = false
-                viewModel.performBackup(email)
-            } else {
-                loadBackups(email)
-            }
-        }
-    }
-
-    private fun onRestoreBackup(file: DriveFile) {
+    override fun restoreBackup(backup: BackupItem) {
         ConfirmDialog.show(
             childFragmentManager,
             RESTORE_REQUEST,
             title = getString(R.string.restore_backup_title),
-            message = getString(R.string.restore_backup_message, file.name),
+            message = getString(R.string.restore_backup_message, backup.name),
             confirm = getString(R.string.restore),
             cancel = getString(R.string.cancel),
-            extras = extrasOf(file)
+            extras = bundleOf(FILE_ID to backup.id, FILE_NAME to backup.name),
         )
     }
 
-    private fun showPermissionInfoDialog(file: DriveFile) {
+    private fun askForMediaAccessBeforeRestore(id: String, name: String?) {
         ConfirmDialog.show(
             childFragmentManager,
             RESTORE_ACCESS_REQUEST,
@@ -990,73 +279,62 @@ class SettingsFragment : Fragment() {
             message = getString(R.string.restore_media_access_message),
             confirm = getString(R.string.restore_media_access_continue),
             cancel = getString(android.R.string.cancel),
-            extras = extrasOf(file)
+            extras = bundleOf(FILE_ID to id, FILE_NAME to name),
         )
     }
 
-    /**
-     * After a restore with partial or no media access, offers full access if some photos are still not
-     * linked. Granting it runs the re-link again.
-     */
-    private fun offerMoreMediaAccessIfNeeded() {
-        if (context?.let { PermissionUtil.hasAllMediaPermissions(it) } != false) return
-        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            val hasMissingMedia = viewModel.hasMissingMedia()
-            if (!hasMissingMedia || _binding == null || isStateSaved) return@launch
-            ConfirmDialog.show(
-                childFragmentManager,
-                MORE_ACCESS_REQUEST,
-                title = getString(R.string.relink_more_title),
-                message = getString(R.string.relink_more_message),
-                confirm = getString(R.string.relink_more_allow),
-                cancel = getString(R.string.relink_more_not_now)
-            )
-        }
+    /** After a restore with partial or no media access, offers full access; granting it runs the re-link again. */
+    private fun offerMoreMediaAccess() {
+        if (isStateSaved) return
+        ConfirmDialog.show(
+            childFragmentManager,
+            MORE_ACCESS_REQUEST,
+            title = getString(R.string.relink_more_title),
+            message = getString(R.string.relink_more_message),
+            confirm = getString(R.string.relink_more_allow),
+            cancel = getString(R.string.relink_more_not_now),
+        )
     }
 
-    private fun launchPermissionRequest(file: DriveFile) {
-        viewModel.pendingRestoreFile = file
-        restorePermissionLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
-    }
-
-    private fun executeRestore(file: DriveFile) {
-        val email = _binding?.tvAccountName?.tag as? String ?: return
-        viewModel.restoreBackup(email, file.id)
-    }
-
-    private fun onDeleteBackup(file: DriveFile) {
+    override fun deleteBackup(backup: BackupItem) {
         ConfirmDialog.show(
             childFragmentManager,
             DELETE_BACKUP_REQUEST,
             title = getString(R.string.delete_backup_title),
-            message = getString(R.string.delete_backup_message, file.name),
+            message = getString(R.string.delete_backup_message, backup.name),
             confirm = getString(R.string.delete_backup_confirm),
             cancel = getString(android.R.string.cancel),
-            extras = extrasOf(file)
+            extras = bundleOf(FILE_ID to backup.id, FILE_NAME to backup.name),
         )
     }
 
-    private fun executeDeleteBackup(file: DriveFile) {
-        val email = _binding?.tvAccountName?.tag as? String ?: return
-        viewModel.deleteBackup(email, file.id)
+    // Media library
+
+    override fun relinkMedia() = relinkAction.start()
+
+    override fun sendLogs() {
+        val context = context ?: return
+        viewModel.startBusy(getString(R.string.preparing_logs))
+        lifecycleScope.launch {
+            try {
+                // For the logs, not shown: a fixed format.
+                val lastBackupDate = viewModel.uiState.value.backups.firstOrNull()?.modifiedMillis?.let { millis ->
+                    DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+                        .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
+                }
+                LogManager.sendDebugLogs(context, lastBackupDate)
+            } finally {
+                viewModel.endBusy()
+            }
+        }
     }
 
-    /** What a question about backup [file] needs to act on it, kept with the question (see [driveFileOf]). */
-    private fun extrasOf(file: DriveFile) = bundleOf(FILE_ID to file.id, FILE_NAME to file.name)
-
-    private fun driveFileOf(extras: Bundle): DriveFile = DriveFile().setId(extras.getString(FILE_ID)).setName(extras.getString(FILE_NAME))
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    private fun toast(text: Int) {
+        context?.let { Toast.makeText(it, text, Toast.LENGTH_LONG).show() }
     }
 
     companion object {
         const val TAG = "SettingsFragment"
-        private const val ANIMATION_DURATION = 300L
-        private const val FACING_RIGHT_ROTATION = 0f
-        private const val FACING_DOWN_ROTATION = 90f
         private const val DELETE_PRESET_REQUEST = "delete_preset"
         private const val RESTORE_REQUEST = "restore_backup"
         private const val RESTORE_ACCESS_REQUEST = "restore_media_access"
@@ -1065,5 +343,6 @@ class SettingsFragment : Fragment() {
         private const val PRESET_ID = "preset_id"
         private const val FILE_ID = "file_id"
         private const val FILE_NAME = "file_name"
+        private const val PENDING_RESTORE = "pending_restore"
     }
 }

@@ -141,6 +141,36 @@ class SettingsTest {
     }
 
     @Test
+    fun theNewestFiveBackupsAreShownAndAllOfThemOnAPageOfTheirOwn() {
+        TestData.signIn()
+        // "Backup 1.zip" is the newest. A name the app didn't make is shown as it is, so each row can be told apart.
+        (1..7).forEach { addBackup("Backup $it.zip", minutesAgo = it.toLong()) }
+        openSettings()
+        SettingsScreen.assertBackupShown("Backup 5.zip")
+        SettingsScreen.assertShowAllBackups(total = 7)
+        SettingsScreen.assertBackupGone("Backup 6.zip")
+
+        SettingsScreen.showAllBackups()
+        SettingsScreen.assertBackupShown("Backup 7.zip")
+        Ui.pressBack()
+        SettingsScreen.assertAllBackupsGone()
+        SettingsScreen.assertShown()
+
+        SettingsScreen.showAllBackups()
+        SettingsScreen.closeAllBackups()
+        SettingsScreen.assertShowAllBackups(total = 7)
+    }
+
+    @Test
+    fun withFiveBackupsOrFewerAllAreShownOnThePage() {
+        TestData.signIn()
+        (1..5).forEach { addBackup("Backup $it.zip", minutesAgo = it.toLong()) }
+        openSettings()
+        SettingsScreen.assertBackupShown("Backup 5.zip")
+        SettingsScreen.assertNoShowAllBackups()
+    }
+
+    @Test
     fun aChangeIsBackedUpAutomatically() {
         // Long enough to see that a backup is on its way, without waiting the app's 15 seconds.
         AutomaticBackups.debounceSeconds = AUTOMATIC_BACKUP_DELAY_SECONDS
@@ -225,8 +255,8 @@ class SettingsTest {
     private companion object {
         const val KEPT = "Vienna trip"
         const val ADDED_AFTER_THE_BACKUP = "Lake day"
-        const val MANUAL = "Manual Backup"
-        const val AUTOMATIC = "Automatic Backup"
+        const val MANUAL = "Manual backup"
+        const val AUTOMATIC = "Automatic backup"
         const val MANUAL_BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"
         const val AUTOMATIC_BACKUP = "MemoryMap_Automatic_Backup_20261019_080000.zip"
         const val RESTORE_TITLE = "Restore Backup"

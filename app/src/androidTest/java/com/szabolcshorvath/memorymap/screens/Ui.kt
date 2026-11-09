@@ -145,17 +145,34 @@ object Ui {
                 true
             }
 
-            !canScroll(up = false) || !page.scroll(Direction.DOWN, SCROLL_PERCENT, SCROLL_SPEED) -> {
+            !canScroll(up = false) -> {
                 // At the bottom: wait a moment, then search again from the top.
                 SystemClock.sleep(SCROLL_PAUSE_MS)
                 false
             }
 
-            else -> true
+            // The page says whether it can scroll further; the swipe's own answer can't tell. A swipe that only
+            // collapses a top app bar scrolls nothing, and UI Automator then answers that the page can't scroll.
+            else -> {
+                page.scroll(Direction.DOWN, SCROLL_PERCENT, SCROLL_SPEED)
+                true
+            }
         }
     }
 
-    private fun AccessibilityNodeInfo.isPage() = isScrollable && className?.toString()?.endsWith("ScrollView") == true
+    /**
+     * A page that scrolls up and down: a View `ScrollView` (not a `HorizontalScrollView`), or a Compose list, which
+     * reports itself as a plain `View` but offers to scroll up or down. A row that scrolls sideways is never one.
+     */
+    private fun AccessibilityNodeInfo.isPage(): Boolean {
+        if (!isScrollable) return false
+        val name = className?.toString().orEmpty()
+        return (name.endsWith("ScrollView") && !name.endsWith("HorizontalScrollView")) ||
+            (name == COMPOSE_NODE && actionList.any { it in VERTICAL_SCROLLS })
+    }
+
+    private const val COMPOSE_NODE = "android.view.View"
+    private val VERTICAL_SCROLLS = listOf(AccessibilityAction.ACTION_SCROLL_UP, AccessibilityAction.ACTION_SCROLL_DOWN)
 
     /** Whether the page can scroll further [up] (or down): it offers that scroll action only when it can. */
     private fun canScroll(up: Boolean): Boolean {

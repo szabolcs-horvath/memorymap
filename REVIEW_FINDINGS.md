@@ -149,7 +149,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline is moved) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline and Settings are moved) |
 
 **BUILD — Build, CI, tooling** · 4 of 4 fixed
 
@@ -710,6 +710,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - The backup triggers already had their own classes (`AutomaticBackups`, [ARCH-3](#arch-3)), as did re-linking (`MediaRelinker`, `RelinkAction`) and the location permission flow (`MyLocationAction`).
   - Left for the Compose migration, one screen at a time (step 2 of [ARCH-10](#arch-10)): immutable `StateFlow<UiState>` plus intents instead of the ViewModels' `var`s, and the `MutableList` the Add form's ViewModel shares with `MemoryFragmentEditAdapter`.
   - Done for the Timeline (2026-11-08): `TimelineFragmentViewModel` exposes one `StateFlow<TimelineUiState>` (the search, the memories grouped by day, a pending Show on Timeline) and takes intents (`onQueryChange`, `requestScrollTo`, `onScrollHandled`).
+  - Done for Settings (2026-11-08): `SettingsFragmentViewModel` exposes one `StateFlow<SettingsUiState>` and takes intents. The map preferences (`MapPreferencesModel`) and the colour presets (`ColorPresetsModel`) are parts of their own, and the backup list, results and busy state that `SettingsFragment` used to keep in its views are in the state. The fragment keeps only what needs an activity: sign-in, Drive's consent screen, permission requests, the questions asked first, and sharing the logs.
 
 ### <a id="arch-3"></a>✅ ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
@@ -818,7 +819,9 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Deliberate changes: the search field's placeholder uses Material 3's placeholder colour (`onSurfaceVariant`) instead of the old 38 % hint colour, about 2.3:1 contrast on the field, below the 4.5:1 text needs; and the field is Material 3's 56 dp high instead of 53.7 dp. Kept as found: the list's end sits below the screen while the search bar shows, as with the View version's `CoordinatorLayout`.
   - Found on the way: `MainActivity` had no `windowSoftInputMode`, so the keyboard resized the window only because the visible screen had a View scroll container; it is now `adjustResize` explicitly.
   - Timeline reviewed against Material 3 Expressive (step 3), each change looked at on the emulator before it was kept: Material 3's `TopSearchBar` (the list scrolls beneath it), a segmented list of filled items with day labels instead of dividers, and a tonal Scroll to top button plus tapping the tab again. Tried and dropped: a pin icon instead of the colour strip (blander). Not adopted: the focused search bar's narrower margins, which `TopSearchBar` in Material3 1.4 shows only in its expanded search view.
-  - Next: review Settings against Material 3 Expressive, then move it.
+  - Settings reviewed against Material 3 Expressive and moved (`ui/settings/`), with every change the review proposed, agreed with the user first: the page has sections (Map, Backup & restore, Media library) under a large flexible top app bar, where each setting is a standalone item and only real lists (the backups) are segmented; the default map filter is chosen from Material 3 Expressive's menu, opening from its arrow; the backups are rows of the page instead of a fixed 300 dp box with its own scroll (the newest five, with "Show all backups" opening an All backups page in the tab, which Back closes), and pulling the page down refreshes them; Disconnect is a text button on the Google Drive account row instead of a filled red button; labels are in sentence case ("Back up now"); the result line is a tonal banner with an icon; the colour editor opens inside the presets' card, its sliders have no tick dots or stop indicator, the swatches a ring and a check mark when selected, and Delete, Undo and Save form a button group; the busy card has a wavy progress bar. `BackupAdapter`, the Settings layouts and SwipeRefreshLayout are gone; `ColorPresetAdapter` stays for the Add form.
+  - Material3 is pinned to 1.5.0-rc01, ahead of the BOM's 1.4.0: the stable BOM takes only stable releases, and button groups, wavy progress indicators and `SegmentedListItem` came in 1.5. 1.5 also renamed `SearchBarScrollBehavior.scrollOffset` to `scrollState.scrollOffset` (the Timeline's scroll to top), and its `TopSearchBar` no longer shows the keyboard for typing in the collapsed bar: the field is meant to open the expanded search. So the Timeline now searches the Material 3 way, agreed with the user: tapping the bar opens `ExpandedFullScreenSearchBar` (full screen, over the tab bar, with a back arrow, a clear button and the matching memories as results); Back or the arrow closes it and the query stays, with the Timeline filtered. Tapping a result closes the search view first, so Back from the memory returns to the Timeline.
+  - Next: review the memory detail screen (pager and media viewer) against Material 3 Expressive, then move it.
 
 [↑ Back to index](#index)
 
