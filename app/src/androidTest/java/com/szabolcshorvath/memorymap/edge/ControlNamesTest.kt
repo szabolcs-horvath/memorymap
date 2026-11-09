@@ -48,6 +48,10 @@ class ControlNamesTest {
         TestData.fragment(trip, TestData.Place.ATHENS)
         TestData.signIn()
         FakeBackupStorage.add(DEFAULT_EMAIL, BACKUP, modifiedMillis = System.currentTimeMillis())
+        // Older ones, more than Settings shows: the rest are on a page of their own.
+        repeat(OLDER_BACKUPS) { i ->
+            FakeBackupStorage.add(DEFAULT_EMAIL, "Backup $i.zip", modifiedMillis = System.currentTimeMillis() - (i + 1) * 60_000L)
+        }
         app.launch()
 
         MapScreen.assertMarkerShown(TRIP)
@@ -70,6 +74,8 @@ class ControlNamesTest {
         ColorPresetsSection.select(GREEN)
         ColorPresetsSection.assertSlidersShow(GREEN)
         names.check("settings, editing a colour preset")
+        SettingsScreen.showAllBackups()
+        names.check("settings, all backups")
 
         names.assertAllNamed()
     }
@@ -135,7 +141,8 @@ class ControlNamesTest {
         const val TRIP = "Vienna trip"
         const val LOST = "Lost photo"
         const val BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"
-        const val MANUAL = "Manual Backup"
+        const val OLDER_BACKUPS = 5
+        const val MANUAL = "Manual backup"
         val RED = Hsv(0f)
         val GREEN = Hsv(120f)
     }

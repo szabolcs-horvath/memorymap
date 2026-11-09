@@ -14,13 +14,13 @@ import java.util.Locale
 
 /** The Settings tab. */
 object SettingsScreen : TabScreen {
-    private const val SHOW_FRAGMENTS = "Show Memory Fragment Markers"
-    private const val CONNECT = "Connect to Google Drive"
+    private const val SHOW_FRAGMENTS = "Show memory fragment markers"
+    private const val CONNECT = "Connect"
 
     // By the scrolling page, which is on screen wherever it was scrolled to: the tab keeps its scroll position.
-    override fun assertShown() = Ui.assertShown("Settings") { hasId("scroll_settings") }
+    override fun assertShown() = Ui.assertShown("Settings") { hasId(PAGE) }
 
-    override fun assertGone() = Ui.assertGone("Settings") { hasId("scroll_settings") }
+    override fun assertGone() = Ui.assertGone("Settings") { hasId(PAGE) }
 
     fun assertSignedOut() {
         Ui.scrollTo { hasText(CONNECT) }
@@ -28,9 +28,11 @@ object SettingsScreen : TabScreen {
     }
 
     fun assertSignedIn(email: String) {
-        Ui.scrollTo { hasText("Signed in as: $email") }
-        Ui.assertShown("The signed-in account $email") { hasText("Signed in as: $email") }
+        Ui.scrollTo { isAccount(email) }
+        Ui.assertShown("The signed-in account $email") { isAccount(email) }
     }
+
+    private fun AccessibilityNodeInfo.isAccount(email: String) = hasId("tv_accountName") && hasText(email)
 
     /** The backup list shows a backup with [label] ("Manual Backup", "Automatic Backup" or the file name). */
     fun assertBackupShown(label: String) {
@@ -52,10 +54,37 @@ object SettingsScreen : TabScreen {
 
     private fun AccessibilityNodeInfo.isBackup(label: String) = hasId("tv_backup_name") && hasText(label)
 
-    /** Pulls the backup list down, which loads it again. */
+    /** Under the newest backups, a row opens the page with all [total] of them. */
+    fun assertShowAllBackups(total: Int) {
+        // To its second line, the row's bottom.
+        Ui.scrollTo { hasText("$total backups") }
+        Ui.assertShown("Show all backups") { hasText(SHOW_ALL) }
+        Ui.assertShown("Show all backups, with $total backups") { hasText("$total backups") }
+    }
+
+    fun assertNoShowAllBackups() = Ui.assertGone("Show all backups") { hasText(SHOW_ALL) }
+
+    /** Opens the page with every backup; [assertBackupShown] and the restore and delete buttons work on it too. */
+    fun showAllBackups() {
+        Ui.scrollTo { hasText(SHOW_ALL) }
+        Ui.find { hasText(SHOW_ALL) }.click()
+        assertAllBackupsShown()
+    }
+
+    fun assertAllBackupsShown() = Ui.assertShown("All backups") { hasId(ALL_BACKUPS_PAGE) }
+
+    /** Leaves the page with every backup by its back arrow. */
+    fun closeAllBackups() {
+        Ui.find { hasDescription("Back") }.click()
+        assertAllBackupsGone()
+    }
+
+    fun assertAllBackupsGone() = Ui.assertGone("All backups") { hasId(ALL_BACKUPS_PAGE) }
+
+    /** Pulls the page down from its top, which loads the backup list again. */
     fun refreshBackups() {
-        Ui.scrollTo { hasId("swipeRefresh") }
-        Ui.find { hasId("swipeRefresh") }.swipe(Direction.DOWN, PULL_PERCENT)
+        Ui.scrollToTop()
+        Ui.find { hasId(PAGE) }.swipe(Direction.DOWN, PULL_PERCENT)
         Ui.device.waitForIdle()
     }
 
@@ -94,16 +123,16 @@ object SettingsScreen : TabScreen {
 
     fun signOut() = tapButton("Disconnect")
 
-    fun backUpNow() = tapButton("Backup Now")
+    fun backUpNow() = tapButton("Back up now")
 
-    fun relinkMedia() = tapButton(RELINK)
+    fun relinkMedia() = tapItem(RELINK, RELINK_ITEM)
 
-    fun sendLogs() = tapButton("Send Debug Logs")
+    fun sendLogs() = tapItem("Send debug logs", "bt_sendLogs")
 
     /** Waits until the re-link run is over: the screen's buttons work again. */
     fun waitForRelinkToFinish() {
         Ui.scrollTo { hasText(RELINK) }
-        Ui.assertShown("The Re-link button, enabled again", Ui.SLOW_TIMEOUT_MS) { hasText(RELINK) && isEnabled }
+        Ui.assertShown("The Re-link item, enabled again", Ui.SLOW_TIMEOUT_MS) { hasId(RELINK_ITEM) && isEnabled }
     }
 
     /**
@@ -161,17 +190,20 @@ object SettingsScreen : TabScreen {
         Ui.assertShown("The default map filter \"$label\"") { hasId(DEFAULT_FILTER) && hasText(label) }
     }
 
-    // The switches stay disabled until the saved setting is loaded.
+    // The switches stay disabled until the saved setting is loaded. A switch row is checked and enabled itself, while its
+    // label is a line inside it: the row is the label's parent.
     private fun setSwitch(label: String, on: Boolean) {
         Ui.scrollTo { hasText(label) }
-        val switch = Ui.find { hasText(label) && isEnabled }
-        if (switch.isChecked != on) switch.click()
+        val row = Ui.find { hasText(label) && parent?.isEnabled == true }.parent
+        if (row.isChecked != on) row.click()
         assertSwitch(label, on)
     }
 
     private fun assertSwitch(label: String, on: Boolean) {
         Ui.scrollTo { hasText(label) }
-        Ui.assertShown("\"$label\" turned ${if (on) "on" else "off"}") { hasText(label) && isEnabled && isChecked == on }
+        Ui.assertShown("\"$label\" turned ${if (on) "on" else "off"}") {
+            hasText(label) && parent?.let { it.isEnabled && it.isChecked == on } == true
+        }
     }
 
     private fun tapButton(text: String) {
@@ -180,8 +212,19 @@ object SettingsScreen : TabScreen {
         Ui.device.waitForIdle()
     }
 
-    private const val CLUSTERING = "Enable Marker Clustering"
-    private const val RELINK = "Re-link Gallery Photos"
+    // A list item that does something: its text is a line inside it, so it is told enabled by its own name.
+    private fun tapItem(text: String, id: String) {
+        Ui.scrollTo { hasText(text) }
+        Ui.find { hasId(id) && isEnabled }.click()
+        Ui.device.waitForIdle()
+    }
+
+    private const val CLUSTERING = "Enable marker clustering"
+    private const val RELINK = "Re-link photos and videos"
+    private const val RELINK_ITEM = "bt_relinkMedia"
+    private const val PAGE = "scroll_settings"
+    private const val ALL_BACKUPS_PAGE = "scroll_all_backups"
+    private const val SHOW_ALL = "Show all backups"
     private const val ADD_PRESET = "Add current as new preset"
     private const val DEFAULT_FILTER = "spinner_defaultFilter"
     private const val BUSY_TIMEOUT_MS = 30_000L
@@ -209,15 +252,16 @@ object ColorPresetsSection {
     fun assertGone(color: Hsv) = Ui.assertGone("The preset ${describe(color)}") { isSwatch(color) }
 
     fun assertSelected(color: Hsv) = Ui.assertShown("The preset ${describe(color)}, selected") {
-        isSwatch(color) && isSelected
+        isSwatch(color) && isChosen()
     }
 
     fun assertNotSelected(color: Hsv) = Ui.assertShown("The preset ${describe(color)}, not selected") {
-        isSwatch(color) && !isSelected
+        isSwatch(color) && !isChosen()
     }
 
-    /** The presets appear in this order, from left to right (all on screen). */
+    /** The presets appear in this order, from left to right (all on screen, once the first is). */
     fun assertLeftToRight(vararg colors: Hsv) {
+        Ui.scrollTo { isSwatch(colors.first()) }
         val lefts = colors.map { color -> Ui.find { isSwatch(color) }.visibleBounds.left }
         assertEquals("The order of the presets ${colors.map(::describe)}", lefts.sorted(), lefts)
     }
@@ -237,8 +281,9 @@ object ColorPresetsSection {
     /** Taps the hue slider at [fraction] of its width (0 left, 1 right) and returns the hue it shows then. */
     fun tapHue(fraction: Float): Int {
         Ui.scrollTo { hasId("tv_BrightnessValue") } // The sliders sit below the swatches; this keeps both on screen.
-        // The Material sliders report themselves as not visible to accessibility services, so they can't be looked
-        // up. The hue slider spans the row between the "Hue" line (label and value) and the "Saturation" line.
+        // The Add form's Material sliders (Views) report themselves as not visible to accessibility services, so they
+        // can't be looked up. The hue slider spans the row between the "Hue" line (label and value) and the
+        // "Saturation" line.
         val label = Ui.find { hasText("Hue") }.visibleBounds
         val value = Ui.find { hasId("tv_HueValue") }.visibleBounds
         val next = Ui.find { hasText("Saturation") }.visibleBounds
@@ -254,8 +299,8 @@ object ColorPresetsSection {
 
     fun addCurrentColor() = tap(ADD)
 
-    /** Taps "Delete Preset", which asks first ([Dialog] with [DELETE_QUESTION]). */
-    fun delete() = tap("Delete Preset")
+    /** Taps "Delete preset", which asks first ([Dialog] with [DELETE_QUESTION]). */
+    fun delete() = tap("Delete preset")
 
     /**
      * Long-presses the preset [color] and drags it into the place of [onto]. The list moves a preset past another
@@ -279,6 +324,9 @@ object ColorPresetsSection {
     }
 
     private fun AccessibilityNodeInfo.isSwatch(color: Hsv) = hasDescription(describe(color))
+
+    // Selected: the Add form's View swatch says so itself; a Compose swatch is a checked item whose colour is a node inside it.
+    private fun AccessibilityNodeInfo.isChosen() = isSelected || isChecked || parent?.isChecked == true
 
     /** How the app describes the swatch of [color] to screen readers. */
     fun describe(color: Hsv): String = InstrumentationRegistry.getInstrumentation().targetContext.getString(

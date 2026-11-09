@@ -2,4 +2,5 @@
 <resources>
     <!-- The Compose views that screens moved to Compose return: Compose saves its state under the view's id. -->
     <item name="timeline_content" type="id" />
+    <item name="settings_content" type="id" />
 </resources>

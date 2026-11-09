@@ -62,11 +62,11 @@ class RotationTest {
         app.launch()
         BottomNav.open(Tab.SETTINGS)
         SettingsScreen.assertSignedIn(FakeAccountService.DEFAULT_EMAIL)
-        SettingsScreen.assertBackupShown("Manual Backup")
+        SettingsScreen.assertBackupShown("Manual backup")
 
         rotateAndBack {
             SettingsScreen.assertSignedIn(FakeAccountService.DEFAULT_EMAIL)
-            SettingsScreen.assertBackupShown("Manual Backup")
+            SettingsScreen.assertBackupShown("Manual backup")
         }
     }
 

@@ -146,7 +146,6 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.fragment.ktx)
-    implementation(libs.androidx.swiperefreshlayout)
     implementation(libs.datastore.preferences)
     implementation(libs.material)
     implementation(libs.pie.chart)
@@ -156,6 +155,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
     debugImplementation(libs.compose.ui.tooling)
 
     // Google Maps

@@ -94,7 +94,7 @@ class BackupErrorTest {
 
     private companion object {
         const val BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"
-        const val MANUAL = "Manual Backup"
+        const val MANUAL = "Manual backup"
         const val SERVICE_UNAVAILABLE = 503
     }
 }
