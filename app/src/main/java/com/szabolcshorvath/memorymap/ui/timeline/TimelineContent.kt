@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -45,6 +46,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBarScrollBehavior
+import androidx.compose.material3.SearchBarState
+import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopSearchBar
 import androidx.compose.material3.rememberSearchBarState
@@ -58,7 +62,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -66,7 +69,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
@@ -75,7 +77,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -108,6 +109,11 @@ private const val TAG_DAY = "tv_date"
 private const val TAG_MEMORY_TITLE = "tv_memoryTitle"
 private const val TAG_SEARCH = "et_search"
 
+// The search view's results, named apart from the Timeline's own list, which stays open beneath it.
+private const val TAG_RESULTS = "search_results"
+private const val TAG_RESULTS_EMPTY = "search_empty"
+private const val TAG_RESULT_TITLE = "tv_resultTitle"
+
 private const val FLASH_MILLIS = 1000
 private const val FLASH_PEAK = 0.5f
 
@@ -115,8 +121,9 @@ private const val FLASH_PEAK = 0.5f
 private const val GAMMA = 2.2f
 
 /**
- * The Timeline tab: a search field that scrolls away with the list, the memories grouped by day, newest first, and a
- * Scroll to top button. [onQueryChange] gets the search as typed (also the one restored after process death),
+ * The Timeline tab: a search bar that scrolls away with the list, the memories grouped by day, newest first, and a
+ * Scroll to top button. Tapping the search bar opens Material's full-screen search view, which shows the matching
+ * memories as the user types; closed, the bar keeps the search and the list stays filtered. [onQueryChange] gets the search as typed (also the one restored after process death),
  * [onScrollHandled] is called once a Show on Timeline request has been scrolled to, and [onScrollToTopHandled] once a
  * request to go back to the top has.
  */
@@ -134,10 +141,8 @@ fun TimelineContent(
 
     val listState = rememberLazyListState()
     // Material's search bar: it scrolls away with the list and comes back as soon as the list scrolls up.
-    val searchBarState = rememberSearchBarState()
     val scrollBehavior = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
     var searchBarHeight by remember { mutableIntStateOf(0) }
-    var searchFocused by rememberSaveable { mutableStateOf(false) }
     val flash = remember { FlashState() }
     val scope = rememberCoroutineScope()
 
@@ -156,7 +161,7 @@ fun TimelineContent(
     // Back to the top, with the search bar shown again: the Scroll to top button, or the Timeline tab tapped again.
     suspend fun scrollToTop() = coroutineScope {
         launch { listState.animateScrollToItem(0) }
-        launch { animate(scrollBehavior.scrollOffset, 0f) { value, _ -> scrollBehavior.scrollOffset = value } }
+        launch { animate(scrollBehavior.scrollState.scrollOffset, 0f) { value, _ -> scrollBehavior.scrollState.scrollOffset = value } }
     }
     LaunchedEffect(state.scrollToTopRequested, shown) {
         if (!state.scrollToTopRequested || !shown) return@LaunchedEffect
@@ -174,26 +179,18 @@ fun TimelineContent(
         when {
             days == null -> Unit
 
-            days.isEmpty() -> EmptyMessage(state.query)
+            days.isEmpty() -> EmptyMessage(state.query, TAG_EMPTY)
 
             // The list scrolls beneath the search bar, and starts below it.
             else -> MemoryList(
                 days = days,
-                listState = listState,
-                flash = flash,
+                state = MemoryListState(listState, flash),
                 onMemoryClick = onMemoryClick,
                 top = with(LocalDensity.current) { searchBarHeight.toDp() },
+                tags = TimelineTags,
             )
         }
-        TopSearchBar(
-            state = searchBarState,
-            inputField = { SearchField(query, searchFocused) { searchFocused = it } },
-            modifier = Modifier
-                .onSizeChanged { searchBarHeight = it.height }
-                .padding(horizontal = SEARCH_BAR_MARGIN - TOP_SEARCH_BAR_PADDING),
-            windowInsets = WindowInsets(0),
-            scrollBehavior = scrollBehavior,
-        )
+        Search(query, state, scrollBehavior, Modifier.onSizeChanged { searchBarHeight = it.height }, onMemoryClick)
         ScrollToTopButton(
             visible = days?.isNotEmpty() == true && listState.isScrolledPastFirstItem(),
             onClick = { scope.launch { scrollToTop() } },
@@ -239,27 +236,67 @@ private fun LazyListState.isScrolledPastFirstItem(): Boolean {
 }
 
 /**
- * The search bar's field. It filters the list below as the user types, so it never opens a separate search view: the
- * field is "expanded" only while it has [focused], and Back (or Search on the keyboard) takes the focus away.
+ * The search bar, which scrolls away with the list ([scrollBehavior]), and the full-screen search view it opens. A
+ * result opens its memory over the Timeline: the search view closes first, as it would cover it.
  */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun SearchField(query: TextFieldState, focused: Boolean, onFocusedChange: (Boolean) -> Unit) {
-    val focusManager = LocalFocusManager.current
+private fun Search(
+    query: TextFieldState,
+    state: TimelineUiState,
+    scrollBehavior: SearchBarScrollBehavior,
+    modifier: Modifier,
+    onMemoryClick: (Int) -> Unit,
+) {
+    val searchBarState = rememberSearchBarState()
+    val scope = rememberCoroutineScope()
+    val searchField = @Composable { SearchField(query, searchBarState) }
+    TopSearchBar(
+        state = searchBarState,
+        inputField = searchField,
+        modifier = modifier.padding(horizontal = SEARCH_BAR_MARGIN - TOP_SEARCH_BAR_PADDING),
+        windowInsets = WindowInsets(0),
+        scrollBehavior = scrollBehavior,
+    )
+    ExpandedFullScreenSearchBar(state = searchBarState, inputField = searchField) {
+        // The expanded search is a dialog of its own, so the root's setting doesn't reach it.
+        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
+            SearchResults(state.days, state.query) { memoryId ->
+                scope.launch {
+                    searchBarState.animateToCollapsed()
+                    onMemoryClick(memoryId)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The search bar's field, the same in the bar and in the search view. Tapping it in the bar opens the search view; there
+ * a back arrow, Back or Search on the keyboard closes it, and the bar keeps the search.
+ */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SearchField(query: TextFieldState, searchBarState: SearchBarState) {
+    val scope = rememberCoroutineScope()
+    val expanded = searchBarState.currentValue == SearchBarValue.Expanded
     SearchBarDefaults.InputField(
-        state = query,
-        onSearch = { focusManager.clearFocus() },
-        expanded = focused,
-        onExpandedChange = { expanded ->
-            onFocusedChange(expanded)
-            if (!expanded) focusManager.clearFocus()
-        },
-        modifier = Modifier
-            .onFocusChanged { onFocusedChange(it.hasFocus) }
-            .testTag(TAG_SEARCH),
+        textFieldState = query,
+        searchBarState = searchBarState,
+        onSearch = { scope.launch { searchBarState.animateToCollapsed() } },
+        // Also shown in the expanded search's dialog, outside the root's setting.
+        modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag(TAG_SEARCH),
         placeholder = { Text(stringResource(R.string.timeline_search)) },
-        leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
-        trailingIcon = if (focused && query.text.isNotEmpty()) {
+        leadingIcon = {
+            if (expanded) {
+                IconButton(onClick = { scope.launch { searchBarState.animateToCollapsed() } }) {
+                    Icon(painterResource(R.drawable.ic_arrow_back), stringResource(R.string.close_search))
+                }
+            } else {
+                Icon(painterResource(R.drawable.ic_search), contentDescription = null)
+            }
+        },
+        trailingIcon = if (query.text.isNotEmpty()) {
             {
                 IconButton(onClick = { query.clearText() }) {
                     Icon(painterResource(R.drawable.ic_cancel), stringResource(R.string.clear_search))
@@ -271,9 +308,27 @@ private fun SearchField(query: TextFieldState, focused: Boolean, onFocusedChange
     )
 }
 
+/** The search view's results: the matching memories, as the Timeline shows them. */
+@Composable
+private fun SearchResults(days: List<TimelineDay>?, query: String, onMemoryClick: (Int) -> Unit) {
+    when {
+        days == null -> Unit
+
+        days.isEmpty() -> EmptyMessage(query, TAG_RESULTS_EMPTY)
+
+        else -> MemoryList(
+            days = days,
+            state = MemoryListState(rememberLazyListState(), remember { FlashState() }),
+            onMemoryClick = onMemoryClick,
+            top = 0.dp,
+            tags = ResultTags,
+        )
+    }
+}
+
 /**
- * The margin Material 3 Expressive gives a search bar. (Focused, it would narrow to 12 dp, but `TopSearchBar` in
- * Material3 1.4 widens only into its expanded search view, which this in-place search doesn't use.)
+ * The margin Material 3 Expressive gives a search bar. (Focused, it would narrow to 12 dp, but `TopSearchBar` widens
+ * only into its search view.)
  */
 private val SEARCH_BAR_MARGIN = 24.dp
 
@@ -281,7 +336,7 @@ private val SEARCH_BAR_MARGIN = 24.dp
 private val TOP_SEARCH_BAR_PADDING = 8.dp
 
 @Composable
-private fun EmptyMessage(query: String) {
+private fun EmptyMessage(query: String, tag: String) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = if (query.isBlank()) {
@@ -291,7 +346,7 @@ private fun EmptyMessage(query: String) {
             },
             modifier = Modifier
                 .padding(horizontal = 24.dp)
-                .testTag(TAG_EMPTY),
+                .testTag(tag),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -299,19 +354,28 @@ private fun EmptyMessage(query: String) {
     }
 }
 
+/** A list's scroll position, and the flash its memories play. */
+private class MemoryListState(val list: LazyListState, val flash: FlashState)
+
+/** The names the UI tests find a list and its memories' titles by. */
+private data class ListTags(val list: String, val title: String)
+
+private val TimelineTags = ListTags(TAG_LIST, TAG_MEMORY_TITLE)
+private val ResultTags = ListTags(TAG_RESULTS, TAG_RESULT_TITLE)
+
 @Composable
 private fun MemoryList(
     days: List<TimelineDay>,
-    listState: LazyListState,
-    flash: FlashState,
+    state: MemoryListState,
     onMemoryClick: (Int) -> Unit,
     top: Dp,
+    tags: ListTags,
 ) {
     LazyColumn(
-        state = listState,
+        state = state.list,
         modifier = Modifier
             .fillMaxSize()
-            .testTag(TAG_LIST),
+            .testTag(tags.list),
         contentPadding = PaddingValues(top = top, bottom = LIST_BOTTOM_PADDING),
     ) {
         for (day in days) {
@@ -321,7 +385,8 @@ private fun MemoryList(
                 MemoryCard(
                     memory = memory,
                     segment = Segment.of(i, day.memories.size),
-                    flash = flash,
+                    flash = state.flash,
+                    titleTag = tags.title,
                     onClick = { onMemoryClick(memory.id) },
                 )
             }
@@ -371,7 +436,7 @@ private enum class Segment(val roundTop: Boolean, val roundBottom: Boolean) {
 }
 
 @Composable
-private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState, onClick: () -> Unit) {
+private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState, titleTag: String, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -408,19 +473,19 @@ private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState,
                     .fillMaxHeight()
                     .background(Color(memory.markerColor()))
             )
-            MemoryText(memory)
+            MemoryText(memory, titleTag)
         }
     }
 }
 
 /** A card's text: the title, the place (its name, else its address), the description and the dates. */
 @Composable
-private fun MemoryText(memory: MemoryGroup) {
+private fun MemoryText(memory: MemoryGroup, titleTag: String) {
     val colors = MaterialTheme.colorScheme
     Column(Modifier.padding(horizontal = ITEM_PADDING, vertical = 12.dp)) {
         Text(
             text = memory.title,
-            modifier = Modifier.testTag(TAG_MEMORY_TITLE),
+            modifier = Modifier.testTag(titleTag),
             style = MaterialTheme.typography.titleMedium,
             color = colors.onSurface,
         )

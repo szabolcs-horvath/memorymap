@@ -58,7 +58,7 @@ class DetailNavigationTest {
     }
 
     @Test
-    fun theKeyboardClosesAndTheSearchStaysWhenAMemoryOrAnotherTabIsShown() {
+    fun theKeyboardClosesAndTheSearchStaysWhenAMemoryIsOpenedOrTheSearchIsClosedForAnotherTab() {
         app.launch()
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.typeInSearch("Vienna")
@@ -78,10 +78,12 @@ class DetailNavigationTest {
         TimelineScreen.typeInSearch("Vienna trip")
         Keyboard.assertShown()
 
+        // The search view covers the tabs: it is closed first.
+        TimelineScreen.closeSearch()
+        Keyboard.assertHidden()
         BottomNav.select(Tab.MAP)
 
         MapScreen.assertShown()
-        Keyboard.assertHidden()
 
         BottomNav.select(Tab.TIMELINE)
 

@@ -45,6 +45,7 @@ class ProcessDeathTest {
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.search("Vienna")
         TimelineScreen.assertMemoryGone(OTHER_TITLE)
+        TimelineScreen.closeSearch()
         app.simulateProcessDeath()
         TimelineScreen.assertShown()
         BottomNav.assertSelected(Tab.TIMELINE)
