@@ -142,7 +142,4 @@
     <color name="md_theme_surfaceContainerHighest_highContrast">#C6C6CC</color>
     <color name="md_theme_success">#4CAF50</color>
     <color name="md_theme_onSuccess">#FFFFFF</color>
-    <!-- Over a media tile that could not be loaded: darker over nothing, lighter over the stored thumbnail. -->
-    <color name="missing_media_scrim">#CC000000</color>
-    <color name="missing_media_scrim_over_thumbnail">#73000000</color>
 </resources>

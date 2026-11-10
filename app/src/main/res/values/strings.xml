@@ -40,9 +40,11 @@
     <string name="video">Video</string>
     <string name="remove_photo">Remove photo</string>
     <string name="remove_video">Remove video</string>
-    <string name="play_video">Play</string>
-    <string name="pause_video">Pause</string>
     <string name="video_position">Video position</string>
+    <!-- Which photo or video of the memory the viewer shows: "2 of 6". -->
+    <string name="media_position">%1$d of %2$d</string>
+    <!-- A video's position for a screen reader: "0:02 of 0:05". -->
+    <string name="video_time_of_length">%1$s of %2$s</string>
     <string name="color_preset_description">Color preset: hue %1$d, saturation %2$.2f, brightness %3$.2f</string>
     <string name="location_rationale_title">Use your location?</string>
     <string name="location_rationale_message">Memory Map uses your location to show where you are on the map and to pick it for a memory. It\'s only used while the app is open.</string>
@@ -199,12 +201,12 @@
     <string name="delete_memory">Delete Memory</string>
     <string name="delete_memory_message">Are you sure you want to delete this memory?</string>
     <string name="delete">Delete</string>
-    <string name="show_on_timeline">Show on Timeline</string>
-    <string name="show_on_map">Show on Map</string>
-    <string name="memory_fragments">Memory Fragments</string>
+    <string name="show_on_timeline">Show on timeline</string>
+    <string name="show_on_map">Show on map</string>
+    <string name="memory_fragments">Memory fragments</string>
     <string name="media">Media</string>
     <string name="media_could_not_load">Some media items could not be loaded. They may have been deleted or are from a different device.</string>
-    <string name="relink_media_files">Re-link Media Files</string>
+    <string name="relink_media_files">Re-link</string>
     <!-- A place's name above its address. -->
     <string name="place_and_address">%1$s\n%2$s</string>
     <!-- The tile of a photo or video that can't be shown: its type, size and date, one per line. -->

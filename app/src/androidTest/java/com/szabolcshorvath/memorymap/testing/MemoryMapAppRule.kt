@@ -142,6 +142,9 @@ class MemoryMapAppRule : TestRule {
             application.registerActivityLifecycleCallbacks(activities)
             // The setting outlives the app: a test that crashed in the middle may have left it on.
             setDontKeepActivities(false)
+            // Android explains full screen ("Viewing full screen") the first time an app hides the system bars, as the media
+            // viewer does; the notice dims the screen and takes the first tap. The tests act as a user who has seen it.
+            Ui.device.executeShellCommand("settings put secure $IMMERSIVE_CONFIRMATIONS confirmed")
             try {
                 base.evaluate()
             } catch (e: Throwable) {
@@ -254,6 +257,7 @@ class MemoryMapAppRule : TestRule {
         const val ANIMATOR_SCALE = "animator_duration_scale"
         const val INTERACTIVE_TIMEOUT = "accessibility_interactive_ui_timeout_ms"
         const val TIME_12_24 = "time_12_24"
+        const val IMMERSIVE_CONFIRMATIONS = "immersive_mode_confirmations"
         const val MS_PER_SECOND = 1_000
         const val SET_ALWAYS_FINISH = "android.permission.SET_ALWAYS_FINISH"
     }

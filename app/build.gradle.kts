@@ -174,7 +174,11 @@ dependencies {
     // Media
     implementation(libs.coil)
     implementation(libs.coil.video)
-    implementation(libs.photoview)
+    implementation(libs.coil.compose)
+    implementation(libs.telephoto.zoomable.image.coil3)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui.compose.material3)
+    implementation(libs.reorderable)
     implementation(libs.androidx.exifinterface)
 
     // Auth

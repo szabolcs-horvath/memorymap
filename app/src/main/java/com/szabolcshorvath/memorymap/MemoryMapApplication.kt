@@ -38,13 +38,7 @@ class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
 
     /** Uses the medium or high contrast colours when the phone's contrast setting asks for them. */
     private fun applyContrastSetting() {
-        ColorContrast.applyToActivitiesIfAvailable(
-            this,
-            ColorContrastOptions.Builder()
-                .setMediumContrastThemeOverlay(R.style.ThemeOverlay_AppTheme_MediumContrast)
-                .setHighContrastThemeOverlay(R.style.ThemeOverlay_AppTheme_HighContrast)
-                .build()
-        )
+        ColorContrast.applyToActivitiesIfAvailable(this, contrastOptions)
     }
 
     private fun initializeMaps() {
@@ -90,5 +84,11 @@ class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
     companion object {
         const val TAG = "MemoryMapApplication"
         private const val IMAGE_LOADER_MEMORY_CACHE_MAX_SIZE_PERCENT = 0.25 // 0.25 = 25%
+
+        /** The medium and high contrast colours, for when the phone's contrast setting asks for them. */
+        val contrastOptions: ColorContrastOptions = ColorContrastOptions.Builder()
+            .setMediumContrastThemeOverlay(R.style.ThemeOverlay_AppTheme_MediumContrast)
+            .setHighContrastThemeOverlay(R.style.ThemeOverlay_AppTheme_HighContrast)
+            .build()
     }
 }

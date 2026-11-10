@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 78 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 5 open
+✅ 80 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 3 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -123,11 +123,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-5](#ux-5) | Medium | Location permission asked immediately and repeatedly |
 | ✅ | [UX-6](#ux-6) | Medium | Edit mode overwrites an unsaved draft and stays active |
 | ✅ | [UX-7](#ux-7) | Medium | Form state lost on process death |
-| ⬜ | [UX-8](#ux-8) | Medium | Full-screen images are decoded at screen size |
+| ✅ | [UX-8](#ux-8) | Medium | Full-screen images are decoded at screen size |
 | ✅ | [UX-9](#ux-9) | Medium | Map date filter excludes memories that overlap the range |
 | ✅ | [UX-10](#ux-10) | Low | Transitive clustering merges distant points |
 | ✅ | [UX-11](#ux-11) | Low | Pickers ignore the locale |
-| ⬜ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
+| ✅ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
 | ⬜ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
 | ✅ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
 | ✅ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
@@ -149,7 +149,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline and Settings are moved) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline, Settings and the memory detail screen are moved) |
 
 **BUILD — Build, CI, tooling** · 4 of 4 fixed
 
@@ -575,11 +575,12 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Persist the draft through `SavedStateHandle` or a draft table, including the id of the memory being edited and the location picker's picked spot.
 - **Status:** Fixed. The Add form's draft is written to its `SavedStateHandle` when Android saves the app's state (`setSavedStateProvider`) and read back when its ViewModel is created again: every field a save stores (`FormContent`, written as a Bundle in `fragment/FormContent.kt`), the memory being edited, a pending Edit request, which location is being picked, how the form was when last loaded (so unsaved changes still count) and which sections are open. The location picker keeps its picked spot there too. `ProcessDeathTest.addFormKeepsTheTitleAndLocation`, `editKeepsEditingTheSameMemory` and `locationPickerKeepsThePickedSpot` run again, and `FormContentTest` checks that a draft comes back the same.
 
-### <a id="ux-8"></a>⬜ UX-8 · Medium · Full-screen images are decoded at screen size
+### <a id="ux-8"></a>✅ UX-8 · Medium · Full-screen images are decoded at screen size
 - **Where:** `adapter/MediaPagerAdapter.kt:58-61, 144-149`
 - **What:** `size(screenWidth, screenHeight)` limits resolution, so pinch-zoom in PhotoView only upscales a blurry bitmap.
 - **Fix:** Load at `Size.ORIGINAL` (or tile with subsampling) when zoomed.
 - **Compose migration ([ARCH-10](#arch-10)):** likely made redundant. The migration replaces `MediaPagerAdapter` and PhotoView with a Compose zoom library; telephoto, for example, loads sharper tiles through Coil as you zoom in. A fix in the current code would be thrown away, so do it only if it can't wait.
+- **Status:** Fixed with the Compose media viewer (2026-11-09). Photos show through telephoto (`ZoomableAsyncImage` with Coil), which shows the photo at screen size and loads sharper tiles of the file as it zooms; PhotoView and `MediaPagerAdapter` are gone.
 
 ### <a id="ux-9"></a>✅ UX-9 · Medium · Map date filter excludes memories that overlap the range
 - **Where:** `MapFragmentViewModel.kt:94-101`
@@ -605,11 +606,12 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Covered by `PhoneDateFormatsTest`, `DateFilterOptionTest` and `AddMemoryTest` (both clocks; the UI tests' time picker handles both).
 - **Compose migration ([ARCH-10](#arch-10)):** the Material 3 Compose pickers that replace these need the same settings: `is24Hour` from `DateFormat.is24HourFormat` and the first day of the week from `firstDayOfWeek()`.
 
-### <a id="ux-12"></a>⬜ UX-12 · Low · Media viewer is not immersive
+### <a id="ux-12"></a>✅ UX-12 · Low · Media viewer is not immersive
 - **Where:** `MainActivity.kt:304-319`, `res/layout/fragment_media_viewer.xml`
 - **What:** The bottom navigation and system bars stay visible, there is no tap-to-hide, and tapping a tab pops the viewer.
 - **Fix:** Hide the bottom navigation and system bars while viewing.
 - **Compose migration ([ARCH-10](#arch-10)):** heavily affected. The media viewer is rewritten (pager and zoom), and the bottom navigation and the tab-pops-the-viewer behaviour change again if the migration's last step replaces `MainActivity`'s fragment shell. Hiding the system bars (`WindowInsetsControllerCompat`) carries over; tap-to-hide and the bottom navigation are better built into the Compose viewer.
+- **Status:** Fixed with the Compose media viewer (2026-11-09). While it shows, the tab bar and the system bars are hidden (`MainActivity.onMediaViewerShown`; a swipe from an edge shows the system bars for a moment), the media sit on black, and tapping shows or hides a top bar with a back arrow and "2 of 6", with a video's Media3 controls. With the tab bar hidden, a tab can no longer be tapped from the viewer. The system bars stay hidden while the top bar shows, so the root's `fitsSystemWindows` (UX-13) leaves no strip around the black.
 
 ### <a id="ux-13"></a>⬜ UX-13 · Low · Edge-to-edge enabled and then cancelled out
 - **Where:** `MainActivity.kt:84`, `res/layout/activity_main_container.xml:6`
@@ -821,7 +823,19 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Timeline reviewed against Material 3 Expressive (step 3), each change looked at on the emulator before it was kept: Material 3's `TopSearchBar` (the list scrolls beneath it), a segmented list of filled items with day labels instead of dividers, and a tonal Scroll to top button plus tapping the tab again. Tried and dropped: a pin icon instead of the colour strip (blander). Not adopted: the focused search bar's narrower margins, which `TopSearchBar` in Material3 1.4 shows only in its expanded search view.
   - Settings reviewed against Material 3 Expressive and moved (`ui/settings/`), with every change the review proposed, agreed with the user first: the page has sections (Map, Backup & restore, Media library) under a large flexible top app bar, where each setting is a standalone item and only real lists (the backups) are segmented; the default map filter is chosen from Material 3 Expressive's menu, opening from its arrow; the backups are rows of the page instead of a fixed 300 dp box with its own scroll (the newest five, with "Show all backups" opening an All backups page in the tab, which Back closes), and pulling the page down refreshes them; Disconnect is a text button on the Google Drive account row instead of a filled red button; labels are in sentence case ("Back up now"); the result line is a tonal banner with an icon; the colour editor opens inside the presets' card, its sliders have no tick dots or stop indicator, the swatches a ring and a check mark when selected, and Delete, Undo and Save form a button group; the busy card has a wavy progress bar. `BackupAdapter`, the Settings layouts and SwipeRefreshLayout are gone; `ColorPresetAdapter` stays for the Add form.
   - Material3 is pinned to 1.5.0-rc01, ahead of the BOM's 1.4.0: the stable BOM takes only stable releases, and button groups, wavy progress indicators and `SegmentedListItem` came in 1.5. 1.5 also renamed `SearchBarScrollBehavior.scrollOffset` to `scrollState.scrollOffset` (the Timeline's scroll to top), and its `TopSearchBar` no longer shows the keyboard for typing in the collapsed bar: the field is meant to open the expanded search. So the Timeline now searches the Material 3 way, agreed with the user: tapping the bar opens `ExpandedFullScreenSearchBar` (full screen, over the tab bar, with a back arrow, a clear button and the matching memories as results); Back or the arrow closes it and the query stays, with the Timeline filtered. Tapping a result closes the search view first, so Back from the memory returns to the Timeline.
-  - Next: review the memory detail screen (pager and media viewer) against Material 3 Expressive, then move it.
+  - Left for later, agreed with the user:
+    - Once the migration is done: upgrade `activity-compose` from 1.8.2 (the version other libraries brought in, declared for Settings' `BackHandler`) to the latest stable. It requires the same version of `activity` itself, so the whole app's Back handling, result launchers (photo picker, permissions, Drive consent, sign-in) and edge-to-edge move with it, and from 1.12 Back runs on `navigationevent` (predictive back). Do it on its own and run the full UI suite.
+    - When the Map moves: the date filter's options are in title case ("Last 7 Days", "All Time") while the moved screens use sentence case. The map's filter bar and the Settings menu share these strings.
+    - The colour editor's slider handles take the colour being edited, so a black one is hard to see in dark mode (a white one in light mode). An outline would fix it; the Add form's colour editor has the same sliders, so decide when it moves.
+    - Move Material3 back to the BOM's version once the BOM has 1.5 (see the pin above).
+  - Memory detail screen reviewed against Material 3 Expressive; agreed with the user (2026-11-09):
+    - Memory page: a large flexible top app bar with the title, a back arrow, Edit, and Delete in a More menu; "Show on map" and "Show on timeline" as tonal buttons under the date and place; the fragments always shown, as a segmented list with each one's colour strip (tap one to show it on the map); the marker colour as a strip on the header instead of a coloured divider.
+    - Media: the missing-media warning as a tonal banner in theme colours (it was fixed orange, even in dark mode); the grid with rounded tiles and small gaps, the missing tile in theme colours and still with the stored low-resolution thumbnail when there is one.
+    - Media viewer: immersive (black, tab bar and system bars hidden, tapping shows or hides a top bar with a back arrow and "2 of 6"; UX-12); zoom with telephoto, which loads sharper tiles as you zoom (UX-8); videos played by Media3 (ExoPlayer) with its own Material 3 controls (`media3-ui-compose-material3`), shown and hidden with the top bar.
+    - Missing-photo sheet: Material 3's drag handle; "Choose another photo" and "Remove from memory" as list items with icons; no "Not now" button (dragging the sheet away, tapping outside or Back closes it).
+  - Memory detail screen moved (2026-11-10): each page of the memory pager (`ui/memory/MemoryContent.kt`, `MemoryMedia.kt`; the pager stays a `ViewPager2` of fragments), the missing-photo sheet (`ui/memory/MissingMediaSheetContent.kt`, still a `BottomSheetDialogFragment`) and the media viewer (`ui/media/`). The four adapters, seven layouts and PhotoView (with the JitPack repository it needed) are gone; the drag-to-reorder of photos and fragments uses `sh.calvin.reorderable`, zoom telephoto and videos Media3.
+    - Found on the way: the emulator's hardware video decoder fails when an app runs it (the old `VideoView` decoded in the media server), so the UI tests play videos with software decoders (`AppServices.videoDecoders`); the app keeps the phone's own choice. Media3's position slider has no accessible name of its own (Material3 1.5's slider keeps its node apart from any name, as in Settings), so a box around it gives it its name, position and length. The viewer turns off the root layout's `fitsSystemWindows` while it shows, so it reaches the screen's edges. Android's "Viewing full screen" notice, shown the first time an app hides the bars, is marked as seen by `MemoryMapAppRule`.
+    - After the user's look: the fragments' colour runs down each row's left edge, as on the details card, and the rows are standard one-line list items (a 40 dp colour pill had made them taller). The media viewer always uses the dark colour scheme (`MemoryMapTheme(dark = true)`), on a black `Surface` that gives its content a light colour: Media3 takes its controls' colours from the theme, so in light mode the slider and the times had shown light-theme colours on the black viewer. The position slider is built as Media3's `ProgressSlider` builds it (Media3's progress state with Material 3's slider), with a 4 dp track, a short handle and no dot at the end, which `ProgressSlider` doesn't let a caller change.
 
 [↑ Back to index](#index)
 

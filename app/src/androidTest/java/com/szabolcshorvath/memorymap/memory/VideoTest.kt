@@ -40,7 +40,8 @@ class VideoTest {
 
         MemoryScreen.openFirstVideo()
         MediaViewerScreen.assertShowingVideo()
-        MediaViewerScreen.assertColorAt(GREEN)
+        // Read left of the middle, where the player's buttons are.
+        MediaViewerScreen.assertColorAt(GREEN, across = LEFT_OF_BUTTONS)
 
         MediaViewerScreen.play()
         MediaViewerScreen.assertPlaying()
@@ -51,5 +52,6 @@ class VideoTest {
     private companion object {
         const val TRIP = "Lake trip"
         val GREEN = Color.rgb(40, 200, 60)
+        const val LEFT_OF_BUTTONS = 0.15f
     }
 }

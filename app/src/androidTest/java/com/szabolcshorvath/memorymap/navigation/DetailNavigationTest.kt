@@ -92,28 +92,26 @@ class DetailNavigationTest {
     }
 
     @Test
-    fun backFromTheViewerReturnsToTheSameMemoryAndATabOpenedFromTheViewerClosesBoth() {
+    fun theViewerHidesTheTabBarAndBackOrItsArrowReturnsToTheSameMemory() {
         openFromTimeline(NEWER)
         MemoryScreen.openFirstPhoto()
         MediaViewerScreen.assertShowingPhoto()
         MemoryScreen.assertGone()
+        BottomNav.assertGone()
 
         Ui.pressBack()
 
         MemoryScreen.assertShowing(NEWER)
         MediaViewerScreen.assertGone()
+        BottomNav.assertShown()
 
         MemoryScreen.openFirstPhoto()
         MediaViewerScreen.assertShowingPhoto()
-        BottomNav.select(Tab.MAP)
+        MediaViewerScreen.close()
 
-        MapScreen.assertShown()
+        MemoryScreen.assertShowing(NEWER)
         MediaViewerScreen.assertGone()
-        MemoryScreen.assertGone()
-
-        // Nothing is left behind to go back to.
-        Ui.pressBack()
-        MemoryScreen.assertGone()
+        BottomNav.assertShown()
     }
 
     @Test

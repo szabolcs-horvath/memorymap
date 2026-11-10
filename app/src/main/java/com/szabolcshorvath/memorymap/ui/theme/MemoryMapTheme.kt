@@ -1,7 +1,9 @@
 package com.szabolcshorvath.memorymap.ui.theme
 
 import android.content.Context
+import android.content.res.Configuration
 import android.util.TypedValue
+import android.view.ContextThemeWrapper
 import androidx.annotation.AttrRes
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -14,7 +16,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.google.android.material.color.ColorContrast
 import com.google.android.material.color.MaterialColors
+import com.szabolcshorvath.memorymap.MemoryMapApplication
+import com.szabolcshorvath.memorymap.R
 import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 
@@ -22,14 +27,17 @@ import com.google.android.material.R as MaterialR
  * The app's Material 3 theme for Compose, taken from the XML theme of [LocalContext] (`AppTheme`): the same colours,
  * including dark mode and the medium and high contrast overlays `MemoryMapApplication` applies, and the same corner
  * sizes. Text uses Compose's own Material 3 type scale. The screens moved to Compose and those still built with Views
- * share one palette while the migration runs (ARCH-10).
+ * share one palette while the migration runs (ARCH-10). [dark] uses the dark colours whatever the phone's setting, for
+ * a screen that is always dark (the media viewer).
  */
 @Composable
-fun MemoryMapTheme(content: @Composable () -> Unit) {
+fun MemoryMapTheme(dark: Boolean = false, content: @Composable () -> Unit) {
     val context = LocalContext.current
     // The configuration changes with dark mode; the colours have to be read again then.
     val configuration = LocalConfiguration.current
-    val colorScheme = remember(context, configuration) { context.colorScheme() }
+    val colorScheme = remember(context, configuration, dark) {
+        (if (dark) context.inDarkTheme() else context).colorScheme()
+    }
     val shapes = remember(context, configuration) { context.shapes() }
     MaterialTheme(colorScheme = colorScheme, shapes = shapes, content = content)
 }
@@ -101,4 +109,13 @@ private fun Context.cornerSize(@AttrRes attr: Int): Dp {
     val value = TypedValue()
     check(theme.resolveAttribute(attr, value, true)) { "The theme has no corner size ${resources.getResourceName(attr)}" }
     return (value.getDimension(resources.displayMetrics) / resources.displayMetrics.density).dp
+}
+
+/** The app's theme read with the dark colours, keeping the contrast overlay the phone's setting asks for. */
+private fun Context.inDarkTheme(): Context {
+    val night = Configuration(resources.configuration).apply {
+        uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_YES
+    }
+    val dark = ContextThemeWrapper(this, R.style.AppTheme).apply { applyOverrideConfiguration(night) }
+    return ColorContrast.wrapContextIfAvailable(dark, MemoryMapApplication.contrastOptions)
 }
