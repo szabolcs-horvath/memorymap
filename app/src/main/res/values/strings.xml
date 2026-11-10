@@ -139,11 +139,10 @@
     </plurals>
 
     <!-- Location picker. -->
-    <string name="pick_location_search">Search Location</string>
-    <string name="pick_location_confirm">Confirm Location</string>
-    <string name="pick_location_fetching">Fetching location…</string>
-    <string name="pick_location_loading">Loading details…</string>
-    <string name="pick_location_selected">Selected Location</string>
+    <string name="pick_location_search">Search for a place</string>
+    <string name="pick_location_confirm">Use this location</string>
+    <string name="pick_location_looking_up">Looking up the address…</string>
+    <string name="pick_location_nothing_picked">Tap the map or search for a place</string>
 
     <!-- Dates and places, as the app writes them. -->
     <!-- A day and a time: "Nov 6, 2026 3:05 PM". -->
@@ -158,6 +157,8 @@
     <string name="longitude_east">%1$s° E</string>
     <string name="longitude_west">%1$s° W</string>
     <string name="coordinates">%1$s, %2$s</string>
+    <!-- A street and its house number, for a spot picked on the map: "Bem rkp. 10". -->
+    <string name="street_and_number">%1$s %2$s</string>
     <!-- Two sentences one after the other. -->
     <string name="two_sentences">%1$s %2$s</string>
 

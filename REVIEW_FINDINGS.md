@@ -149,7 +149,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline, Settings, the memory detail screen and the Add/Edit form are moved) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline, Settings, the memory detail screen, the Add/Edit form and the location picker are moved) |
 
 **BUILD — Build, CI, tooling** · 4 of 4 fixed
 
@@ -851,6 +851,13 @@ When a status changes, update the item's **Status** line, the marker in its head
     - The colour sliders' handles have an outline, on Settings too, so a black or white one shows on the page (it was left for when the form moved).
     - Material 3's date pickers read the first day of the week from the locale, so the form gives them the phone's language with Android's first-day preference added (the Unicode "fw" extension). The emulator's US region starts weeks on Sunday either way: a phone set to start on Monday is not checked yet.
     - The date range picker's headline shows the days without their year, which otherwise wrapped onto two lines.
+  - Location picker reviewed against Material 3 Expressive; agreed with the user (2026-11-10):
+    - Its map moves too, to Google's Compose map library (`maps-compose`), so the bars over it set the map's padding instead of measuring it.
+    - A search bar across the top with a back arrow (Back was the only way out); tapping it still opens Google's place search screen.
+    - "My location" as a floating action button at the bottom right, and a panel at the bottom with the picked place's name and address (or coordinates), "Use this location", and "Tap the map or search for a place" while nothing is picked (the button used to look usable then); a loading indicator while the address is looked up.
+    - The marker in the theme's primary colour, without an info window; a spot is never named by its plus code ("G23R+C23") or by its house number alone.
+    - Google's zoom buttons stay; "place search isn't available" as a Snackbar; wording in sentence case.
+  - Location picker moved (2026-11-10): `ui/location/` (`PickLocationContent`, `PickLocationActions`), in `PickLocationFragment`'s `ComposeView`, its ViewModel on `StateFlow<PickLocationUiState>`, the picked spot still in `SavedStateHandle` and the camera in `rememberSaveable`. The fragment keeps the place lookups and the "my location" flow; its layout is gone.
 
 [↑ Back to index](#index)
 
