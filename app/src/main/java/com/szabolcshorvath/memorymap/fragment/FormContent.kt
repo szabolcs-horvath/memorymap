@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.net.Uri
 import android.os.Bundle
-import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 import java.time.ZonedDateTime
@@ -92,7 +91,6 @@ private fun FragmentEditState.toBundle() = Bundle().apply {
     putFloat(SATURATION, markerSaturation)
     putFloat(BRIGHTNESS, markerBrightness)
     putBoolean(TIME_VISIBLE, isTimeVisible)
-    putBoolean(DATE_EXPANDED, isDateExpanded)
     putBoolean(COLOR_EXPANDED, isColorExpanded)
     order?.let { putInt(ORDER, it) }
 }
@@ -111,7 +109,6 @@ private fun Bundle.toFragmentEditState() = FragmentEditState(
     markerSaturation = getFloat(SATURATION),
     markerBrightness = getFloat(BRIGHTNESS),
     isTimeVisible = getBoolean(TIME_VISIBLE),
-    isDateExpanded = getBoolean(DATE_EXPANDED),
     isColorExpanded = getBoolean(COLOR_EXPANDED),
     order = if (containsKey(ORDER)) getInt(ORDER) else null
 )
@@ -139,6 +136,5 @@ private const val SIGNATURE = "signature"
 private const val ID = "id"
 private const val LOCAL_ID = "local_id"
 private const val TIME_VISIBLE = "time_visible"
-private const val DATE_EXPANDED = "date_expanded"
 private const val COLOR_EXPANDED = "color_expanded"
 private const val ORDER = "order"

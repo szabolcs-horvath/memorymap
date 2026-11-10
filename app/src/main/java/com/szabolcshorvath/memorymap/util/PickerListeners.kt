@@ -7,8 +7,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.datepicker.MaterialDatePicker
-import com.google.android.material.timepicker.MaterialTimePicker
-import java.time.LocalTime
 
 // Material date and time pickers are restored after a configuration change, but the listeners added to them
 // are not. Screens show each picker under a tag that says what it is for, attach its listener when showing it,
@@ -19,12 +17,6 @@ fun <S> MaterialDatePicker<S>.setOnPicked(action: (S) -> Unit) {
     clearOnPositiveButtonClickListeners()
     addOnPositiveButtonClickListener { action(it) }
     markLive()
-}
-
-/** Replaces the picker's listeners with [action], so attaching again never applies a pick twice. */
-fun MaterialTimePicker.setOnPicked(action: (LocalTime) -> Unit) {
-    clearOnPositiveButtonClickListeners()
-    addOnPositiveButtonClickListener { action(LocalTime.of(hour, minute)) }
 }
 
 /**
@@ -39,9 +31,6 @@ fun <S> FragmentManager.reattachDatePicker(tag: String, action: (S) -> Unit) {
     val working = if (ViewModelProvider(picker)[PickerSession::class.java].isLive) picker else picker.reopened()
     working.setOnPicked(action)
 }
-
-/** The time picker shown under [tag], if it is still open. */
-fun FragmentManager.findTimePicker(tag: String): MaterialTimePicker? = findFragmentByTag(tag) as? MaterialTimePicker
 
 @Suppress("UNCHECKED_CAST")
 private fun <S> FragmentManager.findDatePicker(tag: String): MaterialDatePicker<S>? =

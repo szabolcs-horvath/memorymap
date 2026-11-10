@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
@@ -17,7 +18,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.szabolcshorvath.memorymap.MemoryMapApplication
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaThumbnail
@@ -39,10 +39,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
+// The form's intents: one small function per thing the user can change.
+@Suppress("TooManyFunctions")
 class AddMemoryGroupFragmentViewModel(
     application: Application,
     savedState: SavedStateHandle,
@@ -73,7 +76,7 @@ class AddMemoryGroupFragmentViewModel(
      */
     private val pickedUris = HashSet<String>()
 
-    var fragments = mutableListOf<MemoryFragmentEditAdapter.FragmentEditState>()
+    var fragments = mutableListOf<FragmentEditState>()
 
     var title: String? = null
     var description: String? = null
@@ -95,12 +98,237 @@ class AddMemoryGroupFragmentViewModel(
     var editingMemoryId: Int? = null
     var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     var currentDeviceId: String? = null
-    var fragmentsExpanded = true
     var colorExpanded = false
-    var dateExpanded = true
 
     /** Whether the Add screen is shown (not hidden behind another tab); kept up to date by the fragment. */
     var isScreenShown = true
+
+    /** Bumped when the form is cleared or filled for editing, so the screen shows the new text in its fields. */
+    private var formVersion = 0
+
+    /** Whether the fields a save needs show what is missing: from a save that lacked them until the form is cleared. */
+    private var showErrors = false
+
+    /** Bumped by each save that lacks something, so the screen scrolls to the first field that needs it. */
+    private var errorScrollRequest = 0
+
+    /** A message for the screen to show (a string resource), until it says it was shown. */
+    @StringRes
+    private var message: Int? = null
+
+    private val _uiState = MutableStateFlow(buildUiState())
+
+    /** What the Add screen shows. Every change to the form publishes a new one. */
+    val uiState = _uiState.asStateFlow()
+
+    /** Shows the form as it is now: called after every change. */
+    fun publish() {
+        _uiState.value = buildUiState()
+    }
+
+    private fun buildUiState() = AddFormUiState(
+        formVersion = formVersion,
+        editing = editingMemoryId != null,
+        title = title.orEmpty(),
+        description = description.orEmpty(),
+        place = FormPlace.of(lat, lng, placeName, address),
+        start = startDateTime,
+        end = endDateTime,
+        isAllDay = isAllDay,
+        color = Hsv(markerHue, markerSaturation, markerBrightness),
+        colorExpanded = colorExpanded,
+        fragments = fragments.toList(),
+        media = selectedMedia.toList(),
+        currentDeviceId = currentDeviceId,
+        isSaving = _isSaving.value,
+        showErrors = showErrors,
+        errorScrollRequest = errorScrollRequest,
+        message = message,
+    )
+
+    fun changeTitle(text: String) {
+        title = text.ifBlank { null }
+        publish()
+    }
+
+    fun changeDescription(text: String) {
+        description = text.ifBlank { null }
+        publish()
+    }
+
+    fun setAllDay(owner: FormPart, allDay: Boolean) {
+        when (owner) {
+            FormPart.Memory -> isAllDay = allDay
+            is FormPart.Fragment -> updateFragment(owner.localId) { it.copy(isAllDay = allDay) }
+        }
+        publish()
+    }
+
+    /** Gives fragment [localId] dates of its own ([on]), starting now if it had none, or makes it use the memory's. */
+    fun setOwnTime(localId: String, on: Boolean) {
+        updateFragment(localId) { current ->
+            current.copy(
+                isTimeVisible = on,
+                startDate = if (on && current.startDate == null) ZonedDateTime.now() else current.startDate,
+                endDate = if (on && current.endDate == null) ZonedDateTime.now().plusHours(1) else current.endDate,
+            )
+        }
+        publish()
+    }
+
+    /** Sets the start or end day of [owner] to [date], keeping its time; the other end moves if it would be out of order. */
+    fun setDate(owner: FormPart, isStart: Boolean, date: LocalDate) {
+        changeDateTime(owner, isStart) { current -> date.atTime(current.toLocalTime()).atZone(ZoneId.systemDefault()) }
+    }
+
+    /** Sets the start or end time of [owner] to [time]; the other end moves if it would be out of order. */
+    fun setTime(owner: FormPart, isStart: Boolean, time: LocalTime) {
+        changeDateTime(owner, isStart) { current -> current.with(time) }
+    }
+
+    /** Sets the days of an all-day [owner]. */
+    fun setDateRange(owner: FormPart, first: LocalDate, last: LocalDate) {
+        val start = first.atStartOfDay(ZoneId.systemDefault())
+        val end = last.atStartOfDay(ZoneId.systemDefault())
+        when (owner) {
+            FormPart.Memory -> {
+                startDateTime = start
+                endDateTime = end
+            }
+
+            is FormPart.Fragment -> updateFragment(owner.localId) { it.copy(startDate = start, endDate = end) }
+        }
+        publish()
+    }
+
+    private fun changeDateTime(owner: FormPart, isStart: Boolean, change: (ZonedDateTime) -> ZonedDateTime) {
+        when (owner) {
+            FormPart.Memory -> {
+                if (isStart) {
+                    startDateTime = change(startDateTime)
+                    if (endDateTime.isBefore(startDateTime)) endDateTime = startDateTime.plusHours(1)
+                } else {
+                    endDateTime = change(endDateTime)
+                    if (endDateTime.isBefore(startDateTime)) startDateTime = endDateTime.minusHours(1)
+                }
+            }
+
+            is FormPart.Fragment -> updateFragment(owner.localId) { item -> item.withDateTime(isStart, change) }
+        }
+        publish()
+    }
+
+    /** Sets the start or end of a fragment, and moves the other end if it would come before or after it. */
+    private fun FragmentEditState.withDateTime(isStart: Boolean, change: (ZonedDateTime) -> ZonedDateTime): FragmentEditState {
+        val picked = change((if (isStart) startDate else endDate) ?: ZonedDateTime.now())
+        if (isStart) {
+            var newEnd = endDate
+            if (newEnd != null && newEnd.isBefore(picked)) newEnd = picked.plusHours(1)
+            return copy(startDate = picked, endDate = newEnd)
+        }
+        var newStart = startDate
+        if (newStart != null && picked.isBefore(newStart)) newStart = picked.minusHours(1)
+        return copy(startDate = newStart, endDate = picked)
+    }
+
+    fun setColor(owner: FormPart, color: Hsv) {
+        when (owner) {
+            FormPart.Memory -> {
+                markerHue = color.hue
+                markerSaturation = color.saturation
+                markerBrightness = color.brightness
+            }
+
+            is FormPart.Fragment -> updateFragment(owner.localId) {
+                it.copy(markerHue = color.hue, markerSaturation = color.saturation, markerBrightness = color.brightness)
+            }
+        }
+        publish()
+    }
+
+    /** Opens or closes the colour sliders of [owner]. */
+    fun toggleColor(owner: FormPart) {
+        when (owner) {
+            FormPart.Memory -> colorExpanded = !colorExpanded
+            is FormPart.Fragment -> updateFragment(owner.localId) { it.copy(isColorExpanded = !it.isColorExpanded) }
+        }
+        publish()
+    }
+
+    /** Adds a fragment at the memory's place, in its colour. */
+    fun addFragment() {
+        fragments += FragmentEditState(
+            lat = lat,
+            lng = lng,
+            placeName = placeName,
+            address = address,
+            markerHue = markerHue,
+            markerSaturation = markerSaturation,
+            markerBrightness = markerBrightness,
+        )
+        publish()
+    }
+
+    fun removeFragment(localId: String) {
+        fragments.removeAll { it.localId == localId }
+        publish()
+    }
+
+    /** Applies [change] to the fragment with [localId]. The list can change while a picker is open, so never by position. */
+    private fun updateFragment(localId: String, change: (FragmentEditState) -> FragmentEditState) {
+        val index = fragments.indexOfFirst { it.localId == localId }
+        if (index != -1) fragments[index] = change(fragments[index])
+    }
+
+    /** Sets the place of the memory, or of the fragment whose location is being picked ([activePickingIndex]). */
+    fun setPlace(newLat: Double, newLng: Double, newPlaceName: String?, newAddress: String?) {
+        if (activePickingIndex == -1) {
+            lat = newLat
+            lng = newLng
+            placeName = newPlaceName
+            address = newAddress
+        } else if (activePickingIndex in fragments.indices) {
+            fragments[activePickingIndex] = fragments[activePickingIndex].copy(
+                lat = newLat,
+                lng = newLng,
+                placeName = newPlaceName,
+                address = newAddress
+            )
+        }
+        publish()
+    }
+
+    /** Adds media just picked, first, leaving out what the form already has. */
+    fun addPickedMedia(picked: List<AddMemoryGroupFragment.SelectedMedia>) {
+        onMediaPicked(picked.map { it.uri.toString() })
+        selectedMedia.addAll(0, picked.filter { new -> selectedMedia.none { it.uri == new.uri } })
+        publish()
+    }
+
+    /**
+     * Saves the form if it has everything a save needs. Otherwise the fields that lack something say so, and the
+     * screen scrolls to the first.
+     */
+    fun requestSave() {
+        val complete = !title.isNullOrBlank() && lat != null && lng != null && fragments.all { it.lat != null && it.lng != null }
+        if (complete) {
+            saveMemoryGroup()
+        } else {
+            showErrors = true
+            errorScrollRequest++
+            publish()
+        }
+    }
+
+    fun showMessage(@StringRes text: Int) {
+        message = text
+        publish()
+    }
+
+    fun onMessageShown() {
+        message = null
+        publish()
+    }
 
     /** The form's content when it was last cleared or loaded for editing. Declared after the fields it reads. */
     private var unchangedContent = currentContent()
@@ -109,11 +337,13 @@ class AddMemoryGroupFragmentViewModel(
         // The draft survives process death: Android asks for it when it saves the app's state, and it is read back here.
         savedState.get<Bundle>(FORM_STATE)?.let(::restoreState)
         savedState.setSavedStateProvider(FORM_STATE, ::saveState)
+        publish() // The restored draft.
     }
 
     fun saveMemoryGroup() {
         if (_isSaving.value) return
         _isSaving.value = true
+        publish()
 
         val snapshotMedia = selectedMedia.toList()
         val snapshotFragments = fragments.toList()
@@ -153,7 +383,10 @@ class AddMemoryGroupFragmentViewModel(
                 _saveResult.send(SaveResult.Error)
             } finally {
                 _isSaving.value = false
-                withContext(Dispatchers.Main) { releaseDroppedPicks() }
+                withContext(Dispatchers.Main) {
+                    releaseDroppedPicks()
+                    publish()
+                }
             }
         }
     }
@@ -167,6 +400,7 @@ class AddMemoryGroupFragmentViewModel(
     fun removeMedia(item: AddMemoryGroupFragment.SelectedMedia) {
         selectedMedia.remove(item)
         releaseDroppedPicks()
+        publish()
     }
 
     /**
@@ -215,7 +449,7 @@ class AddMemoryGroupFragmentViewModel(
         title, description, lat, lng, placeName, address, startDateTime, endDateTime, isAllDay,
         markerHue, markerSaturation, markerBrightness, selectedMedia.toList(),
         // Whether a fragment's sections are expanded is only how the form looks.
-        fragments.map { it.copy(isDateExpanded = false, isColorExpanded = false) }
+        fragments.map { it.copy(isColorExpanded = false) }
     )
 
     /** The draft and what it is for (a new memory or an edit), for the saved state. Read back by [restoreState]. */
@@ -230,9 +464,7 @@ class AddMemoryGroupFragmentViewModel(
         pendingEditMemoryId?.let { putInt(PENDING_EDIT_MEMORY_ID, it) }
         putStringArrayList(PICKED_URIS, ArrayList(pickedUris))
         putInt(ACTIVE_PICKING_INDEX, activePickingIndex)
-        putBoolean(FRAGMENTS_EXPANDED, fragmentsExpanded)
         putBoolean(COLOR_EXPANDED, colorExpanded)
-        putBoolean(DATE_EXPANDED, dateExpanded)
     }
 
     private fun restoreState(state: Bundle) {
@@ -257,9 +489,7 @@ class AddMemoryGroupFragmentViewModel(
         editingMemoryId = state.getInt(EDITING_MEMORY_ID).takeIf { state.containsKey(EDITING_MEMORY_ID) }
         pendingEditMemoryId = state.getInt(PENDING_EDIT_MEMORY_ID).takeIf { state.containsKey(PENDING_EDIT_MEMORY_ID) }
         activePickingIndex = state.getInt(ACTIVE_PICKING_INDEX, -1)
-        fragmentsExpanded = state.getBoolean(FRAGMENTS_EXPANDED, true)
         colorExpanded = state.getBoolean(COLOR_EXPANDED)
-        dateExpanded = state.getBoolean(DATE_EXPANDED, true)
     }
 
     /** Memory [id] as stored, for editing, or null if it is gone. */
@@ -281,8 +511,6 @@ class AddMemoryGroupFragmentViewModel(
         markerHue = group.markerHue ?: DEFAULT_MARKER_HUE
         markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION
         markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS
-        dateExpanded = true
-
         selectedMedia.clear()
         selectedMedia.addAll(
             data.mediaItems.sortedWith(MediaItem.DISPLAY_ORDER).map {
@@ -293,7 +521,7 @@ class AddMemoryGroupFragmentViewModel(
         fragments.clear()
         fragments.addAll(
             data.fragments.sortedWith(MemoryFragment.DISPLAY_ORDER).map {
-                MemoryFragmentEditAdapter.FragmentEditState(
+                FragmentEditState(
                     id = it.id,
                     lat = it.latitude,
                     lng = it.longitude,
@@ -306,14 +534,15 @@ class AddMemoryGroupFragmentViewModel(
                     markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
                     markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
                     isTimeVisible = it.startDate != null,
-                    isDateExpanded = false,
                     isColorExpanded = false,
                     order = it.order
                 )
             }
         )
-        fragmentsExpanded = true
+        formVersion++
+        showErrors = false
         releaseDroppedPicks()
+        publish()
     }
 
     /** Clears the form: after a successful save, or when the user clears it. */
@@ -331,13 +560,14 @@ class AddMemoryGroupFragmentViewModel(
         markerHue = DEFAULT_MARKER_HUE
         markerSaturation = DEFAULT_MARKER_SATURATION
         markerBrightness = DEFAULT_MARKER_BRIGHTNESS
-        dateExpanded = true
         selectedMedia.clear()
         fragments.clear()
-        fragmentsExpanded = true
         colorExpanded = false
+        formVersion++
+        showErrors = false
         markUnchanged()
         releaseDroppedPicks()
+        publish()
     }
 
     private fun calculateEffectiveStartTime(isAllDay: Boolean, startDateTime: ZonedDateTime): ZonedDateTime = if (isAllDay) {
@@ -452,7 +682,7 @@ class AddMemoryGroupFragmentViewModel(
     }
 
     /** The form's fragments as they are stored (group id still 0). */
-    private fun toEntities(fragmentsToSave: List<MemoryFragmentEditAdapter.FragmentEditState>): List<MemoryFragment> =
+    private fun toEntities(fragmentsToSave: List<FragmentEditState>): List<MemoryFragment> =
         fragmentsToSave.mapIndexed { index, f ->
             val saveTime = f.isTimeVisible
             val fragmentStart = if (saveTime) {
@@ -490,9 +720,7 @@ class AddMemoryGroupFragmentViewModel(
         private const val PENDING_EDIT_MEMORY_ID = "pending_edit_memory_id"
         private const val ACTIVE_PICKING_INDEX = "active_picking_index"
         private const val PICKED_URIS = "picked_uris"
-        private const val FRAGMENTS_EXPANDED = "fragments_expanded"
         private const val COLOR_EXPANDED = "color_expanded"
-        private const val DATE_EXPANDED = "date_expanded"
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

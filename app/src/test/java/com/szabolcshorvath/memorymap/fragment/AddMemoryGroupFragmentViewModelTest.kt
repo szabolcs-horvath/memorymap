@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
-import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
@@ -73,7 +72,7 @@ class AddMemoryGroupFragmentViewModelTest {
         viewModel.fragments += FragmentEditState(lat = 47.5, lng = 19.05)
         viewModel.markUnchanged()
 
-        viewModel.fragments[0] = viewModel.fragments[0].copy(isDateExpanded = true, isColorExpanded = true)
+        viewModel.fragments[0] = viewModel.fragments[0].copy(isColorExpanded = true)
         assertFalse(viewModel.hasUnsavedChanges())
 
         viewModel.fragments[0] = viewModel.fragments[0].copy(lat = 48.0)

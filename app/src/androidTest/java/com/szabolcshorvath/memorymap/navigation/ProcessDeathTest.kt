@@ -205,7 +205,7 @@ class ProcessDeathTest {
         const val OTHER_TITLE = "Lake day"
         const val MANUAL_BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"
         const val RESTORE_TITLE = "Restore Backup"
-        const val DATE_PICKER_TITLE = "Select Start Date"
-        const val TIME_PICKER_TITLE = "Select Start Time"
+        const val DATE_PICKER_TITLE = "Select start date"
+        const val TIME_PICKER_TITLE = "Select start time"
     }
 }

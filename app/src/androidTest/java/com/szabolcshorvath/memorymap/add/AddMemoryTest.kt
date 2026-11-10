@@ -64,6 +64,16 @@ class AddMemoryTest {
     }
 
     @Test
+    fun aSaveWithoutATitleOrAPlaceSaysWhatIsMissingAndStaysOnTheForm() {
+        openAdd()
+        AddScreen.save()
+
+        AddScreen.assertMissingTitleAndPlace()
+        AddScreen.assertShown()
+        AddScreen.assertNew()
+    }
+
+    @Test
     fun pickedPhotosCanBeRemovedAndClearAsksFirstThenEmptiesTheForm() {
         openAdd()
         FakeMediaPicker.nextPick = emptyList() // The user leaves the picker.

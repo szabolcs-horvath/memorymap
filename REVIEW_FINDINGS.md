@@ -149,7 +149,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline, Settings and the memory detail screen are moved) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline, Settings, the memory detail screen and the Add/Edit form are moved) |
 
 **BUILD — Build, CI, tooling** · 4 of 4 fixed
 
@@ -713,6 +713,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Left for the Compose migration, one screen at a time (step 2 of [ARCH-10](#arch-10)): immutable `StateFlow<UiState>` plus intents instead of the ViewModels' `var`s, and the `MutableList` the Add form's ViewModel shares with `MemoryFragmentEditAdapter`.
   - Done for the Timeline (2026-11-08): `TimelineFragmentViewModel` exposes one `StateFlow<TimelineUiState>` (the search, the memories grouped by day, a pending Show on Timeline) and takes intents (`onQueryChange`, `requestScrollTo`, `onScrollHandled`).
   - Done for Settings (2026-11-08): `SettingsFragmentViewModel` exposes one `StateFlow<SettingsUiState>` and takes intents. The map preferences (`MapPreferencesModel`) and the colour presets (`ColorPresetsModel`) are parts of their own, and the backup list, results and busy state that `SettingsFragment` used to keep in its views are in the state. The fragment keeps only what needs an activity: sign-in, Drive's consent screen, permission requests, the questions asked first, and sharing the logs.
+  - Done for the Add/Edit form (2026-11-10): `AddMemoryGroupFragmentViewModel` publishes one `StateFlow<AddFormUiState>` after every change and takes intents (`changeTitle`, `setDate`, `setColor`, `addFragment`, `requestSave` and the rest). Its fields stay, behind those intents, for the unsaved-changes check and the saved draft; the adapter that shared its fragment list is gone.
 
 ### <a id="arch-3"></a>✅ ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
@@ -748,7 +749,9 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Media metadata query: the Add form's pick and save use `LocalMediaUtil.queryMetadata`, which re-linking already used: three copies, not two.
   - Relink trigger: the memory screen's and Settings' Re-link buttons share `util/RelinkAction` (run with full access, or ask for it first and run with what was granted). Each screen keeps its own progress display, which is UI. The start-up re-link in `MainActivity` does something else (it offers access in a Snackbar only when there is none) and stays as it is.
   - Location permission handling was already shared (`util/MyLocationAction`, used by the map and the location picker).
-  - Left for the Compose migration, as planned above: the HSV slider, preset and animation UI ×3, the date and time pickers ×2 and `showError` ×2.
+  - The HSV slider and presets (2026-11-10): one set of composables in `ui/color/ColorControls.kt` (`Swatch`, `ColorSliders`), used by Settings, the Add form and each of its fragments.
+  - The date and time pickers (2026-11-10): one `DateRows` and one `FormPicker` (`ui/add/FormDates.kt`) for the memory and its fragments; the old fragment editor's picker code is gone.
+  - Left: a missing photo's details (type, size, date) are drawn by two composables, the memory page's `MissingTile` and the Add form's `MediaDetails`.
 
 ### <a id="arch-6"></a>🟡 ARCH-6 · Medium · Hand-rolled singletons, no DI
 - **Where:** `CommonRepository`, `MemoryMapDatabase`, `InstallationIdentifier`, `BackupManager(context)` created per fragment
@@ -826,7 +829,6 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Left for later, agreed with the user:
     - Once the migration is done: upgrade `activity-compose` from 1.8.2 (the version other libraries brought in, declared for Settings' `BackHandler`) to the latest stable. It requires the same version of `activity` itself, so the whole app's Back handling, result launchers (photo picker, permissions, Drive consent, sign-in) and edge-to-edge move with it, and from 1.12 Back runs on `navigationevent` (predictive back). Do it on its own and run the full UI suite.
     - When the Map moves: the date filter's options are in title case ("Last 7 Days", "All Time") while the moved screens use sentence case. The map's filter bar and the Settings menu share these strings.
-    - The colour editor's slider handles take the colour being edited, so a black one is hard to see in dark mode (a white one in light mode). An outline would fix it; the Add form's colour editor has the same sliders, so decide when it moves.
     - Move Material3 back to the BOM's version once the BOM has 1.5 (see the pin above).
   - Memory detail screen reviewed against Material 3 Expressive; agreed with the user (2026-11-09):
     - Memory page: a large flexible top app bar with the title, a back arrow, Edit, and Delete in a More menu; "Show on map" and "Show on timeline" as tonal buttons under the date and place; the fragments always shown, as a segmented list with each one's colour strip (tap one to show it on the map); the marker colour as a strip on the header instead of a coloured divider.
@@ -836,6 +838,19 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Memory detail screen moved (2026-11-10): each page of the memory pager (`ui/memory/MemoryContent.kt`, `MemoryMedia.kt`; the pager stays a `ViewPager2` of fragments), the missing-photo sheet (`ui/memory/MissingMediaSheetContent.kt`, still a `BottomSheetDialogFragment`) and the media viewer (`ui/media/`). The four adapters, seven layouts and PhotoView (with the JitPack repository it needed) are gone; the drag-to-reorder of photos and fragments uses `sh.calvin.reorderable`, zoom telephoto and videos Media3.
     - Found on the way: the emulator's hardware video decoder fails when an app runs it (the old `VideoView` decoded in the media server), so the UI tests play videos with software decoders (`AppServices.videoDecoders`); the app keeps the phone's own choice. Media3's position slider has no accessible name of its own (Material3 1.5's slider keeps its node apart from any name, as in Settings), so a box around it gives it its name, position and length. The viewer turns off the root layout's `fitsSystemWindows` while it shows, so it reaches the screen's edges. Android's "Viewing full screen" notice, shown the first time an app hides the bars, is marked as seen by `MemoryMapAppRule`.
     - After the user's look: the fragments' colour runs down each row's left edge, as on the details card, and the rows are standard one-line list items (a 40 dp colour pill had made them taller). The media viewer always uses the dark colour scheme (`MemoryMapTheme(dark = true)`), on a black `Surface` that gives its content a light colour: Media3 takes its controls' colours from the theme, so in light mode the slider and the times had shown light-theme colours on the black viewer. The position slider is built as Media3's `ProgressSlider` builds it (Media3's progress state with Material 3's slider), with a 4 dp track, a short handle and no dot at the end, which `ProgressSlider` doesn't let a caller change.
+  - Add/Edit form reviewed against Material 3 Expressive; agreed with the user (2026-11-10):
+    - A large top app bar titled "New memory" or "Edit memory", with Clear (Discard while editing) in it; Save pinned above the tab bar, so it is always in reach (the wavy progress takes its place while saving).
+    - No collapsible cards: the date, the fragments and the photos are sections under small headers, as on the memory page; wording in sentence case ("Select on map", "All day", "Same as the memory").
+    - The location as a list item row (pin icon, place and address, tap to pick on the map); a missing title or location shown as an error on its field instead of a toast, and a failed save as a Snackbar.
+    - Dates as "Starts" and "Ends" rows with a tappable date and time, under an "All day" switch, picked with Material 3's Compose date, date range and time pickers (the weeks must still start on the phone's first day; if the Compose picker can't, the Material Components dialogs stay).
+    - The marker colour as on Settings: a card with the colour as a strip across its top, the swatches (ring and check mark when selected), and the sliders (no tick dots, no stop indicator, outlined handles) opening under its header.
+    - Each fragment as one flat card: colour strip, place row, its own dates and colour, a plain delete icon; "Add a memory fragment" under the list.
+    - Photos as a grid of rounded tiles under a "Photos and videos" header with the count, each with a small remove button in its corner; new picks first.
+    - Theme colours throughout, in light and dark mode.
+  - Add/Edit form moved (2026-11-10): `ui/add/` (`AddMemoryContent`, `FormDates`, `FormParts`), with the marker colour's controls shared with Settings in `ui/color/`. The form's adapters (`MemoryFragmentEditAdapter`, `FragmentEditPickers`, `SelectedMediaAdapter`, `ColorPresetAdapter`) and layouts are gone, and with them the time picker helpers of `util/PickerListeners.kt` and `util/PhoneCalendar.kt` (the map's date filter still uses the date picker ones).
+    - The colour sliders' handles have an outline, on Settings too, so a black or white one shows on the page (it was left for when the form moved).
+    - Material 3's date pickers read the first day of the week from the locale, so the form gives them the phone's language with Android's first-day preference added (the Unicode "fw" extension). The emulator's US region starts weeks on Sunday either way: a phone set to start on Monday is not checked yet.
+    - The date range picker's headline shows the days without their year, which otherwise wrapped onto two lines.
 
 [↑ Back to index](#index)
 
