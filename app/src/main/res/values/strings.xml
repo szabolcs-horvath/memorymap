@@ -29,8 +29,10 @@
     <string name="discard_edit_message">Editing this memory replaces your unsaved changes to the memory you were editing.</string>
     <string name="discard">Discard</string>
     <string name="keep_editing">Keep editing</string>
-    <string name="save_memory">Save Memory</string>
-    <string name="update_memory">Update</string>
+    <string name="save_memory">Save memory</string>
+    <string name="update_memory">Save changes</string>
+    <string name="new_memory_title">New memory</string>
+    <string name="edit_memory_title">Edit memory</string>
     <string name="my_location">My location</string>
     <string name="map_quick_filters">Quick date filters</string>
     <string name="map_color_stats">Color statistics</string>
@@ -113,7 +115,6 @@
     <string name="sign_in_failed">Sign-in didn\'t work. Check the internet connection and try again.</string>
 
     <!-- Coordinates, where a place has no name: "47.4979° N, 19.0402° E". -->
-    <string name="location_coordinates">Coordinates: %1$s</string>
 
     <!-- Map. -->
     <string name="map_pick_dates">Select dates</string>
@@ -218,31 +219,28 @@
     <string name="title_hint">Title</string>
     <string name="description_hint">Description</string>
     <string name="no_location_selected">No location selected</string>
-    <string name="select_on_map">Select on Map</string>
-    <string name="location_label">Location:</string>
-    <string name="date_and_time_heading">Date &amp; Time</string>
-    <string name="all_day">All Day?</string>
-    <string name="select_date_range">Select Date Range</string>
-    <string name="start_label">Start:</string>
-    <string name="end_label">End:</string>
-    <string name="start">Start</string>
-    <string name="end">End</string>
-    <string name="date">Date</string>
-    <string name="time">Time</string>
-    <string name="select_start_date">Select Start Date</string>
-    <string name="select_end_date">Select End Date</string>
-    <string name="select_start_time">Select Start Time</string>
-    <string name="select_end_time">Select End Time</string>
+    <string name="select_on_map">Select on map</string>
+    <string name="date_and_time_heading">Date and time</string>
+    <string name="all_day">All day</string>
+    <string name="select_date_range">Select date range</string>
+    <string name="start_label">Starts</string>
+    <string name="end_label">Ends</string>
+    <string name="dates_label">Dates</string>
+    <string name="select_start_date">Select start date</string>
+    <string name="select_end_date">Select end date</string>
+    <string name="select_start_time">Select start time</string>
+    <string name="select_end_time">Select end time</string>
     <!-- A day and a time, then one day with a start and an end time: "Nov 6, 2026, 3:05 PM - 5:00 PM". -->
     <string name="date_comma_time">%1$s, %2$s</string>
     <string name="date_comma_time_range">%1$s, %2$s - %3$s</string>
-    <string name="marker_color">Marker Color</string>
-    <string name="add_fragment">Add a Memory Fragment</string>
+    <string name="marker_color">Marker color</string>
+    <string name="add_fragment">Add a memory fragment</string>
     <string name="remove_fragment">Remove fragment</string>
-    <string name="fragment_own_time">Use specific time for this fragment</string>
+    <string name="fragment_own_time">Own date and time</string>
     <!-- A fragment without dates of its own has its memory's. -->
-    <string name="inherited_from_group">Inherited from group</string>
-    <string name="add_photos">Add Photos/Videos</string>
+    <string name="inherited_from_group">Same as the memory</string>
+    <string name="add_photos">Add photos and videos</string>
+    <string name="photos_and_videos">Photos and videos</string>
     <plurals name="items_selected">
         <item quantity="one">%d item selected</item>
         <item quantity="other">%d items selected</item>
@@ -253,9 +251,9 @@
     <string name="discard_changes_title">Discard Changes</string>
     <string name="discard_changes_message">Are you sure you want to discard your changes?</string>
     <!-- What a save still needs. -->
-    <string name="save_needs_title">The title must not be blank!</string>
-    <string name="save_needs_location">The location must be specified!</string>
-    <string name="save_needs_fragment_locations">The location must be specified for all fragments!</string>
+    <string name="save_needs_title">Give the memory a title</string>
+    <string name="save_needs_location">Choose where it happened</string>
+    <string name="save_needs_fragment_locations">Choose where this fragment happened</string>
 
     <!-- Settings. -->
     <string name="settings_title">Settings</string>

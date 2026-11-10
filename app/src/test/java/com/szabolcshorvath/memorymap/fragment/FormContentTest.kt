@@ -1,7 +1,6 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.net.Uri
-import com.szabolcshorvath.memorymap.adapter.MemoryFragmentEditAdapter.FragmentEditState
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -44,7 +43,6 @@ class FormContentTest {
                     startDate = start,
                     endDate = start.plusHours(1),
                     isTimeVisible = true,
-                    isDateExpanded = true,
                     order = 1
                 ),
                 FragmentEditState(lat = 47.5, lng = 19.0, isAllDay = true, markerHue = 30f)

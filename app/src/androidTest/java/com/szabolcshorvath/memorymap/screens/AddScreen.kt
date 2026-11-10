@@ -16,15 +16,18 @@ import org.junit.Assert.assertTrue
 
 /** The Add tab: the form for a new memory, or for editing one. */
 object AddScreen : TabScreen {
-    private const val SELECT_LOCATION = "Select on Map"
     private const val NO_LOCATION = "No location selected"
-    private const val SAVE = "Save Memory"
-    private const val UPDATE = "Update"
+    private const val SAVE = "Save memory"
+    private const val UPDATE = "Save changes"
+    private const val PAGE = "scroll_add"
+    private const val LOCATION_ITEM = "bt_selectLocation"
+    private const val LOCATION = "tv_location"
+    private const val SAVE_BUTTON = "bt_save"
     private const val HALF_DAY = 12
 
-    override fun assertShown() = Ui.assertShown("The Add form") { hasText(SELECT_LOCATION) }
+    override fun assertShown() = Ui.assertShown("The Add form") { hasId(PAGE) }
 
-    override fun assertGone() = Ui.assertGone("The Add form") { hasText(SELECT_LOCATION) }
+    override fun assertGone() = Ui.assertGone("The Add form") { hasId(PAGE) }
 
     // The title and description are at the top of the form: scroll back up first, the form may be scrolled down.
     fun typeTitle(title: String) {
@@ -38,25 +41,32 @@ object AddScreen : TabScreen {
         Ui.assertShown("The title \"$title\"") { isTitleField() && hasText(title) }
     }
 
-    private fun AccessibilityNodeInfo.isTitleField() = hasHint("Title") && isEditable
+    // A Compose text field, found by its tag: Compose shows its label as text inside the field, not as its hint.
+    private fun AccessibilityNodeInfo.isTitleField() = hasId("titleInput") && isEditable
 
-    /** Taps "Save Memory", or "Update" while editing. */
+    /** Taps "Save memory", or "Save changes" while editing: pinned under the form, it needs no scrolling. */
     fun save() {
-        Ui.scrollTo { hasText(SAVE) || hasText(UPDATE) }
-        Ui.findSettled { hasText(SAVE) || hasText(UPDATE) }.click()
+        Ui.findSettled { hasId(SAVE_BUTTON) }.click()
         Ui.device.waitForIdle()
     }
 
-    /** The form edits an existing memory: its button updates that memory instead of saving a new one. */
+    /** The form edits an existing memory: its button saves the changes instead of saving a new memory. */
     fun assertEditing() {
-        Ui.scrollTo { hasText(UPDATE) || hasText(SAVE) }
-        Ui.assertShown("The Update button of a memory being edited") { hasText(UPDATE) }
+        Ui.assertShown("The Save changes button of a memory being edited") { isSaveButtonText(UPDATE) }
     }
 
-    /** Opens the location picker for the memory (its own "Select on Map", at the top of the form, not a fragment's). */
+    /** The form saves a new memory: its button says "Save memory", not "Save changes". */
+    fun assertNew() {
+        Ui.assertShown("The Save memory button of a new memory") { isSaveButtonText(SAVE) }
+    }
+
+    // A Compose button's text is a node inside the tagged button.
+    private fun AccessibilityNodeInfo.isSaveButtonText(text: String) = hasText(text) && parent?.hasId(SAVE_BUTTON) == true
+
+    /** Opens the location picker for the memory: its place row, near the top of the form (a fragment has its own). */
     fun selectLocation() {
         Ui.scrollToTop()
-        Ui.find { hasText(SELECT_LOCATION) }.click()
+        Ui.find { hasId(LOCATION_ITEM) }.click()
         Ui.device.waitForIdle()
     }
 
@@ -65,12 +75,12 @@ object AddScreen : TabScreen {
     /** The memory's location has no name or address, only its coordinates (as when the address lookup failed). */
     fun assertLocationIsCoordinates() {
         val text = locationText().orEmpty()
-        assertTrue("The location \"$text\" is not just coordinates", text.startsWith("Coordinates: "))
+        assertTrue("The location \"$text\" is not just coordinates", COORDINATES.matches(text))
     }
 
     /**
      * The memory's location is [place]: its name (found by the address lookup) or its coordinates if that failed,
-     * and its address if it has one.
+     * and under it its address if it has one.
      */
     fun assertLocationIs(place: Place) {
         val text = locationText().orEmpty()
@@ -79,35 +89,36 @@ object AddScreen : TabScreen {
             "The location \"$text\" is not ${place.name}",
             place.name?.let { it in text } == true || coordinates in text
         )
-        place.address?.let { assertTrue("The location \"$text\" doesn't show the address \"$it\"", it in text) }
+        place.address?.let { address ->
+            if (address !in text) Ui.assertShown("The address \"$address\" of the location") { hasText(address) }
+        }
     }
 
     fun assertHasLocation() = assertNotEquals("No location was picked", NO_LOCATION, locationText())
 
+    /** The form says the memory needs a title and a place, after a save without them. */
+    fun assertMissingTitleAndPlace() {
+        Ui.scrollToTop()
+        Ui.assertShown("The missing title's message") { hasText(NEEDS_TITLE) }
+        Ui.assertShown("The missing place's message") { hasText(NEEDS_PLACE) }
+    }
+
     // The memory's location, near the top of the form; a fragment card further down has a location line too.
     private fun locationText(): String? {
         Ui.scrollToTop()
-        return Ui.find { hasId("tv_location") }.text
+        return Ui.find { hasId(LOCATION) }.text
     }
 
-    fun openStartDatePicker() {
-        expandDateSection()
-        Ui.find { hasId("bt_startDate") }.click()
-        Ui.device.waitForIdle()
-    }
+    fun openStartDatePicker() = tapInDateSection("bt_startDate")
 
-    fun openStartTimePicker() {
-        expandDateSection()
-        Ui.find { hasId("bt_startTime") }.click()
-        Ui.device.waitForIdle()
-    }
+    fun openStartTimePicker() = tapInDateSection("bt_startTime")
 
     fun openEndDatePicker() = tapInDateSection("bt_endDate")
 
     fun openEndTimePicker() = tapInDateSection("bt_endTime")
 
+    // The memory's date buttons come first; a fragment's further down have the same names.
     private fun tapInDateSection(id: String) {
-        expandDateSection()
         Ui.scrollTo { hasId(id) }
         Ui.find { hasId(id) }.click()
         Ui.device.waitForIdle()
@@ -118,10 +129,12 @@ object AddScreen : TabScreen {
     fun startTimeText(): String? = dateSectionText("bt_startTime")
 
     private fun dateSectionText(id: String): String? {
-        expandDateSection()
         Ui.scrollTo { hasId(id) }
-        return Ui.find { hasId(id) }.text
+        return Ui.find { hasId(id) }.textOrChildText()
     }
+
+    /** A Compose button's text: on the button itself, or on the text inside it. */
+    private fun UiObject2.textOrChildText(): String? = text ?: findObject(By.textStartsWith(""))?.text
 
     /** The start date shows [day] as its day of the month (for example "Sep 15, 2026" for 15). */
     fun assertStartDay(day: Int) = assertDay("The start date", dateSectionText("bt_startDate"), day)
@@ -148,28 +161,13 @@ object AddScreen : TabScreen {
     fun assertEndTime(time: Regex) = assertTime("The end time", dateSectionText("bt_endTime"), time)
 
     private fun assertTime(what: String, text: String?, time: Regex) {
-        val shown = text.orEmpty().replace(' ', ' ')
+        val shown = text.orEmpty().replace(' ', ' ') // The narrow space Android puts before AM and PM.
         assertTrue("$what \"$text\" doesn't read as $time", time.matches(shown))
     }
 
-    /**
-     * Opens the memory's "Date & Time" section if it is closed. Just after a date or time dialog closes, the section's
-     * buttons can be off screen for a moment, or a tap can land on the closing dialog, so this checks again after
-     * each tap on the header and taps again (a few times) until the section is open.
-     */
-    private fun expandDateSection() {
-        var wait = 0L
-        repeat(EXPAND_TRIES) {
-            if (Ui.isShown(timeoutMs = wait) { hasText(ALL_DAY) }) return
-            Ui.find { hasText(DATE_AND_TIME) }.click()
-            wait = EXPAND_WAIT_MS
-        }
-        Ui.find { hasText(ALL_DAY) }
-    }
-
     fun typeDescription(text: String) {
-        Ui.scrollTo { hasHint("Description") && isEditable }
-        Ui.find { hasHint("Description") && isEditable }.text = text
+        Ui.scrollTo { hasId("descriptionInput") && isEditable }
+        Ui.find { hasId("descriptionInput") && isEditable }.text = text
         Ui.device.waitForIdle()
     }
 
@@ -179,16 +177,10 @@ object AddScreen : TabScreen {
         Ui.assertShown("An empty title") { isTitleField() && textAsString().let { it.isNullOrEmpty() || it == "Title" } }
     }
 
-    /** The form saves a new memory: its button says "Save Memory", not "Update". */
-    fun assertNew() {
-        Ui.scrollTo { hasText(UPDATE) || hasText(SAVE) }
-        Ui.assertShown("The Save Memory button of a new memory") { hasText(SAVE) }
-    }
+    /** Taps "Add photos and videos", which opens the photo picker (the fake one in the tests). */
+    fun addPhotos() = tap("Add photos and videos")
 
-    /** Taps "Add Photos/Videos", which opens the photo picker (the fake one in the tests). */
-    fun addPhotos() = tap("Add Photos/Videos")
-
-    /** The form shows "[count] items selected" ("1 item selected") under its photos. */
+    /** The form shows "[count] items selected" ("1 item selected") by its photos' header. */
     fun assertSelectedCount(count: Int) {
         val text = InstrumentationRegistry.getInstrumentation().targetContext.resources
             .getQuantityString(R.plurals.items_selected, count, count)
@@ -204,20 +196,23 @@ object AddScreen : TabScreen {
         Ui.assertShown("A picked video") { hasDescription("Remove video") }
     }
 
-    /** Taps Clear, which asks first ([Dialog] "Clear Fields", or "Discard Changes" while editing). */
-    fun clear() = tap("Clear")
+    /** Taps Clear (Discard while editing) in the top bar, which asks first ([Dialog] "Clear Fields", or "Discard Changes"). */
+    fun clear() {
+        Ui.find { hasId("bt_clear") }.click()
+        Ui.device.waitForIdle()
+    }
 
-    /** Turns the All Day switch on or off. */
+    /** Turns the memory's All day switch on or off (a fragment's further down has the same name). */
     fun setAllDay(on: Boolean) {
-        expandDateSection()
-        val switch = Ui.find { hasText(ALL_DAY) }
+        Ui.scrollTo { hasId(ALL_DAY) }
+        val switch = Ui.find { hasId(ALL_DAY) }
         if (switch.isChecked != on) switch.click()
         assertAllDay(on)
     }
 
     fun assertAllDay(on: Boolean) {
-        expandDateSection()
-        Ui.assertShown("All Day ${if (on) "on" else "off"}") { hasText(ALL_DAY) && isChecked == on }
+        Ui.scrollTo { hasId(ALL_DAY) }
+        Ui.assertShown("All day ${if (on) "on" else "off"}") { hasId(ALL_DAY) && isChecked == on }
     }
 
     /** Opens the marker colour's sliders and picks the preset [color], which moves them to it. */
@@ -250,11 +245,11 @@ object AddScreen : TabScreen {
         if (!Ui.isShown(timeoutMs = 0) { hasId("tv_HueValue") }) Ui.find { hasText(MARKER_COLOR) }.click()
     }
 
-    fun addFragment() = tap("Add a Memory Fragment")
+    fun addFragment() = tap("Add a memory fragment")
 
-    /** Opens the location picker for the first fragment (its own "Select on Map", not the memory's). */
+    /** Opens the location picker for the first fragment: its own place row, not the memory's. */
     fun selectFragmentLocation() {
-        fragmentCard().findObject(By.text(SELECT_LOCATION)).click()
+        fragmentCard().findObject(By.res(LOCATION)).click()
         Ui.device.waitForIdle()
     }
 
@@ -262,21 +257,16 @@ object AddScreen : TabScreen {
 
     fun assertFragmentHasNoLocation() = assertEquals(NO_LOCATION, fragmentLocation())
 
-    private fun fragmentLocation(): String? =
-        fragmentCard().findObject(By.res(Ui.APP_PACKAGE, "tv_location")).text
+    private fun fragmentLocation(): String? = fragmentCard().findObject(By.res(LOCATION)).text
 
     fun removeFragment() = tap { hasDescription(REMOVE_FRAGMENT) }
 
     fun assertNoFragments() = Ui.assertGone("A fragment") { hasDescription(REMOVE_FRAGMENT) }
 
-    /**
-     * Gives the first fragment dates of its own ("Use specific time for this fragment") and opens the picker for its
-     * start date.
-     */
+    /** Gives the first fragment dates of its own ("Own date and time") and opens the picker for its start date. */
     fun openFragmentStartDatePicker() {
-        tapInFragmentCard(By.text(DATE_AND_TIME))
-        tapInFragmentCard(By.text("Use specific time for this fragment"))
-        tapInFragmentCard(By.res(Ui.APP_PACKAGE, "bt_startDate"))
+        tapInFragmentCard(By.res(OWN_TIME))
+        tapInFragmentCard(By.res("bt_startDate"))
     }
 
     /**
@@ -284,26 +274,25 @@ object AddScreen : TabScreen {
      * ([DateRangePickerDialog]).
      */
     fun openFragmentAllDayRangePicker() {
-        tapInFragmentCard(By.text(DATE_AND_TIME))
-        tapInFragmentCard(By.text("Use specific time for this fragment"))
-        tapInFragmentCard(By.text(ALL_DAY))
-        tapInFragmentCard(By.res(Ui.APP_PACKAGE, "bt_dateRange")) // It shows the days picked so far.
+        tapInFragmentCard(By.res(OWN_TIME))
+        tapInFragmentCard(By.res(ALL_DAY))
+        tapInFragmentCard(By.res("bt_dateRange")) // It shows the days picked so far.
     }
 
     /** Picks [color] from the first fragment's own presets. */
     fun pickFragmentColor(color: Hsv) = tapInFragmentCard(By.desc(ColorPresetsSection.describe(color)))
 
-    // The card's "Date & Time" part and colour presets are named like the memory's own: look inside the card.
+    // The card's date buttons and colour presets are named like the memory's own: look inside the card.
     private fun tapInFragmentCard(element: BySelector) {
         checkNotNull(fragmentCard(element).findObject(element)) { "The fragment has no $element on screen" }.click()
         Ui.device.waitForIdle()
     }
 
     /**
-     * The first fragment's card, with [part] on screen (by default its location part). Scrolling stops as soon as
-     * its remove button (at the top of the card) shows, so this nudges the page down until [part] shows too.
+     * The first fragment's card, with [part] on screen (by default its place row). Scrolling stops as soon as its
+     * remove button (at the top of the card) shows, so this nudges the page down until [part] shows too.
      */
-    private fun fragmentCard(part: BySelector = By.text(SELECT_LOCATION)): UiObject2 {
+    private fun fragmentCard(part: BySelector = By.res(LOCATION)): UiObject2 {
         Ui.scrollTo { hasDescription(REMOVE_FRAGMENT) }
         repeat(MAX_NUDGES) {
             val card = Ui.find { hasId("fragmentEditCard") }
@@ -314,12 +303,15 @@ object AddScreen : TabScreen {
     }
 
     private const val MAX_NUDGES = 5
-    private const val DATE_AND_TIME = "Date & Time"
-    private const val ALL_DAY = "All Day?"
-    private const val EXPAND_TRIES = 3
-    private const val EXPAND_WAIT_MS = 2_000L
-    private const val MARKER_COLOR = "Marker Color"
+    private const val ALL_DAY = "switch_allDay"
+    private const val OWN_TIME = "switch_useSpecificTime"
+    private const val MARKER_COLOR = "Marker color"
     private const val REMOVE_FRAGMENT = "Remove fragment"
+    private const val NEEDS_TITLE = "Give the memory a title"
+    private const val NEEDS_PLACE = "Choose where it happened"
+
+    // How Coordinates.format shows a place: "47.4979° N, 19.0402° E".
+    private val COORDINATES = Regex(""".+° [NS], .+° [EW]""")
 
     private fun tap(text: String) = tap { hasText(text) && isEnabled }
 

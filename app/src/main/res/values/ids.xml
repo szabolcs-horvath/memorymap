@@ -6,4 +6,5 @@
     <item name="memory_content" type="id" />
     <item name="media_viewer_content" type="id" />
     <item name="missing_media_content" type="id" />
+    <item name="add_memory_content" type="id" />
 </resources>
