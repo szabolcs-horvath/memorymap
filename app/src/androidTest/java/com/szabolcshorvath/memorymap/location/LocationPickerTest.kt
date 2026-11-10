@@ -8,7 +8,7 @@ import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
-import com.szabolcshorvath.memorymap.screens.ToastMessage
+import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
@@ -66,7 +66,8 @@ class LocationPickerTest {
         FakePlaceSearch.searchWorks = false
         openPickerForANewMemory()
 
-        ToastMessage.assertShownAfter(SEARCH_UNAVAILABLE) { LocationPickerScreen.search() }
+        LocationPickerScreen.search()
+        Snackbar.assertShown(SEARCH_UNAVAILABLE)
         LocationPickerScreen.assertShown()
     }
 

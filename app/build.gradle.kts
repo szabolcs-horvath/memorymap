@@ -163,6 +163,7 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.play.services.maps)
     implementation(libs.android.maps.utils)
+    implementation(libs.maps.compose)
 
     // Room
     implementation(libs.androidx.room.ktx)

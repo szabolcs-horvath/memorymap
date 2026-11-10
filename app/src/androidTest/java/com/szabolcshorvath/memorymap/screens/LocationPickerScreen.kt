@@ -5,7 +5,9 @@ import org.junit.Assert.assertTrue
 
 /** The location picker opened from the Add form. */
 object LocationPickerScreen {
-    private const val CONFIRM = "Confirm Location"
+    private const val CONFIRM = "Use this location"
+    private const val SEARCH = "Search for a place"
+    private const val CONFIRM_BUTTON = "bt_confirm"
     private const val MAX_TAPS = 3
     private const val MARKER_TIMEOUT_MS = 5_000L
     private const val DEFAULT_ACROSS = 0.5f
@@ -62,21 +64,21 @@ object LocationPickerScreen {
     }
 
     /**
-     * Waits until a spot is picked: its marker shows on the map. The marker is named after the place, or "Selected
-     * Location" when the address lookup finds nothing (as on emulators without network to Google).
+     * Waits until a spot is picked: its marker shows on the map. The marker is named after the place, or after its
+     * coordinates when the address lookup finds nothing (as on emulators without network to Google).
      */
     fun assertLocationPicked() =
         assertTrue("A picked location is not shown", Ui.waitUntil(Ui.SLOW_TIMEOUT_MS) { mapMarkerTitles().isNotEmpty() })
 
-    /** Taps "Confirm Location" once it works: it is turned off while the picked spot's address is looked up. */
+    /** Taps "Use this location" once it works: it is turned off while the picked spot's address is looked up. */
     fun confirm() {
-        Ui.find { hasText(CONFIRM) && isEnabled }.click()
+        Ui.find { hasId(CONFIRM_BUTTON) && isEnabled }.click()
         Ui.device.waitForIdle()
     }
 
-    /** Taps "Search Location", which opens the place search (the fake one in the tests answers at once). */
+    /** Taps the search bar, which opens the place search (the fake one in the tests answers at once). */
     fun search() {
-        Ui.find { hasText("Search Location") }.click()
+        Ui.find { hasText(SEARCH) }.click()
         Ui.device.waitForIdle()
     }
 

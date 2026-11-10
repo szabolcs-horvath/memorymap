@@ -7,9 +7,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import java.util.concurrent.TimeoutException
 
-/** The bar at the bottom that confirms an action, such as "Memory deleted" with Undo. */
+/**
+ * The bar at the bottom that confirms an action, such as "Memory deleted" with Undo, or says what went wrong. On a View
+ * screen its text has the id `snackbar_text`; on a Compose screen it has none, so the text alone finds it there.
+ */
 object Snackbar {
-    fun assertShown(text: String) = Ui.assertShown("The message \"$text\"") { hasId("snackbar_text") && hasText(text) }
+    fun assertShown(text: String) = Ui.assertShown("The message \"$text\"") { hasText(text) }
 
     /** Waits until the message closes by itself (a long message stays for about three seconds). */
     fun assertClosesByItself(text: String) = assertTrue(

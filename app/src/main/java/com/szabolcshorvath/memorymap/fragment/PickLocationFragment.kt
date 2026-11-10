@@ -1,8 +1,6 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.ColorStateList
 import android.location.Address
 import android.location.Geocoder
 import android.os.Bundle
@@ -10,39 +8,34 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
-import androidx.core.view.doOnLayout
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MapColorScheme
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.material.color.MaterialColors
+import com.google.android.gms.maps.model.PointOfInterest
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.databinding.FragmentPickLocationBinding
+import com.szabolcshorvath.memorymap.ui.location.PickLocationActions
+import com.szabolcshorvath.memorymap.ui.location.PickLocationContent
+import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
 import com.szabolcshorvath.memorymap.util.MyLocationAction
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-class PickLocationFragment : Fragment(), OnMapReadyCallback {
+class PickLocationFragment : Fragment(), PickLocationActions {
 
-    private var _binding: FragmentPickLocationBinding? = null
-    private val binding get() = _binding!!
     private val viewModel: PickLocationFragmentViewModel by viewModels()
-    private var mMap: GoogleMap? = null
     private var pickLocationListener: PickLocationListener? = null
 
     // The only place the picker asks for location access: when the user taps the "my location" button.
     private val myLocationAction = MyLocationAction(this) { latLng ->
-        enableMyLocation()
+        refreshMyLocationDot()
         selectLocation(latLng)
     }
 
@@ -52,37 +45,26 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         val context = context ?: return@registerForActivityResult
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return@registerForActivityResult
 
-        // Invalidate any ongoing map/POI selection or other autocomplete requests
-        viewModel.activeAutocompletePlaceId = requestedPlaceId
-        viewModel.selectedLat = null
-        viewModel.selectedLng = null
-        viewModel.selectedPlaceName = null
-        viewModel.selectedAddress = null
-        mMap?.clear()
+        // Drops the spot picked before, and any lookup still running for it.
+        viewModel.startSearchLookup(requestedPlaceId)
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                setConfirmButtonLoading(true)
                 val place = AppServices.placeSearch.details(context, requestedPlaceId, chosen.session)
 
-                // Race condition check: Only proceed if this is still the active request
+                // Only if this is still the search being looked up: the user may have picked a spot meanwhile.
                 if (viewModel.activeAutocompletePlaceId != requestedPlaceId) return@launch
 
                 if (place != null) {
-                    val latLng = LatLng(place.latitude, place.longitude)
-                    viewModel.selectedPlaceName = place.name
-                    viewModel.selectedAddress = place.address
-                    updateSelectedLocation(latLng, viewModel.selectedPlaceName)
-                    mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
+                    viewModel.pick(place.latitude, place.longitude, place.name, place.address, lookingUp = false)
+                    viewModel.moveCamera(place.latitude, place.longitude, CAMERA_ZOOM)
                 } else {
                     Log.e(TAG, "Fetched place has no location")
-                    setConfirmButtonLoading(false)
+                    viewModel.stopSearchLookup()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching place details: ${e.message}", e)
-                if (viewModel.activeAutocompletePlaceId == requestedPlaceId) {
-                    setConfirmButtonLoading(false)
-                }
+                if (viewModel.activeAutocompletePlaceId == requestedPlaceId) viewModel.stopSearchLookup()
             }
         }
     }
@@ -98,106 +80,83 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentPickLocationBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-
-        binding.btConfirm.setOnClickListener {
-            if (viewModel.selectedLat != null && viewModel.selectedLng != null) {
-                pickLocationListener?.onLocationConfirmed(
-                    viewModel.selectedLat!!,
-                    viewModel.selectedLng!!,
-                    viewModel.selectedPlaceName,
-                    viewModel.selectedAddress
-                )
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
+        ComposeView(inflater.context).apply {
+            // Compose saves the map's camera under this id.
+            id = R.id.pick_location_content
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
+                MemoryMapTheme { PickLocationContent(state, this@PickLocationFragment) }
             }
         }
 
-        binding.btSearch.setOnClickListener { startAutocomplete() }
-        binding.btMyLocation.setOnClickListener { myLocationAction.start() }
-
-        binding.root.doOnLayout { setGoogleMapPadding() }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        refreshMyLocationDot()
+        if (viewModel.selectedLat == null) selectUserLocation()
     }
 
-    private fun startAutocomplete() {
-        val context = context ?: return
+    override fun close() {
+        activity?.onBackPressedDispatcher?.onBackPressed()
+    }
+
+    override fun search() {
         if (!AppServices.placeSearch.isAvailable()) {
             // Places is not initialized without a Maps API key, and the search screen needs it.
-            Toast.makeText(context, R.string.place_search_unavailable, Toast.LENGTH_LONG).show()
+            viewModel.showMessage(R.string.place_search_unavailable)
             return
         }
         autocompleteLauncher.launch(Unit)
     }
 
-    override fun onMapReady(googleMap: GoogleMap) {
+    override fun goToMyLocation() = myLocationAction.start()
+
+    override fun pickOnMap(latLng: LatLng) {
+        viewModel.pick(latLng.latitude, latLng.longitude)
+        viewModel.moveCamera(latLng.latitude, latLng.longitude, zoom = null)
+        reverseGeocode(latLng)
+    }
+
+    override fun pickPoi(poi: PointOfInterest) {
+        val poiLatLng = poi.latLng
+        viewModel.pick(poiLatLng.latitude, poiLatLng.longitude)
+        viewModel.moveCamera(poiLatLng.latitude, poiLatLng.longitude, zoom = null)
+
+        val context = context
         val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
-        mMap = googleMap
-
-        googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
-        googleMap.uiSettings.isRotateGesturesEnabled = false
-        googleMap.uiSettings.isMapToolbarEnabled = false
-        googleMap.uiSettings.isMyLocationButtonEnabled = false // Our own button: it can ask for access (bt_myLocation).
-        googleMap.uiSettings.isZoomControlsEnabled = true
-
-        enableMyLocation()
-        setGoogleMapPadding()
-
-        googleMap.setOnMapClickListener { latLng ->
-            viewModel.selectedPlaceName = null
-            viewModel.selectedAddress = null
-            updateSelectedLocation(latLng, isLoading = true)
-            reverseGeocode(latLng)
-            googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
+        if (context == null || !AppServices.placeSearch.isAvailable()) {
+            // Without the Places SDK (no API key) the address lookup still works.
+            reverseGeocode(poiLatLng)
+            return
         }
-
-        googleMap.setOnPoiClickListener { poi ->
-            val placeId = poi.placeId
-            val poiLatLng = poi.latLng
-            updateSelectedLocation(poiLatLng, isLoading = true)
-            googleMap.animateCamera(CameraUpdateFactory.newLatLng(poiLatLng))
-
-            val context = context
-            if (context != null && AppServices.placeSearch.isAvailable()) {
-                viewLifecycleOwner.lifecycleScope.launch {
-                    try {
-                        val place = AppServices.placeSearch.details(context, placeId, session = null)
-
-                        // Race condition check: Only update if the user hasn't clicked elsewhere
-                        if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
-                            viewModel.selectedPlaceName = place?.name
-                            viewModel.selectedAddress = place?.address
-                            updateSelectedLocation(poiLatLng, viewModel.selectedPlaceName)
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error fetching place details for POI: ${e.message}", e)
-                        // Fallback to reverse geocoding for address if fetch fails
-                        if (poiLatLng.latitude == viewModel.selectedLat && poiLatLng.longitude == viewModel.selectedLng) {
-                            reverseGeocode(poiLatLng)
-                        }
-                    }
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val place = AppServices.placeSearch.details(context, poi.placeId, session = null)
+                // Only if the user hasn't picked another spot meanwhile.
+                if (viewModel.isPicked(poiLatLng.latitude, poiLatLng.longitude)) {
+                    viewModel.showDetails(place?.name, place?.address)
                 }
-            } else {
-                // Without the Places SDK (no API key) the address lookup still works.
-                reverseGeocode(poiLatLng)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching place details for POI: ${e.message}", e)
+                // Fall back to the address lookup.
+                if (viewModel.isPicked(poiLatLng.latitude, poiLatLng.longitude)) reverseGeocode(poiLatLng)
             }
         }
-
-        if (viewModel.selectedLat == null) {
-            selectUserLocation()
-        } else {
-            // Restore marker after rotation
-            val latLng = LatLng(viewModel.selectedLat!!, viewModel.selectedLng!!)
-            updateSelectedLocation(latLng, viewModel.selectedPlaceName)
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
-        }
     }
+
+    override fun confirm() {
+        val lat = viewModel.selectedLat ?: return
+        val lng = viewModel.selectedLng ?: return
+        pickLocationListener?.onLocationConfirmed(lat, lng, viewModel.selectedPlaceName, viewModel.selectedAddress)
+    }
+
+    override fun onCameraMoved(request: CameraRequest) {
+        // A newer request that replaced this one, mid-move, stays for the screen to handle.
+        if (viewModel.uiState.value.cameraRequest == request) viewModel.onCameraMoved()
+    }
+
+    override fun onMessageShown() = viewModel.onMessageShown()
 
     private fun reverseGeocode(latLng: LatLng) {
         val context = context ?: return
@@ -235,131 +194,70 @@ class PickLocationFragment : Fragment(), OnMapReadyCallback {
     }
 
     /**
-     * Shows the reverse-geocoded [address] of [latLng] (null if there is none or the lookup failed)
-     * and re-enables "Confirm": the coordinates alone are enough to save a location.
+     * Shows the reverse-geocoded [address] of [latLng] (null if there is none or the lookup failed), which makes the
+     * spot usable: its coordinates alone are enough to save a location.
      */
     private fun showGeocodeResult(latLng: LatLng, address: Address?) {
         // Ignore a late result for a location the user has since moved away from.
-        if (latLng.latitude != viewModel.selectedLat || latLng.longitude != viewModel.selectedLng) return
-        if (address != null) {
-            if (viewModel.selectedPlaceName == null) {
-                viewModel.selectedPlaceName = address.featureName ?: address.thoroughfare
-            }
-            viewModel.selectedAddress = address.getAddressLine(0)
-        }
-        updateSelectedLocation(latLng, viewModel.selectedPlaceName)
+        if (!viewModel.isPicked(latLng.latitude, latLng.longitude)) return
+        // A point of interest whose details failed keeps the name it may already have.
+        val name = viewModel.selectedPlaceName ?: address?.let { placeName(requireContext(), it) }
+        viewModel.showDetails(name, address?.getAddressLine(0) ?: viewModel.selectedAddress)
     }
 
-    private fun setGoogleMapPadding() {
-        val binding = _binding ?: return
-        val map = mMap ?: return
-        val topPadding = binding.searchContainer.height + binding.searchContainer.top
-        val bottomPadding = binding.confirmContainer.height + (binding.root.height - binding.confirmContainer.bottom)
-        map.setPadding(0, topPadding, 0, bottomPadding)
-    }
-
-    private fun updateSelectedLocation(latLng: LatLng, title: String? = null, isLoading: Boolean = false) {
-        viewModel.activeAutocompletePlaceId = null
-        val map = mMap ?: return
-        map.clear()
-        val markerTitle = when {
-            isLoading -> getString(R.string.pick_location_loading)
-            title != null -> title
-            else -> getString(R.string.pick_location_selected)
-        }
-        map.addMarker(
-            MarkerOptions()
-                .position(latLng)
-                .title(markerTitle)
-        )?.showInfoWindow()
-        viewModel.selectedLat = latLng.latitude
-        viewModel.selectedLng = latLng.longitude
-
-        setConfirmButtonLoading(isLoading)
-    }
-
-    private fun setConfirmButtonLoading(isLoading: Boolean) {
-        val binding = _binding ?: return
-        binding.btConfirm.isEnabled = !isLoading
-        binding.btConfirm.text = if (isLoading) {
-            getString(R.string.pick_location_fetching)
-        } else {
-            getString(R.string.pick_location_confirm)
-        }
-
-        // Use solid colors to avoid transparency over the map when disabled
-        val colorAttr = if (isLoading) {
-            com.google.android.material.R.attr.colorSurfaceVariant
-        } else {
-            androidx.appcompat.R.attr.colorPrimary
-        }
-        binding.btConfirm.backgroundTintList = ColorStateList.valueOf(MaterialColors.getColor(binding.btConfirm, colorAttr))
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun enableMyLocation() {
-        val map = mMap
-        val context = context
-        if (context != null && hasLocationPermission(context) && map != null) {
-            map.isMyLocationEnabled = true
-        }
+    private fun refreshMyLocationDot() {
+        val context = context ?: return
+        viewModel.setShowsMyLocation(hasLocationPermission(context))
     }
 
     /** Selects where the user is, if location access was granted. Never asks for it (see [myLocationAction]). */
     private fun selectUserLocation() {
-        viewModel.activeAutocompletePlaceId = null
         val context = context
         if (context != null && hasLocationPermission(context)) {
             AppServices.location.lastLocation(context).addOnSuccessListener { location ->
                 if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
-                if (location != null) selectLocation(LatLng(location.latitude, location.longitude))
+                // Not over a spot the user picked meanwhile.
+                if (location != null && viewModel.selectedLat == null) selectLocation(LatLng(location.latitude, location.longitude))
             }
         }
     }
 
     private fun selectLocation(latLng: LatLng) {
-        val map = mMap ?: return
-        viewModel.activeAutocompletePlaceId = null
-        updateSelectedLocation(latLng, isLoading = true)
+        viewModel.pick(latLng.latitude, latLng.longitude)
+        viewModel.moveCamera(latLng.latitude, latLng.longitude, CAMERA_ZOOM)
         reverseGeocode(latLng)
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
     }
 
     fun setInitialLocation(lat: Double, lng: Double, placeName: String?, address: String?) {
-        viewModel.selectedLat = lat
-        viewModel.selectedLng = lng
-        viewModel.selectedPlaceName = placeName
-        viewModel.selectedAddress = address
-
-        val map = mMap
-        if (map != null && _binding != null) {
-            val latLng = LatLng(lat, lng)
-            updateSelectedLocation(latLng, placeName)
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, CAMERA_ZOOM))
-        }
+        viewModel.pick(lat, lng, placeName, address, lookingUp = false)
+        viewModel.moveCamera(lat, lng, CAMERA_ZOOM, animate = false)
     }
 
     fun clearSelection() {
-        viewModel.activeAutocompletePlaceId = null
-        viewModel.selectedLat = null
-        viewModel.selectedLng = null
-        viewModel.selectedPlaceName = null
-        viewModel.selectedAddress = null
-        val map = mMap
-        if (map != null) {
-            map.clear()
-            selectUserLocation()
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-        mMap = null
+        viewModel.clear()
+        if (view != null) selectUserLocation()
     }
 
     companion object {
         const val TAG = "PickLocationFragment"
         const val CAMERA_ZOOM = 15f
+
+        // Android's address lookup names a spot without an address by its plus code ("G23R+C23"): not a name.
+        private val PLUS_CODE = Regex("^[23456789CFGHJMPQRVWX]{2,8}\\+[23456789CFGHJMPQRVWX]*$", RegexOption.IGNORE_CASE)
+
+        /**
+         * What to call a spot picked on the map: the name the address lookup gives it, unless that is only its plus
+         * code or its house number ("10"); then its street, with the house number if it has one.
+         */
+        private fun placeName(context: Context, address: Address): String? {
+            val street = address.thoroughfare
+            val number = address.subThoroughfare
+            val feature = address.featureName?.takeUnless { PLUS_CODE.matches(it) || it == number || it == street }
+            return when {
+                feature != null -> feature
+                street != null && number != null -> context.getString(R.string.street_and_number, street, number)
+                else -> street
+            }
+        }
     }
 }
