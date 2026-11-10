@@ -1,50 +1,48 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.os.Bundle
-import android.text.format.Formatter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.bundleOf
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
-import coil3.load
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.adapter.NearbyMediaAdapter
 import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.databinding.SheetMissingMediaBinding
 import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel.Outcome
 import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel.State
+import com.szabolcshorvath.memorymap.ui.memory.MissingMediaActions
+import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetContent
+import com.szabolcshorvath.memorymap.ui.memory.whenTaken
+import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
 import com.szabolcshorvath.memorymap.util.ConfirmDialog
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.NearbyFile
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.ZoneId
 
 /**
  * For a photo or video of a memory that can't be re-linked: looks for it once more, then suggests what was taken
- * around the same time, or lets the user choose another photo or remove it. Shown in the memory screen's
- * `childFragmentManager`; the item's id travels in its arguments, so it comes back after a rotation or process death.
+ * around the same time, or lets the user choose another photo or remove it ([MissingMediaSheetContent]). Shown in the
+ * memory screen's `childFragmentManager`; the item's id travels in its arguments, so it comes back after a rotation or
+ * process death.
  */
-class MissingMediaSheet : BottomSheetDialogFragment() {
-    private var _binding: SheetMissingMediaBinding? = null
+class MissingMediaSheet : BottomSheetDialogFragment(), MissingMediaActions {
     private val viewModel: MissingMediaSheetViewModel by viewModels { MissingMediaSheetViewModel.Factory }
     private val itemId get() = requireArguments().getInt(ITEM_ID)
-    private lateinit var nearbyAdapter: NearbyMediaAdapter
 
     private val accessLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         viewModel.onAccessChanged(itemId)
@@ -60,47 +58,33 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
         ConfirmDialog.listen(this, REMOVE_REQUEST) { viewModel.remove() }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        val binding = SheetMissingMediaBinding.inflate(inflater, container, false)
-        _binding = binding
-        return binding.root
-    }
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
+        ComposeView(inflater.context).apply {
+            id = R.id.missing_media_content
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                MemoryMapTheme {
+                    MissingMediaSheetContent(state, viewModel.item, viewModel.thumbnail, this@MissingMediaSheet)
+                }
+            }
+        }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val binding = _binding ?: return
         (dialog as? BottomSheetDialog)?.behavior?.state = BottomSheetBehavior.STATE_EXPANDED
-
-        nearbyAdapter = NearbyMediaAdapter(::confirmUse)
-        binding.rvNearby.layoutManager = LinearLayoutManager(requireContext())
-        binding.rvNearby.adapter = nearbyAdapter
-
-        binding.btAllowAccess.setOnClickListener { accessLauncher.launch(PermissionUtil.getRequiredMediaPermissions()) }
-        binding.btShowMore.setOnClickListener { viewModel.showMore() }
-        binding.btChooseAnother.setOnClickListener {
-            pickLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
-        }
-        binding.btRemove.setOnClickListener { confirmRemove() }
-        binding.btNotNow.setOnClickListener { dismiss() }
 
         viewModel.start(itemId)
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.state.collect(::render) }
+                launch { viewModel.state.collect(::onState) }
                 launch { viewModel.outcomes.collect(::showOutcome) }
             }
         }
     }
 
-    private fun render(state: State) {
-        val binding = _binding ?: return
-        viewModel.item?.let(::showItem)
-        binding.lookingContainer.visibility = if (state is State.Looking || state == State.Loading) View.VISIBLE else View.GONE
-        binding.tvLooking.text = (state as? State.Looking)?.progress ?: getString(R.string.missing_media_looking)
-        binding.btAllowAccess.visibility = if (state == State.NeedsAccess) View.VISIBLE else View.GONE
-        renderMessage(binding, state)
-        renderNearby(binding, state as? State.NotFound)
-
+    /** Closes the sheet once the photo is found again, or replaced or removed. */
+    private fun onState(state: State) {
         when (state) {
             State.Found -> {
                 Toast.makeText(requireContext(), R.string.missing_media_found, Toast.LENGTH_SHORT).show()
@@ -108,70 +92,6 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
             }
             State.Done -> dismiss()
             else -> Unit
-        }
-    }
-
-    private fun renderMessage(binding: SheetMissingMediaBinding, state: State) {
-        val message = when (state) {
-            State.NeedsAccess -> getString(R.string.missing_media_needs_access)
-            is State.NotFound -> notFoundMessage(state)
-            else -> null
-        }
-        binding.tvMissingMessage.text = message
-        binding.tvMissingMessage.visibility = if (message != null) View.VISIBLE else View.GONE
-    }
-
-    private fun renderNearby(binding: SheetMissingMediaBinding, state: State.NotFound?) {
-        val nearby = state?.nearby.orEmpty()
-        nearbyAdapter.submitList(nearby)
-        binding.rvNearby.visibility = if (nearby.isNotEmpty()) View.VISIBLE else View.GONE
-        binding.btShowMore.visibility = if (state != null && state.dateKnown && !state.wider) View.VISIBLE else View.GONE
-    }
-
-    private fun notFoundMessage(state: State.NotFound): String = getString(
-        when {
-            !state.dateKnown -> R.string.missing_media_no_date
-            state.nearby.isNotEmpty() -> R.string.missing_media_not_found
-            state.wider -> R.string.missing_media_none_nearby_wider
-            else -> R.string.missing_media_none_nearby
-        }
-    )
-
-    private fun showItem(item: MediaItem) {
-        val binding = _binding ?: return
-        val context = requireContext()
-        nearbyAdapter.dateTaken = item.dateTaken
-        nearbyAdapter.type = item.type
-        binding.tvMissingTitle.setText(if (item.type == MediaType.VIDEO) R.string.missing_video_title else R.string.missing_photo_title)
-        val date = if (item.dateTaken > 0) {
-            DateTimeFormatterUtil.dateTime(context, Instant.ofEpochMilli(item.dateTaken).atZone(ZoneId.systemDefault()))
-        } else {
-            getString(R.string.missing_media_unknown_date)
-        }
-        val size = if (item.fileSize > 0) Formatter.formatFileSize(context, item.fileSize) else getString(R.string.missing_media_unknown_size)
-        binding.tvMissingDetails.text = getString(R.string.missing_media_details, date, size)
-        showFile(binding, item)
-        showThumbnail(binding, viewModel.thumbnail)
-    }
-
-    /** The file's name and size in pixels, as far as they were stored. */
-    private fun showFile(binding: SheetMissingMediaBinding, item: MediaItem) {
-        val name = item.displayName
-        val width = item.width
-        val height = item.height
-        binding.tvMissingFile.text = when {
-            name != null && width != null && height != null -> getString(R.string.missing_media_file, name, width, height)
-            else -> name
-        }
-        binding.tvMissingFile.visibility = if (name != null) View.VISIBLE else View.GONE
-    }
-
-    /** How the lost photo looked, if its thumbnail was stored. Loaded once: the sheet renders on every state. */
-    private fun showThumbnail(binding: SheetMissingMediaBinding, thumbnail: ByteArray?) {
-        binding.ivMissingThumbnail.visibility = if (thumbnail != null) View.VISIBLE else View.GONE
-        if (thumbnail != null && binding.ivMissingThumbnail.tag !== thumbnail) {
-            binding.ivMissingThumbnail.tag = thumbnail
-            binding.ivMissingThumbnail.load(thumbnail)
         }
     }
 
@@ -185,9 +105,16 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
         if (outcome == Outcome.CHANGED) dismiss()
     }
 
-    private fun confirmUse(file: NearbyFile) {
+    override fun allowAccess() = accessLauncher.launch(PermissionUtil.getRequiredMediaPermissions())
+
+    override fun showMore() = viewModel.showMore()
+
+    override fun chooseAnother() = pickLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+
+    /** Asks before [file] replaces the missing photo. */
+    override fun use(file: NearbyFile) {
         if (isStateSaved) return
-        val taken = NearbyMediaAdapter.whenTaken(requireContext(), file.dateTaken - (viewModel.item?.dateTaken ?: file.dateTaken))
+        val taken = whenTaken(requireContext(), file.dateTaken - (viewModel.item?.dateTaken ?: file.dateTaken))
         ConfirmDialog.show(
             childFragmentManager,
             USE_REQUEST,
@@ -199,7 +126,8 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
         )
     }
 
-    private fun confirmRemove() {
+    /** Asks before the missing photo is removed from its memory. */
+    override fun remove() {
         if (isStateSaved) return
         ConfirmDialog.show(
             childFragmentManager,
@@ -209,11 +137,6 @@ class MissingMediaSheet : BottomSheetDialogFragment() {
             confirm = getString(R.string.missing_media_remove_confirm),
             cancel = getString(R.string.cancel)
         )
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 
     companion object {

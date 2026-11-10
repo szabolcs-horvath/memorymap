@@ -21,6 +21,11 @@ object BottomNav {
         Ui.isShown { isTab(tab) && isSelected }
     )
 
+    /** The tab bar shows (it hides while the media viewer shows). */
+    fun assertShown() = Ui.assertShown("The tab bar") { isTab(Tab.MAP) }
+
+    fun assertGone() = Ui.assertGone("The tab bar") { isTab(Tab.MAP) }
+
     /** Opens [tab] and checks that its screen shows. */
     fun open(tab: Tab) {
         select(tab)

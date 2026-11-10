@@ -130,11 +130,11 @@ class MissingPhotoTest {
     }
 
     @Test
-    fun notNowLeavesThePhotoMissing() {
+    fun closingTheSheetLeavesThePhotoMissing() {
         TestData.missingPhoto(TestData.memory(TRIP), dateTaken = 0)
         openMissingPhoto()
 
-        MissingPhotoSheet.notNow()
+        MissingPhotoSheet.close()
 
         MissingPhotoSheet.assertGone()
         MemoryScreen.assertPhotoNotLoaded()

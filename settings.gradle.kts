@@ -22,11 +22,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven {
-            url = uri("https://jitpack.io")
-            // Only PhotoView comes from JitPack; anything else must not resolve from it.
-            content { includeGroup("com.github.chrisbanes") }
-        }
     }
 }
 

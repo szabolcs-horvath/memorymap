@@ -16,6 +16,12 @@ object MediaViewerScreen {
 
     fun assertGone() = Ui.assertGone("The full-screen viewer") { hasDescription("Photo") }
 
+    /** Leaves the viewer with its top bar's back arrow (the top bar shows when the viewer opens). */
+    fun close() {
+        Ui.find { hasDescription("Back") }.click()
+        Ui.device.waitForIdle()
+    }
+
     /** A video shows, ready to play: its first frame and the Play button. */
     fun assertShowingVideo() {
         Ui.assertShown("The full-screen video") { hasDescription("Video") }

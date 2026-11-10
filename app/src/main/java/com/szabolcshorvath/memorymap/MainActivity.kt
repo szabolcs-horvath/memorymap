@@ -9,7 +9,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.doOnPreDraw
+import androidx.core.view.isVisible
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -52,7 +54,8 @@ class MainActivity :
     TimelineFragment.TimelineListener,
     MemoryFragment.MemoryFragmentListener,
     AddMemoryGroupFragment.AddMemoryGroupListener,
-    PickLocationFragment.PickLocationListener {
+    PickLocationFragment.PickLocationListener,
+    MediaViewerFragment.MediaViewerListener {
 
     private lateinit var binding: ActivityMainContainerBinding
     private lateinit var commonViewModel: CommonViewModel
@@ -327,6 +330,26 @@ class MainActivity :
         transaction.commit()
     }
 
+    override fun onMediaViewerShown(shown: Boolean) {
+        binding.bottomNavigation.isVisible = !shown
+        // The viewer fills the whole screen, the camera cutout included; its top bar keeps clear of the cutout.
+        binding.root.fitsSystemWindows = !shown
+        // Turning it off keeps the padding it last applied; turning it on again pads for the bars as before.
+        if (shown) binding.root.setPadding(0, 0, 0, 0)
+        binding.root.requestApplyInsets()
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        if (shown) {
+            // A swipe from an edge shows them for a moment, over the media.
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    override fun onBackFromMediaViewer() {
+        supportFragmentManager.popBackStack()
+    }
     override fun onBackFromMemory() {
         supportFragmentManager.popBackStack()
     }

@@ -22,16 +22,19 @@ object MemoryScreen {
 
     fun assertShowing(title: String) = Ui.assertShown("The memory \"$title\"") { hasId("tv_title") && hasText(title) }
 
-    fun showOnMap() = tap { hasText("Show on Map") }
+    fun showOnMap() = tap { hasText(SHOW_ON_MAP) }
 
-    fun showOnTimeline() = tap { hasText("Show on Timeline") }
+    fun showOnTimeline() = tap { hasText("Show on timeline") }
 
     fun edit() = tap { hasDescription(EDIT) }
 
     fun openFirstPhoto() = tap { hasDescription("Open photo") }
 
-    /** Taps Delete, which asks for confirmation first ([Dialog] "Delete Memory"). */
-    fun delete() = tap { hasDescription("Delete Memory") }
+    /** Taps Delete in the More menu, which asks for confirmation first ([Dialog] "Delete Memory"). */
+    fun delete() {
+        tap { hasDescription("More") }
+        tap { hasText("Delete") }
+    }
 
     /** Swipes to the next memory in the timeline's order (an older one). */
     fun swipeToOlder() = swipe(Direction.LEFT)
@@ -63,9 +66,9 @@ object MemoryScreen {
         assertEquals("Thumbnails described \"$description\"", count, found)
     }
 
-    /** Opens the "Memory Fragments" section if it is closed, and waits until it lists [count] fragments. */
+    /** Waits until the memory lists [count] fragments. */
     fun assertFragmentCount(count: Int) {
-        openFragments()
+        if (count > 0) openFragments()
         val found = Ui.eventually(read = { fragmentCards().size }) { it == count }
         assertEquals("Fragments of the memory", count, found)
     }
@@ -75,7 +78,7 @@ object MemoryScreen {
      * A fragment without dates of its own shows none.
      */
     fun assertFragmentStartsOn(date: LocalDate) {
-        val text = fragmentCard().findObject(By.res(Ui.APP_PACKAGE, "tv_time"))?.text.orEmpty()
+        val text = fragmentCard().findObject(By.res("tv_time"))?.text.orEmpty()
         val day = DateTimeFormatterUtil.date(date)
         assertTrue("The fragment's dates \"$text\" don't start on $day", text.startsWith(day))
     }
@@ -85,7 +88,7 @@ object MemoryScreen {
      * the fragments section is still opening.
      */
     fun assertFragmentColor(color: Int) {
-        val strip = checkNotNull(fragmentCard().findObject(By.res(Ui.APP_PACKAGE, "colorIndicator"))) {
+        val strip = checkNotNull(fragmentCard().findObject(By.res("colorIndicator"))) {
             "The fragment has no colour strip"
         }
         val spot = strip.visibleCenter
@@ -98,7 +101,7 @@ object MemoryScreen {
 
     /** The (only) fragment's dates read exactly [text], such as "Sep 10, 2026 - Sep 12, 2026" for an all-day one. */
     fun assertFragmentDates(text: String) {
-        val shown = fragmentCard().findObject(By.res(Ui.APP_PACKAGE, "tv_time"))?.text
+        val shown = fragmentCard().findObject(By.res("tv_time"))?.text
         assertEquals("The fragment's dates", text, shown)
     }
 
@@ -111,13 +114,13 @@ object MemoryScreen {
     }
 
     private fun fragmentPlaces(): List<String> = try {
-        fragmentCards().map { it.findObject(By.res(Ui.APP_PACKAGE, "tv_location")).text }
+        fragmentCards().map { it.findObject(By.res("tv_location")).text }
     } catch (_: StaleObjectException) {
         emptyList() // A card was bound again while it was read.
     }
 
     private fun fragmentCards(): List<UiObject2> =
-        Ui.device.findObjects(By.res(Ui.APP_PACKAGE, "fragmentCard")).sortedBy { it.visibleBounds.top }
+        Ui.device.findObjects(By.res("fragmentCard")).sortedBy { it.visibleBounds.top }
 
     /**
      * Long-presses the fragment card showing [place] and drags it into the place of the one showing [onto]. The list
@@ -125,7 +128,7 @@ object MemoryScreen {
      */
     fun dragFragment(place: String, onto: String) {
         fun card(name: String) = fragmentCards().first {
-            it.findObject(By.res(Ui.APP_PACKAGE, "tv_location"))?.text == name
+            it.findObject(By.res("tv_location"))?.text == name
         }
         val moved = card(place)
         val target = card(onto).visibleBounds
@@ -135,23 +138,19 @@ object MemoryScreen {
         Ui.device.waitForIdle()
     }
 
-    /** Taps the (only) fragment's own Show on Map, which shows only while fragment markers are turned on. */
+    /** Taps the (only) fragment, which shows it on the map while fragment markers are turned on. */
     fun showFragmentOnMap() {
-        openFragments()
-        Ui.scrollTo { hasText(SHOW_ON_MAP) && isInFragmentCard() }
-        tap { hasText(SHOW_ON_MAP) && isInFragmentCard() }
+        fragmentCard().click()
+        Ui.device.waitForIdle()
     }
 
-    /** Taps "Re-link Media Files" on the could-not-load warning, which asks for photo access first if needed. */
+    /** Taps "Re-link" on the could-not-load banner, which asks for photo access first if needed. */
     fun relinkMedia() {
         Ui.scrollTo { hasText(RELINK) }
         tap { hasText(RELINK) && isEnabled }
     }
 
-    /**
-     * The first fragment's card, on screen, with the fragments section opened. It looks for the card's location line,
-     * which every card shows (its Show on Map button shows only while fragment markers are turned on).
-     */
+    /** The first fragment's card, on screen. It looks for the card's location line, which every card shows. */
     private fun fragmentCard(): UiObject2 {
         openFragments()
         Ui.scrollTo { hasId("tv_location") && isInFragmentCard() }
@@ -161,15 +160,15 @@ object MemoryScreen {
     private fun AccessibilityNodeInfo.isInFragmentCard(): Boolean {
         var node = parent
         while (node != null) {
-            if (node.viewIdResourceName?.endsWith(":id/fragmentCard") == true) return true
+            if (node.hasId("fragmentCard")) return true
             node = node.parent
         }
         return false
     }
 
+    /** Scrolls to the fragments, which are always listed. */
     private fun openFragments() {
         Ui.scrollTo { hasText(FRAGMENTS) }
-        if (!Ui.isShown(timeoutMs = 0) { hasId("fragmentCard") }) Ui.find { hasText(FRAGMENTS) }.click()
     }
 
     /**
@@ -260,9 +259,9 @@ object MemoryScreen {
     }
 
     private const val SWIPE_PERCENT = 0.8f
-    private const val FRAGMENTS = "Memory Fragments"
-    private const val SHOW_ON_MAP = "Show on Map"
-    private const val RELINK = "Re-link Media Files"
+    private const val FRAGMENTS = "Memory fragments"
+    private const val SHOW_ON_MAP = "Show on map"
+    private const val RELINK = "Re-link"
     private const val OPEN_PHOTO = "Open photo"
     private const val OPEN_VIDEO = "Open video"
     private const val EDGE_INSET = 2

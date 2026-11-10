@@ -9,7 +9,7 @@ import java.util.regex.Pattern
 
 /**
  * The sheet a missing photo opens: it looks for the photo, suggests what was taken around the same time, and offers
- * another photo, removing it, or Not now. Its questions are [Dialog]s.
+ * another photo or removing it. Its questions are [Dialog]s.
  */
 object MissingPhotoSheet {
     private const val TITLE = "This photo can't be found"
@@ -63,7 +63,11 @@ object MissingPhotoSheet {
     /** Taps "Remove from memory", which asks first ([REMOVE_TITLE]). */
     fun remove() = tap { hasText("Remove from memory") }
 
-    fun notNow() = tap { hasText("Not now") }
+    /** Closes the sheet with Back (it has no button for that: dragging it down or tapping outside it does too). */
+    fun close() {
+        Ui.pressBack()
+        Ui.device.waitForIdle()
+    }
 
     private fun suggestions(): List<String> = try {
         Ui.device.findObjects(By.desc(Pattern.compile(Pattern.quote(USE_PREFIX) + ".*")))

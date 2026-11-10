@@ -5,6 +5,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.VisibleForTesting
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import com.szabolcshorvath.memorymap.auth.AccountService
 import com.szabolcshorvath.memorymap.auth.GoogleAccountService
 import com.szabolcshorvath.memorymap.backup.BackupStorage
@@ -45,4 +47,13 @@ object AppServices {
     @Volatile
     @set:VisibleForTesting
     var placeSearch: PlaceSearch = GooglePlaceSearch
+
+    /**
+     * Which decoders the media viewer plays videos with: the phone's own choice, its hardware decoders first. UI tests
+     * use software decoders, because the emulator's hardware video decoder fails when an app runs it.
+     */
+    @Volatile
+    @set:VisibleForTesting
+    @UnstableApi
+    var videoDecoders: MediaCodecSelector = MediaCodecSelector.DEFAULT
 }
