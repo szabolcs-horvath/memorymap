@@ -1,79 +1,45 @@
 package com.szabolcshorvath.memorymap.fragment
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
-import androidx.core.view.doOnLayout
-import androidx.core.view.isVisible
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.transition.ChangeBounds
-import androidx.transition.Fade
-import androidx.transition.TransitionManager
-import androidx.transition.TransitionSet
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.AdvancedMarker
-import com.google.android.gms.maps.model.AdvancedMarkerOptions
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.MapColorScheme
-import com.google.android.gms.maps.model.Marker
-import com.google.android.material.datepicker.MaterialDatePicker
-import com.google.firebase.perf.metrics.AddTrace
 import com.google.firebase.perf.metrics.Trace
-import com.google.maps.android.clustering.Cluster
-import com.google.maps.android.clustering.ClusterManager
-import com.google.maps.android.clustering.view.DefaultAdvancedMarkersClusterRenderer
-import com.google.maps.android.collections.MarkerManager
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.adapter.MemoryOverlayAdapter
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.Markerable
-import com.szabolcshorvath.memorymap.databinding.FragmentMapsBinding
-import com.szabolcshorvath.memorymap.util.Coordinates
+import com.szabolcshorvath.memorymap.ui.map.MAX_FIT_ZOOM
+import com.szabolcshorvath.memorymap.ui.map.MY_LOCATION_ZOOM
+import com.szabolcshorvath.memorymap.ui.map.MapActions
+import com.szabolcshorvath.memorymap.ui.map.MapContent
+import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
 import com.szabolcshorvath.memorymap.util.DateFilterOption
-import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
-import com.szabolcshorvath.memorymap.util.MarkerGenerator
-import com.szabolcshorvath.memorymap.util.MarkerSync
 import com.szabolcshorvath.memorymap.util.MyLocationAction
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
-import com.szabolcshorvath.memorymap.util.reattachDatePicker
-import com.szabolcshorvath.memorymap.util.setOnPicked
-import com.szabolcshorvath.memorymap.util.startingWeeksOnPhonesFirstDay
-import ir.mahozad.android.PieChart.Slice
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import kotlin.time.Duration.Companion.milliseconds
 
-class MapFragment : Fragment(), OnMapReadyCallback {
+class MapFragment : Fragment(), MapActions {
 
-    private var _binding: FragmentMapsBinding? = null
-    private val binding get() = _binding!!
-    private var mMap: GoogleMap? = null
-    private lateinit var clusterManager: ClusterManager<Markerable.MarkerableCluster>
     private var mapListener: MapListener? = null
-    private var overlayAdapter: MemoryOverlayAdapter? = null
 
     private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
     private val viewModel: MapFragmentViewModel by viewModels { MapFragmentViewModel.Factory }
@@ -81,9 +47,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val clustersFlow by lazy {
         viewModel.getMarkerClusters(commonViewModel.showFragmentsEnabled)
     }
-
-    // Created with the cluster manager: gives it only the items that changed.
-    private var markerSync: MarkerSync? = null
 
     private var shouldAdjustCameraOnUpdate = false
     private var mapLoadTrace: Trace? = null
@@ -94,9 +57,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     // The only place the map asks for location access: when the user taps the "my location" button.
     private val myLocationAction = MyLocationAction(this) { latLng ->
-        enableMyLocation()
+        refreshMyLocationDot()
         viewModel.isInitialZoomDone = true
-        mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM))
+        viewModel.moveCamera(MapCameraRequest.MyLocation(latLng))
     }
 
     override fun onAttach(context: Context) {
@@ -106,157 +69,108 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentMapsBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
+        ComposeView(inflater.context).apply {
+            // Compose saves the map's camera and an open date picker under this id.
+            id = R.id.map_content
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                val state by viewModel.uiState(commonViewModel.showFragmentsEnabled, commonViewModel.markerClusteringEnabled)
+                    .collectAsStateWithLifecycle()
+                MemoryMapTheme { MapContent(state, this@MapFragment) }
+            }
+        }
 
     override fun onResume() {
         super.onResume()
-        val context = context
-        if (context != null && hasLocationPermission(context)) {
-            enableMyLocation()
-        }
+        refreshMyLocationDot()
+        zoomToUserLocationIfPossible()
         focusOnPendingMemory()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val viewLifecycleOwner = viewLifecycleOwner
-
         mapLoadTrace = PerfUtil.startTrace("map_full_load")
 
-        binding.btDateRange.setOnClickListener { showDateRangePicker() }
-        childFragmentManager.reattachDatePicker(DATE_FILTER_PICKER_TAG, ::applyPickedDateFilter)
-        binding.btQuickFilter.setOnClickListener { showQuickFilterMenu() }
-        binding.btStats.setOnClickListener { toggleStatsOverlay() }
-        binding.btMyLocation.setOnClickListener {
-            hideMemoryOverlay()
-            myLocationAction.start()
-        }
-
-        if (viewModel.isStatsVisible) {
-            binding.statsOverlayCard.visibility = View.VISIBLE
-        }
-
-        binding.root.doOnLayout {
-            setGoogleMapPadding()
-        }
-
-        setupOverlayRecyclerView()
-
-        val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-
-        // Observe Filter State for UI updates
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(
-                    viewModel.filterStartDate,
-                    viewModel.filterEndDate,
-                    viewModel.appliedFilter
-                ) { start, end, option ->
-                    Triple(start, end, option)
-                }.collect { (start, end, option) ->
-                    updateDateRangeButtonText(start, end, option)
-                }
-            }
-        }
-
-        // Observe Clusters and Clustering Preference
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(
-                    clustersFlow,
-                    commonViewModel.markerClusteringEnabled
-                ) { clusters, _ -> clusters }.collectLatest { clusters ->
-                    if (this@MapFragment::clusterManager.isInitialized) {
-                        updateMapMarkers(clusters, adjustCamera = shouldAdjustCameraOnUpdate)
-                        shouldAdjustCameraOnUpdate = false
-                    }
+                clustersFlow.collect { pins ->
+                    onPinsChanged(pins, adjustCamera = shouldAdjustCameraOnUpdate)
+                    shouldAdjustCameraOnUpdate = false
                 }
             }
         }
     }
 
-    private fun setupOverlayRecyclerView() {
-        overlayAdapter = MemoryOverlayAdapter { memoryId ->
-            mapListener?.onMemoryClicked(memoryId)
+    override fun pickQuickFilter(option: DateFilterOption) {
+        val (start, end) = option.dateRange(LocalDate.now())
+        if (start != viewModel.filterStartDate.value || end != viewModel.filterEndDate.value) {
+            shouldAdjustCameraOnUpdate = true
         }
-        binding.rvMemories.apply {
-            adapter = overlayAdapter
-            itemAnimator = null // Disable cross-fade to eliminate "flickering" between markers
-        }
+        viewModel.updateDateFilter(start, end, option)
     }
 
-    private fun showQuickFilterMenu() {
-        val binding = _binding ?: return
-        val context = context ?: return
-        val popup = PopupMenu(context, binding.btQuickFilter)
-        DateFilterOption.entries.forEach { option ->
-            popup.menu.add(Menu.NONE, option.ordinal, option.ordinal, option.label)
-        }
-
-        popup.setOnMenuItemClickListener { menuItem ->
-            val selectedOption = DateFilterOption.entries[menuItem.itemId]
-            val (start, end) = selectedOption.dateRange(LocalDate.now())
-            if (start != viewModel.filterStartDate.value || end != viewModel.filterEndDate.value) {
-                shouldAdjustCameraOnUpdate = true
-            }
-            viewModel.updateDateFilter(start, end, selectedOption)
-            true
-        }
-        popup.show()
-    }
-
-    private fun showDateRangePicker() {
-        val builder = MaterialDatePicker.Builder.dateRangePicker().startingWeeksOnPhonesFirstDay()
-            .setTitleText(R.string.map_pick_dates)
-            .setInputMode(MaterialDatePicker.INPUT_MODE_CALENDAR)
-
-        val currentStart = viewModel.filterStartDate.value
-        val currentEnd = viewModel.filterEndDate.value
-
-        if (currentStart != null && currentEnd != null) {
-            val startMillis = currentStart.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
-            val endMillis = currentEnd.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
-            builder.setSelection(androidx.core.util.Pair(startMillis, endMillis))
-        }
-
-        val picker = builder.build()
-        picker.setOnPicked(::applyPickedDateFilter)
-        picker.show(childFragmentManager, DATE_FILTER_PICKER_TAG)
-    }
-
-    private fun applyPickedDateFilter(selection: androidx.core.util.Pair<Long, Long>) {
-        val newStart = Instant.ofEpochMilli(selection.first).atZone(ZoneId.of("UTC")).toLocalDate()
-        val newEnd = Instant.ofEpochMilli(selection.second).atZone(ZoneId.of("UTC")).toLocalDate()
-
+    override fun pickDates(start: LocalDate, end: LocalDate) {
         shouldAdjustCameraOnUpdate = true
-        viewModel.updateDateFilter(newStart, newEnd)
+        viewModel.updateDateFilter(start, end)
     }
 
-    private fun toggleStatsOverlay() {
-        val binding = _binding ?: return
-        val transition = TransitionSet().apply {
-            addTransition(Fade())
-            addTransition(ChangeBounds())
-            duration = ANIMATION_DURATION
-        }
-        TransitionManager.beginDelayedTransition(binding.root, transition)
-        viewModel.isStatsVisible = !viewModel.isStatsVisible
-        binding.statsOverlayCard.visibility = if (viewModel.isStatsVisible) View.VISIBLE else View.GONE
+    override fun toggleStats() = viewModel.toggleStats()
+
+    override fun goToMyLocation() {
+        viewModel.clearSelection()
+        myLocationAction.start()
     }
 
-    private fun updateDateRangeButtonText(start: LocalDate?, end: LocalDate?, option: DateFilterOption?) {
-        val binding = _binding ?: return
-        binding.btDateRange.text = when {
-            option != null -> getString(option.label)
-            start == null || end == null -> getString(DateFilterOption.DEFAULT_DATE_FILTER_OPTION.label)
-            start == end -> DateTimeFormatterUtil.date(start)
-            else -> getString(R.string.date_range, DateTimeFormatterUtil.date(start), DateTimeFormatterUtil.date(end))
-        }
+    override fun tapPin(pin: Markerable.MarkerableCluster) {
+        viewModel.select(pin.position, pin.items)
+        viewModel.moveCamera(MapCameraRequest.Show(pin.position, MAX_FIT_ZOOM))
     }
+
+    override fun tapCluster(position: LatLng) {
+        viewModel.clearSelection()
+        viewModel.moveCamera(MapCameraRequest.ZoomIn(position))
+    }
+
+    override fun tapMap() {
+        viewModel.clearSelection()
+        viewModel.hideStats()
+    }
+
+    /**
+     * The Map tab tapped while the map shows. It closes what is open over the map (the panel, the statistics) and
+     * leaves the camera where it is; with nothing open, it goes back to the map's home view: the area around the phone
+     * with location access, otherwise all the memories shown, as when the map opens.
+     */
+    fun onTabTappedAgain() {
+        if (!viewModel.closeOverlays()) showHomeView()
+    }
+
+    private fun showHomeView() {
+        val context = context ?: return
+        if (!hasLocationPermission(context)) return fitAll(clustersFlow.value)
+        AppServices.location.lastLocation(context)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    viewModel.moveCamera(MapCameraRequest.Show(LatLng(location.latitude, location.longitude), MY_LOCATION_ZOOM))
+                } else {
+                    fitAll(clustersFlow.value)
+                }
+            }
+            .addOnFailureListener { fitAll(clustersFlow.value) }
+    }
+
+    override fun openMemory(id: Int) {
+        mapListener?.onMemoryClicked(id)
+    }
+
+    override fun onMapLoaded() {
+        mapLoadTrace?.stop()
+        mapLoadTrace = null
+    }
+
+    override fun onCameraMoved(request: MapCameraRequest) = viewModel.onCameraMoved(request)
 
     /**
      * Shows memory [id] on the map. The request is kept in the ViewModel and handled once this tab is shown (right away
@@ -289,6 +203,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             viewModel.pendingSelectionId = request.id
             viewModel.pendingSelectionLat = request.lat
             viewModel.pendingSelectionLng = request.lng
+            // Goes there now: the pin may take a moment to come (a widened filter), and is then selected.
+            viewModel.moveCamera(MapCameraRequest.Show(LatLng(request.lat, request.lng), MAX_FIT_ZOOM))
 
             val oldStart = viewModel.filterStartDate.value
             val oldEnd = viewModel.filterEndDate.value
@@ -296,13 +212,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             updateDateFilterForMemory(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
 
             if (oldStart == viewModel.filterStartDate.value && oldEnd == viewModel.filterEndDate.value) {
-                // Filter didn't change, we can try to select immediately if the map and clusters are ready
+                // The filter didn't change, so the pins already there are the ones to select from.
                 val clusters = clustersFlow.value
-                if (mMap != null && clusters.isNotEmpty()) {
-                    moveToLocationAndSelectMarker(request.lat, request.lng, request.id, clusters)
-                    viewModel.pendingSelectionId = null
-                    viewModel.pendingSelectionLat = null
-                    viewModel.pendingSelectionLng = null
+                if (clusters.isNotEmpty()) {
+                    selectPendingMemory(clusters)
                 }
             }
         }
@@ -322,415 +235,105 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    override fun onMapReady(googleMap: GoogleMap) {
-        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
-        mMap = googleMap
-        googleMap.clear()
-
-        googleMap.setOnMapLoadedCallback {
-            mapLoadTrace?.stop()
-            mapLoadTrace = null
-        }
-
-        googleMap.mapColorScheme = MapColorScheme.FOLLOW_SYSTEM
-        googleMap.uiSettings.isRotateGesturesEnabled = false
-        googleMap.uiSettings.isMapToolbarEnabled = false
-        googleMap.uiSettings.isMyLocationButtonEnabled = false // Our own button: it can ask for access (bt_myLocation).
-        googleMap.uiSettings.isZoomControlsEnabled = true
-
-        val pLat = viewModel.pendingSelectionLat
-        val pLng = viewModel.pendingSelectionLng
-        if (viewModel.pendingSelectionId != null && pLat != null && pLng != null) {
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(pLat, pLng), DEFAULT_ZOOM))
+    /** Keeps the panel and the camera in step with new [pins] (a filter or data change). */
+    private fun onPinsChanged(pins: List<Markerable.MarkerableCluster>, adjustCamera: Boolean) = trace("map_fragment_on_pins_changed") {
+        val hasPendingSelection = viewModel.pendingSelectionId != null
+        val pendingId = viewModel.pendingSelectionId
+        if (pendingId != null && pins.any { pin -> pin.items.any { it.groupId == pendingId } }) {
+            selectPendingMemory(pins)
         } else {
-            viewModel.lastCameraPosition?.let { position ->
-                viewModel.isInitialZoomDone = true
-                googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(position))
-            }
+            reopenSelection(pins)
         }
 
-        enableMyLocation()
-        setGoogleMapPadding()
-
-        val markerManager = MarkerManager(googleMap)
-        val context = context ?: return
-        clusterManager = ClusterManager(context, googleMap, markerManager)
-        clusterManager.renderer = MarkerableClusterRenderer(context, googleMap, clusterManager)
-        markerSync = MarkerSync(clusterManager)
-
-        clusterManager.setOnClusterItemClickListener { locationItem ->
-            showMemoryOverlay(locationItem.position.latitude, locationItem.position.longitude, locationItem.items)
-            true
-        }
-
-        clusterManager.setOnClusterClickListener { cluster ->
-            hideMemoryOverlay()
-            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(cluster.position, googleMap.cameraPosition.zoom + 1f))
-            true
-        }
-
-        @SuppressLint("PotentialBehaviorOverride")
-        googleMap.setOnMarkerClickListener(markerManager)
-
-        googleMap.setOnCameraIdleListener {
-            clusterManager.onCameraIdle()
-            viewModel.lastCameraPosition = googleMap.cameraPosition
-        }
-
-        googleMap.setOnMapClickListener {
-            hideMemoryOverlay()
-            if (binding.statsOverlayCard.isVisible) toggleStatsOverlay()
-        }
-
-        googleMap.setOnPoiClickListener {
-            // Do nothing
-        }
-
-        // The padding depends only on these two views, so update it when one of them changes size or
-        // position, not on every layout pass of the whole screen.
-        val updatePaddingOnResize = View.OnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
-            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop || top != oldTop) {
-                setGoogleMapPadding()
-            }
-        }
-        binding.overlayCard.addOnLayoutChangeListener(updatePaddingOnResize)
-        binding.dateFilterContainer.addOnLayoutChangeListener(updatePaddingOnResize)
-
-        // Needed to reinitialize after rotation
-        viewLifecycleOwner.lifecycleScope.launch {
-            val clusters = clustersFlow.value
-            if (clusters.isNotEmpty()) {
-                updateMapMarkers(clusters)
-            }
-        }
+        // A "show on map" request moves the camera itself.
+        if (hasPendingSelection) return@trace
+        if (adjustCamera) fitAll(pins) else fitAllOnFirstLook(pins)
     }
 
-    private fun hideMemoryOverlay() {
-        val binding = _binding ?: return
-        if (binding.overlayCard.isVisible) {
-            TransitionManager.beginDelayedTransition(
-                binding.root,
-                TransitionSet().apply {
-                    addTransition(Fade())
-                    addTransition(ChangeBounds())
-                    duration = ANIMATION_DURATION
-                }
-            )
-            binding.overlayCard.visibility = View.GONE
-            viewModel.selectedMemoryId = null
-            viewModel.selectedMarkerPosition = null
-            setGoogleMapPadding()
-        }
+    /** The first time the map has pins and won't go to where the phone is, it shows them all. */
+    private fun fitAllOnFirstLook(pins: List<Markerable.MarkerableCluster>) {
+        val context = context
+        val goesToPhone = context != null && hasLocationPermission(context) && !viewModel.isLocationUnknown
+        if (!viewModel.isInitialZoomDone && !goesToPhone) fitAll(pins)
     }
 
-    private fun setGoogleMapPadding() {
-        val binding = _binding ?: return
-        val googleMap = mMap ?: return
+    private fun fitAll(pins: List<Markerable.MarkerableCluster>) {
+        if (pins.isEmpty()) return
+        viewModel.isInitialZoomDone = true
+        viewModel.moveCamera(MapCameraRequest.Fit(pins.map { it.position }))
+    }
 
-        val density = resources.displayMetrics.density
-        val controlMarginThreshold = MAP_CONTROLS_MARGIN_DP * density // Margin required to avoid overlapping corner controls
+    /** Opens the panel again on the pin it was open for, now that the pins changed, or closes it if that pin is gone. */
+    private fun reopenSelection(pins: List<Markerable.MarkerableCluster>) {
+        val selectedId = viewModel.selectedMemoryId ?: return
+        val pin = closestPinWith(selectedId, viewModel.selectedMarkerPosition, pins)
+        if (pin != null) viewModel.select(pin.position, pin.items, selectedId) else viewModel.clearSelection()
+    }
 
-        val rootWidth = binding.root.width
-        if (rootWidth == 0) return
+    /** Selects the memory a "show on map" request asked for, on its pin closest to where it was asked for. */
+    private fun selectPendingMemory(pins: List<Markerable.MarkerableCluster>) {
+        val id = viewModel.pendingSelectionId ?: return
+        val lat = viewModel.pendingSelectionLat
+        val lng = viewModel.pendingSelectionLng
+        viewModel.pendingSelectionId = null
+        viewModel.pendingSelectionLat = null
+        viewModel.pendingSelectionLng = null
+        val near = if (lat != null && lng != null) LatLng(lat, lng) else null
+        val pin = closestPinWith(id, near, pins) ?: return
+        viewModel.select(pin.position, pin.items, id)
+        if (near != null) viewModel.moveCamera(MapCameraRequest.Show(near, MAX_FIT_ZOOM))
+    }
 
-        val topPadding = if (binding.dateFilterContainer.height > 0) {
-            val containerWidth = binding.dateFilterContainer.width
-            val sideMargin = (rootWidth - containerWidth) / 2f
-            if (sideMargin < controlMarginThreshold) {
-                binding.dateFilterContainer.height + binding.dateFilterContainer.top
-            } else {
-                0
-            }
-        } else {
-            0
-        }
+    /** The pin with memory [id] (a memory and its fragments can have several) closest to [near]. */
+    private fun closestPinWith(id: Int, near: LatLng?, pins: List<Markerable.MarkerableCluster>): Markerable.MarkerableCluster? {
+        val candidates = pins.filter { pin -> pin.items.any { it.groupId == id } }
+        return if (near == null) candidates.firstOrNull() else candidates.minByOrNull { distanceSquared(it.position, near) }
+    }
 
-        val bottomPadding = if (binding.overlayCard.isVisible) {
-            val cardWidth = binding.overlayCard.width
-            val sideMargin = (rootWidth - cardWidth) / 2f
-            if (sideMargin < controlMarginThreshold) {
-                binding.overlayCard.height + GOOGLE_LOGO_HEIGHT_DP
-            } else {
-                0
-            }
-        } else {
-            0
-        }
-
-        googleMap.setPadding(0, topPadding, 0, bottomPadding)
+    private fun distanceSquared(a: LatLng, b: LatLng): Double {
+        val dLat = a.latitude - b.latitude
+        val dLng = a.longitude - b.longitude
+        return dLat * dLat + dLng * dLng
     }
 
     /** Shows the user's position on the map, if location access was granted. Never asks for it (see [myLocationAction]). */
-    @SuppressWarnings("MissingPermission")
-    private fun enableMyLocation() {
-        val googleMap = mMap ?: return
+    private fun refreshMyLocationDot() {
         val context = context ?: return
-        if (hasLocationPermission(context)) {
-            googleMap.isMyLocationEnabled = true
-            zoomToUserLocationIfPossible()
-        }
+        viewModel.setShowsMyLocation(hasLocationPermission(context))
     }
 
     private fun zoomToUserLocationIfPossible() {
         val context = context
         if (context != null && hasLocationPermission(context) && !viewModel.isInitialZoomDone) {
-            AppServices.location.lastLocation(context).addOnSuccessListener { location ->
-                if (viewLifecycleOwnerLiveData.value == null) return@addOnSuccessListener
-                val googleMap = mMap
-                if (location != null && googleMap != null && !viewModel.isInitialZoomDone) {
-                    viewModel.isInitialZoomDone = true
-                    val latLng = LatLng(location.latitude, location.longitude)
-                    googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM))
-                }
-            }
-        }
-    }
-
-    private fun updateMapMarkers(clusters: List<Markerable.MarkerableCluster>, adjustCamera: Boolean = false) {
-        val googleMap = mMap ?: return
-        trace("map_fragment_update_map_markers") {
-            val items = clusters.flatMap { it.items }
-
-            updateUIWithFreshMarkers(googleMap, items, clusters, adjustCamera)
-        }
-    }
-
-    private fun updateUIWithFreshMarkers(
-        googleMap: GoogleMap,
-        filteredItems: List<Markerable>,
-        clusters: List<Markerable.MarkerableCluster>,
-        adjustCamera: Boolean
-    ) {
-        trace("map_fragment_update_ui_with_fresh_markers") {
-            markerSync?.update(clusters, commonViewModel.markerClusteringEnabled.value)
-
-            updatePieChart(filteredItems)
-
-            val hasPendingSelection = viewModel.pendingSelectionId != null
-            viewModel.pendingSelectionId?.let { pId ->
-                if (filteredItems.any { it.groupId == pId }) {
-                    moveToLocationAndSelectMarker(viewModel.pendingSelectionLat, viewModel.pendingSelectionLng, pId, clusters)
-                    viewModel.pendingSelectionId = null
-                    viewModel.pendingSelectionLat = null
-                    viewModel.pendingSelectionLng = null
-                }
-            }
-
-            // Handle existing selection after rotation or data update
-            if (viewModel.selectedMemoryId != null) {
-                val selectedId = viewModel.selectedMemoryId
-                val selectedPos = viewModel.selectedMarkerPosition
-
-                val restoredCluster = if (selectedPos != null) {
-                    clusters.filter { c -> c.items.any { it.groupId == selectedId } }
-                        .minByOrNull { c -> euclideanDistanceSquared(c, selectedPos) }
-                } else {
-                    clusters.find { cluster -> cluster.items.any { it.groupId == selectedId } }
-                }
-
-                if (restoredCluster != null) {
-                    showMemoryOverlay(restoredCluster.position.latitude, restoredCluster.position.longitude, restoredCluster.items, false)
-                } else {
-                    hideMemoryOverlay()
-                }
-            } else {
-                hideMemoryOverlay()
-            }
-
-            if (adjustCamera && !hasPendingSelection && clusters.isNotEmpty()) {
-                val boundsBuilder = LatLngBounds.Builder()
-                clusters.forEach { boundsBuilder.include(it.position) }
-                val bounds = boundsBuilder.build()
-                googleMap.setMaxZoomPreference(MAX_CAMERA_ZOOM)
-                googleMap.animateCamera(
-                    CameraUpdateFactory.newLatLngBounds(bounds, ZOOM_PADDING),
-                    object : GoogleMap.CancelableCallback {
-                        override fun onFinish() {
-                            googleMap.resetMinMaxZoomPreference()
-                        }
-
-                        override fun onCancel() {
-                            googleMap.resetMinMaxZoomPreference()
-                        }
+            AppServices.location.lastLocation(context)
+                .addOnSuccessListener { location ->
+                    if (viewLifecycleOwnerLiveData.value == null || viewModel.isInitialZoomDone) return@addOnSuccessListener
+                    if (location != null) {
+                        viewModel.isInitialZoomDone = true
+                        viewModel.moveCamera(MapCameraRequest.Show(LatLng(location.latitude, location.longitude), MY_LOCATION_ZOOM))
+                    } else {
+                        showAllInstead()
                     }
-                )
-            }
+                }
+                .addOnFailureListener {
+                    if (viewLifecycleOwnerLiveData.value != null && !viewModel.isInitialZoomDone) showAllInstead()
+                }
         }
     }
 
-    private fun euclideanDistanceSquared(cluster: Markerable.MarkerableCluster, position: LatLng): Double {
-        val dLat = cluster.position.latitude - position.latitude
-        val dLng = cluster.position.longitude - position.longitude
-        return dLat * dLat + dLng * dLng
-    }
-
-    @AddTrace(name = "map_fragment_update_pie_chart", enabled = true)
-    private fun updatePieChart(filteredItems: List<Markerable>) {
-        val binding = _binding ?: return
-        val totalCount = filteredItems.size.toFloat()
-        if (totalCount > 0) {
-            val colorStats = filteredItems.groupBy { it.markerColor() }.mapValues { it.value.size }.toSortedMap()
-
-            val sliceList = colorStats.map { (color, count) ->
-                Slice(count / totalCount, color, label = count.toString())
-            }
-            binding.pieChart.slices = sliceList
-        } else {
-            binding.pieChart.slices = emptyList()
-        }
-    }
-
-    private fun moveToLocationAndSelectMarker(lat: Double?, lng: Double?, groupId: Int, clusters: List<Markerable.MarkerableCluster>) {
-        if (lat == null || lng == null) return
-        val googleMap = mMap ?: return
-        val position = LatLng(lat, lng)
-        googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, MAX_CAMERA_ZOOM))
-
-        // Find the cluster that contains this memory in the provided clusters.
-        // If there are multiple clusters for the same groupId (e.g. fragments),
-        // prefer the one closest to the requested lat/lng.
-        val cluster = clusters.filter { c -> c.items.any { it.groupId == groupId } }
-            .minByOrNull { c -> euclideanDistanceSquared(c, LatLng(lat, lng)) }
-
-        if (cluster != null) {
-            viewModel.selectedMemoryId = groupId
-            showMemoryOverlay(cluster.position.latitude, cluster.position.longitude, cluster.items, false)
-        }
-    }
-
-    private fun showMemoryOverlay(lat: Double, lng: Double, items: List<Markerable>, shouldAnimateCamera: Boolean = true) {
-        val binding = _binding ?: return
-
-        viewModel.selectedMarkerPosition = LatLng(lat, lng)
-        if (viewModel.selectedMemoryId == null || items.none { it.groupId == viewModel.selectedMemoryId }) {
-            viewModel.selectedMemoryId = items.firstOrNull()?.groupId
-        }
-
-        if (shouldAnimateCamera) {
-            mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), MAX_CAMERA_ZOOM))
-        }
-
-        val distinctItems = items.distinctBy { it.groupId }
-        val locationName = distinctItems.firstOrNull {
-            it.placeName != null
-        }?.placeName ?: Coordinates.format(binding.root.context, lat, lng)
-
-        overlayAdapter?.submitList(distinctItems) {
-            val transition = TransitionSet().apply {
-                ordering = TransitionSet.ORDERING_TOGETHER
-                addTransition(Fade())
-                addTransition(ChangeBounds())
-                duration = ANIMATION_DURATION
-            }
-            TransitionManager.beginDelayedTransition(binding.root, transition)
-
-            if (binding.tvOverlayLocationTitle.text != locationName) {
-                binding.tvOverlayLocationTitle.visibility = View.INVISIBLE
-                binding.tvOverlayLocationTitle.text = locationName
-                binding.tvOverlayLocationTitle.visibility = View.VISIBLE
-            }
-
-            val index = distinctItems.indexOfFirst { it.groupId == viewModel.selectedMemoryId }
-            if (index != -1) {
-                binding.rvMemories.scrollToPosition(index)
-            }
-            binding.overlayCard.visibility = View.VISIBLE
-            setGoogleMapPadding()
-        }
+    /** Without the phone's location the first look shows all the pins, as without location access. */
+    private fun showAllInstead() {
+        viewModel.isLocationUnknown = true
+        if (viewModel.pendingSelectionId == null) fitAllOnFirstLook(clustersFlow.value)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         mapLoadTrace = null
-        mMap = null
-        markerSync = null
-        _binding = null
-    }
-
-    private inner class MarkerableClusterRenderer(
-        context: Context,
-        map: GoogleMap,
-        clusterManager: ClusterManager<Markerable.MarkerableCluster>
-    ) : DefaultAdvancedMarkersClusterRenderer<Markerable.MarkerableCluster>(context, map, clusterManager) {
-
-        override fun shouldRenderAsCluster(cluster: Cluster<Markerable.MarkerableCluster>): Boolean =
-            commonViewModel.markerClusteringEnabled.value && super.shouldRenderAsCluster(cluster)
-
-        override fun onBeforeClusterItemRendered(
-            cluster: Markerable.MarkerableCluster,
-            advancedMarkerOptions: AdvancedMarkerOptions
-        ) {
-            val representative = cluster.items.first()
-            if (cluster.items.size > 1) {
-                val colors = cluster.items.map { it.markerColor() }.sorted()
-                advancedMarkerOptions.icon(MarkerGenerator.multiColorBitmapPinIcon(colors, cluster.items.size, resources.displayMetrics.density))
-                advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
-            } else {
-                val color = representative.markerColor()
-                advancedMarkerOptions.icon(MarkerGenerator.singleColorPinConfigIcon(color))
-                advancedMarkerOptions.anchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
-            }
-            advancedMarkerOptions.title(pinTitle(cluster))
-        }
-
-        override fun onClusterItemUpdated(
-            cluster: Markerable.MarkerableCluster,
-            marker: Marker
-        ) {
-            val representative = cluster.items.first()
-            if (cluster.items.size > 1) {
-                val colors = cluster.items.map { it.markerColor() }.sorted()
-                marker.setIcon(MarkerGenerator.multiColorBitmapPinIcon(colors, cluster.items.size, resources.displayMetrics.density))
-                marker.setAnchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
-            } else {
-                val color = representative.markerColor()
-                marker.setIcon(MarkerGenerator.singleColorPinConfigIcon(color))
-                marker.setAnchor(MarkerGenerator.PIN_ANCHOR_U, MarkerGenerator.PIN_ANCHOR_V)
-            }
-            marker.title = cluster.title
-        }
-
-        override fun onBeforeClusterRendered(
-            cluster: Cluster<Markerable.MarkerableCluster>,
-            advancedMarkerOptions: AdvancedMarkerOptions
-        ) {
-            val allItems = cluster.items.flatMap { it.items }
-            val colors = allItems.map { it.markerColor() }.sorted()
-
-            advancedMarkerOptions.icon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
-            advancedMarkerOptions.anchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
-            // A title names the cluster for screen readers (a tap zooms in, so it opens no info window).
-            advancedMarkerOptions.title(clusterTitle(allItems.size))
-        }
-
-        override fun onClusterUpdated(
-            cluster: Cluster<Markerable.MarkerableCluster>,
-            marker: AdvancedMarker
-        ) {
-            val allItems = cluster.items.flatMap { it.items }
-            val colors = allItems.map { it.markerColor() }.sorted()
-
-            marker.setIcon(MarkerGenerator.multiColorBitmapCircleIcon(colors, allItems.size, resources.displayMetrics.density))
-            marker.setAnchor(MarkerGenerator.CIRCLE_ANCHOR_U, MarkerGenerator.CIRCLE_ANCHOR_V)
-            marker.title = clusterTitle(allItems.size)
-        }
-
-        private fun clusterTitle(count: Int) = resources.getQuantityString(R.plurals.memories_nearby, count, count)
-
-        /** A pin's title: its memory's, or how many memories are at its spot. */
-        private fun pinTitle(pin: Markerable.MarkerableCluster): String? =
-            if (pin.items.size == 1) pin.items.first().title else resources.getQuantityString(R.plurals.memories_here, pin.items.size, pin.items.size)
     }
 
     companion object {
         const val TAG = "MapFragment"
-        private const val DATE_FILTER_PICKER_TAG = "DATE_FILTER_PICKER"
-        private const val MAX_CAMERA_ZOOM = 15f
-        private const val DEFAULT_ZOOM = 12f
-        private const val ZOOM_PADDING = 100
-        private const val ANIMATION_DURATION = 250L
-        private const val MAP_CONTROLS_MARGIN_DP = 100
-        private const val GOOGLE_LOGO_HEIGHT_DP = 25
         private const val DATA_LOAD_TIMEOUT_MS = 3000L
     }
 }

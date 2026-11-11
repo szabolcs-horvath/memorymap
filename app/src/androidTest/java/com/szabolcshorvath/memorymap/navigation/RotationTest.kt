@@ -56,6 +56,21 @@ class RotationTest {
     }
 
     @Test
+    fun theMapKeepsThePanelOfATappedPin() {
+        TestData.memory(TITLE)
+        app.launch()
+        MapScreen.tapMarker(TITLE)
+        MapScreen.assertOverlayShows(TITLE)
+
+        rotateAndBack {
+            MapScreen.assertOverlayShows(TITLE)
+        }
+
+        MapScreen.openFromOverlay(TITLE)
+        MemoryScreen.assertShowing(TITLE)
+    }
+
+    @Test
     fun settingsSignedInWithBackups() {
         TestData.signIn()
         FakeBackupStorage.add(FakeAccountService.DEFAULT_EMAIL, MANUAL_BACKUP, modifiedMillis = System.currentTimeMillis())

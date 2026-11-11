@@ -271,13 +271,23 @@ private fun DayPicker(@StringRes title: Int, day: LocalDate, onClose: () -> Unit
     }
 }
 
+/**
+ * Material 3's dialog for picking a range of days (the form's all-day dates, the map's filter), with weeks starting on
+ * the phone's first day. It opens with [first] to [last] selected, or nothing if either is null.
+ */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun RangePicker(first: LocalDate, last: LocalDate, onClose: () -> Unit, onPicked: (LocalDate, LocalDate) -> Unit) {
+internal fun RangePicker(
+    first: LocalDate?,
+    last: LocalDate?,
+    onClose: () -> Unit,
+    @StringRes title: Int = R.string.select_date_range,
+    onPicked: (LocalDate, LocalDate) -> Unit,
+) {
     WithPhonesWeek {
         val pickerState = rememberDateRangePickerState(
-            initialSelectedStartDateMillis = first.toPickerMillis(),
-            initialSelectedEndDateMillis = last.toPickerMillis(),
+            initialSelectedStartDateMillis = first?.toPickerMillis(),
+            initialSelectedEndDateMillis = last?.toPickerMillis(),
         )
         DatePickerDialog(
             onDismissRequest = onClose,
@@ -297,7 +307,7 @@ private fun RangePicker(first: LocalDate, last: LocalDate, onClose: () -> Unit, 
                 modifier = Modifier
                     .weight(1f)
                     .semantics { testTagsAsResourceId = true },
-                title = { PickerTitle(R.string.select_date_range) },
+                title = { PickerTitle(title) },
             )
         }
     }

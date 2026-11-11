@@ -16,7 +16,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
-import java.util.Calendar
 import java.util.Locale
 
 /**
@@ -149,13 +148,6 @@ class PhoneDateFormatsTest {
         assertEquals(DayOfWeek.MONDAY, firstDayOfWeek(Locale.forLanguageTag("hu-HU")))
         assertEquals(DayOfWeek.MONDAY, firstDayOfWeek(Locale.forLanguageTag("en-US-u-fw-mon")))
         assertEquals(DayOfWeek.SATURDAY, firstDayOfWeek(Locale.forLanguageTag("hu-HU-u-fw-sat")))
-    }
-
-    @Test
-    fun `the date picker numbers days as java util calendar does`() {
-        assertEquals(Calendar.SUNDAY, DayOfWeek.SUNDAY.calendarDay())
-        assertEquals(Calendar.MONDAY, DayOfWeek.MONDAY.calendarDay())
-        assertEquals(Calendar.SATURDAY, DayOfWeek.SATURDAY.calendarDay())
     }
 
     private fun useClock(hours: String) {
