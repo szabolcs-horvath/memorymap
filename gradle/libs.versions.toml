@@ -21,7 +21,6 @@ lifecycleCompose = "2.11.0"
 activityCompose = "1.8.2"
 work = "2.12.0"
 kotlinxCoroutines = "1.11.0"
-pieChart = "0.7.0"
 
 # Google Maps
 places = "6.0.2"
@@ -97,7 +96,6 @@ androidx-work-testing = { group = "androidx.work", name = "work-testing", versio
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-pie-chart = { group = "ir.mahozad.android", name = "pie-chart", version.ref = "pieChart" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -111,6 +109,7 @@ play-services-location = { module = "com.google.android.gms:play-services-locati
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 android-maps-utils = { group = "com.google.maps.android", name = "android-maps-utils", version.ref = "androidMapsUtils" }
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
+maps-compose-utils = { group = "com.google.maps.android", name = "maps-compose-utils", version.ref = "mapsCompose" }
 
 # Room
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }

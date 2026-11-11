@@ -177,7 +177,7 @@ object SettingsScreen : TabScreen {
 
     fun assertMarkerClustering(on: Boolean) = assertSwitch(CLUSTERING, on)
 
-    /** Picks [label] ("Last 7 Days", "All Time", ...) as the date filter the map opens with. */
+    /** Picks [label] ("Last 7 days", "All time", ...) as the date filter the map opens with. */
     fun setDefaultMapFilter(label: String) {
         Ui.scrollTo { hasId(DEFAULT_FILTER) }
         Ui.find { hasId(DEFAULT_FILTER) }.click()

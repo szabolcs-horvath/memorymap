@@ -189,13 +189,13 @@ class SettingsTest {
 
         SettingsScreen.setShowFragmentMarkers(true)
         SettingsScreen.setMarkerClustering(false)
-        SettingsScreen.setDefaultMapFilter("Last 30 Days")
+        SettingsScreen.setDefaultMapFilter("Last 30 days")
         BottomNav.open(Tab.MAP)
         BottomNav.open(Tab.SETTINGS)
 
         SettingsScreen.assertShowFragmentMarkers(true)
         SettingsScreen.assertMarkerClustering(false)
-        SettingsScreen.assertDefaultMapFilter("Last 30 Days")
+        SettingsScreen.assertDefaultMapFilter("Last 30 days")
     }
 
     @Test

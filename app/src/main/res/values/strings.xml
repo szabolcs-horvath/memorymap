@@ -34,6 +34,8 @@
     <string name="new_memory_title">New memory</string>
     <string name="edit_memory_title">Edit memory</string>
     <string name="my_location">My location</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
     <string name="map_quick_filters">Quick date filters</string>
     <string name="map_color_stats">Color statistics</string>
     <string name="open_photo">Open photo</string>
@@ -120,18 +122,25 @@
     <string name="map_pick_dates">Select dates</string>
     <!-- A range of two days, as the phone shows dates: "Nov 6, 2026 - Nov 8, 2026". -->
     <string name="date_range">%1$s - %2$s</string>
-    <string name="filter_last_7_days">Last 7 Days</string>
-    <string name="filter_last_30_days">Last 30 Days</string>
-    <string name="filter_last_365_days">Last 365 Days</string>
-    <string name="filter_this_week">This Week</string>
-    <string name="filter_this_month">This Month</string>
-    <string name="filter_this_year">This Year</string>
-    <string name="filter_all_time">All Time</string>
+    <string name="filter_last_7_days">Last 7 days</string>
+    <string name="filter_last_30_days">Last 30 days</string>
+    <string name="filter_last_365_days">Last 365 days</string>
+    <string name="filter_this_week">This week</string>
+    <string name="filter_this_month">This month</string>
+    <string name="filter_this_year">This year</string>
+    <string name="filter_all_time">All time</string>
     <!-- A pin for several memories at one spot. -->
     <plurals name="memories_here">
-        <item quantity="one">%d Memory</item>
-        <item quantity="other">%d Memories</item>
+        <item quantity="one">%d memory</item>
+        <item quantity="other">%d memories</item>
     </plurals>
+    <!-- The colour statistics, for screen readers: how many memories the map shows. -->
+    <plurals name="memories_shown">
+        <item quantity="one">%d memory shown</item>
+        <item quantity="other">%d memories shown</item>
+    </plurals>
+    <!-- Under the total in the middle of the colour statistics. -->
+    <string name="map_stats_heart" translatable="false">❤️</string>
     <!-- A cluster of pins that splits up when the map zooms in. -->
     <plurals name="memories_nearby">
         <item quantity="one">%d memory nearby</item>

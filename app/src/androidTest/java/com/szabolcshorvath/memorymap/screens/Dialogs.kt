@@ -82,7 +82,7 @@ private fun confirm() {
 }
 
 /**
- * The calendar for picking a range of dates: Material 3's on the Add form, Material Components' on the map. It types
+ * The calendar for picking a range of dates (Material 3's, on the Add form and the map). It types
  * the dates in its text mode, which needs no scrolling through months, in the format the calendar expects for the
  * phone's language.
  */
@@ -106,7 +106,7 @@ object DateRangePickerDialog {
         if (field.text != date) field.text = date.filter(Char::isDigit)
     }
 
-    /** The start and end fields, top to bottom (Material Components' side by side, left to right). */
+    /** The start and end fields, top to bottom. */
     private fun fields() = Ui.device.findObjects(By.clazz("android.widget.EditText"))
         .sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left }))
 

@@ -324,7 +324,7 @@ private fun DefaultFilterItem(filter: DateFilterOption?, onChange: (DateFilterOp
                     contentDescription = null,
                     modifier = Modifier.rotate(arrowRotation),
                 )
-                FilterMenu(
+                DateFilterMenu(
                     expanded = menuOpen,
                     selected = filter,
                     onDismiss = { menuOpen = false },
@@ -343,7 +343,7 @@ private fun DefaultFilterItem(filter: DateFilterOption?, onChange: (DateFilterOp
 
 /** Material 3 Expressive's menu of choices: the chosen one is filled and has a check mark. */
 @Composable
-private fun FilterMenu(
+internal fun DateFilterMenu(
     expanded: Boolean,
     selected: DateFilterOption?,
     onDismiss: () -> Unit,

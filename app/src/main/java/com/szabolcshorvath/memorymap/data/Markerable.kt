@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.data
 
 import android.content.Context
 import androidx.annotation.ColorInt
-import androidx.recyclerview.widget.DiffUtil
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
 import com.szabolcshorvath.memorymap.util.ColorUtil
@@ -59,49 +58,5 @@ interface Markerable {
         override val snippet: String? = null
 
         override val zIndex: Float? = null
-    }
-
-    class MarkerableDiffCallback : DiffUtil.ItemCallback<Markerable>() {
-        override fun areItemsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
-            return oldItem.groupId == newItem.groupId && oldItem.latitude == newItem.latitude && oldItem.longitude == newItem.longitude
-        }
-
-        override fun areContentsTheSame(oldItem: Markerable, newItem: Markerable): Boolean {
-            return oldItem.title == newItem.title &&
-                oldItem.startDate == newItem.startDate &&
-                oldItem.endDate == newItem.endDate &&
-                oldItem.markerHue == newItem.markerHue &&
-                oldItem.markerSaturation == newItem.markerSaturation &&
-                oldItem.markerBrightness == newItem.markerBrightness &&
-                oldItem.latitude == newItem.latitude &&
-                oldItem.longitude == newItem.longitude
-        }
-
-        override fun getChangePayload(oldItem: Markerable, newItem: Markerable): Any? {
-            val diff = mutableSetOf<String>()
-
-            if (oldItem.title != newItem.title) {
-                diff.add(TITLE_DIFF_PAYLOAD)
-            }
-
-            if (oldItem.startDate != newItem.startDate || oldItem.endDate != newItem.endDate) {
-                diff.add(DATE_DIFF_PAYLOAD)
-            }
-
-            if (oldItem.markerHue != newItem.markerHue ||
-                oldItem.markerSaturation != newItem.markerSaturation ||
-                oldItem.markerBrightness != newItem.markerBrightness
-            ) {
-                diff.add(COLOR_DIFF_PAYLOAD)
-            }
-
-            return if (diff.isEmpty()) null else diff
-        }
-    }
-
-    companion object {
-        const val TITLE_DIFF_PAYLOAD = "TITLE"
-        const val DATE_DIFF_PAYLOAD = "DATE"
-        const val COLOR_DIFF_PAYLOAD = "COLOR"
     }
 }

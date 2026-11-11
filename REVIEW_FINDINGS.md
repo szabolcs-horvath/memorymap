@@ -149,7 +149,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (in progress: the Timeline, Settings, the memory detail screen, the Add/Edit form and the location picker are moved) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (every screen is moved; only the optional Compose shell, step 6, is left) |
 
 **BUILD — Build, CI, tooling** · 4 of 4 fixed
 
@@ -511,6 +511,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** `clearItems()` + `addItems()` + `cluster()` re-renders every marker, even for an unrelated change such as a title edit elsewhere.
 - **Fix:** Diff the items, or update only the changed ones (`updateItem`).
 - **Status:** Fixed. `MarkerSync` (`util/MarkerChanges.kt`) keeps what the cluster manager holds and gives it only the items that were removed or added since; an edited memory is both. It re-clusters only when something changed or clustering was turned on or off, and an emission with the same items changes nothing. The renderer already kept the marker of an item that came back equal, so the cost was the re-clustering and re-setting every icon. A fragment's marker carries its memory's title as part of its equality (`FragmentMarker`, since ARCH-8), so a renamed memory's fragment counts as changed. Covered by `MarkerChangesTest` and `MapTest.markersFollowARenameAndADeleteMadeOnOtherTabs`.
+- **Compose migration ([ARCH-10](#arch-10)):** given up when the Map moved (2026-11-11), as agreed: `maps-compose`'s clustering composable clears and re-adds every item on each change, re-clustering and re-setting every icon again, and `MarkerSync` (`util/MarkerChanges.kt`, with `MarkerChangesTest`) was deleted; it is in the history before that commit. If that makes the map slow with many memories, bring it back and keep the app's own `ClusterManager` with it inside the Compose map instead, created in a `MapEffect` (experimental, `@MapsComposeExperimentalApi`). The cluster manager's `MarkerManager` then takes over the map's marker click listeners from `maps-compose`, which is fine as long as the map has no Compose markers of its own.
 
 ### <a id="perf-9"></a>✅ PERF-9 · Low · Pin icon recomputed on every render
 - **Where:** `util/MarkerGenerator.kt:59-69`
@@ -715,6 +716,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Done for the Timeline (2026-11-08): `TimelineFragmentViewModel` exposes one `StateFlow<TimelineUiState>` (the search, the memories grouped by day, a pending Show on Timeline) and takes intents (`onQueryChange`, `requestScrollTo`, `onScrollHandled`).
   - Done for Settings (2026-11-08): `SettingsFragmentViewModel` exposes one `StateFlow<SettingsUiState>` and takes intents. The map preferences (`MapPreferencesModel`) and the colour presets (`ColorPresetsModel`) are parts of their own, and the backup list, results and busy state that `SettingsFragment` used to keep in its views are in the state. The fragment keeps only what needs an activity: sign-in, Drive's consent screen, permission requests, the questions asked first, and sharing the logs.
   - Done for the Add/Edit form (2026-11-10): `AddMemoryGroupFragmentViewModel` publishes one `StateFlow<AddFormUiState>` after every change and takes intents (`changeTitle`, `setDate`, `setColor`, `addFragment`, `requestSave` and the rest). Its fields stay, behind those intents, for the unsaved-changes check and the saved draft; the adapter that shared its fragment list is gone.
+  - Done for the location picker and the Map (2026-11-10 and 11-11): `PickLocationFragmentViewModel` publishes `PickLocationUiState` and `MapFragmentViewModel` `MapUiState` (the pins, the filter, the colour counts, the panel's pin and the camera's next move), both taking intents. `MapFragment` still decides when the camera moves and which pin a "show on map" request selects.
 
 ### <a id="arch-3"></a>✅ ARCH-3 · High · Background work tied to UI scopes
 - **Where:** All `triggerAutomaticBackup` callers; relink in `MainActivity` / `MemoryFragment` / `SettingsFragment`
@@ -859,6 +861,25 @@ When a status changes, update the item's **Status** line, the marker in its head
     - The marker in the theme's primary colour, without an info window; a spot is never named by its plus code ("G23R+C23") or by its house number alone.
     - Google's zoom buttons stay; "place search isn't available" as a Snackbar; wording in sentence case.
   - Location picker moved (2026-11-10): `ui/location/` (`PickLocationContent`, `PickLocationActions`), in `PickLocationFragment`'s `ComposeView`, its ViewModel on `StateFlow<PickLocationUiState>`, the picked spot still in `SavedStateHandle` and the camera in `rememberSaveable`. The fragment keeps the place lookups and the "my location" flow; its layout is gone.
+  - Map reviewed against Material 3 Expressive; agreed with the user (2026-11-10):
+    - The map moves to `maps-compose`, with its clustering composable (`Clustering` in `maps-compose-utils`) and the app's own marker renderer (the same pins, cluster circles and colours). That composable clears and re-adds every item when the list changes, so [PERF-8](#perf-8)'s "only the markers that changed" goes; accepted for the simpler code. If the map gets slow with many memories, the fallback is to keep the app's own `ClusterManager` and `MarkerSync` inside the Compose map (`MapEffect`): see PERF-8's note.
+    - The filter bar as one Material 3 Expressive button group (quick filters, the dates, colour statistics).
+    - The quick filters in Material 3's menu, the selected one checked; their labels in sentence case ("Last 7 days", "All time"), which Settings' default-filter menu shares.
+    - The date range picker as Material 3's Compose one, as on the Add form (`WithPhonesWeek`).
+    - "My location" as a floating action button at the bottom right, as in the location picker.
+    - The colour statistics as a donut drawn in Compose (the pie chart library goes), with the counts per colour and the total in the middle; the ❤️ stays, under the total.
+    - A marker's memories in a panel at the bottom, as in the location picker, as list rows like the Timeline's with the colour as a strip on the left; tapping the map still closes it.
+    - Google's zoom buttons stay; wording in sentence case; theme colours in light and dark mode.
+    - To fix on the way: a pin shared by several memories is read out only as "Map Marker", not "3 memories here" (maybe behind [TEST-4](#test-4)'s flaky map test), and the map doesn't zoom to its markers when it opens on the default filter, so a pin can sit half under the filter bar.
+  - Map moved (2026-11-11): `ui/map/` (`MapContent`, `MapControls`, `MapActions`, `MarkerRenderer`), in `MapFragment`'s `ComposeView`, its ViewModel on `StateFlow<MapUiState>` with the camera moves as requests in that state. The map's layout and overlay item, `MemoryOverlayAdapter`, `MaxHeightCardView`, the pie chart library, `MarkerSync` with its test, and the Material Components date picker helpers (`util/PickerListeners.kt`, `startingWeeksOnPhonesFirstDay`) are gone. Every screen is now in Compose.
+    - A pin shared by several memories was named only "Map Marker" once it was drawn again (`onClusterItemUpdated` gave it the pin's own title, which is empty for several memories); it now keeps "3 memories". Its name is in sentence case now.
+    - The map shows all its pins the first time it has some, unless it goes to where the phone is, so no pin opens half under the filter bar. It also shows them all when it has location access but the phone can't say where it is (location off), where it used to stay on the whole world with the pins in one cluster or under the filter bar.
+  - Map and location picker, changed after trying them (2026-11-11, agreed with the user):
+    - Google's zoom buttons and the "my location" button became one Material 3 floating toolbar of the app's own (`ui/map/MapToolbar`: zoom in, zoom out, my location) on both maps. It floats over the map, so the map keeps room only for the panels and Google's logo is back next to the tab bar (the button's room had lifted it far above). Where the screen is wide enough (a phone turned sideways) the toolbar sits at the right edge beside the panel instead of above it, since the two don't fit a turned phone's height; the panel stays centred, as wide as the filter bar (the picker's search bar is capped to the same width), so they line up (`ToolbarAndPanel`). The map keeps room for a panel only where it would cover Google's logo (upright): exactly the panel's height as it opens and closes, the gap above it included, so the logo and the toolbar move with the panel instead of jumping when it has closed. Sideways it keeps none, so nothing moves; a place it shows goes in the part of the map above the panel instead (`cameraTargetFor`). A camera move cancelled by turning the phone stays requested and runs on the rebuilt screen (it used to be dropped, leaving the map on its first view). Google's own my-location button can't replace it: it appears only once location access is granted, so it can't ask for it.
+    - The filter bar, the toolbar and the picker's search bar share the panels' colour, a little see-through (`mapControlColor`); the toolbar has no shadow, which would show through.
+    - "My location" never zooms out: from the area around the phone (or anywhere closer) a press shows its streets.
+    - Tapping the Map tab while the map shows closes the panel or the colour statistics, and with nothing open goes back to the home view (the area around the phone with location access, otherwise all the memories shown), as the Timeline's tab goes back to its top.
+    - The colour statistics open and close as the quick filters' menu does: growing from their button and fading.
 
 [↑ Back to index](#index)
 

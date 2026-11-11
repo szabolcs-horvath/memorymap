@@ -16,6 +16,12 @@ object BottomNav {
         Ui.device.waitForIdle()
     }
 
+    /** Taps [tab] while it is already shown, which takes it back to its start (the Timeline's top, the Map's home view). */
+    fun tapAgain(tab: Tab) {
+        assertSelected(tab)
+        select(tab)
+    }
+
     fun assertSelected(tab: Tab) = assertTrue(
         "The ${tab.label} tab is not selected",
         Ui.isShown { isTab(tab) && isSelected }

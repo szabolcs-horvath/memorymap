@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap.ui.location
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,10 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
@@ -29,7 +28,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -45,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMapOptions
@@ -61,6 +63,13 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.fragment.CameraRequest
 import com.szabolcshorvath.memorymap.fragment.PickLocationUiState
 import com.szabolcshorvath.memorymap.fragment.PickedSpot
+import com.szabolcshorvath.memorymap.ui.map.MAX_CONTROLS_WIDTH
+import com.szabolcshorvath.memorymap.ui.map.MapToolbar
+import com.szabolcshorvath.memorymap.ui.map.PanelSize
+import com.szabolcshorvath.memorymap.ui.map.ToolbarAndPanel
+import com.szabolcshorvath.memorymap.ui.map.cameraTargetFor
+import com.szabolcshorvath.memorymap.ui.map.mapControlColor
+import com.szabolcshorvath.memorymap.ui.map.runCameraMove
 import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.MarkerGenerator
 
@@ -75,23 +84,12 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
     val density = LocalDensity.current
     var topHeight by remember { mutableIntStateOf(0) }
     var bottomHeight by remember { mutableIntStateOf(0) }
+    // Only the place panel keeps the map's bottom clear, and only where it would cover Google's logo: the toolbar
+    // floats over the map. Elsewhere a shown place goes in the part of the map above the panel.
+    var panel by remember { mutableStateOf(PanelSize()) }
+    val above by rememberUpdatedState(with(density) { (if (panel.coversLogo) 0 else panel.coveredBelow() / 2).toDp() })
     val snackbars = remember { SnackbarHostState() }
-    val resources = LocalResources.current
-
-    LaunchedEffect(state.cameraRequest) {
-        val request = state.cameraRequest ?: return@LaunchedEffect
-        try {
-            camera.moveTo(request)
-        } finally {
-            actions.onCameraMoved(request)
-        }
-    }
-    LaunchedEffect(state.message) {
-        val message = state.message ?: return@LaunchedEffect
-        // Cleared only afterwards: clearing it changes this effect's key, which would cancel the Snackbar.
-        snackbars.showSnackbar(resources.getString(message))
-        actions.onMessageShown()
-    }
+    Effects(state, camera, snackbars, actions) { above }
 
     Box(
         Modifier
@@ -101,7 +99,7 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
         PickerMap(
             state = state,
             camera = camera,
-            padding = with(density) { PaddingValues(top = topHeight.toDp(), bottom = bottomHeight.toDp()) },
+            padding = with(density) { PaddingValues(top = topHeight.toDp(), bottom = panel.mapPadding().toDp()) },
             actions = actions,
         )
         SearchField(
@@ -109,13 +107,17 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
             onSearch = actions::search,
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                // As wide as the Map's filter bar, so it lines up with the place panel when the phone is turned.
+                .widthIn(max = MAX_CONTROLS_WIDTH)
                 .onSizeChanged { topHeight = it.height }
                 .padding(MARGIN),
         )
         BottomControls(
             state,
+            camera,
             actions,
-            Modifier
+            onPanelSize = { change -> panel = panel.change() },
+            modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .onSizeChanged { bottomHeight = it.height },
         )
@@ -128,13 +130,36 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
     }
 }
 
-private suspend fun CameraPositionState.moveTo(request: CameraRequest) {
-    val target = LatLng(request.lat, request.lng)
-    val zoom = request.zoom
+/** Moves the camera for each request (a place [above] the map's centre) and shows each message. */
+@Composable
+private fun Effects(
+    state: PickLocationUiState,
+    camera: CameraPositionState,
+    snackbars: SnackbarHostState,
+    actions: PickLocationActions,
+    above: () -> Dp,
+) {
+    val resources = LocalResources.current
+    LaunchedEffect(state.cameraRequest) {
+        val request = state.cameraRequest ?: return@LaunchedEffect
+        runCameraMove(move = { camera.moveTo(request, above()) }, done = { actions.onCameraMoved(request) })
+    }
+    LaunchedEffect(state.message) {
+        val message = state.message ?: return@LaunchedEffect
+        // Cleared only afterwards: clearing it changes this effect's key, which would cancel the Snackbar.
+        snackbars.showSnackbar(resources.getString(message))
+        actions.onMessageShown()
+    }
+}
+
+/** Moves the camera to [request]'s place, which goes [above] the map's centre. */
+private suspend fun CameraPositionState.moveTo(request: CameraRequest, above: Dp) {
+    val zoom = request.zoom ?: position.zoom
+    val target = LatLng(request.lat, request.lng).cameraTargetFor(above, zoom)
     if (request.animate) {
-        animate(if (zoom == null) CameraUpdateFactory.newLatLng(target) else CameraUpdateFactory.newLatLngZoom(target, zoom))
+        animate(CameraUpdateFactory.newLatLngZoom(target, zoom))
     } else {
-        position = CameraPosition.fromLatLngZoom(target, zoom ?: position.zoom)
+        position = CameraPosition.fromLatLngZoom(target, zoom)
     }
 }
 
@@ -160,7 +185,8 @@ private fun PickerMap(
             // Our own button instead: Google's appears only once location access is granted, and can't ask for it.
             myLocationButtonEnabled = false,
             rotationGesturesEnabled = false,
-            zoomControlsEnabled = true,
+            // Our own, in MapToolbar.
+            zoomControlsEnabled = false,
         ),
         onMapClick = actions::pickOnMap,
         onPOIClick = actions::pickPoi,
@@ -196,7 +222,7 @@ private fun SearchField(onBack: () -> Unit, onSearch: () -> Unit, modifier: Modi
             .fillMaxWidth()
             .height(SearchBarDefaults.InputFieldHeight),
         shape = SearchBarDefaults.inputFieldShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = mapControlColor(),
         shadowElevation = ELEVATION,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -221,32 +247,35 @@ private fun SearchField(onBack: () -> Unit, onSearch: () -> Unit, modifier: Modi
     }
 }
 
-/** The "my location" button over the place panel. */
+/** The map's toolbar and the place panel. */
 @Composable
-private fun BottomControls(state: PickLocationUiState, actions: PickLocationActions, modifier: Modifier = Modifier) {
-    Column(
-        modifier.padding(MARGIN),
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(MARGIN),
-    ) {
-        FloatingActionButton(
-            onClick = actions::goToMyLocation,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.primary,
-        ) {
-            Icon(painterResource(R.drawable.ic_my_location), stringResource(R.string.my_location))
-        }
-        PlacePanel(state, actions::confirm)
+private fun BottomControls(
+    state: PickLocationUiState,
+    camera: CameraPositionState,
+    actions: PickLocationActions,
+    onPanelSize: (PanelSize.() -> PanelSize) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ToolbarAndPanel(toolbar = { MapToolbar(camera, actions::goToMyLocation) }, modifier) { coversLogo ->
+        LaunchedEffect(coversLogo) { onPanelSize { copy(coversLogo = coversLogo) } }
+        // Always open: its height is both its full and its shown height.
+        PlacePanel(
+            state,
+            actions::confirm,
+            Modifier
+                .onSizeChanged { size -> onPanelSize { copy(shown = size.height, full = size.height) } }
+                .padding(top = MARGIN),
+        )
     }
 }
 
 /** The picked place's name and address (or what to do when nothing is picked), and the button that uses it. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit) {
+private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
         shadowElevation = ELEVATION,

@@ -17,6 +17,7 @@ import com.szabolcshorvath.memorymap.testing.TestData.Hsv
 import com.szabolcshorvath.memorymap.testing.TestData.Place
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateFilterOption
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -65,8 +66,8 @@ class MapTest {
         TestData.memory(MADRID_AGAIN, daysAgo = 30, place = Place.MADRID)
         openMap()
 
-        MapScreen.assertMarkerShown("2 Memories")
-        MapScreen.tapMarker("2 Memories")
+        MapScreen.assertMarkerShown("2 memories")
+        MapScreen.tapMarker("2 memories")
 
         MapScreen.assertOverlayShows(MADRID_TRIP)
         MapScreen.assertOverlayShows(MADRID_AGAIN)
@@ -126,11 +127,16 @@ class MapTest {
         MapScreen.assertColorStatisticsShown()
     }
 
+    /**
+     * The map opens showing all its pins, and turning fragments on doesn't move it, so a memory far away keeps the
+     * fragment's place (Rome, between the two) in view.
+     */
     @Test
     fun fragmentMarkersShowOnlyOnceTurnedOn() {
         TestData.markerClustering(false)
         val trip = TestData.memory(EURO_TRIP, place = Place.MADRID)
-        TestData.fragment(trip, Place.ATHENS)
+        TestData.fragment(trip, Place.ROME)
+        TestData.memory(CAPE_TOWN_TRIP, place = Place.CAPE_TOWN)
         openMap()
         MapScreen.assertMarkerCount(EURO_TRIP, 1)
 
@@ -204,15 +210,15 @@ class MapTest {
         TestData.trip(LONG_TRIP, startedDaysAgo = 40, endedDaysAgo = 2, place = Place.BUDAPEST)
         val all = listOf(TODAY, TWENTY_DAYS_AGO, TWO_HUNDRED_DAYS_AGO, TWO_YEARS_AGO, LONG_TRIP)
         openMap()
-        MapScreen.assertFilter("All Time")
+        MapScreen.assertFilter("All time")
 
-        expectMarkers("Last 7 Days", all, TODAY, LONG_TRIP)
-        expectMarkers("Last 30 Days", all, TODAY, TWENTY_DAYS_AGO, LONG_TRIP)
-        expectMarkers("Last 365 Days", all, TODAY, TWENTY_DAYS_AGO, TWO_HUNDRED_DAYS_AGO, LONG_TRIP)
-        expectMarkers("All Time", all, *all.toTypedArray())
+        expectMarkers("Last 7 days", all, TODAY, LONG_TRIP)
+        expectMarkers("Last 30 days", all, TODAY, TWENTY_DAYS_AGO, LONG_TRIP)
+        expectMarkers("Last 365 days", all, TODAY, TWENTY_DAYS_AGO, TWO_HUNDRED_DAYS_AGO, LONG_TRIP)
+        expectMarkers("All time", all, *all.toTypedArray())
 
         // These depend on today's date: only today's memory and the one from two years ago are certain.
-        for (label in listOf("This Week", "This Month", "This Year")) {
+        for (label in listOf("This week", "This month", "This year")) {
             MapScreen.pickQuickFilter(label)
             MapScreen.assertFilter(label)
             MapScreen.assertMarkerShown(TODAY)
@@ -237,7 +243,7 @@ class MapTest {
 
         openMap()
 
-        MapScreen.assertFilter("Last 7 Days")
+        MapScreen.assertFilter("Last 7 days")
         MapScreen.assertMarkerShown(TODAY)
         MapScreen.assertMarkerGone(TWENTY_DAYS_AGO)
     }
@@ -253,11 +259,121 @@ class MapTest {
         MapScreen.assertColorStatisticsShown()
         MapScreen.assertColorStatisticsShow(listOf(color(RED), color(BLUE)))
 
-        MapScreen.pickQuickFilter("Last 7 Days")
+        MapScreen.pickQuickFilter("Last 7 days")
         MapScreen.assertColorStatisticsShow(listOf(color(RED)), absent = listOf(color(BLUE)))
 
         MapScreen.tapEmptyMap()
         MapScreen.assertColorStatisticsGone()
+    }
+
+    @Test
+    fun theMapsButtonsStayAtTheRightEdgeWithAndWithoutTheCard() {
+        TestData.markerClustering(false)
+        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
+        openMap()
+        MapScreen.assertToolbarAtRightEdge()
+
+        MapScreen.tapMarker(ATHENS_TRIP)
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertToolbarAtRightEdge()
+
+        Ui.rotateToLandscape()
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertToolbarAtRightEdge()
+        Ui.rotateToPortrait()
+    }
+
+    @Test
+    fun aTappedMarkerShowsAboveTheCardAndClosingItGivesTheMapItsSpaceBack() {
+        TestData.markerClustering(false)
+        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
+        openMap()
+        MapScreen.tapMarker(ATHENS_TRIP)
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertMarkerAboveTheCard(ATHENS_TRIP)
+        val tip = MapScreen.markerTip(ATHENS_TRIP)
+
+        // Upright, the map keeps room for the card (it covers Google's logo) and gives all of it back once it closes,
+        // without the map jumping.
+        MapScreen.tapEmptyMap()
+        MapScreen.assertOverlayGone()
+        assertEquals("Where the marker points", tip, MapScreen.markerTip(ATHENS_TRIP))
+        MapScreen.assertMapKeepsNoRoomAtTheBottom(ATHENS_TRIP)
+    }
+
+    @Test
+    fun turnedSidewaysATappedMarkerShowsAboveTheCardAndStaysWhenItCloses() {
+        TestData.markerClustering(false)
+        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
+        openMap()
+        Ui.rotateToLandscape()
+        MapScreen.tapMarker(ATHENS_TRIP)
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertMarkerAboveTheCard(ATHENS_TRIP)
+        val tip = MapScreen.markerTip(ATHENS_TRIP)
+
+        // Sideways the card is beside Google's logo, so the map keeps no room for it: nothing moves when it closes.
+        MapScreen.tapEmptyMap()
+        MapScreen.assertOverlayGone()
+        assertEquals("Where the marker points", tip, MapScreen.markerTip(ATHENS_TRIP))
+        MapScreen.assertMapKeepsNoRoomAtTheBottom(ATHENS_TRIP)
+        Ui.rotateToPortrait()
+    }
+
+    @Test
+    fun tappingTheMapTabAgainClosesTheOpenCardThenShowsAllTheMemories() {
+        TestData.markerClustering(false)
+        TestData.memory(MADRID_TRIP, place = Place.MADRID)
+        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
+        openMap()
+        // The tap zooms in on Athens, so Madrid is off screen.
+        MapScreen.tapMarker(ATHENS_TRIP)
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertMarkerGone(MADRID_TRIP)
+
+        BottomNav.tapAgain(Tab.MAP)
+
+        // The first tap only closes the card: the map stays on Athens.
+        MapScreen.assertOverlayGone()
+        MapScreen.assertMarkerStaysGone(MADRID_TRIP)
+
+        BottomNav.tapAgain(Tab.MAP)
+
+        // With nothing open, and no location access, the map shows all the memories again.
+        MapScreen.assertMarkerShown(MADRID_TRIP)
+        MapScreen.assertMarkerShown(ATHENS_TRIP)
+    }
+
+    @Test
+    fun tappingTheMapTabAgainClosesTheColorStatistics() {
+        TestData.markerClustering(false)
+        TestData.memory(MADRID_TRIP, place = Place.MADRID)
+        openMap()
+        MapScreen.toggleColorStatistics()
+        MapScreen.assertColorStatisticsShown()
+
+        BottomNav.tapAgain(Tab.MAP)
+
+        MapScreen.assertColorStatisticsGone()
+        MapScreen.assertMarkerShown(MADRID_TRIP)
+    }
+
+    @Test
+    fun tappingTheMapTabOverAMemoryReturnsToTheMapAsItWas() {
+        TestData.markerClustering(false)
+        TestData.memory(MADRID_TRIP, place = Place.MADRID)
+        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
+        openMap()
+        MapScreen.tapMarker(ATHENS_TRIP)
+        MapScreen.openFromOverlay(ATHENS_TRIP)
+        MemoryScreen.assertShowing(ATHENS_TRIP)
+
+        BottomNav.select(Tab.MAP)
+
+        // Only the memory closes: the card stays open, on Athens.
+        MapScreen.assertShown()
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertMarkerStaysGone(MADRID_TRIP)
     }
 
     private fun color(hsv: Hsv) = ColorUtil.hsvToColor(hsv.hue, hsv.saturation, hsv.brightness)

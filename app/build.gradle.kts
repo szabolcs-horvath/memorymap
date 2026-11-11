@@ -148,7 +148,6 @@ dependencies {
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.datastore.preferences)
     implementation(libs.material)
-    implementation(libs.pie.chart)
 
     // Jetpack Compose (the screens moved from XML Views so far: ARCH-10)
     implementation(platform(libs.compose.bom))
@@ -164,6 +163,7 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.android.maps.utils)
     implementation(libs.maps.compose)
+    implementation(libs.maps.compose.utils)
 
     // Room
     implementation(libs.androidx.room.ktx)

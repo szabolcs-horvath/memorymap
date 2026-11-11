@@ -8,4 +8,5 @@
     <item name="missing_media_content" type="id" />
     <item name="add_memory_content" type="id" />
     <item name="pick_location_content" type="id" />
+    <item name="map_content" type="id" />
 </resources>

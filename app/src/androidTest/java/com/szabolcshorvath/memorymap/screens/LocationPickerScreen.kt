@@ -19,7 +19,7 @@ object LocationPickerScreen {
      * Waits until the map has drawn what it shows and stopped loading. Until the map has fetched what it needs from
      * Google it shows one plain colour, and without a network it may never get further. The map draws without
      * anything a screen reader can read, so this reads its colours from screenshots, on a grid across its middle (away
-     * from the buttons above and below it and the zoom controls): they must show more than one colour (land and sea)
+     * from the search bar above it and the toolbar and panel below it): they must show more than one colour (land and sea)
      * and stay the same between two reads.
      */
     fun awaitMapDrawn() {
