@@ -2,6 +2,8 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -21,6 +23,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaThumbnail
+import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
@@ -28,6 +31,7 @@ import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaDetails
 import com.szabolcshorvath.memorymap.util.MediaDetails.withDetails
@@ -93,8 +97,15 @@ class AddMemoryGroupFragmentViewModel(
     var markerSaturation = DEFAULT_MARKER_SATURATION
     var markerBrightness = DEFAULT_MARKER_BRIGHTNESS
 
-    /** An "Edit" request waiting for the fragment's view (see `AddMemoryGroupFragment.requestEditMode`). */
-    var pendingEditMemoryId: Int? = null
+    private val _pendingEdit = MutableStateFlow<Int?>(null)
+
+    /** An "Edit" request waiting for the form's view (see [requestEdit]): the memory to edit. */
+    val pendingEdit = _pendingEdit.asStateFlow()
+    private var pendingEditMemoryId: Int?
+        get() = _pendingEdit.value
+        set(value) {
+            _pendingEdit.value = value
+        }
     var editingMemoryId: Int? = null
     var activePickingIndex: Int = -1 // -1 for main, 0+ for fragments
     var currentDeviceId: String? = null
@@ -298,6 +309,55 @@ class AddMemoryGroupFragmentViewModel(
         publish()
     }
 
+    /** The form is shown: reads this installation's id once, which tells media saved on another phone apart. */
+    fun onShown() {
+        if (currentDeviceId != null) return
+        viewModelScope.launch {
+            currentDeviceId = InstallationIdentifier.getInstallationIdentifier(getApplication())
+            publish()
+        }
+    }
+
+    /** [uris] were just picked in the photo picker: takes their grants, reads them and adds them first. */
+    fun mediaPicked(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        val context: Context = getApplication()
+        val knownDeviceId = currentDeviceId
+        viewModelScope.launch {
+            // One content resolver call or more per picked item: keep them off the main thread.
+            val pickedItems = withContext(Dispatchers.IO) {
+                uris.forEach { uri ->
+                    try {
+                        context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    } catch (e: SecurityException) {
+                        Log.w(TAG, "Could not persist access for $uri", e)
+                    }
+                }
+                val deviceId = knownDeviceId ?: InstallationIdentifier.getInstallationIdentifier(context)
+                uris.map { uri -> readPickedMedia(context, uri, deviceId) }
+            }
+            addPickedMedia(pickedItems)
+        }
+    }
+
+    /**
+     * Starts picking the place of [part], the memory or one of its fragments: [open] opens the location picker on the
+     * place it has, if any. Does nothing for a fragment that was removed meanwhile.
+     */
+    fun startPickingLocation(part: FormPart, open: (FormPlace?) -> Unit) {
+        val (index, place) = when (part) {
+            FormPart.Memory -> -1 to FormPlace.of(lat, lng, placeName, address)
+            is FormPart.Fragment -> {
+                val index = fragments.indexOfFirst { it.localId == part.localId }
+                if (index == -1) return
+                val fragment = fragments[index]
+                index to FormPlace.of(fragment.lat, fragment.lng, fragment.placeName, fragment.address)
+            }
+        }
+        activePickingIndex = index
+        open(place)
+    }
+
     /** Adds media just picked, first, leaving out what the form already has. */
     fun addPickedMedia(picked: List<AddMemoryGroupFragment.SelectedMedia>) {
         onMediaPicked(picked.map { it.uri.toString() })
@@ -379,7 +439,7 @@ class AddMemoryGroupFragmentViewModel(
                 }
                 withContext(Dispatchers.Main) { onSaved(saved.groupId, saved.savedAsNew) }
             } catch (e: Exception) {
-                Log.e("AddMemoryVM", "Error saving memory group", e)
+                Log.e(TAG, "Error saving memory group", e)
                 _saveResult.send(SaveResult.Error)
             } finally {
                 _isSaving.value = false
@@ -490,6 +550,52 @@ class AddMemoryGroupFragmentViewModel(
         pendingEditMemoryId = state.getInt(PENDING_EDIT_MEMORY_ID).takeIf { state.containsKey(PENDING_EDIT_MEMORY_ID) }
         activePickingIndex = state.getInt(ACTIVE_PICKING_INDEX, -1)
         colorExpanded = state.getBoolean(COLOR_EXPANDED)
+    }
+
+    /**
+     * Asks to open memory [memoryId] for editing. The request stays pending until the form's view handles it
+     * ([handlePendingEdit]), and a newer one replaces it.
+     */
+    fun requestEdit(memoryId: Int) {
+        pendingEditMemoryId = memoryId
+    }
+
+    /**
+     * Handles the pending edit request, if any: opens the memory when the form has no unsaved changes, and keeps the
+     * changes when it is the memory already being edited. Returns the memory to ask about otherwise, whether the
+     * request may replace the unsaved changes ([confirmEdit] or [cancelEdit]); it stays pending meanwhile.
+     */
+    fun handlePendingEdit(): Int? {
+        val memoryId = pendingEditMemoryId ?: return null
+        return when {
+            !hasUnsavedChanges() -> null.also { startEditing(memoryId) }
+            memoryId == editingMemoryId -> null.also { pendingEditMemoryId = null }
+            else -> memoryId
+        }
+    }
+
+    /** The user let the request for memory [memoryId] replace the unsaved changes. */
+    fun confirmEdit(memoryId: Int) {
+        pendingEditMemoryId = memoryId // After process death, the new ViewModel may no longer have it.
+        startEditing(memoryId)
+    }
+
+    /** The user kept the unsaved changes: the request for memory [memoryId] is dropped. */
+    fun cancelEdit(memoryId: Int) {
+        if (pendingEditMemoryId == memoryId) pendingEditMemoryId = null
+    }
+
+    private fun startEditing(memoryId: Int) {
+        viewModelScope.launch {
+            val groupWithMedia = loadForEditing(memoryId)
+            if (pendingEditMemoryId != memoryId) return@launch // A newer request replaced this one.
+            pendingEditMemoryId = null
+            // Null if the memory was deleted meanwhile: then the form stays as it is.
+            groupWithMedia?.let {
+                fillForEditing(it)
+                markUnchanged()
+            }
+        }
     }
 
     /** Memory [id] as stored, for editing, or null if it is gone. */
@@ -652,7 +758,7 @@ class AddMemoryGroupFragmentViewModel(
                     size = metadata.size
                     date = metadata.dateTaken
                 } else {
-                    Log.w("AddMemoryVM", "Could not read the size and date of $uri")
+                    Log.w(TAG, "Could not read the size and date of $uri")
                 }
             }
 
@@ -660,7 +766,7 @@ class AddMemoryGroupFragmentViewModel(
             // of an item from another device may now resolve to an unrelated file.
             val signature = selected.mediaSignature.ifEmpty {
                 LocalMediaUtil.signatureOrNull(context, uri).orEmpty().also {
-                    if (it.isEmpty()) Log.w("AddMemoryVM", "Could not calculate signature for $uri (file missing or unreadable)")
+                    if (it.isEmpty()) Log.w(TAG, "Could not calculate signature for $uri (file missing or unreadable)")
                 }
             }
 
@@ -713,6 +819,7 @@ class AddMemoryGroupFragmentViewModel(
         }
 
     companion object {
+        private const val TAG = "AddMemoryVM"
         private const val FORM_STATE = "add_memory_form"
         private const val FORM = "form"
         private const val UNCHANGED_FORM = "unchanged_form"
@@ -721,6 +828,15 @@ class AddMemoryGroupFragmentViewModel(
         private const val ACTIVE_PICKING_INDEX = "active_picking_index"
         private const val PICKED_URIS = "picked_uris"
         private const val COLOR_EXPANDED = "color_expanded"
+
+        /** Reads the type, size and date taken of a picked item. Does content resolver calls: not on the main thread. */
+        private fun readPickedMedia(context: Context, uri: Uri, deviceId: String): AddMemoryGroupFragment.SelectedMedia {
+            val type = context.contentResolver.getType(uri)
+            val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
+            val metadata = LocalMediaUtil.queryMetadata(context, uri)
+            if (metadata == null) Log.w(TAG, "Could not read the size and date of picked media $uri")
+            return AddMemoryGroupFragment.SelectedMedia(uri, mediaType, deviceId, metadata?.size ?: 0L, metadata?.dateTaken ?: 0L)
+        }
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

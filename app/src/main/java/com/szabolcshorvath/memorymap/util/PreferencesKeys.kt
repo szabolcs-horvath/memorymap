@@ -14,6 +14,6 @@ object PreferencesKeys {
     val DEFAULT_DATE_FILTER = stringPreferencesKey("default_date_filter")
     val USER_EMAIL_KEY = stringPreferencesKey("user_email")
 
-    /** Whether the user said no to location access when last asked (see `MyLocationAction`). */
+    /** Whether the user said no to location access when last asked (see `MyLocationRequester`). */
     val LOCATION_PERMISSION_DENIED = booleanPreferencesKey("location_permission_denied")
 }

@@ -5,34 +5,24 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.ui.memory.MemoryActions
-import com.szabolcshorvath.memorymap.ui.memory.MemoryContent
+import com.szabolcshorvath.memorymap.ui.memory.MemoryNavigation
+import com.szabolcshorvath.memorymap.ui.memory.MemoryRoute
 import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
-import com.szabolcshorvath.memorymap.util.ConfirmDialog
-import com.szabolcshorvath.memorymap.util.RelinkAction
-import kotlinx.coroutines.launch
-import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
-/** One memory's page in the memory pager ([MemoryContent]). */
-class MemoryFragment : Fragment(), MemoryActions {
+/** Hosts one memory's page in the memory pager ([MemoryRoute]) until the app's shell is Compose. */
+class MemoryFragment : Fragment(), MemoryNavigation {
     private val commonViewModel: CommonViewModel by activityViewModels { CommonViewModel.Factory }
     private val viewModel: MemoryFragmentViewModel by viewModels { MemoryFragmentViewModel.Factory }
-    private var memoryId: Int = -1
     private var memoryFragmentListener: MemoryFragmentListener? = null
-
-    private val relinkAction = RelinkAction(this) { viewModel.relink() }
 
     interface MemoryFragmentListener {
         /** Opens the media viewer on memory [memoryId]'s media, at item [mediaItemId]. */
@@ -56,21 +46,13 @@ class MemoryFragment : Fragment(), MemoryActions {
         memoryFragmentListener = null
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        memoryId = requireArguments().getInt(MemoryFragmentViewModel.ARG_MEMORY_ID)
-        ConfirmDialog.listen(this, DELETE_REQUEST) { deleteMemory() }
-    }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View =
         ComposeView(inflater.context).apply {
-            // Compose saves the page's state (its scroll position) under this id.
+            // Compose saves the page's state (its scroll position, an open question) under this id.
             id = R.id.memory_content
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                val state by viewModel.uiState.collectAsStateWithLifecycle()
-                val showFragmentMarkers by commonViewModel.showFragmentsEnabled.collectAsStateWithLifecycle()
-                MemoryMapTheme { MemoryContent(state, showFragmentMarkers, this@MemoryFragment) }
+                MemoryMapTheme { MemoryRoute(viewModel, commonViewModel, this@MemoryFragment) }
             }
         }
 
@@ -78,63 +60,29 @@ class MemoryFragment : Fragment(), MemoryActions {
         memoryFragmentListener?.onBackFromMemory()
     }
 
-    override fun edit() {
+    override fun edit(memoryId: Int) {
         memoryFragmentListener?.onEditMemory(memoryId)
     }
 
-    override fun delete() {
-        ConfirmDialog.show(
-            childFragmentManager,
-            DELETE_REQUEST,
-            title = getString(R.string.delete_memory),
-            message = getString(R.string.delete_memory_message),
-            confirm = getString(R.string.delete),
-            cancel = getString(R.string.cancel)
-        )
+    override fun showOnMap(lat: Double, lng: Double, memoryId: Int) {
+        memoryFragmentListener?.onNavigateToMap(lat, lng, memoryId)
     }
 
-    override fun showOnMap() {
-        val group = viewModel.uiState.value.group ?: return
-        memoryFragmentListener?.onNavigateToMap(group.latitude, group.longitude, group.id)
-    }
-
-    override fun showOnTimeline() {
+    override fun showOnTimeline(memoryId: Int) {
         memoryFragmentListener?.onNavigateToTimeline(memoryId)
     }
 
-    override fun showFragmentOnMap(fragment: MemoryFragmentEntity) {
-        memoryFragmentListener?.onNavigateToMap(fragment.latitude, fragment.longitude, fragment.groupId)
+    override fun openViewer(item: MediaItem) {
+        memoryFragmentListener?.onMediaClick(item.groupId, item.id)
     }
 
-    /** Opens the media viewer at [item], or for an item that can't be re-linked, the sheet that fixes it. */
-    override fun openMedia(item: MediaItem) {
-        val viewLifecycleOwner = viewLifecycleOwnerLiveData.value ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            if (viewModel.isMissing(item)) {
-                MissingMediaSheet.show(childFragmentManager, item)
-            } else {
-                memoryFragmentListener?.onMediaClick(item.groupId, item.id)
-            }
-        }
-    }
+    override fun openMissing(item: MediaItem) = MissingMediaSheet.show(childFragmentManager, item)
 
-    override fun relinkMedia() = relinkAction.start()
-
-    override fun saveMediaOrder(items: List<MediaItem>) = viewModel.saveMediaOrder(items)
-
-    override fun saveFragmentsOrder(fragments: List<MemoryFragmentEntity>) = viewModel.saveFragmentsOrder(fragments)
-
-    private fun deleteMemory() {
-        lifecycleScope.launch {
-            val deleted = viewModel.delete() ?: return@launch
-            memoryFragmentListener?.onMemoryDeleted(deleted)
-            memoryFragmentListener?.onBackFromMemory()
-        }
+    override fun onDeleted(deleted: MemoryGroupWithMedia) {
+        memoryFragmentListener?.onMemoryDeleted(deleted)
     }
 
     companion object {
-        private const val DELETE_REQUEST = "delete_memory"
-
         @JvmStatic
         fun newInstance(memoryId: Int) =
             MemoryFragment().apply {
