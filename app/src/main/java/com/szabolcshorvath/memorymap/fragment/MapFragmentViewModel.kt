@@ -10,24 +10,32 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.perf.metrics.AddTrace
+import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MarkerClustering
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.ui.map.MAX_FIT_ZOOM
+import com.szabolcshorvath.memorymap.ui.map.MY_LOCATION_ZOOM
 import com.szabolcshorvath.memorymap.util.DateFilterOption
+import com.szabolcshorvath.memorymap.util.PerfUtil.trace
+import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.LocalDate
+import kotlin.time.Duration.Companion.milliseconds
 
 /** How many of the shown markers have one colour. */
 data class ColorCount(@param:ColorInt val color: Int, val count: Int)
@@ -70,19 +78,26 @@ data class MapUiState(
     val cameraRequest: MapCameraRequest? = null,
 )
 
+// One function per intent of the screen.
+@Suppress("TooManyFunctions")
 class MapFragmentViewModel(application: Application, private val memories: MemoryRepository) : AndroidViewModel(application) {
 
-    var isInitialZoomDone = false
+    /** The camera has made its first move (to the phone, to all the pins, or to a memory shown from elsewhere). */
+    private var isInitialZoomDone = false
 
     /** Location access is granted, but the phone couldn't say where it is (location off, no fix yet). */
-    var isLocationUnknown = false
+    private var isLocationUnknown = false
 
-    /** A "show on map" request waiting for the fragment's view (see `MapFragment.requestFocusOnMemory`). */
-    var pendingFocus: FocusRequest? = null
+    /** The next pins come from a filter the user picked, so the camera shows them all. */
+    private var shouldFitNextPins = false
 
-    var pendingSelectionId: Int? = null
-    var pendingSelectionLat: Double? = null
-    var pendingSelectionLng: Double? = null
+    private val _pendingFocus = MutableStateFlow<FocusRequest?>(null)
+
+    /** A "show on map" request, handled once the map is shown ([requestFocusOnMemory]). */
+    val pendingFocus: StateFlow<FocusRequest?> = _pendingFocus.asStateFlow()
+
+    /** The memory a "show on map" request selects once its pin is there. */
+    private var pendingSelection: FocusRequest? = null
 
     /** The memory and the pin the panel was opened for, so a data change can open it again on the same pin. */
     val selectedMemoryId: Int? get() = screen.value.selection?.selectedId
@@ -214,8 +229,191 @@ class MapFragmentViewModel(application: Application, private val memories: Memor
     /** Show memory [id], whose marker is at [lat], [lng]. */
     data class FocusRequest(val id: Int, val lat: Double, val lng: Double)
 
+    private val pins: List<Markerable.MarkerableCluster> get() = cachedMarkerClusters?.second?.value.orEmpty()
+
+    private val hasLocationAccess: Boolean get() = hasLocationPermission(getApplication())
+
+    fun pickQuickFilter(option: DateFilterOption) {
+        val (start, end) = option.dateRange(LocalDate.now())
+        if (start != filterStartDate.value || end != filterEndDate.value) shouldFitNextPins = true
+        updateDateFilter(start, end, option)
+    }
+
+    fun pickDates(start: LocalDate, end: LocalDate) {
+        shouldFitNextPins = true
+        updateDateFilter(start, end)
+    }
+
+    fun tapPin(pin: Markerable.MarkerableCluster) {
+        select(pin.position, pin.items)
+        moveCamera(MapCameraRequest.Show(pin.position, MAX_FIT_ZOOM))
+    }
+
+    fun tapCluster(position: LatLng) {
+        clearSelection()
+        moveCamera(MapCameraRequest.ZoomIn(position))
+    }
+
+    fun tapMap() {
+        clearSelection()
+        hideStats()
+    }
+
+    /** "My location" found the phone at [position]. */
+    fun showMyLocation(position: LatLng) {
+        setShowsMyLocation(hasLocationAccess)
+        isInitialZoomDone = true
+        moveCamera(MapCameraRequest.MyLocation(position))
+    }
+
+    /** The map is shown: the "you are here" dot follows location access, and the first look goes to the phone. */
+    fun onShown() {
+        setShowsMyLocation(hasLocationAccess)
+        if (!hasLocationAccess || isInitialZoomDone) return
+        AppServices.location.lastLocation(getApplication())
+            .addOnSuccessListener { location ->
+                if (isInitialZoomDone) return@addOnSuccessListener
+                if (location != null) {
+                    isInitialZoomDone = true
+                    moveCamera(MapCameraRequest.Show(LatLng(location.latitude, location.longitude), MY_LOCATION_ZOOM))
+                } else {
+                    showAllInstead()
+                }
+            }
+            .addOnFailureListener { if (!isInitialZoomDone) showAllInstead() }
+    }
+
+    /** Without the phone's location the first look shows all the pins, as without location access. */
+    private fun showAllInstead() {
+        isLocationUnknown = true
+        if (pendingSelection == null) fitAllOnFirstLook(pins)
+    }
+
+    /**
+     * The Map tab tapped while the map shows. It closes what is open over the map (the panel, the statistics) and
+     * leaves the camera where it is; with nothing open, it goes back to the map's home view: the area around the phone
+     * with location access, otherwise all the memories shown, as when the map opens.
+     */
+    fun onTabTappedAgain() {
+        if (closeOverlays()) return
+        if (!hasLocationAccess) return fitAll(pins)
+        AppServices.location.lastLocation(getApplication())
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    moveCamera(MapCameraRequest.Show(LatLng(location.latitude, location.longitude), MY_LOCATION_ZOOM))
+                } else {
+                    fitAll(pins)
+                }
+            }
+            .addOnFailureListener { fitAll(pins) }
+    }
+
+    /**
+     * Shows memory [id] on the map. The request waits in [pendingFocus] until the map is shown, so it can be made while
+     * the tab is hidden; a newer request replaces it.
+     */
+    fun requestFocusOnMemory(lat: Double, lng: Double, id: Int) {
+        isInitialZoomDone = true
+        _pendingFocus.value = FocusRequest(id, lat, lng)
+    }
+
+    /**
+     * Handles [request] now that the map is shown: waits for the memory and the filter to load, widens the filter to
+     * include the memory if needed, moves the camera there and selects it once its pin is there.
+     */
+    suspend fun handleFocus(request: FocusRequest) {
+        // Wait until the memory is there, then for the filter from DataStore.
+        val groups = withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
+            memories.allGroups.first { list -> list.any { it.id == request.id } }
+        }
+        val isFilterLoaded = groups != null && withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
+            isDateFilterLoaded.first { it }
+        } != null
+
+        if (_pendingFocus.value != request) return // A newer request replaced this one.
+        _pendingFocus.value = null
+        val memory = groups?.find { it.id == request.id }
+        if (memory == null || !isFilterLoaded) return
+
+        pendingSelection = request
+        // Goes there now: the pin may take a moment to come (a widened filter), and is then selected.
+        moveCamera(MapCameraRequest.Show(LatLng(request.lat, request.lng), MAX_FIT_ZOOM))
+        val widened = widenFilterFor(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
+        // The filter didn't change, so the pins already there are the ones to select from.
+        if (!widened && pins.isNotEmpty()) selectPendingMemory(pins)
+    }
+
+    /** Widens the filter to include all of a memory from [memoryStart] to [memoryEnd], unless it already overlaps. */
+    private fun widenFilterFor(memoryStart: LocalDate, memoryEnd: LocalDate): Boolean {
+        val currentStart = filterStartDate.value
+        val currentEnd = filterEndDate.value
+        if (overlapsDateFilter(memoryStart, memoryEnd, currentStart, currentEnd)) return false
+        val newStart = if (currentStart != null && memoryStart.isBefore(currentStart)) memoryStart else currentStart
+        val newEnd = if (currentEnd != null && memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
+        val widened = newStart != currentStart || newEnd != currentEnd
+        if (widened) updateDateFilter(newStart, newEnd)
+        return widened
+    }
+
+    /** Keeps the panel and the camera in step with new [pins] (a filter or data change). */
+    fun onPinsChanged(pins: List<Markerable.MarkerableCluster>) = trace("map_view_model_on_pins_changed") {
+        val fit = shouldFitNextPins
+        shouldFitNextPins = false
+        val pending = pendingSelection
+        if (pending != null && pins.any { pin -> pin.items.any { it.groupId == pending.id } }) {
+            selectPendingMemory(pins)
+        } else {
+            reopenSelection(pins)
+        }
+        // A "show on map" request moves the camera itself.
+        if (pending != null) return@trace
+        if (fit) fitAll(pins) else fitAllOnFirstLook(pins)
+    }
+
+    /** The first time the map has pins and won't go to where the phone is, it shows them all. */
+    private fun fitAllOnFirstLook(pins: List<Markerable.MarkerableCluster>) {
+        val goesToPhone = hasLocationAccess && !isLocationUnknown
+        if (!isInitialZoomDone && !goesToPhone) fitAll(pins)
+    }
+
+    private fun fitAll(pins: List<Markerable.MarkerableCluster>) {
+        if (pins.isEmpty()) return
+        isInitialZoomDone = true
+        moveCamera(MapCameraRequest.Fit(pins.map { it.position }))
+    }
+
+    /** Opens the panel again on the pin it was open for, now that the pins changed, or closes it if that pin is gone. */
+    private fun reopenSelection(pins: List<Markerable.MarkerableCluster>) {
+        val selectedId = selectedMemoryId ?: return
+        val pin = closestPinWith(selectedId, selectedMarkerPosition, pins)
+        if (pin != null) select(pin.position, pin.items, selectedId) else clearSelection()
+    }
+
+    /** Selects the memory a "show on map" request asked for, on its pin closest to where it was asked for. */
+    private fun selectPendingMemory(pins: List<Markerable.MarkerableCluster>) {
+        val request = pendingSelection ?: return
+        pendingSelection = null
+        val near = LatLng(request.lat, request.lng)
+        val pin = closestPinWith(request.id, near, pins) ?: return
+        select(pin.position, pin.items, request.id)
+        moveCamera(MapCameraRequest.Show(near, MAX_FIT_ZOOM))
+    }
+
+    /** The pin with memory [id] (a memory and its fragments can have several) closest to [near]. */
+    private fun closestPinWith(id: Int, near: LatLng?, pins: List<Markerable.MarkerableCluster>): Markerable.MarkerableCluster? {
+        val candidates = pins.filter { pin -> pin.items.any { it.groupId == id } }
+        return if (near == null) candidates.firstOrNull() else candidates.minByOrNull { distanceSquared(it.position, near) }
+    }
+
+    private fun distanceSquared(a: LatLng, b: LatLng): Double {
+        val dLat = a.latitude - b.latitude
+        val dLng = a.longitude - b.longitude
+        return dLat * dLat + dLng * dLng
+    }
+
     companion object {
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
+        private const val DATA_LOAD_TIMEOUT_MS = 3000L
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

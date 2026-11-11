@@ -4,12 +4,14 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContract
+import com.google.android.gms.common.api.ApiException
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.kotlin.awaitFetchPlace
 import com.google.android.libraries.places.widget.PlaceAutocomplete
 import com.google.android.libraries.places.widget.PlaceAutocompleteActivity
+import java.io.IOException
 
 /** A place the user searched for, as the location picker stores it. */
 data class FoundPlace(val name: String?, val address: String?, val latitude: Double, val longitude: Double)
@@ -31,7 +33,7 @@ interface PlaceSearch {
      */
     val screen: ActivityResultContract<Unit, ChosenPlace?>
 
-    /** The name, address and location of the place [placeId]; null if it has no location. Throws when it fails. */
+    /** The name, address and location of the place [placeId]; null if it has no location. Throws an [IOException] when it fails. */
     suspend fun details(context: Context, placeId: String, session: AutocompleteSessionToken?): FoundPlace?
 }
 
@@ -67,7 +69,11 @@ object GooglePlaceSearch : PlaceSearch {
     }
 
     override suspend fun details(context: Context, placeId: String, session: AutocompleteSessionToken?): FoundPlace? {
-        val place = Places.createClient(context).awaitFetchPlace(placeId, fields) { sessionToken = session }.place
+        val place = try {
+            Places.createClient(context).awaitFetchPlace(placeId, fields) { sessionToken = session }.place
+        } catch (e: ApiException) {
+            throw IOException("Place details failed for $placeId", e)
+        }
         val location = place.location ?: return null
         return FoundPlace(place.displayName, place.formattedAddress, location.latitude, location.longitude)
     }

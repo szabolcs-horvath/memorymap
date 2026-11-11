@@ -23,14 +23,11 @@
     <ID>ReturnCount:MapFragment.kt$MapFragment$private fun setGoogleMapPadding()</ID>
     <ID>SpreadOperator:PerfUtil.kt$PerfUtil$(dao, *(args ?: emptyArray()))</ID>
     <ID>SpreadOperator:PerfUtil.kt$PerfUtil$(dao, *argsWithoutContinuation, tracingContinuation)</ID>
-    <ID>TooGenericExceptionCaught:AddMemoryGroupFragment.kt$AddMemoryGroupFragment$e: Exception</ID>
     <ID>TooGenericExceptionCaught:AddMemoryGroupFragmentViewModel.kt$AddMemoryGroupFragmentViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:BackupManager.kt$BackupManager$e: Exception</ID>
     <ID>TooGenericExceptionCaught:LogManager.kt$LogManager$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MainActivity.kt$MainActivity$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PerfUtil.kt$PerfUtil$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:PickLocationFragment.kt$PickLocationFragment$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:SettingsFragment.kt$SettingsFragment$e: Exception</ID>
     <ID>TooManyFunctions:AddMemoryGroupFragment.kt$AddMemoryGroupFragment : Fragment</ID>
     <ID>TooManyFunctions:SettingsFragment.kt$SettingsFragment : Fragment</ID>
     <ID>UseRequire:DateFilterOption.kt$DateFilterOption.Companion$throw IllegalArgumentException("Multiple DefaultDateFilterOptions found for label: $label")</ID>

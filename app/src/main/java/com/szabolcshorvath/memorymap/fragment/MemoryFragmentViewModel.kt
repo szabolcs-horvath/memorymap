@@ -58,7 +58,8 @@ class MemoryFragmentViewModel(
     private val application: Application,
     private val memories: MemoryRepository,
 ) : ViewModel() {
-    private val memoryId = savedStateHandle.get<Int>(ARG_MEMORY_ID) ?: -1
+    /** The memory this page shows, from its arguments. */
+    val memoryId = savedStateHandle.get<Int>(ARG_MEMORY_ID) ?: -1
 
     private data class Relink(val running: Boolean = false, val status: String? = null)
 

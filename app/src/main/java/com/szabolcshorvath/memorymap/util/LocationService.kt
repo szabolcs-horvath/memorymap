@@ -9,7 +9,7 @@ import com.google.android.gms.tasks.Task
 
 /**
  * Where the phone is. Reached through `AppServices.location`, so UI tests can say where the phone is. Call it only
- * with location access: it never asks for it (see [MyLocationAction]).
+ * with location access: it never asks for it (see `MyLocationRequester`).
  */
 interface LocationService {
     /** A fresh position, for a "my location" tap. Null when the phone's location is off or there is no fix yet. */
