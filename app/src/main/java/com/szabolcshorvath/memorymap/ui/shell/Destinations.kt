@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.ui.shell
 import android.os.Bundle
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.core.os.bundleOf
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.add.FormPlace
 
@@ -48,20 +47,35 @@ private const val NAME = "name"
 private const val ADDRESS = "address"
 
 /** [this] for the saved state; read back by [toDetail]. */
-internal fun Detail.toBundle(): Bundle = when (this) {
-    Detail.None -> bundleOf(KIND to "none")
-    is Detail.Memory -> bundleOf(KIND to "memory", MEMORY_ID to memoryId)
-    is Detail.MediaViewer -> bundleOf(KIND to "media_viewer", MEMORY_ID to memoryId, ITEM_ID to itemId)
-    is Detail.PickLocation -> bundleOf(KIND to "pick_location").apply {
-        place?.let {
-            putDouble(LAT, it.lat)
-            putDouble(LNG, it.lng)
-            putString(NAME, it.name)
-            putString(ADDRESS, it.address)
+internal fun Detail.toBundle(): Bundle = Bundle().apply {
+    when (val detail = this@toBundle) {
+        Detail.None -> putString(KIND, "none")
+        is Detail.Memory -> {
+            putString(KIND, "memory")
+            putInt(MEMORY_ID, detail.memoryId)
+        }
+
+        is Detail.MediaViewer -> {
+            putString(KIND, "media_viewer")
+            putInt(MEMORY_ID, detail.memoryId)
+            putInt(ITEM_ID, detail.itemId)
+        }
+
+        is Detail.PickLocation -> {
+            putString(KIND, "pick_location")
+            detail.place?.let {
+                putDouble(LAT, it.lat)
+                putDouble(LNG, it.lng)
+                putString(NAME, it.name)
+                putString(ADDRESS, it.address)
+            }
+        }
+
+        is Detail.MissingMedia -> {
+            putString(KIND, "missing_media")
+            putInt(ITEM_ID, detail.itemId)
         }
     }
-
-    is Detail.MissingMedia -> bundleOf(KIND to "missing_media", ITEM_ID to itemId)
 }
 
 /** The screen [this] saved by [toBundle], or null for one this version doesn't know. */

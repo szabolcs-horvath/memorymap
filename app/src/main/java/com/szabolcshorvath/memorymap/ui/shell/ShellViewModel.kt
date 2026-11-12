@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.core.os.BundleCompat
-import androidx.core.os.bundleOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.channels.Channel
@@ -53,7 +52,10 @@ class ShellViewModel(savedState: SavedStateHandle) : ViewModel() {
 
     init {
         savedState.setSavedStateProvider(STATE) {
-            bundleOf(TAB to tab.name, DETAILS to ArrayList(details.map { it.toBundle() }))
+            Bundle().apply {
+                putString(TAB, tab.name)
+                putParcelableArrayList(DETAILS, ArrayList(details.map { it.toBundle() }))
+            }
         }
     }
 
