@@ -1,6 +1,7 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.add
 
 import androidx.annotation.StringRes
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import java.time.ZonedDateTime
 
 /** What the Add form shows: a new memory or one being edited ([editing]). */

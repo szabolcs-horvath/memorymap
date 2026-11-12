@@ -1,12 +1,12 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.map
 
-import com.szabolcshorvath.memorymap.fragment.MapFragmentViewModel.Companion.overlapsDateFilter
+import com.szabolcshorvath.memorymap.ui.map.MapViewModel.Companion.overlapsDateFilter
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 
-class MapFragmentViewModelTest {
+class MapViewModelTest {
 
     private val yearStart = LocalDate.of(2026, 1, 1)
     private val yearEnd = LocalDate.of(2026, 12, 31)

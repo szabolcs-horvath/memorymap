@@ -23,7 +23,7 @@
     <ID>ReturnCount:MapFragment.kt$MapFragment$private fun setGoogleMapPadding()</ID>
     <ID>SpreadOperator:PerfUtil.kt$PerfUtil$(dao, *(args ?: emptyArray()))</ID>
     <ID>SpreadOperator:PerfUtil.kt$PerfUtil$(dao, *argsWithoutContinuation, tracingContinuation)</ID>
-    <ID>TooGenericExceptionCaught:AddMemoryGroupFragmentViewModel.kt$AddMemoryGroupFragmentViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AddMemoryViewModel.kt$AddMemoryViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:BackupManager.kt$BackupManager$e: Exception</ID>
     <ID>TooGenericExceptionCaught:LogManager.kt$LogManager$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MainActivity.kt$MainActivity$e: Exception</ID>

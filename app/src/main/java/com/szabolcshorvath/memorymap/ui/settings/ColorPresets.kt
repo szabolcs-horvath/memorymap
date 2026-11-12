@@ -52,16 +52,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
-import com.szabolcshorvath.memorymap.fragment.ColorPresetsUiState
-import com.szabolcshorvath.memorymap.fragment.Hsv
 import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_HEIGHT
 import com.szabolcshorvath.memorymap.ui.color.ColorSliders
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.color.SWATCH_GAP
 import com.szabolcshorvath.memorymap.ui.color.SWATCH_SIZE
 import com.szabolcshorvath.memorymap.ui.color.Swatch
@@ -101,7 +98,9 @@ internal fun LazyListScope.colorPresetsSection(state: ColorPresetsUiState, actio
     item(key = "presets") {
         // One card, which holds more than a list item's slots: the editor opens inside it, under the swatches it edits.
         Surface(
-            modifier = Modifier.segment(0).fillMaxWidth(),
+            modifier = Modifier
+                .segment(0)
+                .fillMaxWidth(),
             shape = ListItemDefaults.segmentedShapes(0, 1).shape,
             color = MaterialTheme.colorScheme.surfaceContainer,
         ) {

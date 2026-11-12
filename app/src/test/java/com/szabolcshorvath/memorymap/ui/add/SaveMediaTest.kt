@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.add
 
 import android.content.Intent
 import android.net.Uri
@@ -38,7 +38,7 @@ import kotlin.time.Duration.Companion.milliseconds
 /**
  * What saving the Add form does with its photos: the same photo is stored once, a memory's photos are numbered without
  * gaps, photos kept through an edit keep what was stored about them, and an edit gives up the grants of the photos it
- * removed, unless another memory still shows them. (What the form releases before a save: `AddMemoryGroupFragmentViewModelTest`.)
+ * removed, unless another memory still shows them. (What the form releases before a save: `AddMemoryViewModelTest`.)
  */
 @ExtendWith(RobolectricExtension::class)
 class SaveMediaTest {
@@ -46,7 +46,7 @@ class SaveMediaTest {
     private lateinit var db: MemoryMapDatabase
     private lateinit var dao: MemoryGroupDao
     private val context get() = RuntimeEnvironment.getApplication()
-    private val form by lazy { AddMemoryGroupFragmentViewModel(context, SavedStateHandle(), MemoryRepository(context, db)).also { it.releaseGrants = {} } }
+    private val form by lazy { AddMemoryViewModel(context, SavedStateHandle(), MemoryRepository(context, db)).also { it.releaseGrants = {} } }
 
     @BeforeEach
     fun setUp() {
@@ -170,7 +170,7 @@ class SaveMediaTest {
         shadowOf(Looper.getMainLooper()).idle()
         return runBlocking {
             val result = withTimeout(SAVE_TIMEOUT_MS.milliseconds) { form.saveResult.first() }
-            check(result is AddMemoryGroupFragmentViewModel.SaveResult.Success) { "The save failed: $result" }
+            check(result is AddMemoryViewModel.SaveResult.Success) { "The save failed: $result" }
             dao.getGroupWithMedia(result.groupId)!!
         }
     }

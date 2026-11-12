@@ -20,12 +20,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragmentViewModel
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragmentViewModel.SaveResult
-import com.szabolcshorvath.memorymap.fragment.FormPart
-import com.szabolcshorvath.memorymap.fragment.FormPlace
-import com.szabolcshorvath.memorymap.fragment.Hsv
-import com.szabolcshorvath.memorymap.fragment.SelectedMedia
+import com.szabolcshorvath.memorymap.ui.add.AddMemoryViewModel.SaveResult
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
 import java.time.LocalDate
 import java.time.LocalTime
@@ -37,7 +33,7 @@ import java.time.LocalTime
  */
 @Composable
 fun AddMemoryRoute(
-    viewModel: AddMemoryGroupFragmentViewModel,
+    viewModel: AddMemoryViewModel,
     common: CommonViewModel,
     onPickLocation: (FormPlace?) -> Unit,
     onSaved: (memoryId: Int) -> Unit,
@@ -96,7 +92,7 @@ fun AddMemoryRoute(
  * death, and a newer request replaces it.
  */
 @Composable
-private fun EditRequestQuestion(viewModel: AddMemoryGroupFragmentViewModel) {
+private fun EditRequestQuestion(viewModel: AddMemoryViewModel) {
     val pendingEdit by viewModel.pendingEdit.collectAsState()
     var askingFor by rememberSaveable { mutableStateOf<Int?>(null) }
     LaunchedEffect(pendingEdit) {
@@ -122,7 +118,7 @@ private fun EditRequestQuestion(viewModel: AddMemoryGroupFragmentViewModel) {
 
 /** The form's actions: most go straight to [viewModel]; clearing asks first ([askToClear]). */
 private fun formActions(
-    viewModel: AddMemoryGroupFragmentViewModel,
+    viewModel: AddMemoryViewModel,
     askToClear: () -> Unit,
     openLocationPicker: (FormPlace?) -> Unit,
     openMediaPicker: () -> Unit,

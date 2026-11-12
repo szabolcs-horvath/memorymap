@@ -68,15 +68,15 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.fragment.MediaViewerViewModel
-import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel
-import com.szabolcshorvath.memorymap.fragment.PickLocationFragmentViewModel
 import com.szabolcshorvath.memorymap.ui.add.AddMemoryRoute
 import com.szabolcshorvath.memorymap.ui.location.PickLocationRoute
+import com.szabolcshorvath.memorymap.ui.location.PickLocationViewModel
 import com.szabolcshorvath.memorymap.ui.map.MapRoute
 import com.szabolcshorvath.memorymap.ui.media.MediaViewerContent
+import com.szabolcshorvath.memorymap.ui.media.MediaViewerViewModel
 import com.szabolcshorvath.memorymap.ui.memory.MemoryPagerRoute
 import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetRoute
+import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetViewModel
 import com.szabolcshorvath.memorymap.ui.settings.SettingsRoute
 import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
 import com.szabolcshorvath.memorymap.ui.timeline.TimelineContent
@@ -290,7 +290,7 @@ private fun MediaViewer(detail: Detail.MediaViewer, shell: ShellViewModel) {
 
 @Composable
 private fun PickLocation(detail: Detail.PickLocation, actions: ShellActions, onClose: () -> Unit) {
-    val viewModel: PickLocationFragmentViewModel = viewModel()
+    val viewModel: PickLocationViewModel = viewModel()
     // Launched before the picker's own start, which picks where the phone is if nothing is picked yet.
     LaunchedEffect(viewModel) { viewModel.open(detail.place) }
     PickLocationRoute(

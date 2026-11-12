@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.timeline
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -32,7 +32,7 @@ data class TimelineUiState(
 /** The memories that start on [date], in the timeline's order. */
 data class TimelineDay(val date: LocalDate, val memories: List<MemoryGroup>)
 
-class TimelineFragmentViewModel(memories: MemoryRepository) : ViewModel() {
+class TimelineViewModel(memories: MemoryRepository) : ViewModel() {
 
     private val query = MutableStateFlow("")
     private val pendingScrollMemoryId = MutableStateFlow<Int?>(null)
@@ -70,7 +70,7 @@ class TimelineFragmentViewModel(memories: MemoryRepository) : ViewModel() {
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer { TimelineFragmentViewModel(this[APPLICATION_KEY]!!.appContainer.memories) }
+            initializer { TimelineViewModel(this[APPLICATION_KEY]!!.appContainer.memories) }
         }
 
         /** The memories whose title, description, place name or address contain [query], ignoring case. */

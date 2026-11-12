@@ -9,8 +9,6 @@ import coil3.SingletonImageLoader
 import coil3.memory.MemoryCache
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.libraries.places.api.Places
-import com.google.android.material.color.ColorContrast
-import com.google.android.material.color.ColorContrastOptions
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,14 +29,8 @@ class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
-        applyContrastSetting()
         initializeMaps()
         initializePlaces()
-    }
-
-    /** Uses the medium or high contrast colours when the phone's contrast setting asks for them. */
-    private fun applyContrastSetting() {
-        ColorContrast.applyToActivitiesIfAvailable(this, contrastOptions)
     }
 
     private fun initializeMaps() {
@@ -84,11 +76,5 @@ class MemoryMapApplication : Application(), SingletonImageLoader.Factory {
     companion object {
         const val TAG = "MemoryMapApplication"
         private const val IMAGE_LOADER_MEMORY_CACHE_MAX_SIZE_PERCENT = 0.25 // 0.25 = 25%
-
-        /** The medium and high contrast colours, for when the phone's contrast setting asks for them. */
-        val contrastOptions: ColorContrastOptions = ColorContrastOptions.Builder()
-            .setMediumContrastThemeOverlay(R.style.ThemeOverlay_AppTheme_MediumContrast)
-            .setHighContrastThemeOverlay(R.style.ThemeOverlay_AppTheme_HighContrast)
-            .build()
     }
 }

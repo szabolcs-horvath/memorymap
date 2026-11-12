@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
@@ -97,8 +96,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.fragment.TimelineDay
-import com.szabolcshorvath.memorymap.fragment.TimelineUiState
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -265,7 +262,11 @@ private fun Search(
     )
     ExpandedFullScreenSearchBar(state = searchBarState, inputField = searchField) {
         // The expanded search is a dialog of its own, so the root's setting doesn't reach it.
-        Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .semantics { testTagsAsResourceId = true }
+        ) {
             SearchResults(state.days, state.query) { memoryId ->
                 scope.launch {
                     searchBarState.animateToCollapsed()
@@ -290,7 +291,9 @@ private fun SearchField(query: TextFieldState, searchBarState: SearchBarState) {
         searchBarState = searchBarState,
         onSearch = { scope.launch { searchBarState.animateToCollapsed() } },
         // Also shown in the expanded search's dialog, outside the root's setting.
-        modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag(TAG_SEARCH),
+        modifier = Modifier
+            .semantics { testTagsAsResourceId = true }
+            .testTag(TAG_SEARCH),
         placeholder = { Text(stringResource(R.string.timeline_search)) },
         leadingIcon = {
             if (expanded) {

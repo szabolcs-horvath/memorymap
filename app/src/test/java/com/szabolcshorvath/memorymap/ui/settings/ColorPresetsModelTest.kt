@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.settings
 
 import android.os.Handler
 import android.os.Looper
@@ -7,6 +7,7 @@ import androidx.work.testing.WorkManagerTestInitHelper
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.data.PresetRepository
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.android.asCoroutineDispatcher

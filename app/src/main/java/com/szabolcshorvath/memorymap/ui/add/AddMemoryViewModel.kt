@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.add
 
 import android.app.Application
 import android.content.Context
@@ -26,6 +26,7 @@ import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.MemoryRepository
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
 import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
@@ -48,7 +49,7 @@ import java.time.ZonedDateTime
 
 // The form's intents: one small function per thing the user can change.
 @Suppress("TooManyFunctions")
-class AddMemoryGroupFragmentViewModel(
+class AddMemoryViewModel(
     application: Application,
     savedState: SavedStateHandle,
     private val memories: MemoryRepository
@@ -109,7 +110,7 @@ class AddMemoryGroupFragmentViewModel(
     var currentDeviceId: String? = null
     var colorExpanded = false
 
-    /** Whether the Add screen is shown (not hidden behind another tab); kept up to date by the fragment. */
+    /** Whether the Add screen is shown (not hidden behind another tab); kept up to date by the route. */
     var isScreenShown = true
 
     /** Bumped when the form is cleared or filled for editing, so the screen shows the new text in its fields. */
@@ -412,7 +413,7 @@ class AddMemoryGroupFragmentViewModel(
                     snapshotPlaceName, snapshotAddress, effectiveStart, effectiveEnd,
                     snapshotIsAllDay, snapshotHue, snapshotSat, snapshotBri
                 )
-                val saved = trace("add_memory_group_view_model_save_memory_group") {
+                val saved = trace("add_memory_view_model_save_memory_group") {
                     // File reads (sizes, signatures, possibly a cloud download) happen before the save's transaction,
                     // so it only writes and doesn't block other writers, such as a backup snapshot, meanwhile.
                     val preparedMedia = prepareMediaItems(getApplication(), snapshotMedia)
@@ -823,7 +824,7 @@ class AddMemoryGroupFragmentViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY]!!
-                AddMemoryGroupFragmentViewModel(app, createSavedStateHandle(), app.appContainer.memories)
+                AddMemoryViewModel(app, createSavedStateHandle(), app.appContainer.memories)
             }
         }
     }

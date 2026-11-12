@@ -13,8 +13,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.gms.maps.model.LatLng
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.Markerable
-import com.szabolcshorvath.memorymap.fragment.MapCameraRequest
-import com.szabolcshorvath.memorymap.fragment.MapFragmentViewModel
 import com.szabolcshorvath.memorymap.ui.common.MyLocationQuestions
 import com.szabolcshorvath.memorymap.ui.common.rememberMyLocationRequester
 import com.szabolcshorvath.memorymap.util.DateFilterOption
@@ -27,7 +25,7 @@ import java.time.LocalDate
  * with, and what it does once shown (go to the phone, show a memory asked for from another screen).
  */
 @Composable
-fun MapRoute(viewModel: MapFragmentViewModel, common: CommonViewModel, onOpenMemory: (Int) -> Unit) {
+fun MapRoute(viewModel: MapViewModel, common: CommonViewModel, onOpenMemory: (Int) -> Unit) {
     val state by viewModel.uiState(common.showFragmentsEnabled, common.markerClusteringEnabled).collectAsStateWithLifecycle()
     // The only place the map asks for location access: when the user taps the "my location" button.
     val myLocation = rememberMyLocationRequester(viewModel::showMyLocation)

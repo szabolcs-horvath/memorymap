@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.map
 
 import android.app.Application
 import androidx.annotation.ColorInt
@@ -16,8 +16,6 @@ import com.szabolcshorvath.memorymap.data.MarkerClustering
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.dataStore
-import com.szabolcshorvath.memorymap.ui.map.MAX_FIT_ZOOM
-import com.szabolcshorvath.memorymap.ui.map.MY_LOCATION_ZOOM
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
@@ -43,7 +41,7 @@ data class ColorCount(@param:ColorInt val color: Int, val count: Int)
 /** The pin whose memories the panel lists: where it is, its memories (one row each), and the one shown first. */
 data class MarkerSelection(val position: LatLng, val items: List<Markerable>, val selectedId: Int?)
 
-/** Where the map's camera should go. The screen moves it once, then clears it ([MapFragmentViewModel.onCameraMoved]). */
+/** Where the map's camera should go. The screen moves it once, then clears it ([MapViewModel.onCameraMoved]). */
 sealed interface MapCameraRequest {
     /** [position] at [zoom], gliding there if [animate]. */
     data class Show(val position: LatLng, val zoom: Float, val animate: Boolean = true) : MapCameraRequest
@@ -80,7 +78,7 @@ data class MapUiState(
 
 // One function per intent of the screen.
 @Suppress("TooManyFunctions")
-class MapFragmentViewModel(application: Application, private val memories: MemoryRepository) : AndroidViewModel(application) {
+class MapViewModel(application: Application, private val memories: MemoryRepository) : AndroidViewModel(application) {
 
     /** The camera has made its first move (to the phone, to all the pins, or to a memory shown from elsewhere). */
     private var isInitialZoomDone = false
@@ -196,7 +194,7 @@ class MapFragmentViewModel(application: Application, private val memories: Memor
         }
     }
 
-    @AddTrace(name = "map_fragment_view_model_cluster_markerables", enabled = true)
+    @AddTrace(name = "map_view_model_cluster_markerables", enabled = true)
     private fun clusterMarkerables(items: List<Markerable>): List<Markerable.MarkerableCluster> = MarkerClustering.cluster(items)
 
     fun toggleStats() = screen.update { it.copy(isStatsVisible = !it.isStatsVisible) }
@@ -418,7 +416,7 @@ class MapFragmentViewModel(application: Application, private val memories: Memor
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY]!!
-                MapFragmentViewModel(app, app.appContainer.memories)
+                MapViewModel(app, app.appContainer.memories)
             }
         }
 

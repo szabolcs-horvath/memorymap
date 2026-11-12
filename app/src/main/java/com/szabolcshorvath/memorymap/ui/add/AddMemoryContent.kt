@@ -68,11 +68,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
-import com.szabolcshorvath.memorymap.fragment.AddFormUiState
-import com.szabolcshorvath.memorymap.fragment.FormPart
-import com.szabolcshorvath.memorymap.fragment.FormPlace
-import com.szabolcshorvath.memorymap.fragment.Hsv
-import com.szabolcshorvath.memorymap.fragment.SelectedMedia
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.util.Coordinates
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -101,7 +97,7 @@ private const val TITLE_INDEX = 0
 private const val LOCATION_INDEX = 2
 private const val FIRST_FRAGMENT_INDEX = 7
 
-/** What the user can do on the Add form. What needs an activity, or asks first, is the fragment's to do. */
+/** What the user can do on the Add form. What needs an activity, or asks first, is the route's to do. */
 interface AddMemoryActions {
     fun changeTitle(text: String)
     fun changeDescription(text: String)

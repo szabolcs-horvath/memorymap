@@ -12,7 +12,7 @@ import com.google.firebase.perf.metrics.Trace
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
-import com.szabolcshorvath.memorymap.fragment.FormPlace
+import com.szabolcshorvath.memorymap.ui.add.FormPlace
 import com.szabolcshorvath.memorymap.ui.memory.MemoryNavigation
 import com.szabolcshorvath.memorymap.util.PerfUtil
 import kotlinx.coroutines.CoroutineScope

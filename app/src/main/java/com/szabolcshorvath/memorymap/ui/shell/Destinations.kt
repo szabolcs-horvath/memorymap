@@ -5,7 +5,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.os.bundleOf
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.fragment.FormPlace
+import com.szabolcshorvath.memorymap.ui.add.FormPlace
 
 /**
  * A tab of the app. [traceName] names its Firebase Performance trace (`main_activity_navigate_to_tab_<traceName>`),

@@ -150,7 +150,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (every screen is moved; only the optional Compose shell, step 6, is left) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (all Compose; left: the shell's polish, and Material3 back on the Compose BOM) |
 
 **BUILD — Build, CI, tooling** · 4 of 4 fixed
 
@@ -897,6 +897,11 @@ When a status changes, update the item's **Status** line, the marker in its head
     - Left for phase 2: the memory pager's `ViewPager2`, the media viewer's hiding of the tab bar, and the missing-photo sheet as a `BottomSheetDialogFragment` (as a Compose sheet it needs a ViewModel of its own per open sheet, which Navigation 3's entries give).
     - Phase 2 (2026-11-11): the Compose shell in `ui/shell/`. `MainActivity` shows `AppShell`; every fragment, layout and the tab menu are gone, and View binding is off. The tabs are in `NavigationSuiteScaffold` (a short navigation bar; a collapsed wide rail in landscape) and kept composed by `TabHost` (lifecycle capped at `STARTED` and Back handlers off while hidden, fading through on a switch); the screens over them (memory pager as a `HorizontalPager`, media viewer, location picker, missing-photo sheet as a modal bottom sheet) are a Navigation 3 back stack in a `NavDisplay` that slides and follows predictive Back, each entry with its own ViewModels and saved state. The undo after a delete and the start-up offer of media access are Compose snackbars. Checked by hand on the test emulator: switching tabs keeps the map, the picker, saving a memory, Show on map, Back from a memory and from a tab, and the rail in landscape. The whole UI suite passes (131 tests; the last four after a rerun of their classes). The screen objects changed with it: the tab bar and the snackbar's action are found by the label element Compose puts inside them, and the memory pager has the test tag `memoryViewPager`, the id the View pager had.
     - Phase 3 (2026-11-12): edge to edge, which fixes [UX-13](#ux-13). Each screen pads itself for the system bars, and the shell pads only for the keyboard. The rail in landscape is Material's narrow one (80 dp instead of 96 dp), which needs the scaffold built from its parts. A see-through tab bar was considered and left out: the bar sits beside the content, not over it, and Material 3's bars are opaque. The rest of the polish is still open.
+  - What the View era left behind, cleared (2026-11-12):
+    - `MainActivity` is a `ComponentActivity`; AppCompat, Material Components, ConstraintLayout and `fragment-ktx` are no longer the app's dependencies (Google's Places SDK still brings Material Components and AppCompat for its own search screen).
+    - The ViewModels moved from the `fragment` package to their screens' packages, without "Fragment" in their names (`MapViewModel`, `AddMemoryViewModel`, `MemoryViewModel`, …), and the memory fragment entity no longer needs the `MemoryFragmentEntity` alias. Two Firebase traces changed name with them: `map_view_model_cluster_markerables` and `add_memory_view_model_save_memory_group`.
+    - The colours are Compose's own (`ui/theme/Color.kt`, the same Material Theme Builder palette), picked by `MemoryMapTheme` for dark mode and the phone's contrast setting at Material Components' levels (a third and two thirds), and a change of the setting now shows at once instead of recreating the activity. The shapes are Compose's defaults, which are the sizes the XML theme had. The XML theme only colours the window until Compose draws. Checked by screenshot in light, dark, and medium and high contrast.
+  - Left: the rest of the shell's polish, and moving Material3 back to the Compose BOM's version once the BOM has 1.5.
 
 [↑ Back to index](#index)
 

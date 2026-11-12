@@ -55,9 +55,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.Markerable
-import com.szabolcshorvath.memorymap.fragment.ColorCount
-import com.szabolcshorvath.memorymap.fragment.MapUiState
-import com.szabolcshorvath.memorymap.fragment.MarkerSelection
 import com.szabolcshorvath.memorymap.ui.settings.DateFilterMenu
 import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateFilterOption

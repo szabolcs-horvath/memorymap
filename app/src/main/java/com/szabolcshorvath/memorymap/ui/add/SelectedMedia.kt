@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.add
 
 import android.net.Uri
 import com.szabolcshorvath.memorymap.data.MediaType

@@ -48,8 +48,6 @@ import coil3.video.VideoFrameDecoder
 import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.fragment.MediaTile
-import com.szabolcshorvath.memorymap.fragment.MemoryUiState
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 
 // The UI tests read a missing tile's details by this name (screens/MemoryScreen), the name the View version's id had.

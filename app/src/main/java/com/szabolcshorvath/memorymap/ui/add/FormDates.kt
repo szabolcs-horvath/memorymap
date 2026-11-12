@@ -49,8 +49,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.fragment.AddFormUiState
-import com.szabolcshorvath.memorymap.fragment.FormPart
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.DATE_RANGE
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.END_DATE
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.END_TIME

@@ -65,9 +65,6 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.fragment.CameraRequest
-import com.szabolcshorvath.memorymap.fragment.PickLocationUiState
-import com.szabolcshorvath.memorymap.fragment.PickedSpot
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import com.szabolcshorvath.memorymap.ui.map.MAX_CONTROLS_WIDTH
 import com.szabolcshorvath.memorymap.ui.map.MapToolbar

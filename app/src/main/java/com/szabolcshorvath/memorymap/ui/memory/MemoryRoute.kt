@@ -13,15 +13,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.fragment.MemoryFragmentViewModel
+import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
 import com.szabolcshorvath.memorymap.ui.common.rememberRelinkRequester
 import kotlinx.coroutines.launch
-import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
 /** A memory's page with its ViewModel: the page, the question before a delete, and the "Re-link" flow. */
 @Composable
-fun MemoryRoute(viewModel: MemoryFragmentViewModel, common: CommonViewModel, navigation: MemoryNavigation) {
+fun MemoryRoute(viewModel: MemoryViewModel, common: CommonViewModel, navigation: MemoryNavigation) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val showFragmentMarkers by common.showFragmentsEnabled.collectAsStateWithLifecycle()
     val relink = rememberRelinkRequester(viewModel::relink)
@@ -40,14 +39,14 @@ fun MemoryRoute(viewModel: MemoryFragmentViewModel, common: CommonViewModel, nav
                 navigate.showOnMap(group.latitude, group.longitude, group.id)
             }
             override fun showOnTimeline() = navigate.showOnTimeline(viewModel.memoryId)
-            override fun showFragmentOnMap(fragment: MemoryFragmentEntity) =
+            override fun showFragmentOnMap(fragment: MemoryFragment) =
                 navigate.showOnMap(fragment.latitude, fragment.longitude, fragment.groupId)
             override fun openMedia(item: MediaItem) {
                 scope.launch { if (viewModel.isMissing(item)) navigate.openMissing(item) else navigate.openViewer(item) }
             }
             override fun relinkMedia() = relink.start()
             override fun saveMediaOrder(items: List<MediaItem>) = viewModel.saveMediaOrder(items)
-            override fun saveFragmentsOrder(fragments: List<MemoryFragmentEntity>) = viewModel.saveFragmentsOrder(fragments)
+            override fun saveFragmentsOrder(fragments: List<MemoryFragment>) = viewModel.saveFragmentsOrder(fragments)
         }
     }
 

@@ -12,13 +12,12 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.fragment.MemoryFragmentViewModel
 
 private const val TAG_PAGER = "memoryViewPager"
 
 /**
  * The memories as pages, newest first, opened on memory [initialMemoryId]: swiping moves to the next or previous one.
- * Each page has its own ViewModel ([MemoryFragmentViewModel], kept while the pager is open). The pager keeps its page
+ * Each page has its own ViewModel ([MemoryViewModel], kept while the pager is open). The pager keeps its page
  * by memory, so a memory added or deleted meanwhile doesn't move the one shown.
  */
 @Composable
@@ -35,7 +34,7 @@ fun MemoryPagerRoute(initialMemoryId: Int, common: CommonViewModel, navigation: 
         key = { ids[it] },
     ) { page ->
         val memoryId = ids[page]
-        val viewModel: MemoryFragmentViewModel = viewModel(key = "memory_$memoryId", factory = MemoryFragmentViewModel.factory(memoryId))
+        val viewModel: MemoryViewModel = viewModel(key = "memory_$memoryId", factory = MemoryViewModel.factory(memoryId))
         MemoryRoute(viewModel, common, navigation)
     }
 }

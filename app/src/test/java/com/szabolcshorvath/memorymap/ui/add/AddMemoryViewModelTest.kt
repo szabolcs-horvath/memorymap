@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.add
 
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
@@ -20,12 +20,12 @@ import java.time.ZonedDateTime
 import java.util.concurrent.ConcurrentLinkedQueue
 
 @ExtendWith(RobolectricExtension::class)
-class AddMemoryGroupFragmentViewModelTest {
+class AddMemoryViewModelTest {
 
     // Created on first use: the Robolectric application only exists once a test runs.
     private val viewModel by lazy { newForm() }
 
-    private fun newForm() = RuntimeEnvironment.getApplication().let { AddMemoryGroupFragmentViewModel(it, SavedStateHandle(), it.appContainer.memories) }
+    private fun newForm() = RuntimeEnvironment.getApplication().let { AddMemoryViewModel(it, SavedStateHandle(), it.appContainer.memories) }
 
     /** The URIs the form asked to release, in the background. (Grants that saved media use: `UriGrantReleaseTest`.) */
     private val released = ConcurrentLinkedQueue<String>()
@@ -50,7 +50,7 @@ class AddMemoryGroupFragmentViewModelTest {
 
     @Test
     fun `picking a location, a colour, a date or media is a change`() {
-        val changes = listOf<AddMemoryGroupFragmentViewModel.() -> Unit>(
+        val changes = listOf<AddMemoryViewModel.() -> Unit>(
             {
                 lat = 47.5
                 lng = 19.05

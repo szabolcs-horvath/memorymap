@@ -1,121 +1,63 @@
 package com.szabolcshorvath.memorymap.ui.theme
 
-import android.content.Context
-import android.content.res.Configuration
-import android.util.TypedValue
-import android.view.ContextThemeWrapper
-import androidx.annotation.AttrRes
-import androidx.compose.foundation.shape.RoundedCornerShape
+import android.app.UiModeManager
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import com.google.android.material.color.ColorContrast
-import com.google.android.material.color.MaterialColors
-import com.szabolcshorvath.memorymap.MemoryMapApplication
-import com.szabolcshorvath.memorymap.R
-import androidx.appcompat.R as AppCompatR
-import com.google.android.material.R as MaterialR
 
 /**
- * The app's Material 3 theme for Compose, taken from the XML theme of [LocalContext] (`AppTheme`): the same colours,
- * including dark mode and the medium and high contrast overlays `MemoryMapApplication` applies, and the same corner
- * sizes. Text uses Compose's own Material 3 type scale. The screens moved to Compose and those still built with Views
- * share one palette while the migration runs (ARCH-10). [dark] uses the dark colours whatever the phone's setting, for
+ * The app's Material 3 theme: its colours ([LightColors], [DarkColors]) for the phone's dark mode and contrast setting,
+ * with Compose's own Material 3 shapes and type scale. [dark] uses the dark colours whatever the phone's setting, for
  * a screen that is always dark (the media viewer).
  */
 @Composable
-fun MemoryMapTheme(dark: Boolean = false, content: @Composable () -> Unit) {
+fun MemoryMapTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val contrast = phoneContrast()
+    val colorScheme = colorScheme(dark, contrast)
+    CompositionLocalProvider(LocalSuccess provides if (dark) DarkSuccess else LightSuccess) {
+        MaterialTheme(colorScheme = colorScheme, content = content)
+    }
+}
+
+/** Green for a finished task (a backup or restore that worked): Material 3 has no colour role for it. */
+val MaterialTheme.success: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalSuccess.current
+
+private val LocalSuccess = staticCompositionLocalOf { LightSuccess }
+
+/** The colours for the phone's contrast setting, at the levels Material Components used for its overlays. */
+private fun colorScheme(dark: Boolean, contrast: Float): ColorScheme = when {
+    contrast >= HIGH_CONTRAST -> if (dark) DarkHighContrastColors else LightHighContrastColors
+    contrast >= MEDIUM_CONTRAST -> if (dark) DarkMediumContrastColors else LightMediumContrastColors
+    else -> if (dark) DarkColors else LightColors
+}
+
+/** The phone's contrast setting (from -1 to 1, 0 by default), kept up to date while it changes. */
+@Composable
+private fun phoneContrast(): Float {
     val context = LocalContext.current
-    // The configuration changes with dark mode; the colours have to be read again then.
-    val configuration = LocalConfiguration.current
-    val colorScheme = remember(context, configuration, dark) {
-        (if (dark) context.inDarkTheme() else context).colorScheme()
+    val uiModes = remember(context) { context.getSystemService(UiModeManager::class.java) }
+    var contrast by remember(uiModes) { mutableFloatStateOf(uiModes.contrast) }
+    DisposableEffect(uiModes) {
+        val listener = UiModeManager.ContrastChangeListener { contrast = it }
+        uiModes.addContrastChangeListener(context.mainExecutor, listener)
+        onDispose { uiModes.removeContrastChangeListener(listener) }
     }
-    val shapes = remember(context, configuration) { context.shapes() }
-    MaterialTheme(colorScheme = colorScheme, shapes = shapes, content = content)
+    return contrast
 }
 
-private fun Context.colorScheme(): ColorScheme {
-    fun color(@AttrRes attr: Int) = Color(MaterialColors.getColor(this, attr, javaClass.simpleName))
-    return ColorScheme(
-        primary = color(AppCompatR.attr.colorPrimary),
-        onPrimary = color(MaterialR.attr.colorOnPrimary),
-        primaryContainer = color(MaterialR.attr.colorPrimaryContainer),
-        onPrimaryContainer = color(MaterialR.attr.colorOnPrimaryContainer),
-        inversePrimary = color(MaterialR.attr.colorPrimaryInverse),
-        secondary = color(MaterialR.attr.colorSecondary),
-        onSecondary = color(MaterialR.attr.colorOnSecondary),
-        secondaryContainer = color(MaterialR.attr.colorSecondaryContainer),
-        onSecondaryContainer = color(MaterialR.attr.colorOnSecondaryContainer),
-        tertiary = color(MaterialR.attr.colorTertiary),
-        onTertiary = color(MaterialR.attr.colorOnTertiary),
-        tertiaryContainer = color(MaterialR.attr.colorTertiaryContainer),
-        onTertiaryContainer = color(MaterialR.attr.colorOnTertiaryContainer),
-        background = color(android.R.attr.colorBackground),
-        onBackground = color(MaterialR.attr.colorOnBackground),
-        surface = color(MaterialR.attr.colorSurface),
-        onSurface = color(MaterialR.attr.colorOnSurface),
-        surfaceVariant = color(MaterialR.attr.colorSurfaceVariant),
-        onSurfaceVariant = color(MaterialR.attr.colorOnSurfaceVariant),
-        surfaceTint = color(AppCompatR.attr.colorPrimary),
-        inverseSurface = color(MaterialR.attr.colorSurfaceInverse),
-        inverseOnSurface = color(MaterialR.attr.colorOnSurfaceInverse),
-        error = color(AppCompatR.attr.colorError),
-        onError = color(MaterialR.attr.colorOnError),
-        errorContainer = color(MaterialR.attr.colorErrorContainer),
-        onErrorContainer = color(MaterialR.attr.colorOnErrorContainer),
-        outline = color(MaterialR.attr.colorOutline),
-        outlineVariant = color(MaterialR.attr.colorOutlineVariant),
-        scrim = Color.Black,
-        surfaceBright = color(MaterialR.attr.colorSurfaceBright),
-        surfaceContainer = color(MaterialR.attr.colorSurfaceContainer),
-        surfaceContainerHigh = color(MaterialR.attr.colorSurfaceContainerHigh),
-        surfaceContainerHighest = color(MaterialR.attr.colorSurfaceContainerHighest),
-        surfaceContainerLow = color(MaterialR.attr.colorSurfaceContainerLow),
-        surfaceContainerLowest = color(MaterialR.attr.colorSurfaceContainerLowest),
-        surfaceDim = color(MaterialR.attr.colorSurfaceDim),
-        primaryFixed = color(MaterialR.attr.colorPrimaryFixed),
-        primaryFixedDim = color(MaterialR.attr.colorPrimaryFixedDim),
-        onPrimaryFixed = color(MaterialR.attr.colorOnPrimaryFixed),
-        onPrimaryFixedVariant = color(MaterialR.attr.colorOnPrimaryFixedVariant),
-        secondaryFixed = color(MaterialR.attr.colorSecondaryFixed),
-        secondaryFixedDim = color(MaterialR.attr.colorSecondaryFixedDim),
-        onSecondaryFixed = color(MaterialR.attr.colorOnSecondaryFixed),
-        onSecondaryFixedVariant = color(MaterialR.attr.colorOnSecondaryFixedVariant),
-        tertiaryFixed = color(MaterialR.attr.colorTertiaryFixed),
-        tertiaryFixedDim = color(MaterialR.attr.colorTertiaryFixedDim),
-        onTertiaryFixed = color(MaterialR.attr.colorOnTertiaryFixed),
-        onTertiaryFixedVariant = color(MaterialR.attr.colorOnTertiaryFixedVariant),
-    )
-}
-
-private fun Context.shapes(): Shapes = Shapes(
-    extraSmall = RoundedCornerShape(cornerSize(MaterialR.attr.shapeCornerSizeExtraSmall)),
-    small = RoundedCornerShape(cornerSize(MaterialR.attr.shapeCornerSizeSmall)),
-    medium = RoundedCornerShape(cornerSize(MaterialR.attr.shapeCornerSizeMedium)),
-    large = RoundedCornerShape(cornerSize(MaterialR.attr.shapeCornerSizeLarge)),
-    extraLarge = RoundedCornerShape(cornerSize(MaterialR.attr.shapeCornerSizeExtraLarge)),
-)
-
-/** A corner size attribute of the theme (a dimension), in dp. */
-private fun Context.cornerSize(@AttrRes attr: Int): Dp {
-    val value = TypedValue()
-    check(theme.resolveAttribute(attr, value, true)) { "The theme has no corner size ${resources.getResourceName(attr)}" }
-    return (value.getDimension(resources.displayMetrics) / resources.displayMetrics.density).dp
-}
-
-/** The app's theme read with the dark colours, keeping the contrast overlay the phone's setting asks for. */
-private fun Context.inDarkTheme(): Context {
-    val night = Configuration(resources.configuration).apply {
-        uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or Configuration.UI_MODE_NIGHT_YES
-    }
-    val dark = ContextThemeWrapper(this, R.style.AppTheme).apply { applyOverrideConfiguration(night) }
-    return ColorContrast.wrapContextIfAvailable(dark, MemoryMapApplication.contrastOptions)
-}
+private const val MEDIUM_CONTRAST = 1f / 3
+private const val HIGH_CONTRAST = 2f / 3

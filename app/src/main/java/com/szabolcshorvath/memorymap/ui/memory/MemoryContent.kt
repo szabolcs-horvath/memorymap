@@ -72,14 +72,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
-import com.szabolcshorvath.memorymap.fragment.MediaTile
-import com.szabolcshorvath.memorymap.fragment.MemoryUiState
 import com.szabolcshorvath.memorymap.util.Coordinates
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyGridState
 import sh.calvin.reorderable.rememberReorderableLazyGridState
-import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
 // The UI tests find these elements by these names (screens/MemoryScreen), the names the View version's ids had.
 private const val TAG_PAGE = "memory_page"
@@ -103,7 +101,7 @@ private val PAGE_MARGIN = 16.dp
 internal val GAP = 4.dp
 private val COLOR_STRIP_WIDTH = 8.dp
 
-/** What the user can do on a memory's page. What needs an activity, or asks first, is the fragment's to do. */
+/** What the user can do on a memory's page. What needs an activity, or asks first, is the route's to do. */
 interface MemoryActions {
     fun back()
     fun edit()
@@ -112,13 +110,13 @@ interface MemoryActions {
     fun delete()
     fun showOnMap()
     fun showOnTimeline()
-    fun showFragmentOnMap(fragment: MemoryFragmentEntity)
+    fun showFragmentOnMap(fragment: MemoryFragment)
 
     /** Opens [item] in the media viewer, or the sheet that fixes it if it needs re-linking. */
     fun openMedia(item: MediaItem)
     fun relinkMedia()
     fun saveMediaOrder(items: List<MediaItem>)
-    fun saveFragmentsOrder(fragments: List<MemoryFragmentEntity>)
+    fun saveFragmentsOrder(fragments: List<MemoryFragment>)
 }
 
 /**
@@ -255,9 +253,9 @@ private fun MemoryPage(state: MemoryUiState, group: MemoryGroup, showFragmentMar
  * off; [onDragStopped] stores the order a drag left.
  */
 private fun LazyGridScope.fragmentRows(
-    fragments: List<MemoryFragmentEntity>,
+    fragments: List<MemoryFragment>,
     reorder: ReorderableLazyGridState,
-    onShowOnMap: ((MemoryFragmentEntity) -> Unit)?,
+    onShowOnMap: ((MemoryFragment) -> Unit)?,
     onDragStopped: () -> Unit,
 ) {
     if (fragments.isEmpty()) return
@@ -401,7 +399,7 @@ private fun TonalButton(@DrawableRes icon: Int, label: Int, onClick: () -> Unit)
  */
 @Composable
 private fun FragmentRow(
-    fragment: MemoryFragmentEntity,
+    fragment: MemoryFragment,
     index: Int,
     count: Int,
     onClick: (() -> Unit)?,
