@@ -20,12 +20,12 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.CommonViewModel
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragmentViewModel
 import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragmentViewModel.SaveResult
 import com.szabolcshorvath.memorymap.fragment.FormPart
 import com.szabolcshorvath.memorymap.fragment.FormPlace
 import com.szabolcshorvath.memorymap.fragment.Hsv
+import com.szabolcshorvath.memorymap.fragment.SelectedMedia
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
 import java.time.LocalDate
 import java.time.LocalTime

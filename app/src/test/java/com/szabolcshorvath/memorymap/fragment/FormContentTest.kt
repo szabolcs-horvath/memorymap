@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.net.Uri
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith

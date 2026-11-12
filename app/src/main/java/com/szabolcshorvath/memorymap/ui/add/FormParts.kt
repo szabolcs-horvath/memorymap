@@ -53,11 +53,11 @@ import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 import com.szabolcshorvath.memorymap.fragment.FormPart
 import com.szabolcshorvath.memorymap.fragment.FormPlace
 import com.szabolcshorvath.memorymap.fragment.FragmentEditState
 import com.szabolcshorvath.memorymap.fragment.Hsv
+import com.szabolcshorvath.memorymap.fragment.SelectedMedia
 import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_HEIGHT
 import com.szabolcshorvath.memorymap.ui.color.ColorSliders
 import com.szabolcshorvath.memorymap.ui.color.SWATCH_GAP

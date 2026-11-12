@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,10 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -95,12 +92,9 @@ fun MissingMediaSheetContent(state: State, item: MediaItem?, thumbnail: ByteArra
         Modifier
             .fillMaxWidth()
             .semantics { testTagsAsResourceId = true }
-            // The sheet itself is a View: it is dragged down once this column is scrolled to its top.
-            .nestedScroll(rememberNestedScrollInteropConnection())
             .verticalScroll(rememberScrollState())
             .padding(bottom = 16.dp),
     ) {
-        BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
         if (item != null) Header(item, thumbnail)
         Search(state)
         if (state == State.NeedsAccess) AllowAccessButton(actions::allowAccess)

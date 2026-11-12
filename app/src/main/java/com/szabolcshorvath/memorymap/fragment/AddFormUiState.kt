@@ -17,7 +17,7 @@ data class AddFormUiState(
     val color: Hsv,
     val colorExpanded: Boolean,
     val fragments: List<FragmentEditState>,
-    val media: List<AddMemoryGroupFragment.SelectedMedia>,
+    val media: List<SelectedMedia>,
     /** This installation's id: media saved by another one can't be shown. Null until it is read. */
     val currentDeviceId: String?,
     val isSaving: Boolean,

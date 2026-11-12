@@ -1,11 +1,9 @@
 package com.szabolcshorvath.memorymap.fragment
 
 import android.app.Application
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
-import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -54,12 +52,11 @@ data class MemoryUiState(
 }
 
 class MemoryFragmentViewModel(
-    savedStateHandle: SavedStateHandle,
+    /** The memory this page shows. */
+    val memoryId: Int,
     private val application: Application,
     private val memories: MemoryRepository,
 ) : ViewModel() {
-    /** The memory this page shows, from its arguments. */
-    val memoryId = savedStateHandle.get<Int>(ARG_MEMORY_ID) ?: -1
 
     private data class Relink(val running: Boolean = false, val status: String? = null)
 
@@ -123,13 +120,13 @@ class MemoryFragmentViewModel(
     suspend fun delete(): MemoryGroupWithMedia? = memories.delete(memoryId)
 
     companion object {
-        const val ARG_MEMORY_ID = "memory_id"
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
 
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
+        /** Creates the page's ViewModel for memory [memoryId]. */
+        fun factory(memoryId: Int): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = this[APPLICATION_KEY]!!
-                MemoryFragmentViewModel(createSavedStateHandle(), application, application.appContainer.memories)
+                MemoryFragmentViewModel(memoryId, application, application.appContainer.memories)
             }
         }
     }
