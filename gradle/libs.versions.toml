@@ -2,7 +2,7 @@
 # Build
 kotlinGradlePlugin = "2.4.21"
 agp = "9.5.1"
-googleServices = "4.5.0"
+googleServices = "4.6.0"
 ksp = "2.3.13"
 detekt = "1.23.8"
 
@@ -45,13 +45,13 @@ googleid = "1.2.1"
 playServicesAuth = "22.0.0"
 
 # Drive
-googleApiServicesDrive = "v3-rev20261023-2.9.2"
+googleApiServicesDrive = "v3-rev20261106-2.9.2"
 
 # JSON
 googleHttpClient = "2.2.0"
 
 # Firebase
-firebaseBom = "35.1.0"
+firebaseBom = "35.2.0"
 firebaseCrashlytics = "3.0.8"
 firebasePerf = "2.0.2"
 
