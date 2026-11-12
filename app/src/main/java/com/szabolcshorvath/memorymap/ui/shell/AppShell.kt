@@ -32,7 +32,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRailDefaults
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItem
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
@@ -204,7 +204,7 @@ private fun rememberShellActions(shell: ShellViewModel, tabs: TabViewModels, sna
 /** The short navigation bar, or a collapsed navigation rail when the window is wide or short; none while [immersive]. */
 @Composable
 private fun navigationType(immersive: Boolean): NavigationSuiteType {
-    val recommended = NavigationSuiteScaffoldDefaults.navigationSuiteType(currentWindowAdaptiveInfo())
+    val recommended = NavigationSuiteScaffoldDefaults.navigationSuiteType(currentWindowAdaptiveInfoV2())
     return when {
         immersive -> NavigationSuiteType.None
         recommended == NavigationSuiteType.ShortNavigationBarCompact -> recommended
