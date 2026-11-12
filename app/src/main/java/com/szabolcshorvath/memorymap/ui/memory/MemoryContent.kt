@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,8 +34,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -126,7 +123,6 @@ interface MemoryActions {
  * markers are turned on ([showFragmentMarkers]).
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun MemoryContent(state: MemoryUiState, showFragmentMarkers: Boolean, actions: MemoryActions) {
     // On a short window (a phone turned sideways) the large title would take a third of the screen: a small bar, which
     // stays put. Each keeps its own scroll state.
@@ -152,7 +148,6 @@ fun MemoryContent(state: MemoryUiState, showFragmentMarkers: Boolean, actions: M
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 private fun MemoryTopBar(title: String, compact: Boolean, scrollBehavior: TopAppBarScrollBehavior, actions: MemoryActions) {
     val titleText = @Composable { Text(title, Modifier.testTag(TAG_TITLE), maxLines = 2, overflow = TextOverflow.Ellipsis) }
     val navigationIcon = @Composable {
@@ -178,7 +173,6 @@ private fun MemoryTopBar(title: String, compact: Boolean, scrollBehavior: TopApp
 
 /** Delete, rarely used and undone only by the Undo that follows: in a menu, so it isn't tapped by mistake. */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun MoreMenu(onDelete: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -318,7 +312,6 @@ private fun SectionHeader(text: Int) {
  * along its left edge has the memory's marker colour, as its card on the Timeline does.
  */
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 private fun DetailsCard(group: MemoryGroup, actions: MemoryActions) {
     val context = LocalContext.current
     Surface(

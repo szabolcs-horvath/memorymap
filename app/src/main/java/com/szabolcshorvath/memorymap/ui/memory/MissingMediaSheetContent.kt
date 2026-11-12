@@ -15,8 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -85,7 +83,6 @@ fun whenTaken(context: Context, deltaMs: Long): String = when {
  * sheet down, tapping outside it or Back closes it.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun MissingMediaSheetContent(state: State, item: MediaItem?, thumbnail: ByteArray?, actions: MissingMediaActions) {
     Column(
         Modifier
@@ -155,7 +152,6 @@ private fun fileLine(context: Context, item: MediaItem): String? {
 
 /** While the sheet looks for the photo: how far it got. Then what it found, or that it needs access to look. */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun Search(state: State) {
     if (state is State.Looking || state == State.Loading) {
         Row(Modifier.padding(horizontal = SHEET_PADDING, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
