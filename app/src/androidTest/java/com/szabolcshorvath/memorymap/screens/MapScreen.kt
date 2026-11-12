@@ -60,9 +60,28 @@ object MapScreen : TabScreen {
         assertEquals("Markers titled \"$title\"", count, found)
     }
 
+    /**
+     * Taps marker [title] once the map has stopped moving. The marker shows before the first zoom has moved the camera
+     * to the memories, and a tap read from where it was then lands on the empty map beside it, which closes the card.
+     */
     fun tapMarker(title: String) {
-        Ui.find(Ui.SLOW_TIMEOUT_MS) { isMarker(title) }.click()
+        assertMarkerShown(title)
+        var attempts = 0
+        while (!tapSettledMarker(title)) {
+            assertTrue("The marker \"$title\" kept changing while being tapped", ++attempts < MARKER_TAP_ATTEMPTS)
+        }
         Ui.device.waitForIdle()
+    }
+
+    /** Taps marker [title] once the map has settled; false if it went away while being tapped (the map changed). */
+    private fun tapSettledMarker(title: String): Boolean {
+        awaitMarkersSettled()
+        return try {
+            Ui.find { isMarker(title) }.click()
+            true
+        } catch (_: StaleObjectException) {
+            false
+        }
     }
 
     fun assertClusterShown() = Ui.assertShown("A cluster of memories", Ui.SLOW_TIMEOUT_MS) { isCluster() }
@@ -286,4 +305,5 @@ object MapScreen : TabScreen {
     private const val MARKERS_SETTLE_TIMEOUT_MS = 10_000L
     private const val MARKERS_STILL_MS = 1_500L
     private const val CLUSTER_TAP_ATTEMPTS = 3
+    private const val MARKER_TAP_ATTEMPTS = 3
 }
