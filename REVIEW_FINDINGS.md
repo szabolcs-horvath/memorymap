@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 81 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 3 open
+✅ 82 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 3 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -72,7 +72,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
 | ✅ | [DATA-12](#data-12) | Low | Photos picked and then dropped from the Add form keep their grants |
 
-**BUG — Functional bugs** · 20 of 21 fixed
+**BUG — Functional bugs** · 21 of 22 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -97,6 +97,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
 | ✅ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
 | ⬜ | [BUG-21](#bug-21) | Low | Show on map can leave the memory's pin inside a cluster |
+| ✅ | [BUG-22](#bug-22) | Medium | Back doesn't close the Timeline's search |
 
 **PERF — Performance** · 10 of 10 fixed
 
@@ -457,9 +458,15 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Rejected:** matching any file with the same date taken to the millisecond, regardless of id (it would also catch "save as copy" edits). It was rejected as too risky: dates with only whole seconds (videos, messenger images) collide for shots taken in the same second, and two different edits share a date. A wrong link is worse than a missing one; [UX-19](#ux-19) leaves such cases to the user.
 
 ### <a id="bug-21"></a>⬜ BUG-21 · Low · Show on map can leave the memory's pin inside a cluster
-- **Where:** `fragment/MapFragmentViewModel.kt` (`handleFocus`, `selectPendingMemory`, which zoom to `MAX_FIT_ZOOM`), the map's clustering (`ui/map/`, `maps-compose-utils`' `Clustering`)
+- **Where:** `ui/map/MapViewModel.kt` (`handleFocus`, `selectPendingMemory`, which zoom to `MAX_FIT_ZOOM`), the map's clustering (`ui/map/`, `maps-compose-utils`' `Clustering`)
 - **What:** Now and then, "Show on map" on a memory zooms the map to the memory, but its pin is still drawn as part of a cluster instead of on its own. Seen by the user while trying the Compose shell (2026-11-12); not every time, and the shell didn't change the map's code, so it most likely comes from the map itself.
 - **To find out:** whether `MAX_FIT_ZOOM` is close enough to separate the pin from memories near it (the clustering groups pins within a fixed distance on screen, at any zoom), and whether the clustering runs again once the camera stops after the zoom, or keeps the clusters it made for the zoom before (a race between the camera move and the re-clustering would explain why it happens only sometimes).
+
+### <a id="bug-22"></a>✅ BUG-22 · Medium · Back doesn't close the Timeline's search
+- **Where:** `ui/shell/TabHost.kt`
+- **What:** On the Timeline, with the search open, the phone's Back closed the keyboard and then did nothing: the search stayed open until its own back arrow was tapped. Found while checking icons (2026-11-12); it came with the Compose shell (phase 2), and the fragment shell before it closed the search.
+- **Why:** to turn a hidden tab's Back handlers off, `TabHost` gave every tab a Back dispatcher of its own (`LocalNavigationEventDispatcherOwner`). The expanded search is a dialog, a window of its own, and its Back handler takes the dispatcher from the composition: a provided one reaches into the dialog, so the handler registered with the tab's dispatcher, which the dialog's Back never reaches. Without one, the dialog finds its own window's dispatcher.
+- **Status:** Fixed (2026-11-12). Only a hidden tab gets a dispatcher of its own (turned off); the shown tab provides none, so a dialog in it takes Back from its own window. `TimelineTest.backClosesTheSearchAndKeepsItsText` closes the search with Back (it fails without the fix), and the navigation, Timeline and Settings tests pass.
 
 [↑ Back to index](#index)
 
