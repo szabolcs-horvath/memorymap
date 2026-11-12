@@ -23,8 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -127,7 +125,6 @@ interface AddMemoryActions {
  * above a Save button that stays in reach. A date or time button opens Material 3's picker over it.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: AddMemoryActions) {
     val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
     val compact = windowHeight < COMPACT_HEIGHT
@@ -239,7 +236,6 @@ private fun firstErrorIndex(state: AddFormUiState): Int? = when {
  * its coordinates. Without a place, and after a save that needed one, it says so in the error colour.
  */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 internal fun LocationItem(place: FormPlace?, showErrors: Boolean, @StringRes missingText: Int, onClick: () -> Unit) {
     val context = LocalContext.current
     val missing = showErrors && place == null
@@ -330,7 +326,6 @@ private fun LazyListScope.mediaSection(state: AddFormUiState, actions: AddMemory
 
 /** Save (or Save changes), pinned under the form; while saving, a wavy progress indicator takes its place. */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun SaveBar(state: AddFormUiState, onSave: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface) {
         Box(
@@ -362,7 +357,6 @@ internal val MEDIA_GAP = 4.dp
 
 /** The page's title ("New memory" or "Edit memory") with Clear (Discard while editing): a small bar on a short window. */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 private fun FormTopBar(state: AddFormUiState, compact: Boolean, scrollBehavior: TopAppBarScrollBehavior, onClear: () -> Unit) {
     val title = @Composable { Text(stringResource(if (state.editing) R.string.edit_memory_title else R.string.new_memory_title)) }
     val clear = @Composable {

@@ -41,9 +41,6 @@ class MediaViewerViewModel(
             savedState[CURRENT_ITEM_ID] = value
         }
 
-    /** Where [currentItemId] is in [items], or null if it is gone. */
-    fun currentPosition(items: List<MediaItem>): Int? = items.indexOfFirst { it.id == currentItemId }.takeIf { it >= 0 }
-
     companion object {
         private const val CURRENT_ITEM_ID = "current_item_id"
         private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L

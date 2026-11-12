@@ -129,7 +129,6 @@ private const val GAMMA = 2.2f
  * request to go back to the top has.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun TimelineContent(
     state: TimelineUiState,
     onQueryChange: (String) -> Unit,
@@ -288,7 +287,6 @@ private fun Search(
  * a back arrow, Back or Search on the keyboard closes it, and the bar keeps the search.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun SearchField(query: TextFieldState, searchBarState: SearchBarState) {
     val scope = rememberCoroutineScope()
     val expanded = searchBarState.currentValue == SearchBarValue.Expanded

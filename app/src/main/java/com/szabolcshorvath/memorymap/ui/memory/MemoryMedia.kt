@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -163,7 +162,6 @@ private fun MissingTile(tile: MediaTile) {
  * how far it got.
  */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 internal fun MissingMediaBanner(state: MemoryUiState, onRelink: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Surface(

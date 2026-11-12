@@ -16,7 +16,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -185,7 +184,6 @@ private fun DateButton(modifier: Modifier, text: String, tag: String, onClick: (
 
 /** The picker [request] asks for, showing what the form holds now; picking changes the form, and either way it closes. */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 internal fun FormPicker(request: PickerRequest, state: AddFormUiState, actions: AddMemoryActions, onClose: () -> Unit) {
     val (start, end) = when (val part = request.part) {
         FormPart.Memory -> state.start to state.end
@@ -246,7 +244,6 @@ private const val DAY_CODE_LENGTH = 3
 private const val RANGE_DAY_SKELETON = "MMMd"
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun DayPicker(@StringRes title: Int, day: LocalDate, onClose: () -> Unit, onPicked: (LocalDate) -> Unit) {
     WithPhonesWeek {
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = day.toPickerMillis())
@@ -274,7 +271,6 @@ private fun DayPicker(@StringRes title: Int, day: LocalDate, onClose: () -> Unit
  * the phone's first day. It opens with [first] to [last] selected, or nothing if either is null.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 internal fun RangePicker(
     first: LocalDate?,
     last: LocalDate?,
@@ -312,7 +308,6 @@ internal fun RangePicker(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun ClockPicker(@StringRes title: Int, time: LocalTime, onClose: () -> Unit, onPicked: (LocalTime) -> Unit) {
     val context = LocalContext.current
     val pickerState = rememberTimePickerState(time.hour, time.minute, is24Hour = DateFormat.is24HourFormat(context))

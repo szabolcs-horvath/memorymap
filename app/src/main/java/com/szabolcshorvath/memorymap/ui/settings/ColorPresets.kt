@@ -23,7 +23,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -276,7 +275,6 @@ private fun PresetEditor(state: ColorPresetsUiState, actions: ColorPresetActions
  * little, and on a narrow screen the buttons that don't fit move into a menu.
  */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun PresetButtons(state: ColorPresetsUiState, actions: ColorPresetActions, enabled: Boolean) {
     val changed = enabled && state.changed
     val delete = stringResource(R.string.delete_preset)
@@ -312,7 +310,6 @@ private fun PresetButtons(state: ColorPresetsUiState, actions: ColorPresetAction
  * A button of a button group: [content] draws it with the interaction source and modifier that let it grow when
  * pressed; in the overflow menu it is an item [label] that calls [onClick].
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun ButtonGroupScope.button(
     label: String,
     enabled: Boolean,

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -153,7 +152,6 @@ internal fun ColorSliders(color: Hsv, enabled: Boolean, onChange: (Hsv) -> Unit)
  */
 @Composable
 @Suppress("LongParameterList")
-@OptIn(ExperimentalMaterial3Api::class)
 private fun ColorSlider(
     @StringRes label: Int,
     valueText: String,

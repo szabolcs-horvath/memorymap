@@ -28,8 +28,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -109,7 +107,6 @@ interface SettingsActions {
  * buttons are off and a card at the bottom says what runs.
  */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 fun SettingsContent(state: SettingsUiState, actions: SettingsActions, presetActions: ColorPresetActions) {
     val enabled = state.busy == null
     // The page with every backup, opened from the main page's "Show all backups"; Back returns to where it was.
@@ -155,7 +152,6 @@ fun SettingsContent(state: SettingsUiState, actions: SettingsActions, presetActi
  */
 @Composable
 @Suppress("LongParameterList")
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 private fun SettingsPage(
     @StringRes title: Int,
     onBack: (() -> Unit)?,
@@ -426,7 +422,6 @@ private fun ActionItem(
 
 /** What runs while the screen waits: a wavy progress bar and what it is doing, in a card at the bottom. */
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun BusyCard(state: SettingsUiState, modifier: Modifier = Modifier) {
     // Pulling the list down shows its own indicator.
     val busy = state.busy?.takeIf { !state.refreshing }

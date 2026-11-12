@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,7 +40,6 @@ import kotlin.math.tan
  * off for it, and Google's my-location button appears only once location access is granted, so it can't ask for it.
  * The toolbar floats over the map, so the map keeps no room for it and Google's logo stays at the bottom.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MapToolbar(camera: CameraPositionState, onMyLocation: () -> Unit, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()

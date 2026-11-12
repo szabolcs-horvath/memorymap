@@ -20,7 +20,6 @@ import androidx.navigation3.scene.SceneStrategyScope
  * screens below it, which stay as they are. Dragging the sheet away, tapping outside it or Back closes it (pops it);
  * when the entry is popped otherwise, the sheet slides away first.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 class BottomSheetSceneStrategy<T : Any> : SceneStrategy<T> {
     override fun SceneStrategyScope<T>.calculateScene(entries: List<NavEntry<T>>): Scene<T>? {
         val last = entries.lastOrNull()?.takeIf { it.metadata[SheetKey] == true } ?: return null

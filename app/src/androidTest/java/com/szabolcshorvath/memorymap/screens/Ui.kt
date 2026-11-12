@@ -302,6 +302,4 @@ fun AccessibilityNodeInfo.hasText(text: String): Boolean = textAsString() == tex
 
 fun AccessibilityNodeInfo.hasDescription(description: String): Boolean = contentDescription?.toString() == description
 
-fun AccessibilityNodeInfo.hasHint(hint: String): Boolean = hintText?.toString() == hint
-
 fun AccessibilityNodeInfo.hasId(id: String): Boolean = simpleViewResourceName() == id

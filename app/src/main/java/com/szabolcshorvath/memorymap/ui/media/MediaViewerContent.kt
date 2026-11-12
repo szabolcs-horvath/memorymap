@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -142,7 +141,6 @@ private fun Pages(items: List<MediaItem>, initialItemId: Int, onCurrentItem: (In
 
 /** The top bar over the media: a back arrow and "2 of 6", on a scrim so they read over a light photo. */
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun ViewerTopBar(visible: Boolean, position: String, onBack: () -> Unit) {
     AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
         TopAppBar(

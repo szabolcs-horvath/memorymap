@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,7 +32,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
@@ -75,7 +73,6 @@ import kotlin.math.hypot
  * The Map tab: the memories' pins on Google's map, the date filter's button group over its top, the colour statistics
  * under it, and at the bottom the "my location" button and the panel listing the memories of a tapped pin.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MapContent(state: MapUiState, actions: MapActions) {
     val camera = rememberCameraPositionState()
@@ -329,7 +326,6 @@ private val TOP_MARGIN = 8.dp
 internal val MAX_CONTROLS_WIDTH = 500.dp
 
 /** The colour statistics under the filter bar, opening and closing as the filter's menu does, from their button. */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun StatsCard(state: MapUiState) {
     val motion = MaterialTheme.motionScheme
