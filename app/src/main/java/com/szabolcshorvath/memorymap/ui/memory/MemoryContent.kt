@@ -344,7 +344,7 @@ private fun DetailsCard(group: MemoryGroup, actions: MemoryActions) {
                 Spacer(Modifier.height(12.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TonalButton(R.drawable.ic_map, R.string.show_on_map, actions::showOnMap)
-                    TonalButton(R.drawable.ic_view_timeline, R.string.show_on_timeline, actions::showOnTimeline)
+                    TonalButton(R.drawable.ic_view_agenda, R.string.show_on_timeline, actions::showOnTimeline)
                 }
             }
         }

@@ -126,7 +126,7 @@ internal fun FilterBar(
             shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
             colors = colors,
         ) {
-            Icon(painterResource(R.drawable.ic_cake_chart), stringResource(R.string.map_color_stats))
+            Icon(painterResource(R.drawable.ic_pie_chart), stringResource(R.string.map_color_stats))
         }
     }
 }
