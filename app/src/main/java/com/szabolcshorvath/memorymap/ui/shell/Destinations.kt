@@ -13,7 +13,7 @@ import com.szabolcshorvath.memorymap.ui.add.FormPlace
  */
 enum class Tab(@StringRes val label: Int, @DrawableRes val icon: Int, @DrawableRes val selectedIcon: Int, val traceName: String) {
     MAP(R.string.tab_map, R.drawable.ic_map, R.drawable.ic_map_filled, "MapFragment"),
-    TIMELINE(R.string.tab_timeline, R.drawable.ic_view_timeline, R.drawable.ic_view_timeline_filled, "TimelineFragment"),
+    TIMELINE(R.string.tab_timeline, R.drawable.ic_view_agenda, R.drawable.ic_view_agenda_filled, "TimelineFragment"),
     ADD(R.string.tab_add, R.drawable.ic_add_circle, R.drawable.ic_add_circle_filled, "AddMemoryGroupFragment"),
     SETTINGS(R.string.tab_settings, R.drawable.ic_settings, R.drawable.ic_settings_filled, "SettingsFragment"),
 }
