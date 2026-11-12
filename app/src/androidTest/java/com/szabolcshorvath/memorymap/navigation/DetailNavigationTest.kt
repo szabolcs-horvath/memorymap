@@ -174,20 +174,20 @@ class DetailNavigationTest {
     }
 
     @Test
-    fun aTabOpenedFromTheLocationPickerClosesIt() {
+    fun thePickerHidesTheTabBarAndBackReturnsToTheForm() {
         app.launch()
         BottomNav.open(Tab.ADD)
         AddScreen.selectLocation()
         LocationPickerScreen.assertShown()
+        // No tab can be tapped over the picker: it would close the picker and lose the spot.
+        BottomNav.assertGone()
 
-        BottomNav.select(Tab.TIMELINE)
+        Ui.pressBack()
 
-        TimelineScreen.assertShown()
-        LocationPickerScreen.assertGone()
-
-        BottomNav.select(Tab.ADD)
         AddScreen.assertShown()
         LocationPickerScreen.assertGone()
+        BottomNav.assertShown()
+        BottomNav.assertSelected(Tab.ADD)
     }
 
     private fun openFromTimeline(title: String, launch: Boolean = true) {

@@ -103,7 +103,7 @@ fun AppShell(shell: ShellViewModel, tabs: TabViewModels) {
         actions.onTabDrawn()
     }
 
-    val type = navigationType(shell.mediaViewerShown)
+    val type = navigationType(immersive = shell.mediaViewerShown || shell.locationPickerShown)
     // NavigationSuiteScaffold, taken apart only to give the rail its narrow width.
     Surface(
         // Edge to edge: each screen keeps clear of the system bars itself. The keyboard pushes the whole shell up, the tab
@@ -271,7 +271,7 @@ private fun detailEntry(detail: Detail, shell: ShellViewModel, tabs: TabViewMode
                 when (detail) {
                     is Detail.Memory -> MemoryPagerRoute(detail.memoryId, tabs.common, actions.memoryNavigation(detail))
                     is Detail.MediaViewer -> MediaViewer(detail, shell)
-                    is Detail.PickLocation -> PickLocation(detail, actions, onClose = { shell.close(detail) })
+                    is Detail.PickLocation -> PickLocation(detail, shell, actions)
                     Detail.None, is Detail.MissingMedia -> Unit
                 }
             }
@@ -299,13 +299,18 @@ private fun MediaViewer(detail: Detail.MediaViewer, shell: ShellViewModel) {
 }
 
 @Composable
-private fun PickLocation(detail: Detail.PickLocation, actions: ShellActions, onClose: () -> Unit) {
+private fun PickLocation(detail: Detail.PickLocation, shell: ShellViewModel, actions: ShellActions) {
     val viewModel: PickLocationViewModel = viewModel()
+    // While it is started the tab bar hides: a tab tapped over the picker would close it and lose the spot.
+    LifecycleStartEffect(Unit) {
+        shell.locationPickerShown = true
+        onStopOrDispose { shell.locationPickerShown = false }
+    }
     // Launched before the picker's own start, which picks where the phone is if nothing is picked yet.
     LaunchedEffect(viewModel) { viewModel.open(detail.place) }
     PickLocationRoute(
         viewModel,
-        onClose = onClose,
+        onClose = { shell.close(detail) },
         onConfirm = { lat, lng, name, address -> actions.locationPicked(detail, lat, lng, name, address) },
     )
 }
