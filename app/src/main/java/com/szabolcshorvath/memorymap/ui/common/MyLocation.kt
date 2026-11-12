@@ -77,6 +77,7 @@ class MyLocationRequester internal constructor(
                     if (wasDenied) rememberDenial(context, scope, isDenied = false)
                     fetchLocation(context, onLocation.value)
                 }
+
                 else -> question.value = step
             }
         }
@@ -127,6 +128,7 @@ fun MyLocationQuestions(requester: MyLocationRequester) {
             },
             onCancel = close,
         )
+
         MyLocationStep.OFFER_SETTINGS -> ConfirmDialog(
             title = stringResource(R.string.location_settings_title),
             message = stringResource(R.string.location_settings_message),
@@ -138,6 +140,7 @@ fun MyLocationQuestions(requester: MyLocationRequester) {
             },
             onCancel = close,
         )
+
         MyLocationStep.USE_LOCATION, null -> Unit
     }
 }

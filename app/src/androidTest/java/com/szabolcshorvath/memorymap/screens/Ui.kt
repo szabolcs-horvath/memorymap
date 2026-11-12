@@ -16,6 +16,7 @@ import androidx.test.uiautomator.onElement
 import androidx.test.uiautomator.onElementOrNull
 import androidx.test.uiautomator.simpleViewResourceName
 import androidx.test.uiautomator.textAsString
+import com.szabolcshorvath.memorymap.screens.Ui.SCROLL_TIMEOUT_MS
 import org.junit.Assert.assertTrue
 import java.util.Locale
 import kotlin.math.abs

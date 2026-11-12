@@ -43,6 +43,7 @@ enum class DriveProblem(@StringRes val reason: Int) {
                 e.statusCode == HTTP_TOO_MANY_REQUESTS || e.statusCode >= HTTP_SERVER_ERROR -> DRIVE_UNAVAILABLE
                 else -> OTHER
             }
+
             is IOException -> NO_CONNECTION
             else -> OTHER
         }

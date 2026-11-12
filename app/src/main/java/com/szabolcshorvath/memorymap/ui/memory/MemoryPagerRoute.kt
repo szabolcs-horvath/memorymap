@@ -30,7 +30,9 @@ fun MemoryPagerRoute(initialMemoryId: Int, common: CommonViewModel, navigation: 
     HorizontalPager(
         state = pagerState,
         // The UI tests find the pager by this name, the id the View pager had.
-        modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag(TAG_PAGER),
+        modifier = Modifier
+            .semantics { testTagsAsResourceId = true }
+            .testTag(TAG_PAGER),
         key = { ids[it] },
     ) { page ->
         val memoryId = ids[page]

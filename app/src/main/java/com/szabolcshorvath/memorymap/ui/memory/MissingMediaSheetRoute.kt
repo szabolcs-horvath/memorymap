@@ -52,8 +52,10 @@ fun MissingMediaSheetRoute(viewModel: MissingMediaSheetViewModel, itemId: Int, o
             override fun use(file: NearbyFile) {
                 askingToUse = file.uri
             }
+
             override fun chooseAnother() =
                 pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+
             override fun remove() {
                 askingToRemove = true
             }
@@ -112,6 +114,7 @@ private fun ShowOutcomes(viewModel: MissingMediaSheetViewModel, state: State, on
                 Toast.makeText(context, R.string.missing_media_found, Toast.LENGTH_SHORT).show()
                 dismiss()
             }
+
             State.Done -> dismiss()
             else -> Unit
         }

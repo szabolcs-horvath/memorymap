@@ -60,6 +60,7 @@ internal fun Detail.toBundle(): Bundle = when (this) {
             putString(ADDRESS, it.address)
         }
     }
+
     is Detail.MissingMedia -> bundleOf(KIND to "missing_media", ITEM_ID to itemId)
 }
 
@@ -71,6 +72,7 @@ internal fun Bundle.toDetail(): Detail? = when (getString(KIND)) {
     "pick_location" -> Detail.PickLocation(
         if (containsKey(LAT)) FormPlace(getDouble(LAT), getDouble(LNG), getString(NAME), getString(ADDRESS)) else null
     )
+
     "missing_media" -> Detail.MissingMedia(getInt(ITEM_ID))
     else -> null
 }

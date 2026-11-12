@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.Direction
+import com.szabolcshorvath.memorymap.screens.MediaViewerScreen.TAP_MS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 

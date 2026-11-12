@@ -40,6 +40,7 @@ fun MapRoute(viewModel: MapViewModel, common: CommonViewModel, onOpenMemory: (In
                 viewModel.clearSelection()
                 myLocation.start()
             }
+
             override fun tapPin(pin: Markerable.MarkerableCluster) = viewModel.tapPin(pin)
             override fun tapCluster(position: LatLng) = viewModel.tapCluster(position)
             override fun tapMap() = viewModel.tapMap()

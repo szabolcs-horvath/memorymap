@@ -34,16 +34,20 @@ fun MemoryRoute(viewModel: MemoryViewModel, common: CommonViewModel, navigation:
             override fun delete() {
                 askingToDelete = true
             }
+
             override fun showOnMap() {
                 val group = viewModel.uiState.value.group ?: return
                 navigate.showOnMap(group.latitude, group.longitude, group.id)
             }
+
             override fun showOnTimeline() = navigate.showOnTimeline(viewModel.memoryId)
             override fun showFragmentOnMap(fragment: MemoryFragment) =
                 navigate.showOnMap(fragment.latitude, fragment.longitude, fragment.groupId)
+
             override fun openMedia(item: MediaItem) {
                 scope.launch { if (viewModel.isMissing(item)) navigate.openMissing(item) else navigate.openViewer(item) }
             }
+
             override fun relinkMedia() = relink.start()
             override fun saveMediaOrder(items: List<MediaItem>) = viewModel.saveMediaOrder(items)
             override fun saveFragmentsOrder(fragments: List<MemoryFragment>) = viewModel.saveFragmentsOrder(fragments)

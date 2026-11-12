@@ -178,6 +178,7 @@ private fun Search(state: State) {
                 else -> R.string.missing_media_none_nearby
             }
         )
+
         else -> null
     }
     if (message != null) {

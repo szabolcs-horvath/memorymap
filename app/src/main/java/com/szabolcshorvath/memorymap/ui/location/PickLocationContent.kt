@@ -97,7 +97,8 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
     // The map draws behind the status bar (and in landscape the navigation bar); its controls stay clear of them.
     val safeArea = rememberSafeArea()
     Box(
-        safeArea.track(Modifier.fillMaxSize())
+        safeArea
+            .track(Modifier.fillMaxSize())
             .semantics { testTagsAsResourceId = true }
     ) {
         PickerMap(
@@ -297,6 +298,7 @@ private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit, modifi
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.pick_location_looking_up), style = MaterialTheme.typography.titleMedium)
                 }
+
                 spot != null -> {
                     val title = spot.title(context)
                     Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -315,6 +317,7 @@ private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit, modifi
                         )
                     }
                 }
+
                 else -> Text(
                     stringResource(R.string.pick_location_nothing_picked),
                     style = MaterialTheme.typography.bodyLarge,

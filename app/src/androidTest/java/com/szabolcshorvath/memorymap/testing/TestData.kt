@@ -24,6 +24,7 @@ import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
 import com.szabolcshorvath.memorymap.fakes.FakeLocationService
 import com.szabolcshorvath.memorymap.screens.Ui
+import com.szabolcshorvath.memorymap.testing.TestData.photoTakenAt
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaDetails

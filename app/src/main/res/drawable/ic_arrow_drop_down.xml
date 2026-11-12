@@ -5,9 +5,9 @@
     android:viewportWidth="960"
     android:viewportHeight="960"
     android:tint="?attr/colorControlNormal">
-  <group android:translateY="960">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M480-360 280-560h400L480-360Z"/>
-  </group>
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M480-360 280-560h400L480-360Z" />
+    </group>
 </vector>

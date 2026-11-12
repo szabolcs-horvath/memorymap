@@ -6,6 +6,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.uiautomator.StaleObjectException
+import com.szabolcshorvath.memorymap.screens.MapScreen.MARKERS_STILL_MS
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -167,6 +168,7 @@ object MapScreen : TabScreen {
         fun List<Pair<String, Rect>>?.inView() = titles.filter { title ->
             this.orEmpty().any { (description, bounds) -> description.trimEnd().removeSuffix(".") == title && bounds.top >= barBottom }
         }
+
         val markers = Ui.eventually(Ui.SLOW_TIMEOUT_MS, read = { awaitMarkersSettled() }) { it.inView().size == titles.size }
         assertEquals("Markers below the date filter, of $markers", titles.toList(), markers.inView())
     }
@@ -224,8 +226,10 @@ object MapScreen : TabScreen {
                 Point(chart.left + chart.width() * i / CHART_GRID, chart.top + chart.height() * j / CHART_GRID)
             }
         }
+
         fun List<Int>.matches() = colors.all { color -> any { ScreenColors.isClose(it, color) } } &&
             absent.none { color -> any { ScreenColors.isClose(it, color) } }
+
         val shown = Ui.eventually(read = { ScreenColors.at(grid) }) { it.matches() }
         assertTrue(
             "The chart shows ${shown.distinct().map(ScreenColors::hex)}, " +
