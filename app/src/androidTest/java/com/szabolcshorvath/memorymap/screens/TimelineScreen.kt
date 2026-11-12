@@ -85,6 +85,14 @@ object TimelineScreen : TabScreen {
         Ui.assertGone("The search view") { hasId(RESULTS) || hasId(NO_RESULTS) }
     }
 
+    /** Closes the search view with the phone's Back: the first Back closes the keyboard, the next one the view. */
+    fun closeSearchWithBack() {
+        Ui.pressBack()
+        Keyboard.assertHidden()
+        Ui.pressBack()
+        Ui.assertGone("The search view") { hasId(RESULTS) || hasId(NO_RESULTS) }
+    }
+
     private const val TITLE = "tv_memoryTitle"
     private const val RESULTS = "search_results"
     private const val NO_RESULTS = "search_empty"

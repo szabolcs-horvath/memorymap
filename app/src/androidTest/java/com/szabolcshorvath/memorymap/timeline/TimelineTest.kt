@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.timeline
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
+import com.szabolcshorvath.memorymap.screens.Keyboard
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
@@ -51,6 +52,23 @@ class TimelineTest {
         expectMatches("Atlantis")
         TimelineScreen.assertNoMatches("Atlantis")
         expectMatches("", *ALL.toTypedArray())
+    }
+
+    @Test
+    fun backClosesTheSearchAndKeepsItsText() {
+        TestData.memory(PICNIC)
+        TestData.memory(DINNER)
+        openTimeline()
+        TimelineScreen.typeInSearch("picnic")
+        Keyboard.assertShown()
+
+        TimelineScreen.closeSearchWithBack()
+
+        // Back closed the search, not the tab: the Timeline still shows, filtered, with the search in its bar.
+        BottomNav.assertSelected(Tab.TIMELINE)
+        TimelineScreen.assertSearch("picnic")
+        TimelineScreen.assertMemoryShown(PICNIC)
+        TimelineScreen.assertMemoryGone(DINNER)
     }
 
     @Test

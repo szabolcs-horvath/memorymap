@@ -55,7 +55,15 @@ fun TabHost(selected: Tab, visited: List<Tab>, covered: Boolean, modifier: Modif
                 val drawn = !covered && (shown || alpha > 0f)
                 val active = shown && !covered
                 val lifecycle = rememberLifecycleOwner(maxLifecycle = if (active) Lifecycle.State.RESUMED else Lifecycle.State.STARTED)
-                val backHandlers = rememberNavigationEventDispatcherOwner(enabled = active)
+                // A hidden tab's Back handlers go to a dispatcher of its own that is turned off. The shown tab gets none:
+                // a dialog in it (the Timeline's expanded search) takes Back from its own window, which it finds only
+                // when nothing above it provides a dispatcher (a provided one would reach into the dialog too).
+                val hiddenBackHandlers = rememberNavigationEventDispatcherOwner(enabled = false)
+                val locals = if (active) {
+                    arrayOf(LocalLifecycleOwner provides lifecycle)
+                } else {
+                    arrayOf(LocalLifecycleOwner provides lifecycle, LocalNavigationEventDispatcherOwner provides hiddenBackHandlers)
+                }
                 Box(
                     Modifier
                         .zIndex(if (shown) 1f else 0f)
@@ -68,10 +76,9 @@ fun TabHost(selected: Tab, visited: List<Tab>, covered: Boolean, modifier: Modif
                             scaleY = scale
                         },
                 ) {
-                    CompositionLocalProvider(
-                        LocalLifecycleOwner provides lifecycle,
-                        LocalNavigationEventDispatcherOwner provides backHandlers,
-                    ) {
+                    // One call for both cases, so the tab's content keeps its place (and state) when it is shown or hidden.
+                    @Suppress("SpreadOperator") // Two values.
+                    CompositionLocalProvider(*locals) {
                         saveableState.SaveableStateProvider(tab) { content(tab) }
                     }
                 }
