@@ -13,13 +13,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -139,6 +143,8 @@ fun MemoryContent(state: MemoryUiState, showFragmentMarkers: Boolean, actions: M
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
+            // The top bar keeps clear of the status bar; in landscape the page keeps clear of the sides and the bottom.
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .semantics { testTagsAsResourceId = true }
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
@@ -160,15 +166,13 @@ private fun MemoryTopBar(title: String, compact: Boolean, scrollBehavior: TopApp
         IconButton(onClick = actions::edit) { Icon(painterResource(R.drawable.ic_edit), stringResource(R.string.edit_memory)) }
         MoreMenu(onDelete = actions::delete)
     }
-    val insets = WindowInsets(0)
     if (compact) {
-        TopAppBar(titleText, navigationIcon = navigationIcon, actions = barActions, windowInsets = insets, scrollBehavior = scrollBehavior)
+        TopAppBar(titleText, navigationIcon = navigationIcon, actions = barActions, scrollBehavior = scrollBehavior)
     } else {
         LargeFlexibleTopAppBar(
             titleText,
             navigationIcon = navigationIcon,
             actions = barActions,
-            windowInsets = insets,
             scrollBehavior = scrollBehavior,
         )
     }

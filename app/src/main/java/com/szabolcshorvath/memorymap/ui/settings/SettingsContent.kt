@@ -13,9 +13,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -117,6 +121,8 @@ fun SettingsContent(state: SettingsUiState, actions: SettingsActions, presetActi
     Box(
         Modifier
             .fillMaxSize()
+            // The top bar keeps clear of the status bar; in landscape the page keeps clear of the sides and the bottom.
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .semantics { testTagsAsResourceId = true }
     ) {
         AnimatedContent(allBackupsShown, label = "settings_page") { allBackups ->
@@ -184,12 +190,11 @@ private fun SettingsPage(
             }
         }
         if (compact) {
-            TopAppBar(titleText, navigationIcon = navigationIcon, windowInsets = WindowInsets(0), scrollBehavior = scrollBehavior)
+            TopAppBar(titleText, navigationIcon = navigationIcon, scrollBehavior = scrollBehavior)
         } else {
             LargeFlexibleTopAppBar(
                 titleText,
                 navigationIcon = navigationIcon,
-                windowInsets = WindowInsets(0),
                 scrollBehavior = scrollBehavior,
             )
         }

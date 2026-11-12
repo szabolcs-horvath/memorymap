@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 80 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 5 open
+✅ 81 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 4 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -113,7 +113,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [PERF-9](#perf-9) | Low | Pin icon recomputed on every render |
 | ✅ | [PERF-10](#perf-10) | Low | Global layout listener on every layout pass |
 
-**UX — User experience** · 16 of 19 fixed
+**UX — User experience** · 17 of 19 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -129,7 +129,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-10](#ux-10) | Low | Transitive clustering merges distant points |
 | ✅ | [UX-11](#ux-11) | Low | Pickers ignore the locale |
 | ✅ | [UX-12](#ux-12) | Low | Media viewer is not immersive |
-| ⬜ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
+| ✅ | [UX-13](#ux-13) | Low | Edge-to-edge enabled and then cancelled out |
 | ✅ | [UX-14](#ux-14) | Low | Raw technical text shown to users |
 | ✅ | [UX-15](#ux-15) | Low | Placeholder icons and joke version name |
 | ✅ | [UX-16](#ux-16) | Low | Confirmation dialogs close when the phone is turned |
@@ -621,11 +621,16 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Compose migration ([ARCH-10](#arch-10)):** heavily affected. The media viewer is rewritten (pager and zoom), and the bottom navigation and the tab-pops-the-viewer behaviour change again if the migration's last step replaces `MainActivity`'s fragment shell. Hiding the system bars (`WindowInsetsControllerCompat`) carries over; tap-to-hide and the bottom navigation are better built into the Compose viewer.
 - **Status:** Fixed with the Compose media viewer (2026-11-09). While it shows, the tab bar and the system bars are hidden (`MainActivity.onMediaViewerShown`; a swipe from an edge shows the system bars for a moment), the media sit on black, and tapping shows or hides a top bar with a back arrow and "2 of 6", with a video's Media3 controls. With the tab bar hidden, a tab can no longer be tapped from the viewer. The system bars stay hidden while the top bar shows, so the root's `fitsSystemWindows` (UX-13) leaves no strip around the black.
 
-### <a id="ux-13"></a>⬜ UX-13 · Low · Edge-to-edge enabled and then cancelled out
+### <a id="ux-13"></a>✅ UX-13 · Low · Edge-to-edge enabled and then cancelled out
 - **Where:** `MainActivity.kt:84`, `res/layout/activity_main_container.xml:6`
 - **What:** `enableEdgeToEdge()` plus `fitsSystemWindows="true"` on the root pads everything, so the map never draws behind the system bars.
 - **Fix:** Apply insets per view (map padding, bottom navigation).
 - **Compose migration ([ARCH-10](#arch-10)):** heavily affected. Compose handles insets itself (`Scaffold`, `WindowInsets` modifiers, `contentPadding` on the map), so per-view inset code in the XML layouts would be thrown away. Fix it screen by screen during the migration, unless it can't wait.
+- **Status:** Fixed with the Compose shell (2026-11-12). The app draws behind the system bars, and each screen keeps its own content clear of them.
+  - The Map and the location picker draw the map under the status and navigation bars and pad only their controls (the filter bar, the search bar, the toolbar, the panel). The map's `contentPadding` follows them (`ui/common/SafeArea`), so Google's logo and the centre of a zoom stay in view.
+  - The Timeline, Settings, the memory page and the Add form let their top app bars pad for the status bar, and pad their content for the camera cutout and the navigation bar.
+  - The tab bar (or the rail) pads for the navigation bar itself; the shell only moves up for the keyboard.
+  - Checked by screenshot in portrait and landscape (with the rail and the camera cutout) on the test emulator, and with the keyboard over the Add form.
 
 ### <a id="ux-14"></a>✅ UX-14 · Low · Raw technical text shown to users
 - **Where:** `SettingsFragmentViewModel.kt:65,84,101` (exception class names), `MapFragment.kt:629` ("Lat: %.4f…"), `MemoryFragment.kt:350`, `MemoryFragmentAdapter.kt:61` (raw coordinates)
@@ -891,6 +896,7 @@ When a status changes, update the item's **Status** line, the marker in its head
     - Phase 1: each screen has a `…Route` composable (`MapRoute`, `PickLocationRoute`, `MemoryRoute`, `MissingMediaSheetRoute`, `AddMemoryRoute`, `SettingsRoute`) that takes its ViewModel and does what the fragment did: result launchers (`rememberLauncherForActivityResult`, the photo picker, permissions, Drive consent), the questions (`ui/common/ConfirmDialog`, Material 3's `AlertDialog`, open state in `rememberSaveable`; it replaces the DialogFragment `util/ConfirmDialog`), the "my location" flow (`ui/common/MyLocation.kt`, replacing `util/MyLocationAction`), the "Re-link" flow (`ui/common/RelinkRequester`, replacing `util/RelinkAction`) and sign-in (`ui/settings/AccountFlow`). The fragments only host the route and pass on the activity's requests. What the Map and the Add form decided in their fragments (the first zoom, focus requests, picked media, edit requests) moved into their ViewModels.
     - Left for phase 2: the memory pager's `ViewPager2`, the media viewer's hiding of the tab bar, and the missing-photo sheet as a `BottomSheetDialogFragment` (as a Compose sheet it needs a ViewModel of its own per open sheet, which Navigation 3's entries give).
     - Phase 2 (2026-11-11): the Compose shell in `ui/shell/`. `MainActivity` shows `AppShell`; every fragment, layout and the tab menu are gone, and View binding is off. The tabs are in `NavigationSuiteScaffold` (a short navigation bar; a collapsed wide rail in landscape) and kept composed by `TabHost` (lifecycle capped at `STARTED` and Back handlers off while hidden, fading through on a switch); the screens over them (memory pager as a `HorizontalPager`, media viewer, location picker, missing-photo sheet as a modal bottom sheet) are a Navigation 3 back stack in a `NavDisplay` that slides and follows predictive Back, each entry with its own ViewModels and saved state. The undo after a delete and the start-up offer of media access are Compose snackbars. Checked by hand on the test emulator: switching tabs keeps the map, the picker, saving a memory, Show on map, Back from a memory and from a tab, and the rail in landscape. The whole UI suite passes (131 tests; the last four after a rerun of their classes). The screen objects changed with it: the tab bar and the snackbar's action are found by the label element Compose puts inside them, and the memory pager has the test tag `memoryViewPager`, the id the View pager had.
+    - Phase 3 (2026-11-12): edge to edge, which fixes [UX-13](#ux-13). Each screen pads itself for the system bars, and the shell pads only for the keyboard. The rail in landscape is Material's narrow one (80 dp instead of 96 dp), which needs the scaffold built from its parts. A see-through tab bar was considered and left out: the bar sits beside the content, not over it, and Material 3's bars are opaque. The rest of the polish is still open.
 
 [↑ Back to index](#index)
 

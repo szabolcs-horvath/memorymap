@@ -7,11 +7,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -154,6 +158,8 @@ fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: A
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
+            // The top bar keeps clear of the status bar; in landscape the form keeps clear of the sides and the bottom.
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .semantics { testTagsAsResourceId = true },
         topBar = { FormTopBar(state, compact, scrollBehavior, actions::clear) },
@@ -369,9 +375,9 @@ private fun FormTopBar(state: AddFormUiState, compact: Boolean, scrollBehavior: 
         }
     }
     if (compact) {
-        TopAppBar(title, actions = { clear() }, windowInsets = WindowInsets(0), scrollBehavior = scrollBehavior)
+        TopAppBar(title, actions = { clear() }, scrollBehavior = scrollBehavior)
     } else {
-        LargeFlexibleTopAppBar(title, actions = { clear() }, windowInsets = WindowInsets(0), scrollBehavior = scrollBehavior)
+        LargeFlexibleTopAppBar(title, actions = { clear() }, scrollBehavior = scrollBehavior)
     }
 }
 

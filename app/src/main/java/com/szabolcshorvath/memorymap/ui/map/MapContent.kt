@@ -9,10 +9,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -61,6 +66,7 @@ import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.fragment.MapCameraRequest
 import com.szabolcshorvath.memorymap.fragment.MapUiState
 import com.szabolcshorvath.memorymap.ui.add.RangePicker
+import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -89,23 +95,23 @@ fun MapContent(state: MapUiState, actions: MapActions) {
         if (panelOpen && !panel.coversLogo) panel.coveredBelow() else null
     }
 
+    // The map draws behind the status bar (and in landscape the navigation bar); its controls stay clear of them.
+    val safeArea = rememberSafeArea()
     Box(
-        Modifier
-            .fillMaxSize()
+        safeArea.track(Modifier.fillMaxSize())
             .semantics { testTagsAsResourceId = true }
     ) {
         MemoryMap(
             state = state,
             camera = camera,
-            padding = with(density) {
-                PaddingValues(top = topHeight.toDp(), bottom = panel.mapPadding().toDp())
-            },
+            padding = with(density) { safeArea.mapPadding(top = topHeight.toDp(), bottom = panel.mapPadding().toDp()) },
             actions = actions,
             onReady = { mapReady = true },
         )
         Column(
             Modifier
                 .align(Alignment.TopCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 .widthIn(max = MAX_CONTROLS_WIDTH)
                 .padding(horizontal = MARGIN, vertical = TOP_MARGIN),
             horizontalAlignment = Alignment.End,
@@ -125,7 +131,9 @@ fun MapContent(state: MapUiState, actions: MapActions) {
             camera,
             actions,
             onPanelSize = { change -> panel = panel.change() },
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)),
         )
     }
     if (pickingDates) {
