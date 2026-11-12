@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.AppBarWithSearch
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
@@ -53,7 +54,6 @@ import androidx.compose.material3.SearchBarScrollBehavior
 import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopSearchBar
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -254,10 +254,16 @@ private fun Search(
     val searchBarState = rememberSearchBarState()
     val scope = rememberCoroutineScope()
     val searchField = @Composable { SearchField(query, searchBarState) }
-    TopSearchBar(
+    AppBarWithSearch(
         state = searchBarState,
         inputField = searchField,
-        modifier = modifier.padding(horizontal = SEARCH_BAR_MARGIN - TOP_SEARCH_BAR_PADDING),
+        modifier = modifier.padding(horizontal = SEARCH_BAR_MARGIN - APP_BAR_SEARCH_PADDING),
+        // As the bar looked under its old name (TopSearchBar): no app bar behind it, and no colour change on scroll.
+        colors = SearchBarDefaults.appBarWithSearchColors(
+            scrolledSearchBarContainerColor = Color.Unspecified,
+            appBarContainerColor = Color.Transparent,
+            scrolledAppBarContainerColor = Color.Unspecified,
+        ),
         scrollBehavior = scrollBehavior,
     )
     ExpandedFullScreenSearchBar(state = searchBarState, inputField = searchField) {
@@ -335,13 +341,13 @@ private fun SearchResults(days: List<TimelineDay>?, query: String, onMemoryClick
 }
 
 /**
- * The margin Material 3 Expressive gives a search bar. (Focused, it would narrow to 12 dp, but `TopSearchBar` widens
+ * The margin Material 3 Expressive gives a search bar. (Focused, it would narrow to 12 dp, but `AppBarWithSearch` widens
  * only into its search view.)
  */
 private val SEARCH_BAR_MARGIN = 24.dp
 
-/** The padding `TopSearchBar` keeps around its bar on every side (its internal `SearchBarAsTopBarPadding`). */
-private val TOP_SEARCH_BAR_PADDING = 8.dp
+/** The padding `AppBarWithSearch` keeps around its bar on every side (its internal `SearchBarAsTopBarPadding`). */
+private val APP_BAR_SEARCH_PADDING = 8.dp
 
 @Composable
 private fun EmptyMessage(query: String, tag: String) {

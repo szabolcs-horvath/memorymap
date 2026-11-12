@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.ui.memory
 import android.content.Context
 import android.text.format.Formatter
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -215,9 +214,8 @@ private fun Suggestion(file: NearbyFile, item: MediaItem, onClick: () -> Unit) {
         }
     }.build()
     ListItem(
-        headlineContent = { Text(taken.replaceFirstChar { it.titlecase() }) },
+        onClick = onClick,
         modifier = Modifier
-            .clickable(onClick = onClick)
             .semantics { contentDescription = description }
             .padding(horizontal = SHEET_PADDING - 16.dp),
         supportingContent = {
@@ -237,24 +235,22 @@ private fun Suggestion(file: NearbyFile, item: MediaItem, onClick: () -> Unit) {
             )
         },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-    )
+    ) { Text(taken.replaceFirstChar { it.titlecase() }) }
 }
 
 /** One of the sheet's actions, as a list item with an icon; [color] marks a destructive one. */
 @Composable
 private fun Action(@DrawableRes icon: Int, label: Int, color: Color, onClick: () -> Unit) {
     ListItem(
-        headlineContent = { Text(stringResource(label)) },
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = SHEET_PADDING - 16.dp),
+        onClick = onClick,
+        modifier = Modifier.padding(horizontal = SHEET_PADDING - 16.dp),
         leadingContent = { Icon(painterResource(icon), contentDescription = null) },
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent,
-            headlineColor = color,
-            leadingIconColor = color,
+            contentColor = color,
+            leadingContentColor = color,
         ),
-    )
+    ) { Text(stringResource(label)) }
 }
 
 /** Shown when the sheet needs full media access to look: Android's permission dialog follows. */
