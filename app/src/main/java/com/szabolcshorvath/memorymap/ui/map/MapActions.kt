@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.ui.map
 
 import com.google.android.gms.maps.model.LatLng
 import com.szabolcshorvath.memorymap.data.Markerable
-import com.szabolcshorvath.memorymap.fragment.MapCameraRequest
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import java.time.LocalDate
 

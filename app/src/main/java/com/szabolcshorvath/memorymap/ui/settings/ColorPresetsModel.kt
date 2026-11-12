@@ -1,8 +1,9 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.settings
 
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.PresetRepository
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,9 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-/** A colour as the sliders set it: hue 0 to 360, saturation and brightness 0 to 1. */
-data class Hsv(val hue: Float, val saturation: Float, val brightness: Float)
 
 data class ColorPresetsUiState(
     /** The presets in their order, the selected one with the sliders' colour while it has unsaved changes. */

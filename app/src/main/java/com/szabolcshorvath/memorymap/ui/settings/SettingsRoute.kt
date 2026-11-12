@@ -21,10 +21,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.fragment.BackupItem
-import com.szabolcshorvath.memorymap.fragment.Hsv
-import com.szabolcshorvath.memorymap.fragment.SettingsEvent
-import com.szabolcshorvath.memorymap.fragment.SettingsFragmentViewModel
+import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
 import com.szabolcshorvath.memorymap.ui.common.RelinkRequester
 import com.szabolcshorvath.memorymap.ui.common.rememberRelinkRequester
@@ -80,7 +77,7 @@ private val QuestionSaver = Saver<MutableState<Question?>, List<String>>(
  * questions asked before something is deleted or replaced, and sharing the logs.
  */
 @Composable
-fun SettingsRoute(viewModel: SettingsFragmentViewModel) {
+fun SettingsRoute(viewModel: SettingsViewModel) {
     val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val accounts = rememberAccountFlow(viewModel)
@@ -158,7 +155,7 @@ private fun QuestionDialog(question: Question, onClose: () -> Unit, onConfirm: (
 }
 
 /** Shares the logs ("Send logs"), with the date of the latest backup. */
-private fun sendLogs(context: Context, viewModel: SettingsFragmentViewModel, scope: CoroutineScope) {
+private fun sendLogs(context: Context, viewModel: SettingsViewModel, scope: CoroutineScope) {
     viewModel.startBusy(context.getString(R.string.preparing_logs))
     scope.launch {
         try {
@@ -176,7 +173,7 @@ private fun sendLogs(context: Context, viewModel: SettingsFragmentViewModel, sco
 
 /** The screen's actions: map preferences and colour presets go to [viewModel]; what asks first goes to [ask]. */
 private fun settingsActions(
-    viewModel: SettingsFragmentViewModel,
+    viewModel: SettingsViewModel,
     accounts: AccountFlow,
     relink: RelinkRequester,
     ask: (Question) -> Unit,

@@ -1,11 +1,11 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.timeline
 
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.time.ZonedDateTime
 
-class TimelineFragmentViewModelTest {
+class TimelineViewModelTest {
 
     private val memories = listOf(
         MemoryGroup(
@@ -48,27 +48,27 @@ class TimelineFragmentViewModelTest {
 
     @Test
     fun `filterGroups returns all when query is empty`() {
-        val result = TimelineFragmentViewModel.filterGroups(memories, "")
+        val result = TimelineViewModel.filterGroups(memories, "")
         assertEquals(3, result.size)
     }
 
     @Test
     fun `filterGroups filters by title`() {
-        val result = TimelineFragmentViewModel.filterGroups(memories, "Paris")
+        val result = TimelineViewModel.filterGroups(memories, "Paris")
         assertEquals(1, result.size)
         assertEquals("Trip to Paris", result[0].title)
     }
 
     @Test
     fun `filterGroups filters by description`() {
-        val result = TimelineFragmentViewModel.filterGroups(memories, "friends")
+        val result = TimelineViewModel.filterGroups(memories, "friends")
         assertEquals(1, result.size)
         assertEquals("Birthday Party", result[0].title)
     }
 
     @Test
     fun `filterGroups is case insensitive`() {
-        val result = TimelineFragmentViewModel.filterGroups(memories, "paris")
+        val result = TimelineViewModel.filterGroups(memories, "paris")
         assertEquals(1, result.size)
         assertEquals("Trip to Paris", result[0].title)
     }
@@ -76,7 +76,7 @@ class TimelineFragmentViewModelTest {
     @Test
     fun `filterGroups filters by place name`() {
         // Place name of memory 3 is "Barcelona"
-        val result = TimelineFragmentViewModel.filterGroups(memories, "Barcelona")
+        val result = TimelineViewModel.filterGroups(memories, "Barcelona")
         assertEquals(1, result.size)
         assertEquals("Summer vacation", result[0].title)
     }
@@ -84,7 +84,7 @@ class TimelineFragmentViewModelTest {
     @Test
     fun `filterGroups filters by address`() {
         // Address of memory 3 contains "Rambla"
-        val result = TimelineFragmentViewModel.filterGroups(memories, "Rambla")
+        val result = TimelineViewModel.filterGroups(memories, "Rambla")
         assertEquals(1, result.size)
         assertEquals("Summer vacation", result[0].title)
     }
@@ -99,7 +99,7 @@ class TimelineFragmentViewModelTest {
             memories[2].copy(id = 3, startDate = day1.plusHours(5)),
         )
 
-        val days = TimelineFragmentViewModel.groupByDay(groups)
+        val days = TimelineViewModel.groupByDay(groups)
 
         assertEquals(listOf(day2.toLocalDate(), day1.toLocalDate()), days.map { it.date })
         assertEquals(listOf(listOf(2), listOf(3, 1)), days.map { day -> day.memories.map { it.id } })

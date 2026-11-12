@@ -10,8 +10,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PointOfInterest
 import com.szabolcshorvath.memorymap.AppServices
-import com.szabolcshorvath.memorymap.fragment.CameraRequest
-import com.szabolcshorvath.memorymap.fragment.PickLocationFragmentViewModel
 import com.szabolcshorvath.memorymap.ui.common.MyLocationQuestions
 import com.szabolcshorvath.memorymap.ui.common.rememberMyLocationRequester
 
@@ -21,7 +19,7 @@ import com.szabolcshorvath.memorymap.ui.common.rememberMyLocationRequester
  */
 @Composable
 fun PickLocationRoute(
-    viewModel: PickLocationFragmentViewModel,
+    viewModel: PickLocationViewModel,
     onClose: () -> Unit,
     onConfirm: (lat: Double, lng: Double, placeName: String?, address: String?) -> Unit,
 ) {

@@ -4,10 +4,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
 /** The app's only activity: it shows the Compose shell ([AppShell]) and runs the checks the app needs at start. */
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     private val shell: ShellViewModel by viewModels()
     private val tabs = TabViewModels(this)

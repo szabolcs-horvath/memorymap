@@ -20,10 +20,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel
-import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel.Outcome
-import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel.State
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
+import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetViewModel.Outcome
+import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetViewModel.State
 import com.szabolcshorvath.memorymap.util.NearbyFile
 import com.szabolcshorvath.memorymap.util.PermissionUtil
 

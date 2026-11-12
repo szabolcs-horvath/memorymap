@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.memory
 
 import android.app.Application
 import androidx.lifecycle.ViewModel
@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
+import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.MemoryRepository
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.szabolcshorvath.memorymap.data.MemoryFragment as MemoryFragmentEntity
 
 /**
  * A photo or video of the memory. [missing] when it needs re-linking (`LocalMediaUtil.hasMissingMedia`): its tile
@@ -42,7 +42,7 @@ class MediaTile(val item: MediaItem, val missing: Boolean, val thumbnail: ByteAr
 /** What the memory page shows. [group] is null until the memory is loaded, and once it has been deleted. */
 data class MemoryUiState(
     val group: MemoryGroup? = null,
-    val fragments: List<MemoryFragmentEntity> = emptyList(),
+    val fragments: List<MemoryFragment> = emptyList(),
     val media: List<MediaTile> = emptyList(),
     /** A re-link runs, started from the could-not-load banner; [relinkStatus] says how far it got. */
     val relinking: Boolean = false,
@@ -51,7 +51,7 @@ data class MemoryUiState(
     val hasMissingMedia get() = media.any { it.missing }
 }
 
-class MemoryFragmentViewModel(
+class MemoryViewModel(
     /** The memory this page shows. */
     val memoryId: Int,
     private val application: Application,
@@ -82,7 +82,7 @@ class MemoryFragmentViewModel(
         val thumbnails = memories.getThumbnails(media.map { it.mediaSignature })
         return MemoryUiState(
             group = data.group,
-            fragments = data.fragments.sortedWith(MemoryFragmentEntity.DISPLAY_ORDER),
+            fragments = data.fragments.sortedWith(MemoryFragment.DISPLAY_ORDER),
             media = media.map { MediaTile(it, it.id in missing, thumbnails[it.mediaSignature]) },
         )
     }
@@ -111,7 +111,7 @@ class MemoryFragmentViewModel(
     }
 
     /** Stores [fragments] in the order shown. */
-    fun saveFragmentsOrder(fragments: List<MemoryFragmentEntity>) {
+    fun saveFragmentsOrder(fragments: List<MemoryFragment>) {
         fragmentsOrderJob?.cancel()
         fragmentsOrderJob = viewModelScope.launch { memories.saveFragmentsOrder(fragments) }
     }
@@ -126,7 +126,7 @@ class MemoryFragmentViewModel(
         fun factory(memoryId: Int): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = this[APPLICATION_KEY]!!
-                MemoryFragmentViewModel(memoryId, application, application.appContainer.memories)
+                MemoryViewModel(memoryId, application, application.appContainer.memories)
             }
         }
     }

@@ -63,8 +63,6 @@ import com.google.maps.android.compose.clustering.rememberClusterManager
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.Markerable
-import com.szabolcshorvath.memorymap.fragment.MapCameraRequest
-import com.szabolcshorvath.memorymap.fragment.MapUiState
 import com.szabolcshorvath.memorymap.ui.add.RangePicker
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import kotlinx.coroutines.flow.distinctUntilChanged

@@ -141,12 +141,8 @@ ksp {
 
 dependencies {
     // Core & UI
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.fragment.ktx)
     implementation(libs.datastore.preferences)
-    implementation(libs.material)
 
     // Jetpack Compose (the screens moved from XML Views so far: ARCH-10)
     implementation(platform(libs.compose.bom))

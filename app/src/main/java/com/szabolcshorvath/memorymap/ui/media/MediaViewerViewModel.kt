@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.media
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

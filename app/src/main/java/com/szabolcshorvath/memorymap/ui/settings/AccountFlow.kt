@@ -21,7 +21,6 @@ import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.auth.DriveAuthorization
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
-import com.szabolcshorvath.memorymap.fragment.SettingsFragmentViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -34,7 +33,7 @@ import kotlinx.coroutines.launch
 class AccountFlow internal constructor(
     private val activity: Activity,
     private val scope: CoroutineScope,
-    private val viewModel: SettingsFragmentViewModel,
+    private val viewModel: SettingsViewModel,
     private val consentLauncher: ManagedActivityResultLauncher<IntentSenderRequest, ActivityResult>,
 ) {
     // Credential Manager throws many kinds of exception: each is logged for "Send logs", and the user gets plain words.
@@ -141,7 +140,7 @@ class AccountFlow internal constructor(
 
 /** The [AccountFlow] of Settings' [viewModel]. */
 @Composable
-fun rememberAccountFlow(viewModel: SettingsFragmentViewModel): AccountFlow {
+fun rememberAccountFlow(viewModel: SettingsViewModel): AccountFlow {
     val activity = checkNotNull(LocalActivity.current) { "Settings must be shown in an activity" }
     val scope = rememberCoroutineScope()
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->

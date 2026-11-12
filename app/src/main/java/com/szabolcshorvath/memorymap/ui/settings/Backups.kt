@@ -26,26 +26,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.google.android.material.color.MaterialColors
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
 import com.szabolcshorvath.memorymap.backup.DriveProblem
-import com.szabolcshorvath.memorymap.fragment.BackupItem
-import com.szabolcshorvath.memorymap.fragment.OperationResult
-import com.szabolcshorvath.memorymap.fragment.SettingsUiState
+import com.szabolcshorvath.memorymap.ui.theme.success
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.Instant
 import java.time.ZoneId
@@ -195,7 +189,7 @@ internal fun ResultBanner(result: OperationResult?) {
         val colors = MaterialTheme.colorScheme
         val container = if (current.isError) colors.errorContainer else colors.secondaryContainer
         val content = if (current.isError) colors.onErrorContainer else colors.onSecondaryContainer
-        val iconColor = if (current.isError) colors.error else successColor()
+        val iconColor = if (current.isError) colors.error else MaterialTheme.success
         Surface(
             color = container,
             contentColor = content,
@@ -216,13 +210,6 @@ internal fun ResultBanner(result: OperationResult?) {
             }
         }
     }
-}
-
-/** The app's success colour, from the XML theme (Material 3 has no colour role for it). */
-@Composable
-private fun successColor(): Color {
-    val context = LocalContext.current
-    return Color(MaterialColors.getColor(context, R.attr.colorSuccess, "ResultBanner"))
 }
 
 /** Why the backup list couldn't be loaded; when Drive access lapsed, a button to allow it again. */

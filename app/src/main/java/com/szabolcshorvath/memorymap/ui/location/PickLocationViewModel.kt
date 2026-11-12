@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.location
 
 import android.app.Application
 import android.content.Context
@@ -13,6 +13,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PointOfInterest
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.ui.add.FormPlace
 import com.szabolcshorvath.memorymap.util.ChosenPlace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,7 @@ import java.util.Locale
 /** A spot picked in the location picker, with its name and address once they are known. */
 data class PickedSpot(val lat: Double, val lng: Double, val name: String?, val address: String?)
 
-/** Where the map's camera should go. The screen moves it once, then clears it ([PickLocationFragmentViewModel.onCameraMoved]). */
+/** Where the map's camera should go. The screen moves it once, then clears it ([PickLocationViewModel.onCameraMoved]). */
 data class CameraRequest(val lat: Double, val lng: Double, val zoom: Float?, val animate: Boolean)
 
 data class PickLocationUiState(
@@ -45,7 +46,7 @@ data class PickLocationUiState(
  */
 // One function per intent of the screen.
 @Suppress("TooManyFunctions")
-class PickLocationFragmentViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
+class PickLocationViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
 
     val selectedLat: Double? get() = savedState[SELECTED_LAT]
     val selectedLng: Double? get() = savedState[SELECTED_LNG]

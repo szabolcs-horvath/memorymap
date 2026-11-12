@@ -66,8 +66,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.fragment.BackupItem
-import com.szabolcshorvath.memorymap.fragment.SettingsUiState
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 
 // The UI tests find these elements by these names (screens/SettingsScreen), the names the View version's ids had.
@@ -84,7 +82,7 @@ private const val ARROW_OPEN = 180f
 /** Below this height a window is compact (Material's window size classes): the top app bar is a small one. */
 private val COMPACT_HEIGHT = 480.dp
 
-/** What the user can do on the Settings tab. What needs an activity, or asks first, is the fragment's to do. */
+/** What the user can do on the Settings tab. What needs an activity, or asks first, is the route's to do. */
 interface SettingsActions {
     fun setShowFragmentMarkers(show: Boolean)
     fun setMarkerClustering(enabled: Boolean)

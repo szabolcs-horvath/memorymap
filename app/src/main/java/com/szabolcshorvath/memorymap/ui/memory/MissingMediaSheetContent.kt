@@ -47,7 +47,7 @@ import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.fragment.MissingMediaSheetViewModel.State
+import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetViewModel.State
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.NearbyFile
 import com.szabolcshorvath.memorymap.util.NearbyMedia

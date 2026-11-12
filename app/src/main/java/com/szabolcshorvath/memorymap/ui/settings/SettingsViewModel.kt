@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.fragment
+package com.szabolcshorvath.memorymap.ui.settings
 
 import android.app.Application
 import android.content.IntentSender
@@ -66,7 +66,7 @@ data class SettingsUiState(
     val automaticBackup: AutomaticBackupStatus = AutomaticBackupStatus.IDLE,
 )
 
-/** What Settings asks the fragment to show or do once: a short message, or the offer of full media access. */
+/** What Settings asks the route to show or do once: a short message, or the offer of full media access. */
 sealed interface SettingsEvent {
     data class Message(@StringRes val text: Int) : SettingsEvent
 
@@ -78,7 +78,7 @@ sealed interface SettingsEvent {
  * Settings' state ([uiState]) and what the user does on it. What needs an activity (signing in, Drive's consent screen,
  * permission requests, dialogs, sharing the logs) stays with [SettingsFragment], which reports it here.
  */
-class SettingsFragmentViewModel(
+class SettingsViewModel(
     application: Application,
     presetRepository: PresetRepository,
     private val memories: MemoryRepository,
@@ -329,7 +329,7 @@ class SettingsFragmentViewModel(
             initializer {
                 val app = this[APPLICATION_KEY]!!
                 val container = app.appContainer
-                SettingsFragmentViewModel(app, container.presets, container.memories, container.database, container.backupManager)
+                SettingsViewModel(app, container.presets, container.memories, container.database, container.backupManager)
             }
         }
     }
