@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 83 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 6 open
+✅ 83 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 7 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -154,7 +154,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose |
 | ⬜ | [ARCH-11](#arch-11) | Medium | No whole-codebase pass yet for Material 3 Expressive and for simpler code |
 
-**BUILD — Build, CI, tooling** · 4 of 5 fixed
+**BUILD — Build, CI, tooling** · 4 of 6 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -163,6 +163,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
 | ✅ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
 | ⬜ | [BUILD-5](#build-5) | Low | Material3 is pinned to a release candidate ahead of the Compose BOM |
+| ⬜ | [BUILD-6](#build-6) | Low | Nothing checks the declared dependencies against what the code uses |
 
 **TEST — Coverage gaps** · 2 of 5 fixed
 
@@ -961,6 +962,17 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `gradle/libs.versions.toml` (`composeMaterial3`)
 - **What:** The Compose BOM takes only stable releases, and the app needs Material 3 1.5 (Material 3 Expressive's button groups, wavy progress indicators and `SegmentedListItem`). So Material3 is pinned on its own, to `1.5.0-rc01`, while the rest of Compose comes from the BOM (`2026.09.00`, the latest on 2026-11-12, still on Material3 1.4). A release candidate can still change, and the pin has to be moved by hand.
 - **Fix:** Once a BOM has Material3 1.5 (stable), drop `composeMaterial3` and take Material3 from the BOM again; check that the unit tests, lint and the UI suite still pass. Until then, move the pin to 1.5.0 when it is released.
+
+### <a id="build-6"></a>⬜ BUILD-6 · Low · Nothing checks the declared dependencies against what the code uses
+- **Where:** `gradle/libs.versions.toml`, `build.gradle.kts`, `app/build.gradle.kts`
+- **What:** Dependencies are added and removed by hand. Nothing reports a library nothing uses any more (the View-era clean-up dropped AppCompat, Material Components, ConstraintLayout and `fragment-ktx` only because someone looked), a library the code uses but only gets through another one (it breaks when that one drops it), a test-only library declared for the app, or an unused annotation processor. Android lint doesn't check this.
+- **Fix:** Add the [Dependency Analysis Gradle Plugin](https://github.com/autonomousapps/dependency-analysis-gradle-plugin) (DAGP), off by default and run once in a while, so it never has to be added again (agreed with the user, 2026-11-12):
+  - Declare it in the version catalog and in the root build with `apply false`, and apply it to the root and `app` only when a property is set (`if (providers.gradleProperty("dependencyAnalysis").isPresent) apply(plugin = "com.autonomousapps.dependency-analysis")`). Run it with `./gradlew buildHealth -PdependencyAnalysis`. Normal builds and CI only put it on the classpath; its version stays in the catalog, bumped with the rest. Not an init script: its version would be pinned out of sight and break unnoticed against a newer AGP.
+  - Tune its rules in the repo for what is used without code referring to it (the Firebase BOM, Crashlytics and Performance, the Compose tooling and preview libraries, Play services coming through the Maps and Places SDKs), so a report lists only real findings.
+  - Optionally, a workflow started by hand (`workflow_dispatch`, perhaps also monthly on a `schedule`) that runs it and uploads the report as an artifact. It never fails a PR.
+  - Document the command in AGENTS.md's Build section, next to detekt and the UI tests.
+  - Check DAGP's compatibility table first: the project runs very new AGP, Gradle and Kotlin versions, which DAGP sometimes supports only later.
+  - Then act on the first report: remove unused libraries, declare the ones used through others, and move test-only ones to `testImplementation`.
 
 [↑ Back to index](#index)
 
