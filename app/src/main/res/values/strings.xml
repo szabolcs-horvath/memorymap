@@ -64,10 +64,10 @@
     <string name="missing_media_unknown_size">unknown size</string>
     <string name="missing_media_looking">Looking for it on this phone…</string>
     <string name="missing_media_found">Found it: it\'s linked again.</string>
-    <string name="missing_media_not_found">It isn\'t on this phone any more. These were taken around the same time:</string>
-    <string name="missing_media_none_nearby">It isn\'t on this phone any more, and nothing else was taken within 5 minutes of it.</string>
-    <string name="missing_media_none_nearby_wider">It isn\'t on this phone any more, and nothing else was taken within an hour of it.</string>
-    <string name="missing_media_no_date">It isn\'t on this phone any more. Its date is unknown, so nothing taken around the same time can be suggested.</string>
+    <string name="missing_media_not_found">It isn\'t on this phone anymore. These were taken around the same time:</string>
+    <string name="missing_media_none_nearby">It isn\'t on this phone anymore, and nothing else was taken within 5 minutes of it.</string>
+    <string name="missing_media_none_nearby_wider">It isn\'t on this phone anymore, and nothing else was taken within an hour of it.</string>
+    <string name="missing_media_no_date">It isn\'t on this phone anymore. Its date is unknown, so nothing taken around the same time can be suggested.</string>
     <string name="missing_media_needs_access">To look for it, and for what was taken around the same time, Memory Map needs access to all your photos and videos.</string>
     <string name="missing_media_show_more">Show more</string>
     <string name="missing_media_choose_another">Choose another photo…</string>

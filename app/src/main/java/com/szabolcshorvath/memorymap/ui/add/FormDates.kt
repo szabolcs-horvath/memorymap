@@ -197,8 +197,8 @@ internal fun FormPicker(request: PickerRequest, state: AddFormUiState, actions: 
         }
     }
     when (request.kind) {
-        PickerRequest.Kind.START_DATE, PickerRequest.Kind.END_DATE -> {
-            val isStart = request.kind == PickerRequest.Kind.START_DATE
+        START_DATE, END_DATE -> {
+            val isStart = request.kind == START_DATE
             DayPicker(
                 title = if (isStart) R.string.select_start_date else R.string.select_end_date,
                 day = (if (isStart) start else end).toLocalDate(),
@@ -206,8 +206,8 @@ internal fun FormPicker(request: PickerRequest, state: AddFormUiState, actions: 
             ) { actions.setDate(request.part, isStart, it) }
         }
 
-        PickerRequest.Kind.START_TIME, PickerRequest.Kind.END_TIME -> {
-            val isStart = request.kind == PickerRequest.Kind.START_TIME
+        START_TIME, END_TIME -> {
+            val isStart = request.kind == START_TIME
             ClockPicker(
                 title = if (isStart) R.string.select_start_time else R.string.select_end_time,
                 time = (if (isStart) start else end).toLocalTime(),
@@ -215,7 +215,7 @@ internal fun FormPicker(request: PickerRequest, state: AddFormUiState, actions: 
             ) { actions.setTime(request.part, isStart, it) }
         }
 
-        PickerRequest.Kind.DATE_RANGE -> RangePicker(start.toLocalDate(), end.toLocalDate(), onClose) { first, last ->
+        DATE_RANGE -> RangePicker(start.toLocalDate(), end.toLocalDate(), onClose) { first, last ->
             actions.setDateRange(request.part, first, last)
         }
     }

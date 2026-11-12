@@ -83,7 +83,7 @@ fun SettingsRoute(viewModel: SettingsViewModel) {
     val accounts = rememberAccountFlow(viewModel)
     val relink = rememberRelinkRequester(viewModel::relink)
     val scope = rememberCoroutineScope()
-    var question by rememberSaveable(saver = QuestionSaver) { mutableStateOf<Question?>(null) }
+    var question by rememberSaveable(saver = QuestionSaver) { mutableStateOf(null) }
     // The backup to restore once media access was asked for.
     var pendingRestore by rememberSaveable { mutableStateOf<String?>(null) }
     val restoreAccess = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->

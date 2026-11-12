@@ -146,7 +146,7 @@ object MapScreen : TabScreen {
             }
             SystemClock.uptimeMillis() - since >= MARKERS_STILL_MS
         }
-        if (!settled) Log.w(TAG, "The markers were still changing after ${MARKERS_SETTLE_TIMEOUT_MS} ms: $last")
+        if (!settled) Log.w(TAG, "The markers were still changing after $MARKERS_SETTLE_TIMEOUT_MS ms: $last")
         return last
     }
 

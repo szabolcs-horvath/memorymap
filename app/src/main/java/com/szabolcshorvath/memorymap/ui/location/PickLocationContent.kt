@@ -64,6 +64,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
+import com.szabolcshorvath.memorymap.ui.common.trackSafeArea
 import com.szabolcshorvath.memorymap.ui.map.MAX_CONTROLS_WIDTH
 import com.szabolcshorvath.memorymap.ui.map.MapToolbar
 import com.szabolcshorvath.memorymap.ui.map.PanelSize
@@ -94,8 +95,9 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
     // The map draws behind the status bar (and in landscape the navigation bar); its controls stay clear of them.
     val safeArea = rememberSafeArea()
     Box(
-        safeArea
-            .track(Modifier.fillMaxSize())
+        Modifier
+            .fillMaxSize()
+            .trackSafeArea(safeArea)
             .semantics { testTagsAsResourceId = true }
     ) {
         PickerMap(

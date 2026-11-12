@@ -76,7 +76,7 @@ sealed interface SettingsEvent {
 
 /**
  * Settings' state ([uiState]) and what the user does on it. What needs an activity (signing in, Drive's consent screen,
- * permission requests, dialogs, sharing the logs) stays with [SettingsFragment], which reports it here.
+ * permission requests, dialogs, sharing the logs) stays with [SettingsRoute], which reports it here.
  */
 class SettingsViewModel(
     application: Application,

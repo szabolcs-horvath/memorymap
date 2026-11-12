@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -114,7 +115,9 @@ fun AppShell(shell: ShellViewModel, tabs: TabViewModels) {
     ) {
         NavigationSuiteScaffoldLayout(
             navigationSuite = {
-                NavigationSuite(navigationSuiteType = type, modifier = railWidth(type)) { TabItems(shell.tab, type, actions) }
+                NavigationSuite(navigationSuiteType = type, modifier = Modifier.railWidth(type, railInset())) {
+                    TabItems(shell.tab, type, actions)
+                }
             },
             navigationSuiteType = type,
         ) {
@@ -162,14 +165,15 @@ private fun ShellContent(
 
 /**
  * The rail at Material's narrow width (80 dp, instead of the collapsed rail's 96 dp): a phone in landscape keeps more
- * of its width for the map. The rail's own padding for the system bars and the camera cutout beside it comes on top.
+ * of its width for the map. The rail's own padding for the system bars and the camera cutout beside it ([inset]) comes
+ * on top.
  */
+private fun Modifier.railWidth(type: NavigationSuiteType, inset: Dp): Modifier =
+    if (type == NavigationSuiteType.WideNavigationRailCollapsed) width(NARROW_RAIL_WIDTH + inset) else this
+
+/** How much the rail pads at its start for the system bars and the camera cutout beside it. */
 @Composable
-private fun railWidth(type: NavigationSuiteType): Modifier {
-    if (type != NavigationSuiteType.WideNavigationRailCollapsed) return Modifier
-    val start = WideNavigationRailDefaults.windowInsets.asPaddingValues().calculateStartPadding(LocalLayoutDirection.current)
-    return Modifier.width(NARROW_RAIL_WIDTH + start)
-}
+private fun railInset(): Dp = WideNavigationRailDefaults.windowInsets.asPaddingValues().calculateStartPadding(LocalLayoutDirection.current)
 
 /** What the navigation suite takes care of, so the content doesn't keep room for it again (as the scaffold does). */
 @Composable
@@ -329,7 +333,8 @@ private fun ShellMessages(shell: ShellViewModel, snackbar: SnackbarHostState) {
     LaunchedEffect(shell) {
         shell.messages.collect { message ->
             when (message) {
-                ShellMessage.RelinkNeedsAccess -> launch {
+                // In a coroutine of its own, so the next message is collected while the snackbar shows.
+                ShellMessage.RelinkNeedsAccess -> scope.launch {
                     val result = snackbar.showSnackbar(
                         text,
                         actionLabel = grant,

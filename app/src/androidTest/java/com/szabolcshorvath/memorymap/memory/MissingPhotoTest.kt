@@ -183,7 +183,7 @@ class MissingPhotoTest {
 
     private companion object {
         const val TRIP = "Vienna trip"
-        const val NOTHING_WITHIN_5_MINUTES = "It isn't on this phone any more, and nothing else was taken within 5 minutes of it."
+        const val NOTHING_WITHIN_5_MINUTES = "It isn't on this phone anymore, and nothing else was taken within 5 minutes of it."
         const val NEEDS_ACCESS =
             "To look for it, and for what was taken around the same time, Memory Map needs access to all your photos and videos."
         val GREEN = Color.rgb(40, 160, 90)

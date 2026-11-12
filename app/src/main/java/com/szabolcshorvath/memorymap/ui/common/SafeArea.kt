@@ -23,14 +23,12 @@ import androidx.compose.ui.unit.dp
  * The part of the screen a full-screen map keeps its controls out of: the system bars and the camera cutout, apart
  * from what a layout around the screen handles already (the tab bar handles the navigation bar below it). A padding
  * modifier (`windowInsetsPadding`) knows that by itself; the map's `contentPadding` needs the numbers, which is what
- * this is for. Put [track] on the screen's root, and read [mapPadding] inside it.
+ * this is for. Put [trackSafeArea] on the screen's root, and read [mapPadding] inside it.
  */
 @Stable
 class SafeArea internal constructor() {
-    private var handled by mutableStateOf(WindowInsets(0))
-
-    /** Follows what the layouts around this one handle already. */
-    fun track(modifier: Modifier = Modifier): Modifier = modifier.onConsumedWindowInsetsChanged { handled = it }
+    /** What the layouts around the screen handle already. */
+    internal var handled by mutableStateOf(WindowInsets(0))
 
     /**
      * A map's padding: the insets left for this screen, plus [top] and [bottom] for its controls. [top] already
@@ -51,3 +49,6 @@ class SafeArea internal constructor() {
 
 @Composable
 fun rememberSafeArea(): SafeArea = remember { SafeArea() }
+
+/** Keeps [area] following what the layouts around this one handle already: put it on the screen's root. */
+fun Modifier.trackSafeArea(area: SafeArea): Modifier = onConsumedWindowInsetsChanged { area.handled = it }

@@ -63,11 +63,13 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.ui.add.RangePicker
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
+import com.szabolcshorvath.memorymap.ui.common.trackSafeArea
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.hypot
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The Map tab: the memories' pins on Google's map, the date filter's button group over its top, the colour statistics
@@ -93,8 +95,9 @@ fun MapContent(state: MapUiState, actions: MapActions) {
     // The map draws behind the status bar (and in landscape the navigation bar); its controls stay clear of them.
     val safeArea = rememberSafeArea()
     Box(
-        safeArea
-            .track(Modifier.fillMaxSize())
+        Modifier
+            .fillMaxSize()
+            .trackSafeArea(safeArea)
             .semantics { testTagsAsResourceId = true }
     ) {
         MemoryMap(
@@ -250,7 +253,7 @@ private fun CameraRequests(
             move = {
                 // A pin tapped while the panel opens: wait for its size, briefly, to centre the pin above it.
                 val below = if (request is MapCameraRequest.Show && covered() != null) {
-                    withTimeoutOrNull(PANEL_WAIT_MS) { snapshotFlow { covered() ?: 0 }.first { it > 0 } } ?: 0
+                    withTimeoutOrNull(PANEL_WAIT) { snapshotFlow { covered() ?: 0 }.first { it > 0 } } ?: 0
                 } else {
                     0
                 }
@@ -319,7 +322,7 @@ private const val ZOOM_SLACK = 0.1f
 private val CENTRED_TOLERANCE = 24.dp
 
 /** How long a camera move waits for a panel that opens with it to have a size. */
-private const val PANEL_WAIT_MS = 500L
+private val PANEL_WAIT = 500.milliseconds
 private val FIT_PADDING = 40.dp
 internal val MARGIN = 16.dp
 private val TOP_MARGIN = 8.dp
