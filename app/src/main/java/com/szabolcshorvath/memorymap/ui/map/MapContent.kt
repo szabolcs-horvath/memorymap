@@ -96,7 +96,8 @@ fun MapContent(state: MapUiState, actions: MapActions) {
     // The map draws behind the status bar (and in landscape the navigation bar); its controls stay clear of them.
     val safeArea = rememberSafeArea()
     Box(
-        safeArea.track(Modifier.fillMaxSize())
+        safeArea
+            .track(Modifier.fillMaxSize())
             .semantics { testTagsAsResourceId = true }
     ) {
         MemoryMap(
@@ -274,6 +275,7 @@ private suspend fun CameraPositionState.moveFor(request: MapCameraRequest, densi
                 position = CameraPosition.fromLatLngZoom(target, request.zoom)
             }
         }
+
         is MapCameraRequest.MyLocation -> {
             // Never zooms out: closer than the area view, or already on it around the phone, it shows the streets.
             val closer = position.zoom > MY_LOCATION_ZOOM + ZOOM_SLACK ||
@@ -281,6 +283,7 @@ private suspend fun CameraPositionState.moveFor(request: MapCameraRequest, densi
             val zoom = if (closer) maxOf(position.zoom, MY_LOCATION_CLOSE_ZOOM) else MY_LOCATION_ZOOM
             animate(CameraUpdateFactory.newLatLngZoom(request.position, zoom))
         }
+
         is MapCameraRequest.ZoomIn -> animate(CameraUpdateFactory.newLatLngZoom(request.position, position.zoom + 1f))
         is MapCameraRequest.Fit -> fit(request.positions, density)
     }

@@ -120,10 +120,12 @@ fun SettingsRoute(viewModel: SettingsViewModel) {
                     } else {
                         question = Question.RestoreAccess(open.id)
                     }
+
                 is Question.RestoreAccess -> {
                     pendingRestore = open.id
                     restoreAccess.launch(PermissionUtil.getRequiredMediaPermissions())
                 }
+
                 Question.MoreAccess -> relink.askForAccess()
                 is Question.DeleteBackup -> viewModel.deleteBackup(open.id)
             }
@@ -138,8 +140,10 @@ private fun QuestionDialog(question: Question, onClose: () -> Unit, onConfirm: (
         is Question.DeletePreset -> stringResource(R.string.delete_preset) to stringResource(R.string.delete_preset_message)
         is Question.Restore ->
             stringResource(R.string.restore_backup_title) to stringResource(R.string.restore_backup_message, question.name)
+
         is Question.RestoreAccess ->
             stringResource(R.string.restore_media_access_title) to stringResource(R.string.restore_media_access_message)
+
         Question.MoreAccess -> stringResource(R.string.relink_more_title) to stringResource(R.string.relink_more_message)
         is Question.DeleteBackup ->
             stringResource(R.string.delete_backup_title) to stringResource(R.string.delete_backup_message, question.name)
@@ -193,6 +197,7 @@ private fun settingsActions(
     override fun deletePreset() {
         viewModel.colorPresets.state.value.selectedPresetId?.let { ask(Question.DeletePreset(it)) }
     }
+
     override fun signIn() = accounts.signIn()
     override fun signOut() = accounts.signOut()
     override fun backUpNow() = accounts.backUpNow()

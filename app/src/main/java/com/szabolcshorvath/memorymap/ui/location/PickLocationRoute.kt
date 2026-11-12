@@ -38,6 +38,7 @@ fun PickLocationRoute(
             override fun search() {
                 if (viewModel.canSearch()) search.launch(Unit)
             }
+
             override fun goToMyLocation() = myLocation.start()
             override fun pickOnMap(latLng: LatLng) = viewModel.pickOnMap(latLng)
             override fun pickPoi(poi: PointOfInterest) = viewModel.pickPoi(poi)
@@ -46,6 +47,7 @@ fun PickLocationRoute(
                 val lng = viewModel.selectedLng ?: return
                 confirm(lat, lng, viewModel.selectedPlaceName, viewModel.selectedAddress)
             }
+
             override fun onCameraMoved(request: CameraRequest) = viewModel.onCameraMoved(request)
             override fun onMessageShown() = viewModel.onMessageShown()
         }

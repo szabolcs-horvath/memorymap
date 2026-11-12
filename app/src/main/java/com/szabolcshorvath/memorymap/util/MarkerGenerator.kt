@@ -14,6 +14,7 @@ import androidx.core.graphics.withClip
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.PinConfig
+import com.szabolcshorvath.memorymap.util.MarkerGenerator.drawnIconCache
 
 object MarkerGenerator {
     private const val TARGET_CONTRAST_FOR_MARKER_COLORS = 2.0

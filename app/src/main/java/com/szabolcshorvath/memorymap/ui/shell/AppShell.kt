@@ -152,6 +152,7 @@ private fun ShellContent(
                         onDispose { tabsCovered = true }
                     }
                 }
+
                 else -> detailEntry(detail, shell, tabs, actions)
             }
         }
@@ -175,8 +176,10 @@ private fun railWidth(type: NavigationSuiteType): Modifier {
 private fun navigationInsets(type: NavigationSuiteType): WindowInsets = when (type) {
     NavigationSuiteType.ShortNavigationBarCompact, NavigationSuiteType.ShortNavigationBarMedium ->
         ShortNavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom).add(WindowInsets(bottom = SHORT_BAR_HEIGHT))
+
     NavigationSuiteType.WideNavigationRailCollapsed, NavigationSuiteType.WideNavigationRailExpanded ->
         WideNavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+
     else -> WindowInsets(0)
 }
 
@@ -238,12 +241,14 @@ private fun TabContent(tab: Tab, shell: ShellViewModel, tabs: TabViewModels, act
                 onScrollToTopHandled = tabs.timeline::onScrollToTopHandled,
             )
         }
+
         Tab.ADD -> {
             // A save that finishes while the form isn't shown must not open the memory once the form is shown again.
             val shown = shell.tab == Tab.ADD && !shell.hasDetail
             LaunchedEffect(shown) { tabs.add.isScreenShown = shown }
             AddMemoryRoute(tabs.add, tabs.common, onPickLocation = actions::pickLocation, onSaved = actions::openMemory)
         }
+
         Tab.SETTINGS -> SettingsRoute(tabs.settings)
     }
 }
@@ -255,9 +260,14 @@ private fun detailEntry(detail: Detail, shell: ShellViewModel, tabs: TabViewMode
             val viewModel: MissingMediaSheetViewModel = viewModel(factory = MissingMediaSheetViewModel.Factory)
             MissingMediaSheetRoute(viewModel, detail.itemId, onDismiss = { shell.close(detail) })
         }
+
         else -> NavEntry(detail) {
             // Opaque: the tabs under it stay drawn while it slides in.
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
                 when (detail) {
                     is Detail.Memory -> MemoryPagerRoute(detail.memoryId, tabs.common, actions.memoryNavigation(detail))
                     is Detail.MediaViewer -> MediaViewer(detail, shell)

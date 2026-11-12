@@ -6,6 +6,10 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import com.szabolcshorvath.memorymap.testing.TestVideos.FRAMES
+import com.szabolcshorvath.memorymap.testing.TestVideos.HEIGHT
+import com.szabolcshorvath.memorymap.testing.TestVideos.SECONDS
+import com.szabolcshorvath.memorymap.testing.TestVideos.WIDTH
 import java.io.File
 
 /**
