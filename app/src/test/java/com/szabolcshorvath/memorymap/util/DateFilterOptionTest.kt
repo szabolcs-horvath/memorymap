@@ -13,6 +13,7 @@ class DateFilterOptionTest {
     }
 
     @Test
+    @Suppress("KotlinMisorderedAssertEqualsArguments")
     fun `an unknown or missing name gives the default`() {
         assertEquals(DateFilterOption.DEFAULT_DATE_FILTER_OPTION, DateFilterOption.ofStoredName("LAST_10_YEARS"))
         assertEquals(DateFilterOption.DEFAULT_DATE_FILTER_OPTION, DateFilterOption.ofStoredName(""))

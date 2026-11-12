@@ -131,7 +131,7 @@ fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: A
     val scrollBehavior = if (compact) TopAppBarDefaults.pinnedScrollBehavior() else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
     val snackbars = remember { SnackbarHostState() }
-    var picker by rememberSaveable(stateSaver = PickerRequest.Saver) { mutableStateOf<PickerRequest?>(null) }
+    var picker by rememberSaveable(stateSaver = PickerRequest.Saver) { mutableStateOf(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val resources = LocalResources.current
 

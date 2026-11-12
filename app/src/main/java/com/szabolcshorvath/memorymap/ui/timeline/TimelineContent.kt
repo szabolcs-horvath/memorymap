@@ -222,11 +222,11 @@ private class FlashState {
 /** The position of memory [memoryId] among the list's rows (a day header, then its memories), or -1. */
 private fun List<TimelineDay>.indexOfMemory(memoryId: Int): Int {
     var index = 0
-    for (day in this) {
+    for ((_, memories) in this) {
         index++ // The day's header.
-        val inDay = day.memories.indexOfFirst { it.id == memoryId }
+        val inDay = memories.indexOfFirst { it.id == memoryId }
         if (inDay >= 0) return index + inDay
-        index += day.memories.size
+        index += memories.size
     }
     return -1
 }

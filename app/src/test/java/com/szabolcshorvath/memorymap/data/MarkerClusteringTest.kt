@@ -123,9 +123,9 @@ class MarkerClusteringTest {
 
         assertEquals(markers.map { it.groupId }.sorted(), clusters.flatMap { it.items }.map { it.groupId }.sorted())
         val anchors = clusters.map { it.items.first() }
-        for (cluster in clusters) {
-            val anchor = cluster.items.first()
-            for (member in cluster.items.drop(1)) {
+        for ((items) in clusters) {
+            val anchor = items.first()
+            for (member in items.drop(1)) {
                 assertTrue(member.groupId > anchor.groupId, "an anchor is the first of its markers in the list")
                 assertTrue(distance(member, anchor) < threshold(member, anchor), "every marker is close to its anchor")
                 // No other anchor that existed when the marker was placed is nearer and close enough.

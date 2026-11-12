@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * The state of [MissingMediaSheet] for one media item that can't be re-linked. It survives a rotation; after process
+ * The state of [MissingMediaSheetRoute] for one media item that can't be re-linked. It survives a rotation; after process
  * death the sheet starts again from the item's id.
  */
 class MissingMediaSheetViewModel(application: Application, private val memories: MemoryRepository) : AndroidViewModel(application) {
