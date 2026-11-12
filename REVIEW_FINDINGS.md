@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 80 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 4 open
+✅ 80 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 5 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -72,7 +72,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [DATA-11](#data-11) | Medium | Picker grants are kept after re-linking, so the 512 cap pushes out live ones |
 | ✅ | [DATA-12](#data-12) | Low | Photos picked and then dropped from the Add form keep their grants |
 
-**BUG — Functional bugs** · 20 of 20 fixed
+**BUG — Functional bugs** · 20 of 21 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -96,6 +96,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-18](#bug-18) | Medium | Saving an edit of a deleted memory loses the edit |
 | ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
 | ✅ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
+| ⬜ | [BUG-21](#bug-21) | Low | Show on map can leave the memory's pin inside a cluster |
 
 **PERF — Performance** · 10 of 10 fixed
 
@@ -454,6 +455,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Open question:** after such a link, keep the old signature and size (the current rule: computed once, kept) or replace them with the edited file's? Replacing them lets backups find the photo as it is now, since the old bytes no longer exist on this phone.
 - **Status:** Fixed. When the signature finds nothing, `EditedPhotoRule` takes the MediaStore file whose id is in a local picker URI, under the three conditions above (cloud picker URIs are skipped). Decided (2026-11-03): the item then takes the edited file's size and signature (`updateMediaLink` now writes both; a file found by its signature keeps its own), and the old URI's grant is released if no item uses it. The re-link summary counts these links ("… of them to an edited version"), and `RelinkDiagnostics` reports per item what the rule would find. Covered by `LocalMediaUtilTest` (the conditions), `MemoryGroupDaoTest`, `RelinkReportTest`, and the UI test `SettingsTest.reLinkingFindsAPickedPhotoEditedAfterwards` (a picker item whose file was edited in place shows the edited photo after a re-link).
 - **Rejected:** matching any file with the same date taken to the millisecond, regardless of id (it would also catch "save as copy" edits). It was rejected as too risky: dates with only whole seconds (videos, messenger images) collide for shots taken in the same second, and two different edits share a date. A wrong link is worse than a missing one; [UX-19](#ux-19) leaves such cases to the user.
+
+### <a id="bug-21"></a>⬜ BUG-21 · Low · Show on map can leave the memory's pin inside a cluster
+- **Where:** `fragment/MapFragmentViewModel.kt` (`handleFocus`, `selectPendingMemory`, which zoom to `MAX_FIT_ZOOM`), the map's clustering (`ui/map/`, `maps-compose-utils`' `Clustering`)
+- **What:** Now and then, "Show on map" on a memory zooms the map to the memory, but its pin is still drawn as part of a cluster instead of on its own. Seen by the user while trying the Compose shell (2026-11-12); not every time, and the shell didn't change the map's code, so it most likely comes from the map itself.
+- **To find out:** whether `MAX_FIT_ZOOM` is close enough to separate the pin from memories near it (the clustering groups pins within a fixed distance on screen, at any zoom), and whether the clustering runs again once the camera stops after the zoom, or keeps the clusters it made for the zoom before (a race between the camera move and the re-clustering would explain why it happens only sometimes).
 
 [↑ Back to index](#index)
 
