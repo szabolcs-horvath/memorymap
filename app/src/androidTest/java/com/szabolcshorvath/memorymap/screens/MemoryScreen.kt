@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.screens
 
 import android.graphics.Point
+import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
@@ -130,6 +131,7 @@ object MemoryScreen {
         fun card(name: String) = fragmentCards().first {
             it.findObject(By.res("tv_location"))?.text == name
         }
+
         val moved = card(place)
         val target = card(onto).visibleBounds
         val from = moved.visibleCenter
@@ -184,6 +186,7 @@ object MemoryScreen {
         } catch (_: StaleObjectException) {
             emptyList()
         }
+
         fun List<Int>.matches() = size == colors.size && zip(colors.toList()).all { (a, b) -> ScreenColors.isClose(a, b) }
         val shown = Ui.eventually(read = ::read) { it.matches() }
         assertTrue(
@@ -245,12 +248,35 @@ object MemoryScreen {
      * swipe so late that the page doesn't turn, so this swipes again (a few times) until another memory shows.
      */
     private fun swipe(direction: Direction) {
-        val before = Ui.find { hasId("tv_title") }.text
+        val before = settledTitle()
         repeat(MAX_SWIPES) {
             Ui.find { hasId("memoryViewPager") }.swipe(direction, SWIPE_PERCENT, SWIPE_SPEED)
             Ui.device.waitForIdle()
-            if (Ui.isShown(timeoutMs = SWIPE_TIMEOUT_MS) { hasId("tv_title") && textAsString() != before }) return
+            if (settledTitle() != before) return
         }
+    }
+
+    /**
+     * The title of the page shown once the pager has stopped: a tap or swipe while it still moves (the next page
+     * sliding in, or the last pixels of its snap) only stops it. Null if it didn't stop within [SWIPE_TIMEOUT_MS].
+     */
+    private fun settledTitle(): String? {
+        var last: Pair<String, Rect>? = null
+        var settled: String? = null
+        Ui.waitUntil(SWIPE_TIMEOUT_MS) {
+            val now = shownTitles().singleOrNull()
+            if (now != null && now == last) settled = now.first
+            last = now
+            settled != null
+        }
+        return settled
+    }
+
+    /** The titles of the pages on screen and where they are: one once the pager has settled, two while it moves. */
+    private fun shownTitles(): List<Pair<String, Rect>> = try {
+        Ui.device.findObjects(By.res("tv_title")).map { it.text.orEmpty() to it.visibleBounds }
+    } catch (_: StaleObjectException) {
+        emptyList()
     }
 
     private fun tap(condition: AccessibilityNodeInfo.() -> Boolean) {
