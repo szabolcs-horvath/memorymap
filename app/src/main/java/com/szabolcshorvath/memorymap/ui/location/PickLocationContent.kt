@@ -5,12 +5,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -63,6 +68,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.fragment.CameraRequest
 import com.szabolcshorvath.memorymap.fragment.PickLocationUiState
 import com.szabolcshorvath.memorymap.fragment.PickedSpot
+import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import com.szabolcshorvath.memorymap.ui.map.MAX_CONTROLS_WIDTH
 import com.szabolcshorvath.memorymap.ui.map.MapToolbar
 import com.szabolcshorvath.memorymap.ui.map.PanelSize
@@ -91,15 +97,19 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
     val snackbars = remember { SnackbarHostState() }
     Effects(state, camera, snackbars, actions) { above }
 
+    // The map draws behind the status bar (and in landscape the navigation bar); its controls stay clear of them.
+    val safeArea = rememberSafeArea()
     Box(
-        Modifier
-            .fillMaxSize()
+        safeArea.track(Modifier.fillMaxSize())
             .semantics { testTagsAsResourceId = true }
     ) {
         PickerMap(
             state = state,
             camera = camera,
-            padding = with(density) { PaddingValues(top = topHeight.toDp(), bottom = panel.mapPadding().toDp()) },
+            // The search field's height includes the status bar.
+            padding = with(density) {
+                safeArea.mapPadding(top = topHeight.toDp(), bottom = panel.mapPadding().toDp(), topInset = false)
+            },
             actions = actions,
         )
         SearchField(
@@ -107,9 +117,10 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
             onSearch = actions::search,
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .onSizeChanged { topHeight = it.height }
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 // As wide as the Map's filter bar, so it lines up with the place panel when the phone is turned.
                 .widthIn(max = MAX_CONTROLS_WIDTH)
-                .onSizeChanged { topHeight = it.height }
                 .padding(MARGIN),
         )
         BottomControls(
@@ -119,7 +130,8 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
             onPanelSize = { change -> panel = panel.change() },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .onSizeChanged { bottomHeight = it.height },
+                .onSizeChanged { bottomHeight = it.height }
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)),
         )
         SnackbarHost(
             snackbars,

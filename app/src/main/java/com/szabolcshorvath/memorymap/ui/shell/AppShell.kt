@@ -12,22 +12,31 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShortNavigationBarDefaults
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.WideNavigationRailDefaults
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItem
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -42,9 +51,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -92,39 +103,85 @@ fun AppShell(shell: ShellViewModel, tabs: TabViewModels) {
         actions.onTabDrawn()
     }
 
-    // The tabs show through the first entry of the back stack, which draws nothing; once a screen covers them they
-    // are hidden (and paused), and they show again when it starts to leave.
-    var tabsCovered by remember { mutableStateOf(shell.hasDetail) }
-    NavigationSuiteScaffold(
-        navigationItems = { TabItems(shell.tab, navigationType(shell.mediaViewerShown), actions) },
-        modifier = if (shell.mediaViewerShown) Modifier else Modifier.windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime)),
-        navigationSuiteType = navigationType(shell.mediaViewerShown),
+    val type = navigationType(shell.mediaViewerShown)
+    // NavigationSuiteScaffold, taken apart only to give the rail its narrow width.
+    Surface(
+        // Edge to edge: each screen keeps clear of the system bars itself. The keyboard pushes the whole shell up, the tab
+        // bar included; while it shows, the tab bar keeps no room for the navigation bar it covers.
+        Modifier.windowInsetsPadding(WindowInsets.ime),
+        color = NavigationSuiteScaffoldDefaults.containerColor,
+        contentColor = NavigationSuiteScaffoldDefaults.contentColor,
     ) {
-        Box(Modifier.fillMaxSize()) {
-            TabHost(shell.tab, shell.visited, covered = tabsCovered, Modifier.fillMaxSize()) { tab -> TabContent(tab, shell, tabs, actions) }
-            NavDisplay(
-                backStack = shell.details,
-                onBack = shell::back,
-                entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
-                sceneStrategies = listOf(BottomSheetSceneStrategy(), SinglePaneSceneStrategy()),
-                transitionSpec = { slideInHorizontally { it } togetherWith ExitTransition.KeepUntilTransitionsFinished },
-                popTransitionSpec = { EnterTransition.None togetherWith slideOutHorizontally { it } },
-                predictivePopTransitionSpec = { EnterTransition.None togetherWith slideOutHorizontally { it } },
-            ) { detail ->
-                when (detail) {
-                    Detail.None -> NavEntry(detail) {
-                        DisposableEffect(Unit) {
-                            tabsCovered = false
-                            onDispose { tabsCovered = true }
-                        }
-                    }
-                    else -> detailEntry(detail, shell, tabs, actions)
-                }
-            }
-            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+        NavigationSuiteScaffoldLayout(
+            navigationSuite = {
+                NavigationSuite(navigationSuiteType = type, modifier = railWidth(type)) { TabItems(shell.tab, type, actions) }
+            },
+            navigationSuiteType = type,
+        ) {
+            ShellContent(shell, tabs, actions, snackbar, Modifier.consumeWindowInsets(navigationInsets(type)))
         }
     }
 }
+
+@Composable
+private fun ShellContent(
+    shell: ShellViewModel,
+    tabs: TabViewModels,
+    actions: ShellActions,
+    snackbar: SnackbarHostState,
+    modifier: Modifier,
+) {
+    // The tabs show through the first entry of the back stack, which draws nothing; once a screen covers them they
+    // are hidden (and paused), and they show again when it starts to leave.
+    var tabsCovered by remember { mutableStateOf(shell.hasDetail) }
+    Box(modifier.fillMaxSize()) {
+        TabHost(shell.tab, shell.visited, covered = tabsCovered, Modifier.fillMaxSize()) { tab -> TabContent(tab, shell, tabs, actions) }
+        NavDisplay(
+            backStack = shell.details,
+            onBack = shell::back,
+            entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+            sceneStrategies = listOf(BottomSheetSceneStrategy(), SinglePaneSceneStrategy()),
+            transitionSpec = { slideInHorizontally { it } togetherWith ExitTransition.KeepUntilTransitionsFinished },
+            popTransitionSpec = { EnterTransition.None togetherWith slideOutHorizontally { it } },
+            predictivePopTransitionSpec = { EnterTransition.None togetherWith slideOutHorizontally { it } },
+        ) { detail ->
+            when (detail) {
+                Detail.None -> NavEntry(detail) {
+                    DisposableEffect(Unit) {
+                        tabsCovered = false
+                        onDispose { tabsCovered = true }
+                    }
+                }
+                else -> detailEntry(detail, shell, tabs, actions)
+            }
+        }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
+}
+
+/**
+ * The rail at Material's narrow width (80 dp, instead of the collapsed rail's 96 dp): a phone in landscape keeps more
+ * of its width for the map. The rail's own padding for the system bars and the camera cutout beside it comes on top.
+ */
+@Composable
+private fun railWidth(type: NavigationSuiteType): Modifier {
+    if (type != NavigationSuiteType.WideNavigationRailCollapsed) return Modifier
+    val start = WideNavigationRailDefaults.windowInsets.asPaddingValues().calculateStartPadding(LocalLayoutDirection.current)
+    return Modifier.width(NARROW_RAIL_WIDTH + start)
+}
+
+/** What the navigation suite takes care of, so the content doesn't keep room for it again (as the scaffold does). */
+@Composable
+private fun navigationInsets(type: NavigationSuiteType): WindowInsets = when (type) {
+    NavigationSuiteType.ShortNavigationBarCompact, NavigationSuiteType.ShortNavigationBarMedium ->
+        ShortNavigationBarDefaults.windowInsets.only(WindowInsetsSides.Bottom).add(WindowInsets(bottom = SHORT_BAR_HEIGHT))
+    NavigationSuiteType.WideNavigationRailCollapsed, NavigationSuiteType.WideNavigationRailExpanded ->
+        WideNavigationRailDefaults.windowInsets.only(WindowInsetsSides.Start)
+    else -> WindowInsets(0)
+}
+
+private val NARROW_RAIL_WIDTH = 80.dp
+private val SHORT_BAR_HEIGHT = 64.dp
 
 @Composable
 private fun rememberShellActions(shell: ShellViewModel, tabs: TabViewModels, snackbar: SnackbarHostState): ShellActions {
