@@ -144,7 +144,7 @@ class SaveMediaTest {
     fun `saving a new memory gives up no grants`() {
         grant(PICKER_1)
         newMemory()
-        form.selectedMedia += AddMemoryGroupFragment.SelectedMedia(PICKER_1.toUri(), MediaType.IMAGE, DEVICE, 100, DATE_TAKEN, "100_aaa")
+        form.selectedMedia += SelectedMedia(PICKER_1.toUri(), MediaType.IMAGE, DEVICE, 100, DATE_TAKEN, "100_aaa")
 
         val saved = save()
 
@@ -177,7 +177,7 @@ class SaveMediaTest {
 
     private fun MemoryGroupWithMedia.media() = mediaItems.sortedWith(MediaItem.DISPLAY_ORDER)
 
-    private fun picked(uri: Uri) = AddMemoryGroupFragment.SelectedMedia(uri, MediaType.IMAGE, DEVICE)
+    private fun picked(uri: Uri) = SelectedMedia(uri, MediaType.IMAGE, DEVICE)
 
     private fun photoFile(name: String, bytes: ByteArray): Uri = File(context.cacheDir, name).apply { writeBytes(bytes) }.toUri()
 

@@ -38,8 +38,9 @@ object BottomNav {
         screenOf(tab).assertShown()
     }
 
-    // The selected tab is not clickable, so match the label only.
-    private fun android.view.accessibility.AccessibilityNodeInfo.isTab(tab: Tab) = isFocusable && hasDescription(tab.label)
+    // A tab is one focusable element; Compose reports its label as a text element inside it.
+    private fun android.view.accessibility.AccessibilityNodeInfo.isTab(tab: Tab) =
+        isFocusable && (0 until childCount).any { getChild(it)?.hasText(tab.label) == true }
 
     fun screenOf(tab: Tab): TabScreen = when (tab) {
         Tab.MAP -> MapScreen

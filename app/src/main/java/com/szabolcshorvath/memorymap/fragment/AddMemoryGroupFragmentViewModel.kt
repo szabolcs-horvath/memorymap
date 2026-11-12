@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.fragment
 
 import android.app.Application
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -23,7 +22,6 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaThumbnail
-import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
@@ -71,7 +69,7 @@ class AddMemoryGroupFragmentViewModel(
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
 
-    var selectedMedia = mutableListOf<AddMemoryGroupFragment.SelectedMedia>()
+    var selectedMedia = mutableListOf<SelectedMedia>()
 
     /**
      * Photos and videos picked in this form, whose persisted grant the pick took. One that leaves the form unsaved
@@ -321,23 +319,7 @@ class AddMemoryGroupFragmentViewModel(
     /** [uris] were just picked in the photo picker: takes their grants, reads them and adds them first. */
     fun mediaPicked(uris: List<Uri>) {
         if (uris.isEmpty()) return
-        val context: Context = getApplication()
-        val knownDeviceId = currentDeviceId
-        viewModelScope.launch {
-            // One content resolver call or more per picked item: keep them off the main thread.
-            val pickedItems = withContext(Dispatchers.IO) {
-                uris.forEach { uri ->
-                    try {
-                        context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Could not persist access for $uri", e)
-                    }
-                }
-                val deviceId = knownDeviceId ?: InstallationIdentifier.getInstallationIdentifier(context)
-                uris.map { uri -> readPickedMedia(context, uri, deviceId) }
-            }
-            addPickedMedia(pickedItems)
-        }
+        viewModelScope.launch { addPickedMedia(PickedMedia.read(getApplication(), uris, currentDeviceId)) }
     }
 
     /**
@@ -359,7 +341,7 @@ class AddMemoryGroupFragmentViewModel(
     }
 
     /** Adds media just picked, first, leaving out what the form already has. */
-    fun addPickedMedia(picked: List<AddMemoryGroupFragment.SelectedMedia>) {
+    fun addPickedMedia(picked: List<SelectedMedia>) {
         onMediaPicked(picked.map { it.uri.toString() })
         selectedMedia.addAll(0, picked.filter { new -> selectedMedia.none { it.uri == new.uri } })
         publish()
@@ -457,7 +439,7 @@ class AddMemoryGroupFragmentViewModel(
     }
 
     /** Removes [item] from the form, and releases its grant if this form took it and nothing saved uses it. */
-    fun removeMedia(item: AddMemoryGroupFragment.SelectedMedia) {
+    fun removeMedia(item: SelectedMedia) {
         selectedMedia.remove(item)
         releaseDroppedPicks()
         publish()
@@ -552,6 +534,15 @@ class AddMemoryGroupFragmentViewModel(
         colorExpanded = state.getBoolean(COLOR_EXPANDED)
     }
 
+    /** Another tab was selected: an edit without changes is closed, so this tab offers a new memory next time. */
+    fun closeUnchangedEdit() {
+        if (editingMemoryId == null || hasUnsavedChanges()) return
+        resetForm()
+    }
+
+    /** The URIs of the media in the form (a draft or an edit), which a save may still store. */
+    fun mediaUrisInForm(): Set<String> = selectedMedia.mapTo(HashSet()) { it.uri.toString() }
+
     /**
      * Asks to open memory [memoryId] for editing. The request stays pending until the form's view handles it
      * ([handlePendingEdit]), and a newer one replaces it.
@@ -620,7 +611,7 @@ class AddMemoryGroupFragmentViewModel(
         selectedMedia.clear()
         selectedMedia.addAll(
             data.mediaItems.sortedWith(MediaItem.DISPLAY_ORDER).map {
-                AddMemoryGroupFragment.SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
+                SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
             }
         )
 
@@ -729,7 +720,7 @@ class AddMemoryGroupFragmentViewModel(
      * be read now, through the pick's grant. Media loaded for editing keep theirs ([MemoryRepository.save]). Reads files, so it
      * runs before the save transaction.
      */
-    private fun readNewDetails(context: Context, selected: List<AddMemoryGroupFragment.SelectedMedia>, prepared: List<MediaItem>): WithDetails {
+    private fun readNewDetails(context: Context, selected: List<SelectedMedia>, prepared: List<MediaItem>): WithDetails {
         val newUris = selected.filter { it.mediaSignature.isEmpty() }.mapTo(HashSet()) { it.uri.toString() }
         val thumbnails = mutableListOf<MediaThumbnail>()
         val items = prepared.map { item ->
@@ -746,7 +737,7 @@ class AddMemoryGroupFragmentViewModel(
      * Builds the media items to save (group id still 0): fills in missing sizes, dates and signatures,
      * drops duplicates and numbers them. Reads files, so it runs before the save transaction.
      */
-    private fun prepareMediaItems(context: Context, mediaToSave: List<AddMemoryGroupFragment.SelectedMedia>): List<MediaItem> {
+    private fun prepareMediaItems(context: Context, mediaToSave: List<SelectedMedia>): List<MediaItem> {
         return mediaToSave.mapIndexed { index, selected ->
             val uri = selected.uri
             var size = selected.fileSize
@@ -828,15 +819,6 @@ class AddMemoryGroupFragmentViewModel(
         private const val ACTIVE_PICKING_INDEX = "active_picking_index"
         private const val PICKED_URIS = "picked_uris"
         private const val COLOR_EXPANDED = "color_expanded"
-
-        /** Reads the type, size and date taken of a picked item. Does content resolver calls: not on the main thread. */
-        private fun readPickedMedia(context: Context, uri: Uri, deviceId: String): AddMemoryGroupFragment.SelectedMedia {
-            val type = context.contentResolver.getType(uri)
-            val mediaType = if (type != null && type.startsWith("video/")) MediaType.VIDEO else MediaType.IMAGE
-            val metadata = LocalMediaUtil.queryMetadata(context, uri)
-            if (metadata == null) Log.w(TAG, "Could not read the size and date of picked media $uri")
-            return AddMemoryGroupFragment.SelectedMedia(uri, mediaType, deviceId, metadata?.size ?: 0L, metadata?.dateTaken ?: 0L)
-        }
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

@@ -73,6 +73,16 @@ class PickLocationFragmentViewModel(application: Application, private val savedS
         if (selectedLat == null) selectUserLocation()
     }
 
+    /**
+     * Opens the picker on [place], picked before, or with nothing picked (then it picks where the phone is once shown,
+     * if it may). Only once per picker: after a rotation or process death it keeps what the user picked since.
+     */
+    fun open(place: FormPlace?) {
+        if (savedState.get<Boolean>(OPENED) == true) return
+        savedState[OPENED] = true
+        if (place == null) clearSelection() else setInitialLocation(place.lat, place.lng, place.name, place.address)
+    }
+
     /** Opens the picker on a spot picked before ([lat], [lng], with its name and address). */
     fun setInitialLocation(lat: Double, lng: Double, placeName: String?, address: String?) {
         pick(lat, lng, placeName, address, lookingUp = false)
@@ -282,6 +292,7 @@ class PickLocationFragmentViewModel(application: Application, private val savedS
     private companion object {
         const val TAG = "PickLocationViewModel"
         const val CAMERA_ZOOM = 15f
+        const val OPENED = "opened"
         const val SELECTED_LAT = "selected_lat"
         const val SELECTED_LNG = "selected_lng"
         const val SELECTED_PLACE_NAME = "selected_place_name"

@@ -65,10 +65,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.fragment.AddFormUiState
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 import com.szabolcshorvath.memorymap.fragment.FormPart
 import com.szabolcshorvath.memorymap.fragment.FormPlace
 import com.szabolcshorvath.memorymap.fragment.Hsv
+import com.szabolcshorvath.memorymap.fragment.SelectedMedia
 import com.szabolcshorvath.memorymap.util.Coordinates
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate

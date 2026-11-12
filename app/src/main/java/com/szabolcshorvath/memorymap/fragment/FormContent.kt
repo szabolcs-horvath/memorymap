@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.fragment
 import android.net.Uri
 import android.os.Bundle
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.fragment.AddMemoryGroupFragment.SelectedMedia
 import java.time.ZonedDateTime
 import java.util.UUID
 

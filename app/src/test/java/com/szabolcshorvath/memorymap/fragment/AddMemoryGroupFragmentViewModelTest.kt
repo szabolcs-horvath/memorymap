@@ -58,7 +58,7 @@ class AddMemoryGroupFragmentViewModelTest {
             { markerHue = 120f },
             { endDateTime = endDateTime.plusDays(1) },
             { isAllDay = true },
-            { selectedMedia += AddMemoryGroupFragment.SelectedMedia(Uri.parse("content://media/1"), MediaType.IMAGE, "device") }
+            { selectedMedia += SelectedMedia(Uri.parse("content://media/1"), MediaType.IMAGE, "device") }
         )
         for (change in changes) {
             val form = newForm()
@@ -149,7 +149,7 @@ class AddMemoryGroupFragmentViewModelTest {
     /** Picks [uris] as the photo picker does (the pick takes a persisted grant of each). */
     private fun pick(vararg uris: String) {
         viewModel.onMediaPicked(uris.toList())
-        viewModel.selectedMedia += uris.map { AddMemoryGroupFragment.SelectedMedia(Uri.parse(it), MediaType.IMAGE, "device") }
+        viewModel.selectedMedia += uris.map { SelectedMedia(Uri.parse(it), MediaType.IMAGE, "device") }
     }
 
     /** Waits until the form has asked to release exactly [expected]: the release runs in the background. */

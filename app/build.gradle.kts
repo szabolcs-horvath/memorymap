@@ -53,7 +53,6 @@ kotlin {
 
         buildFeatures {
             buildConfig = true
-            viewBinding = true
             compose = true
         }
 
@@ -155,6 +154,11 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.viewmodel.navigation3)
+    implementation(libs.navigation3.runtime)
+    implementation(libs.navigation3.ui)
+    implementation(libs.compose.material3.navigation.suite)
     debugImplementation(libs.compose.ui.tooling)
 
     // Google Maps
