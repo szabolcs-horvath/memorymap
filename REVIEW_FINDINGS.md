@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 82 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 5 open
+✅ 83 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 5 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -138,7 +138,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [UX-18](#ux-18) | Low | "Restore successful" disappears at once |
 | ✅ | [UX-19](#ux-19) | Medium | A photo that can't be re-linked can only stay broken |
 
-**ARCH — Structure / maintainability** · 6 of 10 fixed
+**ARCH — Structure / maintainability** · 7 of 10 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -151,7 +151,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (all Compose; left: the shell's polish) |
+| ✅ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose |
 
 **BUILD — Build, CI, tooling** · 4 of 5 fixed
 
@@ -809,7 +809,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - `SIGNATURE_FIX_PLAN.md` became `docs/media-relinking.md`, trimmed to the evidence, the reasons behind the rules and the known limits; the rules themselves are in AGENTS.md.
   - The Add form highlights the preset that matches the memory's colour, and each fragment's picker its own (`ColorPresetAdapter.setSelectedColor`, `HSVPreset.hasColor`), so the highlight follows a preset tap, a slider and a memory loaded for editing. Covered by `FragmentsAndColorTest.thePresetOfTheFormsColorIsHighlightedUntilTheColorChanges`.
 
-### <a id="arch-10"></a>🟡 ARCH-10 · Medium · UI built on XML Views, not Jetpack Compose
+### <a id="arch-10"></a>✅ ARCH-10 · Medium · UI built on XML Views, not Jetpack Compose
 - **Where:** all of `fragment/`, `adapter/`, `MainActivity.kt`, `view/MaxHeightCardView.kt` and `res/layout/`. As of `28df90b` that is about 6,000 lines of Kotlin and 2,900 lines of layout XML.
 - **What:** The UI uses XML layouts, ViewBinding, fragments and RecyclerView adapters. Views now mostly get maintenance, while Google builds new UI features for Compose first. Several rules in AGENTS.md exist only because of the View system: `_binding ?: return` and `viewLifecycleOwnerLiveData`, launchers as property initializers, the Slider listener trap, the picker tags and `setOnPicked` after rotation, and the `DiffUtil` adapters. This is about upkeep, not a bug users see.
 - **⛔ HARD PRECONDITION: do not start any part of this migration, not even a pilot screen, until the ENTIRE UI is covered by UI tests (TEST-3).** That means every screen, every user flow, and as many edge cases as possible, all passing on the current View UI. Partial coverage, "the main flows" or "the screen being migrated" is NOT enough. Until TEST-3 is done this item stays blocked, whatever the order of other work. The tests must also run unchanged against each migrated screen (see TEST-3 for how), because they are the only proof that behaviour stayed the same.
@@ -912,7 +912,8 @@ When a status changes, update the item's **Status** line, the marker in its head
     - `MainActivity` is a `ComponentActivity`; AppCompat, Material Components, ConstraintLayout and `fragment-ktx` are no longer the app's dependencies (Google's Places SDK still brings Material Components and AppCompat for its own search screen).
     - The ViewModels moved from the `fragment` package to their screens' packages, without "Fragment" in their names (`MapViewModel`, `AddMemoryViewModel`, `MemoryViewModel`, …), and the memory fragment entity no longer needs the `MemoryFragmentEntity` alias. Two Firebase traces changed name with them: `map_view_model_cluster_markerables` and `add_memory_view_model_save_memory_group`.
     - The colours are Compose's own (`ui/theme/Color.kt`, the same Material Theme Builder palette), picked by `MemoryMapTheme` for dark mode and the phone's contrast setting at Material Components' levels (a third and two thirds), and a change of the setting now shows at once instead of recreating the activity. The shapes are Compose's defaults, which are the sizes the XML theme had. The XML theme only colours the window until Compose draws. Checked by screenshot in light, dark, and medium and high contrast.
-  - Left: the rest of the shell's polish. Moving Material3 back to the Compose BOM's version is its own item, [BUILD-5](#build-5).
+  - The shell's polish (2026-11-12): the tab bar (or the rail) hides while the location picker shows, as it does for the media viewer, so the map has the whole window and no tab can be tapped over the picker, which would close it and lose the spot. Back still returns to the form. `DetailNavigationTest` checks this now instead of a tab tapped over the picker.
+- **Status:** Fixed (2026-11-12). Every screen and the shell around them are in Compose, edge to edge, and the View-era dependencies are gone. Moving Material3 back to the Compose BOM's version is its own item, [BUILD-5](#build-5).
 
 [↑ Back to index](#index)
 

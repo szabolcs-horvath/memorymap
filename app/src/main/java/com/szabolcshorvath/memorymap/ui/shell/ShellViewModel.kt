@@ -45,6 +45,9 @@ class ShellViewModel(savedState: SavedStateHandle) : ViewModel() {
     /** The media viewer shows (started): the tab bar and the system bars hide. */
     var mediaViewerShown by mutableStateOf(false)
 
+    /** The location picker shows (started): the tab bar hides, so the map below it has the whole window. */
+    var locationPickerShown by mutableStateOf(false)
+
     private val _messages = Channel<ShellMessage>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
 
