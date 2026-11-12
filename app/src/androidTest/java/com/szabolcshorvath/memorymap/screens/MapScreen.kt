@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.screens
 import android.graphics.Point
 import android.graphics.Rect
 import android.os.SystemClock
+import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.uiautomator.StaleObjectException
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
@@ -104,8 +105,17 @@ object MapScreen : TabScreen {
      * went away while being tapped (the map was still changing after all, so it should look again).
      */
     private fun tapSettledCluster(): Boolean? {
-        val before = awaitMarkersSettled()
-        val cluster = Ui.findOrNull(timeoutMs = 0) { isCluster() } ?: return false
+        var before = awaitMarkersSettled()
+        var cluster = Ui.findOrNull(timeoutMs = 0) { isCluster() }
+        if (cluster == null) {
+            // The map may have started moving just as it looked settled (the first zoom, under load), and a cluster is
+            // missing while the markers are drawn again: only a cluster that is still missing once the map has settled
+            // again has split up.
+            before = awaitMarkersSettled()
+            cluster = Ui.findOrNull(timeoutMs = 0) { isCluster() }
+        }
+        Log.i(TAG, "Tapping a cluster: ${cluster != null}, markers $before")
+        if (cluster == null) return false
         val tapped = try {
             cluster.click()
             true
@@ -127,7 +137,7 @@ object MapScreen : TabScreen {
     private fun awaitMarkersSettled(): List<Pair<String, Rect>>? {
         var last = mapMarkers()
         var since = SystemClock.uptimeMillis()
-        Ui.waitUntil(MARKERS_SETTLE_TIMEOUT_MS) {
+        val settled = Ui.waitUntil(MARKERS_SETTLE_TIMEOUT_MS) {
             val now = mapMarkers()
             if (now == null || now != last) {
                 last = now
@@ -135,6 +145,7 @@ object MapScreen : TabScreen {
             }
             SystemClock.uptimeMillis() - since >= MARKERS_STILL_MS
         }
+        if (!settled) Log.w(TAG, "The markers were still changing after ${MARKERS_SETTLE_TIMEOUT_MS} ms: $last")
         return last
     }
 
@@ -304,6 +315,7 @@ object MapScreen : TabScreen {
     private const val CAMERA_MOVE_TIMEOUT_MS = 3_000L
     private const val MARKERS_SETTLE_TIMEOUT_MS = 10_000L
     private const val MARKERS_STILL_MS = 1_500L
+    private const val TAG = "MapScreen"
     private const val CLUSTER_TAP_ATTEMPTS = 3
     private const val MARKER_TAP_ATTEMPTS = 3
 }
