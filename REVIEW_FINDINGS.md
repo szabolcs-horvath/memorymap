@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 82 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 3 open
+✅ 82 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 5 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -151,9 +151,9 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-7](#arch-7) | Low | Stringly-typed data passing |
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
-| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (all Compose; left: the shell's polish, and Material3 back on the Compose BOM) |
+| 🟡 | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose (all Compose; left: the shell's polish) |
 
-**BUILD — Build, CI, tooling** · 4 of 4 fixed
+**BUILD — Build, CI, tooling** · 4 of 5 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -161,8 +161,9 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUILD-2](#build-2) | Medium | `MAPS_API_KEY` wiring is inconsistent |
 | ✅ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
 | ✅ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
+| ⬜ | [BUILD-5](#build-5) | Low | Material3 is pinned to a release candidate ahead of the Compose BOM |
 
-**TEST — Coverage gaps** · 2 of 3 fixed
+**TEST — Coverage gaps** · 2 of 5 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -170,6 +171,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [TEST-2](#test-2) | Medium | Critical logic is untested |
 | ✅ | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
 | 🟡 | [TEST-4](#test-4) | Medium | Flaky UI tests |
+| ⬜ | [TEST-5](#test-5) | Medium | The UI suite has grown slow and overlapping |
 
 **I18N / A11Y** · 2 of 4 fixed
 
@@ -910,7 +912,7 @@ When a status changes, update the item's **Status** line, the marker in its head
     - `MainActivity` is a `ComponentActivity`; AppCompat, Material Components, ConstraintLayout and `fragment-ktx` are no longer the app's dependencies (Google's Places SDK still brings Material Components and AppCompat for its own search screen).
     - The ViewModels moved from the `fragment` package to their screens' packages, without "Fragment" in their names (`MapViewModel`, `AddMemoryViewModel`, `MemoryViewModel`, …), and the memory fragment entity no longer needs the `MemoryFragmentEntity` alias. Two Firebase traces changed name with them: `map_view_model_cluster_markerables` and `add_memory_view_model_save_memory_group`.
     - The colours are Compose's own (`ui/theme/Color.kt`, the same Material Theme Builder palette), picked by `MemoryMapTheme` for dark mode and the phone's contrast setting at Material Components' levels (a third and two thirds), and a change of the setting now shows at once instead of recreating the activity. The shapes are Compose's defaults, which are the sizes the XML theme had. The XML theme only colours the window until Compose draws. Checked by screenshot in light, dark, and medium and high contrast.
-  - Left: the rest of the shell's polish, and moving Material3 back to the Compose BOM's version once the BOM has 1.5.
+  - Left: the rest of the shell's polish. Moving Material3 back to the Compose BOM's version is its own item, [BUILD-5](#build-5).
 
 [↑ Back to index](#index)
 
@@ -942,6 +944,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Pin `@Config(sdk = [36])` for Robolectric tests, or make `ColorUtil` pure-JVM (its maths does not need Android).
 - **Note (2026-10-24):** Could not reproduce. With Robolectric 4.17, `ColorUtilTest` (91 tests) and `MemoryGroupDaoTest` run and pass locally. Probably resolved by a dependency upgrade; close it after a CI run confirms.
 - **Status:** Fixed (2026-10-25) by the Robolectric 4.17 upgrade, no code change needed. The "Tests" CI workflow runs all unit tests, including the Robolectric ones, against `targetSdk 37` on JDK 21, and they pass.
+
+### <a id="build-5"></a>⬜ BUILD-5 · Low · Material3 is pinned to a release candidate ahead of the Compose BOM
+- **Where:** `gradle/libs.versions.toml` (`composeMaterial3`)
+- **What:** The Compose BOM takes only stable releases, and the app needs Material 3 1.5 (Material 3 Expressive's button groups, wavy progress indicators and `SegmentedListItem`). So Material3 is pinned on its own, to `1.5.0-rc01`, while the rest of Compose comes from the BOM (`2026.09.00`, the latest on 2026-11-12, still on Material3 1.4). A release candidate can still change, and the pin has to be moved by hand.
+- **Fix:** Once a BOM has Material3 1.5 (stable), drop `composeMaterial3` and take Material3 from the BOM again; check that the unit tests, lint and the UI suite still pass. Until then, move the pin to 1.5.0 when it is released.
 
 [↑ Back to index](#index)
 
@@ -996,6 +1003,11 @@ When a status changes, update the item's **Status** line, the marker in its head
   - The date range picker (`FragmentsAndColorTest.anAllDayFragmentKeepsItsOwnDays` above, and once `MapTest.quickFiltersShowTheMemoriesThatOverlapTheirRange`: the filter stayed "This year"): the test typed both dates and tapped OK at once, and OK before the picker had taken the typed dates closed it with no range. `DateRangePickerDialog.pick` now waits until both fields show their dates (and fails saying what they show) before OK. Both classes then passed three runs in a row (69 tests).
   - The memory pager (`TimelineTest`'s two Show on Timeline tests, which swipe through 8 and 12 memories: "The timeline is not shown" with the memory still open, or a `StaleObjectException`): `MemoryScreen`'s swipe returned as soon as the next memory's title showed, while that page still slid in. The next swipe or the tap on "Show on timeline" then only stopped the pager (a touch on a moving pager stops it), so the memory stayed open. The swipe now waits until one page alone is shown and its title has stopped moving, and reads the titles without failing on one being drawn again. The two tests then passed eight runs in a row, and `TimelineTest` passed.
   - Still open: the thumbnail failure above (`AddMemoryTest`), seen once.
+
+### <a id="test-5"></a>⬜ TEST-5 · Medium · The UI suite has grown slow and overlapping
+- **Where:** `app/src/androidTest` (132 tests, `screens/`, `testing/`)
+- **What:** The suite was written screen by screen, first against the View UI and then kept through the Compose migration, and a full run takes about 35 minutes. Some flows are covered several times over (opening a memory, Show on map and on timeline, rotation and process death on the same screens), tests that set up the same data could share one run, and the waits that keep it reliable (`awaitMarkersSettled`, the pager's settle, and fixed sleeps in `Ui` and `MediaViewerScreen`) cost time in every test. Flaky tests ([TEST-4](#test-4)) make a red run hard to trust.
+- **Fix:** one pass over the whole suite, agreed with the user (2026-11-12): remove tests that check nothing another test doesn't, merge tests that only make sense together (one setup, several checks along one flow), and make it faster and less flaky: wait for the state a step needs rather than for a time, and look for setup that can be shared or made cheaper (the Test Orchestrator's fresh install per test is the largest fixed cost). Keep the coverage: every flow listed under [TEST-3](#test-3) must still have a test. Measure the full run's time and the flaky tests before and after.
 
 [↑ Back to index](#index)
 
