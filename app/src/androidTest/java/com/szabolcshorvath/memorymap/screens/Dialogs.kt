@@ -90,21 +90,34 @@ object DateRangePickerDialog {
     fun pick(start: LocalDate, end: LocalDate) {
         Ui.find { hasDescription("Switch to text input mode") }.click()
         Ui.waitUntil { fields().size == 2 }
-        val (startField, endField) = fields()
-        type(startField, start.format(inputFormat()))
-        type(endField, end.format(inputFormat()))
+        val dates = listOf(start.format(inputFormat()), end.format(inputFormat()))
+        fields().zip(dates).forEach { (field, date) -> type(field, date) }
+        // OK before the picker has taken the typed dates closes it with no range picked: wait until both fields show them.
+        val shown = Ui.eventually(read = { fieldDigits() }) { it == dates.map(::digits) }
+        assertTrue("The date fields show $dates, not $shown", shown == dates.map(::digits))
         Ui.device.waitForIdle()
         confirm()
     }
 
     /**
      * Types [date] into [field]. Material 3's field takes only the digits and adds the separators itself, so it keeps
-     * its old text when given them: then it gets the digits alone.
+     * its old text when given them: then it gets the digits alone. The field may show its new text a moment later.
      */
     private fun type(field: UiObject2, date: String) {
         field.text = date
-        if (field.text != date) field.text = date.filter(Char::isDigit)
+        if (!Ui.waitUntil(FIELD_UPDATE_MS) { digits(field.text) == digits(date) }) field.text = digits(date)
     }
+
+    /** The digits each field shows, top to bottom (empty while a field is being replaced). */
+    private fun fieldDigits(): List<String> = try {
+        fields().map { digits(it.text) }
+    } catch (_: StaleObjectException) {
+        emptyList()
+    }
+
+    private fun digits(text: String?) = text.orEmpty().filter(Char::isDigit)
+
+    private const val FIELD_UPDATE_MS = 1_000L
 
     /** The start and end fields, top to bottom. */
     private fun fields() = Ui.device.findObjects(By.clazz("android.widget.EditText"))
