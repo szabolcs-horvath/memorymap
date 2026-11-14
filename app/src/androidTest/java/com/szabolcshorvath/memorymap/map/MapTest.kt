@@ -266,62 +266,43 @@ class MapTest {
         MapScreen.assertColorStatisticsGone()
     }
 
+    /**
+     * Upright and sideways, a tapped marker shows above the card, the map's buttons stay at the right edge, and closing
+     * the card leaves the map where it was, with no room kept at its bottom.
+     */
     @Test
-    fun theMapsButtonsStayAtTheRightEdgeWithAndWithoutTheCard() {
+    fun aTappedMarkerShowsAboveTheCardWithTheButtonsAtTheRightEdgeUprightAndSideways() {
         TestData.markerClustering(false)
         TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
         openMap()
         MapScreen.assertToolbarAtRightEdge()
-
-        MapScreen.tapMarker(ATHENS_TRIP)
-        MapScreen.assertOverlayShows(ATHENS_TRIP)
-        MapScreen.assertToolbarAtRightEdge()
-
-        Ui.rotateToLandscape()
-        MapScreen.assertOverlayShows(ATHENS_TRIP)
-        MapScreen.assertToolbarAtRightEdge()
-        Ui.rotateToPortrait()
-    }
-
-    @Test
-    fun aTappedMarkerShowsAboveTheCardAndClosingItGivesTheMapItsSpaceBack() {
-        TestData.markerClustering(false)
-        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
-        openMap()
-        MapScreen.tapMarker(ATHENS_TRIP)
-        MapScreen.assertOverlayShows(ATHENS_TRIP)
-        MapScreen.assertMarkerAboveTheCard(ATHENS_TRIP)
-        val tip = MapScreen.markerTip(ATHENS_TRIP)
 
         // Upright, the map keeps room for the card (it covers Google's logo) and gives all of it back once it closes,
         // without the map jumping.
-        MapScreen.tapEmptyMap()
-        MapScreen.assertOverlayGone()
-        assertEquals("Where the marker points", tip, MapScreen.markerTip(ATHENS_TRIP))
-        MapScreen.assertMapKeepsNoRoomAtTheBottom(ATHENS_TRIP)
-    }
-
-    @Test
-    fun turnedSidewaysATappedMarkerShowsAboveTheCardAndStaysWhenItCloses() {
-        TestData.markerClustering(false)
-        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
-        openMap()
-        Ui.rotateToLandscape()
-        MapScreen.tapMarker(ATHENS_TRIP)
-        MapScreen.assertOverlayShows(ATHENS_TRIP)
-        MapScreen.assertMarkerAboveTheCard(ATHENS_TRIP)
-        val tip = MapScreen.markerTip(ATHENS_TRIP)
+        tappedMarkerShowsAboveTheCardAndStaysWhenItCloses()
 
         // Sideways the card is beside Google's logo, so the map keeps no room for it: nothing moves when it closes.
-        MapScreen.tapEmptyMap()
-        MapScreen.assertOverlayGone()
-        assertEquals("Where the marker points", tip, MapScreen.markerTip(ATHENS_TRIP))
-        MapScreen.assertMapKeepsNoRoomAtTheBottom(ATHENS_TRIP)
+        Ui.rotateToLandscape()
+        tappedMarkerShowsAboveTheCardAndStaysWhenItCloses()
         Ui.rotateToPortrait()
     }
 
+    /** Taps Athens's marker, checks it and the map's buttons against the card, and closes the card. */
+    private fun tappedMarkerShowsAboveTheCardAndStaysWhenItCloses() {
+        MapScreen.tapMarker(ATHENS_TRIP)
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertToolbarAtRightEdge()
+        MapScreen.assertMarkerAboveTheCard(ATHENS_TRIP)
+        val tip = MapScreen.markerTip(ATHENS_TRIP)
+
+        MapScreen.tapEmptyMap()
+        MapScreen.assertOverlayGone()
+        assertEquals("Where the marker points", tip, MapScreen.markerTip(ATHENS_TRIP))
+        MapScreen.assertMapKeepsNoRoomAtTheBottom(ATHENS_TRIP)
+    }
+
     @Test
-    fun tappingTheMapTabAgainClosesTheOpenCardOrTheColorStatisticsThenShowsAllTheMemories() {
+    fun tappingTheMapTabClosesAMemoryThenTheOpenCardOrTheColorStatisticsThenShowsAllTheMemories() {
         TestData.markerClustering(false)
         TestData.memory(MADRID_TRIP, place = Place.MADRID)
         TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
@@ -330,6 +311,14 @@ class MapTest {
         MapScreen.tapMarker(ATHENS_TRIP)
         MapScreen.assertOverlayShows(ATHENS_TRIP)
         MapScreen.assertMarkerGone(MADRID_TRIP)
+
+        // Over a memory opened from the card, the Map tab closes only the memory: the card stays open, on Athens.
+        MapScreen.openFromOverlay(ATHENS_TRIP)
+        MemoryScreen.assertShowing(ATHENS_TRIP)
+        BottomNav.select(Tab.MAP)
+        MapScreen.assertShown()
+        MapScreen.assertOverlayShows(ATHENS_TRIP)
+        MapScreen.assertMarkerStaysGone(MADRID_TRIP)
 
         BottomNav.tapAgain(Tab.MAP)
 
@@ -352,24 +341,6 @@ class MapTest {
         MapScreen.assertColorStatisticsGone()
         MapScreen.assertMarkerShown(MADRID_TRIP)
         MapScreen.assertMarkerShown(ATHENS_TRIP)
-    }
-
-    @Test
-    fun tappingTheMapTabOverAMemoryReturnsToTheMapAsItWas() {
-        TestData.markerClustering(false)
-        TestData.memory(MADRID_TRIP, place = Place.MADRID)
-        TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
-        openMap()
-        MapScreen.tapMarker(ATHENS_TRIP)
-        MapScreen.openFromOverlay(ATHENS_TRIP)
-        MemoryScreen.assertShowing(ATHENS_TRIP)
-
-        BottomNav.select(Tab.MAP)
-
-        // Only the memory closes: the card stays open, on Athens.
-        MapScreen.assertShown()
-        MapScreen.assertOverlayShows(ATHENS_TRIP)
-        MapScreen.assertMarkerStaysGone(MADRID_TRIP)
     }
 
     private fun color(hsv: Hsv) = ColorUtil.hsvToColor(hsv.hue, hsv.saturation, hsv.brightness)

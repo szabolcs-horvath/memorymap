@@ -57,30 +57,9 @@ class SettingsTest {
         SettingsScreen.assertBackupGone(MANUAL)
     }
 
+    /** Backs up a memory, adds another one, and restores the backup, which brings back only the first. */
     @Test
-    fun backupNowAddsABackupThatRestoresWhatItHolds() {
-        backUpThenRestore()
-
-        SettingsScreen.waitUntilIdle()
-        BottomNav.open(Tab.TIMELINE)
-        TimelineScreen.assertMemoryShown(KEPT)
-        TimelineScreen.assertMemoryGone(ADDED_AFTER_THE_BACKUP)
-        // Both memories are in Budapest: before the restore, the map showed one marker for the two.
-        BottomNav.open(Tab.MAP)
-        MapScreen.assertMarkerShown(KEPT)
-        MapScreen.assertMarkerGone("2 Memories")
-    }
-
-    @Test
-    fun aRestoreSaysThatItSucceeded() {
-        backUpThenRestore()
-
-        SettingsScreen.waitUntilIdle()
-        SettingsScreen.assertResult("Restore successful")
-    }
-
-    /** Backs up a memory, adds another one, and restores the backup. */
-    private fun backUpThenRestore() {
+    fun backupNowAddsABackupThatRestoresWhatItHoldsAndSaysSo() {
         TestData.memory(KEPT)
         TestData.signIn()
         TestData.grantMediaAccess()
@@ -93,6 +72,16 @@ class SettingsTest {
         SettingsScreen.tapRestoreOnFirstBackup()
         Dialog.assertShown(RESTORE_TITLE)
         Dialog.tap("Restore")
+
+        SettingsScreen.waitUntilIdle()
+        SettingsScreen.assertResult("Restore successful")
+        BottomNav.open(Tab.TIMELINE)
+        TimelineScreen.assertMemoryShown(KEPT)
+        TimelineScreen.assertMemoryGone(ADDED_AFTER_THE_BACKUP)
+        // Both memories are in Budapest: before the restore, the map showed one marker for the two.
+        BottomNav.open(Tab.MAP)
+        MapScreen.assertMarkerShown(KEPT)
+        MapScreen.assertMarkerGone("2 Memories")
     }
 
     @Test
@@ -194,13 +183,21 @@ class SettingsTest {
         SettingsScreen.assertDefaultMapFilter("Last 30 days")
     }
 
+    /** One re-link finds both kinds of lost photo: one brought from another phone, and one edited after it was picked. */
     @Test
-    fun reLinkingFindsAPhotoBroughtFromAnotherPhone() {
+    fun reLinkingFindsAPhotoBroughtFromAnotherPhoneAndAPickedPhotoEditedAfterwards() {
         // Saved by another app, so the re-link that runs when the app starts can't see it yet: that needs photo access.
-        TestData.photoSavedByAnotherApp(TestData.memory(KEPT), PHOTO_COLOR)
+        TestData.photoSavedByAnotherApp(TestData.memory(KEPT, daysAgo = 1), PHOTO_COLOR)
+        TestData.pickedPhotoEditedLater(
+            TestData.memory(EDITED, daysAgo = 2),
+            pickedColor = PHOTO_COLOR,
+            editedColor = EDITED_PHOTO_COLOR
+        )
         openSettings()
         Flows.openMemory(KEPT)
         MemoryScreen.assertPhotoFromAnotherDevice()
+        Flows.openMemory(EDITED)
+        MemoryScreen.assertPhotoNotLoaded()
         TestData.grantMediaAccess() // As "Allow all" on the app's page in Android's settings.
 
         BottomNav.open(Tab.SETTINGS)
@@ -209,21 +206,7 @@ class SettingsTest {
 
         Flows.openMemory(KEPT)
         MemoryScreen.assertPhotoLoaded()
-    }
-
-    @Test
-    fun reLinkingFindsAPickedPhotoEditedAfterwards() {
-        TestData.pickedPhotoEditedLater(TestData.memory(KEPT), pickedColor = PHOTO_COLOR, editedColor = EDITED_PHOTO_COLOR)
-        openSettings()
-        Flows.openMemory(KEPT)
-        MemoryScreen.assertPhotoNotLoaded()
-        TestData.grantMediaAccess()
-
-        BottomNav.open(Tab.SETTINGS)
-        SettingsScreen.relinkMedia()
-        SettingsScreen.waitForRelinkToFinish()
-
-        Flows.openMemory(KEPT)
+        Flows.openMemory(EDITED)
         MemoryScreen.assertPhotoLoaded()
         MemoryScreen.assertPhotoColors(EDITED_PHOTO_COLOR)
     }
@@ -251,6 +234,7 @@ class SettingsTest {
     private companion object {
         const val KEPT = "Vienna trip"
         const val ADDED_AFTER_THE_BACKUP = "Lake day"
+        const val EDITED = "Picnic"
         const val MANUAL = "Manual backup"
         const val AUTOMATIC = "Automatic backup"
         const val MANUAL_BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"

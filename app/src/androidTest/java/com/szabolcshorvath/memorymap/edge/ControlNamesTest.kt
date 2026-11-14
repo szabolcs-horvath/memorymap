@@ -114,6 +114,7 @@ class ControlNamesTest {
         app.launch()
         Flows.editMemory(TRIP)
         AddScreen.addPhotos()
+        AddScreen.assertSelectedCount(2) // The photo it had, and the picked video.
         AddScreen.save()
 
         MemoryScreen.assertShowing(TRIP)

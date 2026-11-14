@@ -25,15 +25,23 @@ class MissingPhotoTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun suggestsWhatWasTakenAroundTheSameTimeAndUsesTheChosenOne() {
+    fun suggestsWhatWasTakenAroundTheSameTimeKeepsItThroughARotationAndProcessDeathAndUsesTheChosenOne() {
         val taken = TestData.photoTakenAt(GREEN, secondsAfter = 7) - 7_000
         TestData.photoTakenAt(BLUE, secondsAfter = -180)
         TestData.photoTakenAt(RED, secondsAfter = 20 * 60) // More than 5 minutes away.
         TestData.missingPhoto(TestData.memory(TRIP), taken)
         TestData.grantMediaAccess()
         openMissingPhoto()
-
         MissingPhotoSheet.assertSuggestions("7 sec later", "3 min earlier")
+
+        // The sheet and its suggestions come back after a rotation and a process death.
+        Ui.rotateToLandscape()
+        MissingPhotoSheet.assertShown()
+        Ui.rotateToPortrait()
+        MissingPhotoSheet.assertSuggestions("7 sec later", "3 min earlier")
+        app.simulateProcessDeath()
+        MissingPhotoSheet.assertSuggestions("7 sec later", "3 min earlier")
+
         MissingPhotoSheet.pick("7 sec later")
         Dialog.assertShown(MissingPhotoSheet.USE_TITLE)
         Dialog.tap("Cancel")
@@ -60,12 +68,17 @@ class MissingPhotoTest {
     }
 
     @Test
-    fun theSheetShowsHowTheLostPhotoLookedAndItsName() {
+    fun theSheetShowsHowTheLostPhotoLookedAndItsNameAndClosingItLeavesThePhotoMissing() {
         TestData.missingPhoto(TestData.memory(TRIP), dateTaken = 0, thumbnailColor = GREEN)
         openMissingPhoto()
 
         MissingPhotoSheet.assertThumbnail(GREEN)
         MissingPhotoSheet.assertFile("IMG_20250314_092653.jpg · 640 × 480")
+
+        MissingPhotoSheet.close()
+
+        MissingPhotoSheet.assertGone()
+        MemoryScreen.assertPhotoNotLoaded()
     }
 
     @Test
@@ -127,34 +140,6 @@ class MissingPhotoTest {
         MemoryScreen.assertPhotoCount(1)
         MemoryScreen.assertPhotoLoaded()
         MemoryScreen.assertPhotoColors(BLUE)
-    }
-
-    @Test
-    fun closingTheSheetLeavesThePhotoMissing() {
-        TestData.missingPhoto(TestData.memory(TRIP), dateTaken = 0)
-        openMissingPhoto()
-
-        MissingPhotoSheet.close()
-
-        MissingPhotoSheet.assertGone()
-        MemoryScreen.assertPhotoNotLoaded()
-    }
-
-    @Test
-    fun theSheetComesBackAfterARotationAndProcessDeath() {
-        val taken = TestData.photoTakenAt(GREEN, secondsAfter = 7) - 7_000
-        TestData.missingPhoto(TestData.memory(TRIP), taken)
-        TestData.grantMediaAccess()
-        openMissingPhoto()
-        MissingPhotoSheet.assertSuggestions("7 sec later")
-
-        Ui.rotateToLandscape()
-        MissingPhotoSheet.assertShown()
-        Ui.rotateToPortrait()
-        MissingPhotoSheet.assertSuggestions("7 sec later")
-
-        app.simulateProcessDeath()
-        MissingPhotoSheet.assertSuggestions("7 sec later")
     }
 
     @Test
