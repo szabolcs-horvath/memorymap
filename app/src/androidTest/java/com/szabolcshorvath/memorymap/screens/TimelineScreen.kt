@@ -25,7 +25,7 @@ import java.time.LocalDate
  * does only for the rows on screen.
  */
 object TimelineScreen : TabScreen {
-    private const val SEARCH_FIELD = "et_search"
+    private const val SEARCH_FIELD = "timeline_search"
     private const val FLASH_WATCH_MS = 8_000L
     private const val CARD_SPOT_PERCENT = 90
 
@@ -33,7 +33,7 @@ object TimelineScreen : TabScreen {
     private const val FLASH_TOLERANCE = 8
 
     // By the list or the text shown instead of an empty one: the search bar scrolls away with the list.
-    private val timeline = hasTestTag("rv_timeline") or hasTestTag("emptyView")
+    private val timeline = hasTestTag("timeline_list") or hasTestTag("timeline_empty")
     private val searchView = hasTestTag(RESULTS) or hasTestTag(NO_RESULTS)
 
     override fun assertShown() {
@@ -113,10 +113,10 @@ object TimelineScreen : TabScreen {
         ComposeUi.assertGone("The search view", searchView)
     }
 
-    private const val TITLE = "tv_memoryTitle"
+    private const val TITLE = "timeline_memory_title"
     private const val RESULTS = "search_results"
     private const val NO_RESULTS = "search_empty"
-    private const val RESULT_TITLE = "tv_resultTitle"
+    private const val RESULT_TITLE = "search_result_title"
     private const val CLOSE_SEARCH = "Close search"
 
     fun assertSearch(text: String) {
@@ -137,7 +137,7 @@ object TimelineScreen : TabScreen {
     /** Day headers and memory titles appear in this order, from top to bottom (all on screen). */
     fun assertTopToBottom(vararg texts: String) {
         val tops = texts.map { text ->
-            val matcher: SemanticsMatcher = (hasTestTag("tv_date") or hasTestTag(TITLE)) and hasText(text)
+            val matcher: SemanticsMatcher = (hasTestTag("timeline_day") or hasTestTag(TITLE)) and hasText(text)
             ComposeUi.waitFor("\"$text\"", matcher, unmerged = true).fetchSemanticsNode().boundsInRoot.top
         }
         assertEquals("The timeline order of ${texts.toList()}", tops.sorted(), tops)
@@ -146,7 +146,7 @@ object TimelineScreen : TabScreen {
 
     /** Swipes the list up by most of a screen, as by hand (which also hides the search bar). */
     fun scrollDown() {
-        ComposeUi.waitFor("The timeline", hasTestTag("rv_timeline")).performTouchInput { swipeUp() }
+        ComposeUi.waitFor("The timeline", hasTestTag("timeline_list")).performTouchInput { swipeUp() }
     }
 
     fun assertScrollToTopShown() {
