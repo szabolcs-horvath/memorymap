@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -47,6 +48,8 @@ fun MapRoute(viewModel: MapViewModel, common: CommonViewModel, onOpenMemory: (In
             override fun openMemory(id: Int) = openMemory(id)
             override fun onMapLoaded() = loadTrace.stop()
             override fun onCameraMoved(request: MapCameraRequest) = viewModel.onCameraMoved(request)
+            override fun onMapMovedByHand() = viewModel.onMapMovedByHand()
+            override fun onMapSized(size: IntSize) = viewModel.onMapSized(size)
         }
     }
 

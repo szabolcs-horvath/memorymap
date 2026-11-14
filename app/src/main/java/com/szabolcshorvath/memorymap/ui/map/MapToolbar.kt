@@ -41,9 +41,15 @@ import kotlin.math.tan
  * The toolbar floats over the map, so the map keeps no room for it and Google's logo stays at the bottom.
  */
 @Composable
-fun MapToolbar(camera: CameraPositionState, onMyLocation: () -> Unit, modifier: Modifier = Modifier) {
+fun MapToolbar(
+    camera: CameraPositionState,
+    onMyLocation: () -> Unit,
+    modifier: Modifier = Modifier,
+    onZoom: () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     fun move(update: CameraUpdate) {
+        onZoom()
         scope.launch { camera.animate(update) }
     }
     VerticalFloatingToolbar(
