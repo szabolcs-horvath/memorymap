@@ -2,8 +2,6 @@ package com.szabolcshorvath.memorymap.ui.shell
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.slideInHorizontally
@@ -73,6 +71,7 @@ import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.add.AddMemoryRoute
+import com.szabolcshorvath.memorymap.ui.common.rememberRelinkRequester
 import com.szabolcshorvath.memorymap.ui.location.PickLocationRoute
 import com.szabolcshorvath.memorymap.ui.location.PickLocationViewModel
 import com.szabolcshorvath.memorymap.ui.map.MapRoute
@@ -85,7 +84,6 @@ import com.szabolcshorvath.memorymap.ui.settings.SettingsRoute
 import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
 import com.szabolcshorvath.memorymap.ui.timeline.TimelineContent
 import com.szabolcshorvath.memorymap.util.MediaRelinker
-import com.szabolcshorvath.memorymap.util.PermissionUtil
 import kotlinx.coroutines.launch
 
 /**
@@ -341,10 +339,7 @@ private fun ShellMessages(shell: ShellViewModel, snackbar: SnackbarHostState) {
     val text = stringResource(R.string.relink_needs_access_message)
     val grant = stringResource(R.string.relink_grant)
     val scope = rememberCoroutineScope()
-    val mediaAccess = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
-        // Partial ("selected photos") access is enough to re-link the photos the user selected.
-        if (PermissionUtil.hasAnyMediaPermission(context)) scope.launch { MediaRelinker.relink(context.applicationContext) }
-    }
+    val relink = rememberRelinkRequester { scope.launch { MediaRelinker.relink(context.applicationContext) } }
     LaunchedEffect(shell) {
         shell.messages.collect { message ->
             when (message) {
@@ -355,7 +350,7 @@ private fun ShellMessages(shell: ShellViewModel, snackbar: SnackbarHostState) {
                         actionLabel = grant,
                         duration = SnackbarDuration.Long,
                     )
-                    if (result == SnackbarResult.ActionPerformed) mediaAccess.launch(PermissionUtil.getRequiredMediaPermissions())
+                    if (result == SnackbarResult.ActionPerformed) relink.askForAccess()
                 }
 
                 is ShellMessage.Text -> scope.launch {
