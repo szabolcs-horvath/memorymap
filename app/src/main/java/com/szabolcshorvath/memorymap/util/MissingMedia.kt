@@ -60,7 +60,7 @@ object MissingMedia {
     suspend fun remove(context: Context, item: MediaItem): Boolean {
         val dao = MemoryMapDatabase.getDatabase(context).memoryGroupDao()
         val media = dao.getGroupWithMedia(item.groupId)?.mediaItems.orEmpty()
-        val current = media.find { it.id == item.id && it.uri == item.uri && it.mediaSignature == item.mediaSignature } ?: return false
+        val current = media.find { it.id == item.id && it.isStill(item) } ?: return false
         dao.deleteMediaAndRenumber(listOf(current), LocalMediaUtil.closeOrderGaps(media - current))
         Log.i(TAG, "Removed media item ${item.id} (${item.uri}) from memory ${item.groupId}")
         LocalMediaUtil.releaseUriGrantsIfUnused(context, dao, listOf(item.uri))

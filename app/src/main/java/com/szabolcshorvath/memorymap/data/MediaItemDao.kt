@@ -21,7 +21,7 @@ interface MediaItemDao {
      */
     @Transaction
     suspend fun replaceMedia(seen: MediaItem, replacement: MediaItem): Boolean {
-        val current = getMediaItem(seen.id)?.takeIf { it.uri == seen.uri && it.mediaSignature == seen.mediaSignature } ?: return false
+        val current = getMediaItem(seen.id)?.takeIf { it.isStill(seen) } ?: return false
         updateMediaItem(
             current.copy(
                 uri = replacement.uri,
@@ -47,17 +47,8 @@ interface MediaItemDao {
      */
     @Transaction
     suspend fun fillDetails(seen: MediaItem, read: MediaItem): Boolean {
-        val current = getMediaItem(seen.id)?.takeIf { it.uri == seen.uri && it.mediaSignature == seen.mediaSignature } ?: return false
-        updateMediaItem(
-            current.copy(
-                displayName = current.displayName ?: read.displayName,
-                width = current.width ?: read.width,
-                height = current.height ?: read.height,
-                mimeType = current.mimeType ?: read.mimeType,
-                durationMs = current.durationMs ?: read.durationMs,
-                perceptualHash = current.perceptualHash ?: read.perceptualHash
-            )
-        )
+        val current = getMediaItem(seen.id)?.takeIf { it.isStill(seen) } ?: return false
+        updateMediaItem(current.withDetailsOf(read))
         return true
     }
 }

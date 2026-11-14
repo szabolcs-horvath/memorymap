@@ -40,19 +40,43 @@ data class MediaItem(
     /** A 64-bit dHash of the picture (`MediaDetails.perceptualHash`), to rank look-alikes. Never used to link on its own. */
     val perceptualHash: Long? = null
 ) {
+    /** This item, with the details it doesn't know taken from [other] (the same file saved before, or just read). */
+    fun withDetailsOf(other: MediaItem): MediaItem = copy(
+        displayName = displayName ?: other.displayName,
+        width = width ?: other.width,
+        height = height ?: other.height,
+        mimeType = mimeType ?: other.mimeType,
+        durationMs = durationMs ?: other.durationMs,
+        perceptualHash = perceptualHash ?: other.perceptualHash
+    )
+
+    /**
+     * Whether this row still holds the file [seen] had: the same URI and signature. A restore or an edit may since have
+     * put another photo under the same id.
+     */
+    fun isStill(seen: MediaItem): Boolean = uri == seen.uri && mediaSignature == seen.mediaSignature
+
     companion object {
         /** The order a memory shows its media in: by `order`, and items without one after them, the newest first. */
-        val DISPLAY_ORDER: Comparator<MediaItem> = Comparator { a, b ->
-            when {
-                a.order != null && b.order != null -> a.order.compareTo(b.order)
-                a.order != null -> -1
-                b.order != null -> 1
-                else -> b.dateTaken.compareTo(a.dateTaken)
-            }
-        }
+        val DISPLAY_ORDER: Comparator<MediaItem> = orderedFirst({ it.order }, compareByDescending { it.dateTaken })
     }
 }
 
 enum class MediaType {
     IMAGE, VIDEO
+}
+
+/**
+ * The order of the media or fragments of a memory: by [order], and the ones without one after them, sorted by
+ * [unordered].
+ */
+internal fun <T> orderedFirst(order: (T) -> Int?, unordered: Comparator<T>): Comparator<T> = Comparator { a, b ->
+    val first = order(a)
+    val second = order(b)
+    when {
+        first != null && second != null -> first.compareTo(second)
+        first != null -> -1
+        second != null -> 1
+        else -> unordered.compare(a, b)
+    }
 }
