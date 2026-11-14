@@ -18,12 +18,9 @@ import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
 import com.szabolcshorvath.memorymap.data.AppPreferences
-import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.data.PresetRepository
-import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PermissionUtil
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +29,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import com.google.api.services.drive.model.File as DriveFile
 
 /** A backup in the list: Drive's file [id] and [name], when it was last changed and its size in bytes. */
@@ -77,7 +73,6 @@ sealed interface SettingsEvent {
 class SettingsViewModel(
     application: Application,
     presetRepository: PresetRepository,
-    private val memories: MemoryRepository,
     private val backupManager: BackupManager,
     private val preferences: AppPreferences,
 ) : AndroidViewModel(application) {
@@ -208,42 +203,67 @@ class SettingsViewModel(
         }
     }
 
-    private fun performBackup(email: String) {
-        viewModelScope.launch {
-            startBusy(app.getString(R.string.backup_starting))
-            val result = backupManager.performBackup(email, isAutomatic = false) { status -> startBusy(status) }
-            endBusy()
-            result.fold(
-                onSuccess = {
-                    showResult(app.getString(R.string.backup_succeeded), isError = false)
-                    loadBackups(email)
-                },
-                onFailure = { e -> showError(failureMessage(R.string.backup_failed, e), e) },
-            )
-        }
-    }
+    private fun performBackup(email: String) = runOperation(
+        starting = R.string.backup_starting,
+        succeeded = R.string.backup_succeeded,
+        failure = { e -> failureMessage(R.string.backup_failed, e) },
+        operation = { onProgress -> backupManager.performBackup(email, isAutomatic = false, onProgress) },
+        then = { loadBackups(email) },
+    )
 
     fun restoreBackup(fileId: String) {
         val email = state.value.email ?: return
+        runOperation(
+            starting = R.string.restore_starting,
+            succeeded = R.string.restore_succeeded,
+            // A rejected backup says why itself, for the user (too new, unreadable), and is no Drive problem.
+            failure = { e ->
+                if (e is RestoreRejectedException) {
+                    app.getString(R.string.operation_failed, app.getString(R.string.restore_failed), e.message)
+                } else {
+                    failureMessage(R.string.restore_failed, e)
+                }
+            },
+            operation = { onProgress -> backupManager.restoreBackup(email, fileId, onProgress) },
+            then = {
+                relinkAfterRestore()
+                loadBackups(email)
+            },
+        )
+    }
+
+    fun deleteBackup(fileId: String) {
+        val email = state.value.email ?: return
+        runOperation(
+            starting = R.string.backup_deleting,
+            succeeded = R.string.backup_deleted,
+            failure = { e -> failureMessage(R.string.delete_backup_failed, e) },
+            operation = { backupManager.deleteBackup(email, fileId) },
+            then = { loadBackups(email) },
+        )
+    }
+
+    /**
+     * Runs a backup, restore or delete with the busy card ([starting], then the [operation]'s progress), and shows how
+     * it went on the result line: [succeeded], then [then], or the message [failure] gives.
+     */
+    private fun runOperation(
+        @StringRes starting: Int,
+        @StringRes succeeded: Int,
+        failure: (Throwable) -> String,
+        operation: suspend (onProgress: (String) -> Unit) -> Result<Unit>,
+        then: () -> Unit,
+    ) {
         viewModelScope.launch {
-            startBusy(app.getString(R.string.restore_starting))
-            val result = backupManager.restoreBackup(email, fileId) { status -> startBusy(status) }
+            startBusy(app.getString(starting))
+            val result = operation { status -> startBusy(status) }
             endBusy()
             result.fold(
                 onSuccess = {
-                    showResult(app.getString(R.string.restore_succeeded), isError = false)
-                    relinkAfterRestore()
-                    loadBackups(email)
+                    showResult(app.getString(succeeded), isError = false)
+                    then()
                 },
-                onFailure = { e ->
-                    // A rejected backup says why itself, for the user (too new, unreadable), and is no Drive problem.
-                    val message = if (e is RestoreRejectedException) {
-                        app.getString(R.string.operation_failed, app.getString(R.string.restore_failed), e.message)
-                    } else {
-                        failureMessage(R.string.restore_failed, e)
-                    }
-                    showError(message, e)
-                },
+                onFailure = { e -> showError(failure(e), e) },
             )
         }
     }
@@ -256,30 +276,14 @@ class SettingsViewModel(
     private fun relinkAfterRestore() {
         viewModelScope.launch {
             startBusy(app.getString(R.string.relink_scanning), hideResult = false)
-            try {
+            val result = try {
                 MediaRelinker.relink(app) { status -> startBusy(status, hideResult = false) }
             } finally {
                 endBusy()
             }
-            if (!PermissionUtil.hasAllMediaPermissions(app) && hasMissingMedia()) {
+            if (!PermissionUtil.hasAllMediaPermissions(app) && result.missingCount > 0) {
                 eventChannel.send(SettingsEvent.OfferMoreMediaAccess)
             }
-        }
-    }
-
-    fun deleteBackup(fileId: String) {
-        val email = state.value.email ?: return
-        viewModelScope.launch {
-            startBusy(app.getString(R.string.backup_deleting))
-            val result = backupManager.deleteBackup(email, fileId)
-            endBusy()
-            result.fold(
-                onSuccess = {
-                    showResult(app.getString(R.string.backup_deleted), isError = false)
-                    loadBackups(email)
-                },
-                onFailure = { e -> showError(failureMessage(R.string.delete_backup_failed, e), e) },
-            )
         }
     }
 
@@ -314,18 +318,12 @@ class SettingsViewModel(
         }
     }
 
-    /** Whether some saved photos or videos are not linked to a file on this phone. Reads MediaStore: may take a while. */
-    private suspend fun hasMissingMedia(): Boolean {
-        val items = memories.getAllMediaItems()
-        return withContext(Dispatchers.IO) { LocalMediaUtil.hasMissingMedia(app, items) }
-    }
-
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY]!!
                 val container = app.appContainer
-                SettingsViewModel(app, container.presets, container.memories, container.backupManager, container.preferences)
+                SettingsViewModel(app, container.presets, container.backupManager, container.preferences)
             }
         }
     }
