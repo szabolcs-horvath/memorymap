@@ -4,26 +4,18 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,12 +25,11 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerBasedShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -48,17 +39,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarScrollBehavior
 import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.SearchBarValue
+import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -74,10 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -92,15 +79,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_WIDTH
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import kotlinx.coroutines.coroutineScope
@@ -419,7 +405,7 @@ private fun MemoryList(
                     val memory = day.memories[i]
                     MemoryCard(
                         memory = memory,
-                        segment = Segment.of(i, day.memories.size),
+                        inDay = InDay(i, day.memories.size),
                         flash = state.flash,
                         titleTag = tags.title,
                         onClick = { onMemoryClick(memory.id) },
@@ -454,32 +440,23 @@ private val SEGMENT_GAP = 4.dp
 /** Space below the last memory: a margin, and room for the Scroll to top button (48 dp and its 16 dp margin). */
 private val LIST_BOTTOM_PADDING = 80.dp
 
-/** Where a card is among its day's cards: the outer corners of a day's group are round, the inner ones small. */
-private enum class Segment(val roundTop: Boolean, val roundBottom: Boolean) {
-    SINGLE(true, true),
-    FIRST(true, false),
-    MIDDLE(false, false),
-    LAST(false, true);
+/** Where a memory is in its day's group: the [index]th of [count]. */
+private data class InDay(val index: Int, val count: Int)
 
-    companion object {
-        fun of(position: Int, count: Int) = when {
-            count == 1 -> SINGLE
-            position == 0 -> FIRST
-            position == count - 1 -> LAST
-            else -> MIDDLE
-        }
-    }
-}
-
+/**
+ * A memory in its day's group, a Material 3 Expressive segmented list item (round outer corners, small inner ones),
+ * with its marker colour down its left edge.
+ */
 @Composable
-private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState, titleTag: String, onClick: () -> Unit) {
+private fun MemoryCard(
+    memory: MemoryGroup,
+    inDay: InDay,
+    flash: FlashState,
+    titleTag: String,
+    onClick: () -> Unit,
+) {
+    val shapes = ListItemDefaults.segmentedShapes(inDay.index, inDay.count)
     val colors = MaterialTheme.colorScheme
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    // A pressed card rounds all its corners, as Material's segmented list items do.
-    val roundness by animateFloatAsState(if (pressed) 1f else 0f, spring(), label = "corners")
-    val shape = SegmentedShape(segment, roundness, MaterialTheme.shapes.large, MaterialTheme.shapes.extraSmall)
-
     val flashProgress = remember { Animatable(0f) }
     val myFlash = flash.current?.takeIf { it.memoryId == memory.id }
     LaunchedEffect(myFlash) {
@@ -489,84 +466,49 @@ private fun MemoryCard(memory: MemoryGroup, segment: Segment, flash: FlashState,
         flashProgress.snapTo(0f)
         flash.end(myFlash)
     }
-    // A filled item, set apart from the next one by a small gap, as Material 3 Expressive's segmented lists are.
     val itemColor = flashColor(flashProgress.value, colors.surfaceContainer, colors.secondaryContainer)
 
-    CompositionLocalProvider(LocalContentColor provides colors.onSurface) {
+    // The marker colour runs down the item's left edge, as on the memory page's fragments, clipped to its corners.
+    Box(
+        Modifier
+            .padding(horizontal = LIST_MARGIN)
+            .padding(top = if (inDay.index == 0) 0.dp else SEGMENT_GAP)
+            .clip(shapes.shape)
+    ) {
+        SegmentedListItem(
+            onClick = onClick,
+            shapes = shapes,
+            supportingContent = { MemoryDetails(memory) },
+            colors = ListItemDefaults.segmentedColors(containerColor = itemColor),
+            content = { Text(memory.title, Modifier.testTag(titleTag)) },
+        )
         Box(
             Modifier
-                .padding(horizontal = LIST_MARGIN)
-                .padding(top = if (segment.roundTop) 0.dp else SEGMENT_GAP)
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .clip(shape)
-                .background(itemColor)
-                .clickable(interactionSource, ripple(), onClick = onClick)
-        ) {
-            Box(
-                Modifier
-                    .width(8.dp)
-                    .fillMaxHeight()
-                    .background(Color(memory.markerColor()))
-            )
-            MemoryText(memory, titleTag)
-        }
+                .matchParentSize()
+                .wrapContentWidth(Alignment.Start)
+                .width(COLOR_STRIP_WIDTH)
+                .background(Color(memory.markerColor()))
+        )
     }
 }
 
-/** A card's text: the title, the place (its name, else its address), the description and the dates. */
+/** Under a memory's title: the place (its name, else its address), the description and the dates. */
 @Composable
-private fun MemoryText(memory: MemoryGroup, titleTag: String) {
-    val colors = MaterialTheme.colorScheme
-    Column(Modifier.padding(horizontal = ITEM_PADDING, vertical = 12.dp)) {
-        Text(
-            text = memory.title,
-            modifier = Modifier.testTag(titleTag),
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.onSurface,
-        )
+private fun MemoryDetails(memory: MemoryGroup) {
+    Column {
         val location = memory.placeName?.takeIf { it.isNotEmpty() } ?: memory.address?.takeIf { it.isNotEmpty() }
-        if (location != null) {
-            Spacer(Modifier.height(2.dp))
-            Text(location, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-        }
+        if (location != null) Text(location)
         val description = memory.description
         if (!description.isNullOrEmpty()) {
-            Spacer(Modifier.height(4.dp))
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurface,
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(4.dp))
         }
-        Text(
-            text = memory.getFormattedDate(LocalContext.current).orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.onSurfaceVariant,
-        )
-    }
-}
-
-/**
- * The card's shape: [large] corners on the outer side of its day's group, [small] ones inside, and all [large] as
- * [roundness] goes to 1 (pressed).
- */
-private class SegmentedShape(
-    private val segment: Segment,
-    private val roundness: Float,
-    private val large: CornerBasedShape,
-    private val small: CornerBasedShape,
-) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val largePx = large.topStart.toPx(size, density)
-        val smallPx = small.topStart.toPx(size, density)
-        fun corner(round: Boolean) = if (round) largePx else smallPx + (largePx - smallPx) * roundness
-        val top = corner(segment.roundTop)
-        val bottom = corner(segment.roundBottom)
-        return RoundedCornerShape(top, top, bottom, bottom).createOutline(size, layoutDirection, density)
+        Text(memory.getFormattedDate(LocalContext.current).orEmpty(), style = MaterialTheme.typography.bodySmall)
     }
 }
 
