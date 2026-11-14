@@ -148,10 +148,6 @@ object AddScreen : TabScreen {
         ComposeUi.scrollTo("The memory's $tag", ofMemory(hasTestTag(tag))).press()
     }
 
-    fun startDateText(): String = dateButtonText("bt_startDate")
-
-    fun startTimeText(): String = dateButtonText("bt_startTime")
-
     private fun dateButtonText(tag: String): String = ComposeUi.scrollTo("The memory's $tag", ofMemory(hasTestTag(tag))).text()
 
     /** The start date shows [day] as its day of the month (for example "Sep 15, 2026" for 15). */

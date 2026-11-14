@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.util
 
 import androidx.annotation.StringRes
 import com.szabolcshorvath.memorymap.R
-import kotlinx.coroutines.flow.firstOrNull
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters

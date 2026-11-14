@@ -9,7 +9,6 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.onElement
 import androidx.test.uiautomator.onElementOrNull
-import androidx.test.uiautomator.simpleViewResourceName
 import androidx.test.uiautomator.textAsString
 import org.junit.Assert.assertTrue
 import java.util.Locale
@@ -172,5 +171,3 @@ private fun markerTitle(description: CharSequence?): String? =
 fun AccessibilityNodeInfo.hasText(text: String): Boolean = textAsString() == text
 
 fun AccessibilityNodeInfo.hasDescription(description: String): Boolean = contentDescription?.toString() == description
-
-fun AccessibilityNodeInfo.hasId(id: String): Boolean = simpleViewResourceName() == id
