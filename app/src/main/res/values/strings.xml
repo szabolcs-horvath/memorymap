@@ -287,6 +287,7 @@
     <string name="available_backups">Backups</string>
     <string name="show_all_backups">Show all backups</string>
     <string name="all_backups_title">All backups</string>
+    <string name="refreshing_backups">Loading the backup list</string>
     <string name="navigate_back">Back</string>
     <plurals name="backup_count">
         <item quantity="one">%d backup</item>

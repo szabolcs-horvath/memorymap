@@ -28,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuPopup
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -44,6 +45,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshState
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +63,8 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
@@ -192,10 +198,13 @@ private fun SettingsPage(
                 scrollBehavior = scrollBehavior,
             )
         }
+        val pull = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = state.refreshing,
             onRefresh = actions::refreshBackups,
             modifier = Modifier.fillMaxSize(),
+            state = pull,
+            indicator = { RefreshIndicator(pull, state.refreshing, Modifier.align(Alignment.TopCenter)) },
         ) {
             LazyColumn(
                 Modifier
@@ -206,6 +215,20 @@ private fun SettingsPage(
                 content = content,
             )
         }
+    }
+}
+
+/**
+ * Expressive's loading indicator for pulling the list down, as the location picker shows while it looks up a place.
+ * Its progress bar stays in the layout, out of sight, when nothing loads: a screen reader hears it named, and only while
+ * the list loads.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RefreshIndicator(pull: PullToRefreshState, refreshing: Boolean, modifier: Modifier) {
+    val name = stringResource(R.string.refreshing_backups)
+    Box(modifier.clearAndSetSemantics { if (refreshing) contentDescription = name }) {
+        PullToRefreshDefaults.LoadingIndicator(pull, refreshing)
     }
 }
 
