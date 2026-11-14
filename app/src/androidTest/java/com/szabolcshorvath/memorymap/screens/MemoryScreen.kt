@@ -49,9 +49,12 @@ object MemoryScreen {
 
     /** Taps Delete in the More menu, which asks for confirmation first ([Dialog] "Delete this memory?"). */
     fun delete() {
-        tap("The More button", hasContentDescription("More"))
+        openMoreMenu()
         tap("Delete in the More menu", hasText("Delete"))
     }
+
+    /** Opens the More menu (with Delete), without picking anything in it. */
+    fun openMoreMenu() = tap("The More button", hasContentDescription("More"))
 
     /** Swipes to the next memory in the timeline's order (an older one). */
     fun swipeToOlder() = swipe(left = true)
