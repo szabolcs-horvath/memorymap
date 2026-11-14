@@ -47,7 +47,7 @@ object MemoryScreen {
         ComposeUi.scrollTo("A photo", photo).performClick()
     }
 
-    /** Taps Delete in the More menu, which asks for confirmation first ([Dialog] "Delete Memory"). */
+    /** Taps Delete in the More menu, which asks for confirmation first ([Dialog] "Delete this memory?"). */
     fun delete() {
         tap("The More button", hasContentDescription("More"))
         tap("Delete in the More menu", hasText("Delete"))

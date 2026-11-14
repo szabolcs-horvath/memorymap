@@ -35,6 +35,11 @@ object Dialog {
 
     fun assertGone(title: String) = ComposeUi.assertGone("The dialog \"$title\"", hasText(title) and inDialog)
 
+    /** The dialog says something starting with [text], such as the backup a question is about. */
+    fun assertSays(text: String) {
+        ComposeUi.waitFor("The dialog saying \"$text…\"", ComposeUi.textStartsWith(text) and inDialog)
+    }
+
     /** Taps [button] in the dialog, not a button with the same text on the screen behind it ("Clear"). */
     fun tap(button: String) {
         ComposeUi.waitFor("The button \"$button\" in a dialog", hasText(button, ignoreCase = true) and hasClickAction() and inDialog)

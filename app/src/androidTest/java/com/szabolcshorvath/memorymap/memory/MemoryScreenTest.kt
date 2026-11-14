@@ -139,7 +139,7 @@ class MemoryScreenTest {
         const val MIDDLE = "Vienna trip"
         const val PHOTOS = 4
         const val OLDEST = "Lake day"
-        const val DELETE_TITLE = "Delete Memory"
+        const val DELETE_TITLE = "Delete this memory?"
         const val DELETED = "Memory deleted"
         const val UNDO_SECONDS = 15
         val VIENNA = Place.VIENNA.name!!

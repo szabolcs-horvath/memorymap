@@ -71,6 +71,8 @@ class SettingsTest {
 
         SettingsScreen.tapRestoreOnFirstBackup()
         Dialog.assertShown(RESTORE_TITLE)
+        // It names the backup by its kind and when it was made, not by its file name.
+        Dialog.assertSays("Manual backup from ")
         Dialog.tap("Restore")
 
         SettingsScreen.waitUntilIdle()
@@ -239,7 +241,7 @@ class SettingsTest {
         const val AUTOMATIC = "Automatic backup"
         const val MANUAL_BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"
         const val AUTOMATIC_BACKUP = "MemoryMap_Automatic_Backup_20261019_080000.zip"
-        const val RESTORE_TITLE = "Restore Backup"
+        const val RESTORE_TITLE = "Restore this backup?"
         const val DELETE_TITLE = "Delete backup?"
         const val NOT_SET_UP = "Google sign-in isn't set up in this build (missing OAuth client ID)."
         const val NO_ACCOUNT = "There's no Google account to sign in with. Add one in the phone's settings, then try again."

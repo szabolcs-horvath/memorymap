@@ -39,12 +39,12 @@ import java.util.Locale
 /** A question Settings asks before something is deleted or replaced, with what it acts on. */
 private sealed interface Question {
     data class DeletePreset(val id: Int) : Question
-    data class Restore(val id: String, val name: String) : Question
+    data class Restore(val id: String, val name: String, val modifiedMillis: Long?) : Question
 
     /** Restoring without full media access: the photos may not show until it is allowed. */
     data class RestoreAccess(val id: String) : Question
     data object MoreAccess : Question
-    data class DeleteBackup(val id: String, val name: String) : Question
+    data class DeleteBackup(val id: String, val name: String, val modifiedMillis: Long?) : Question
 }
 
 /** Keeps the open question, and what it acts on, for a rotation and process death. */
@@ -53,19 +53,19 @@ private val QuestionSaver = Saver<MutableState<Question?>, List<String>>(
         when (val question = state.value) {
             null -> null
             is Question.DeletePreset -> listOf("delete_preset", question.id.toString())
-            is Question.Restore -> listOf("restore", question.id, question.name)
+            is Question.Restore -> listOf("restore", question.id, question.name, question.modifiedMillis?.toString().orEmpty())
             is Question.RestoreAccess -> listOf("restore_access", question.id)
             Question.MoreAccess -> listOf("more_access")
-            is Question.DeleteBackup -> listOf("delete_backup", question.id, question.name)
+            is Question.DeleteBackup -> listOf("delete_backup", question.id, question.name, question.modifiedMillis?.toString().orEmpty())
         }
     },
     restore = { saved ->
         val question = when (saved.first()) {
             "delete_preset" -> Question.DeletePreset(saved[1].toInt())
-            "restore" -> Question.Restore(saved[1], saved[2])
+            "restore" -> Question.Restore(saved[1], saved[2], saved.last().toLongOrNull())
             "restore_access" -> Question.RestoreAccess(saved[1])
             "more_access" -> Question.MoreAccess
-            "delete_backup" -> Question.DeleteBackup(saved[1], saved[2])
+            "delete_backup" -> Question.DeleteBackup(saved[1], saved[2], saved.last().toLongOrNull())
             else -> null
         }
         mutableStateOf(question)
@@ -136,17 +136,18 @@ fun SettingsRoute(viewModel: SettingsViewModel) {
 /** [question] as a dialog: [onConfirm] when the user agrees, [onClose] when they don't. */
 @Composable
 private fun QuestionDialog(question: Question, onClose: () -> Unit, onConfirm: () -> Unit) {
+    val context = LocalContext.current
     val (title, message) = when (question) {
-        is Question.DeletePreset -> stringResource(R.string.delete_preset) to stringResource(R.string.delete_preset_message)
-        is Question.Restore ->
-            stringResource(R.string.restore_backup_title) to stringResource(R.string.restore_backup_message, question.name)
+        is Question.DeletePreset -> stringResource(R.string.delete_preset_title) to stringResource(R.string.delete_preset_message)
+        is Question.Restore -> stringResource(R.string.restore_backup_title) to
+            stringResource(R.string.restore_backup_message, backupInQuestion(context, question.name, question.modifiedMillis))
 
         is Question.RestoreAccess ->
             stringResource(R.string.restore_media_access_title) to stringResource(R.string.restore_media_access_message)
 
         Question.MoreAccess -> stringResource(R.string.relink_more_title) to stringResource(R.string.relink_more_message)
-        is Question.DeleteBackup ->
-            stringResource(R.string.delete_backup_title) to stringResource(R.string.delete_backup_message, question.name)
+        is Question.DeleteBackup -> stringResource(R.string.delete_backup_title) to
+            stringResource(R.string.delete_backup_message, backupInQuestion(context, question.name, question.modifiedMillis))
     }
     val (confirm, cancel) = when (question) {
         is Question.DeletePreset -> R.string.delete to R.string.cancel
@@ -203,8 +204,8 @@ private fun settingsActions(
     override fun backUpNow() = accounts.backUpNow()
     override fun refreshBackups() = viewModel.refreshBackups()
     override fun allowDriveAccess() = accounts.allowDriveAccess()
-    override fun restoreBackup(backup: BackupItem) = ask(Question.Restore(backup.id, backup.name))
-    override fun deleteBackup(backup: BackupItem) = ask(Question.DeleteBackup(backup.id, backup.name))
+    override fun restoreBackup(backup: BackupItem) = ask(Question.Restore(backup.id, backup.name, backup.modifiedMillis))
+    override fun deleteBackup(backup: BackupItem) = ask(Question.DeleteBackup(backup.id, backup.name, backup.modifiedMillis))
     override fun relinkMedia() = relink.start()
     override fun sendLogs() = shareLogs()
 }

@@ -98,7 +98,7 @@ object ColorPresetsSection {
         ComposeUi.node(swatch(color)).dragOnto(ComposeUi.node(swatch(onto)), horizontal = true)
     }
 
-    const val DELETE_QUESTION = "Are you sure you want to delete this color preset?"
+    const val DELETE_QUESTION = "Delete this preset?"
 
     private fun tap(text: String) {
         ComposeUi.scrollTo("\"$text\"", hasText(text) and isEnabled()).press()

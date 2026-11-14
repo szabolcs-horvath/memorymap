@@ -202,7 +202,7 @@ object AddScreen : TabScreen {
         ComposeUi.scrollTo("A picked video", hasContentDescription("Remove video"))
     }
 
-    /** Taps Clear (Discard while editing) in the top bar, which asks first ([Dialog] "Clear Fields", or "Discard Changes"). */
+    /** Taps Clear (Discard while editing) in the top bar, which asks first ([Dialog] "Clear the form?", or "Discard your changes?"). */
     fun clear() {
         ComposeUi.waitFor("The Clear button", hasTestTag("bt_clear")).performClick()
     }
