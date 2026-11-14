@@ -1,10 +1,21 @@
 package com.szabolcshorvath.memorymap.screens
 
-import android.view.accessibility.AccessibilityNodeInfo
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.StaleObjectException
-import androidx.test.uiautomator.UiObject2
-import androidx.test.uiautomator.textAsString
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isOn
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
+import com.szabolcshorvath.memorymap.screens.ComposeUi.tap
+import com.szabolcshorvath.memorymap.screens.ComposeUi.text
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import java.text.DateFormat
@@ -13,115 +24,68 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** A dialog with a title, such as a confirmation. */
+/** Inside one of the app's dialogs (its questions and pickers), not on the screen behind it. */
+private val inDialog = hasAnyAncestor(isDialog())
+
+/** A dialog of the app's with a title, such as a confirmation. Found through [ComposeUi], as its pickers below. */
 object Dialog {
-    fun assertShown(title: String) = Ui.assertShown("The dialog \"$title\"") { hasText(title) }
-
-    fun assertGone(title: String) = Ui.assertGone("The dialog \"$title\"") { hasText(title) }
-
-    /**
-     * Taps [button] in the dialog, not a button with the same text on the screen behind it ("Clear"). A dialog that
-     * is still opening can replace its button between finding and tapping it, so this finds it again (a few times).
-     */
-    fun tap(button: String) {
-        repeat(MAX_TRIES) { attempt ->
-            try {
-                Ui.find {
-                    // A Compose button's text is a node inside the clickable button.
-                    (isClickable || parent?.isClickable == true) && textAsString().equals(button, ignoreCase = true) && window?.isFocused != false
-                }.click()
-                Ui.device.waitForIdle()
-                return
-            } catch (e: StaleObjectException) {
-                if (attempt == MAX_TRIES - 1) throw e
-            }
-        }
+    fun assertShown(title: String) {
+        ComposeUi.waitFor("The dialog \"$title\"", hasText(title) and inDialog)
     }
 
-    private const val MAX_TRIES = 3
+    fun assertGone(title: String) = ComposeUi.assertGone("The dialog \"$title\"", hasText(title) and inDialog)
+
+    /** Taps [button] in the dialog, not a button with the same text on the screen behind it ("Clear"). */
+    fun tap(button: String) {
+        ComposeUi.waitFor("The button \"$button\" in a dialog", hasText(button, ignoreCase = true) and hasClickAction() and inDialog)
+            .performClick()
+    }
 }
 
-/** The calendar dialog for picking a date. */
 /** Material 3's calendar for picking a date (the Add form's). */
 object DatePickerDialog {
     /** Picks [day] of the month before the one shown, which always differs from the date it opened with. */
     fun pickDayInPreviousMonth(day: Int) {
         val shownMonth = shownMonth()
-        Ui.find { hasDescription("Change to previous month") }.click()
-        // The calendar slides to that month, and for a moment both months' days are on screen: tap the day only once
-        // the calendar says it shows the new month and the day has stopped moving.
-        assertTrue("The calendar did not go to the previous month", Ui.waitUntil { shownMonth().let { it != null && it != shownMonth } })
+        ComposeUi.waitFor("The previous month button", hasContentDescription("Change to previous month")).performClick()
+        val month = Ui.eventually(read = ::shownMonth) { it != shownMonth }
+        assertTrue("The calendar did not go from $shownMonth to the previous month", month != shownMonth)
         // A day reads in full, such as "Sunday, November 1, 2026" (with "Today, " before today).
-        val dayOfMonth = Regex("""\p{L}+ $day, \d{4}$""")
-        repeat(MAX_TRIES) { attempt ->
-            try {
-                Ui.findSettled { isClickable && dayOfMonth.containsMatchIn(textAsString().orEmpty()) }.click()
-                Ui.device.waitForIdle()
-                return
-            } catch (e: StaleObjectException) {
-                if (attempt == MAX_TRIES - 1) throw e
-            }
-        }
+        val dayOfMonth = Regex(""".*\p{L}+ $day, \d{4}""")
+        ComposeUi.waitFor("Day $day", ComposeUi.textMatches(dayOfMonth) and hasClickAction() and inDialog).performClick()
     }
 
-    /** The month and year the calendar shows, above its days (null while it is being replaced). */
-    private fun shownMonth(): String? = try {
-        Ui.findOrNull { MONTH.matches(textAsString().orEmpty()) }?.text
-    } catch (_: StaleObjectException) {
-        null
-    }
+    /** The month and year the calendar shows, above its days. */
+    private fun shownMonth(): String = ComposeUi.waitFor("The month", ComposeUi.textMatches(MONTH) and inDialog).text()
 
     private val MONTH = Regex("""\p{L}+ \d{4}""")
-    private const val MAX_TRIES = 3
 }
 
-/** Taps a picker's OK, or Save when it is full-screen: the text of a Compose button sits inside it. */
+/** Taps a picker's OK, or Save when it is full-screen. */
 private fun confirm() {
-    Ui.find { (hasText("OK") || hasText("Save")) && (isClickable || parent?.isClickable == true) && window?.isFocused != false }.click()
-    Ui.device.waitForIdle()
+    ComposeUi.waitFor("The OK button", (hasText("OK") or hasText("Save")) and hasClickAction() and inDialog).performClick()
 }
 
 /**
- * The calendar for picking a range of dates (Material 3's, on the Add form and the map). It types
- * the dates in its text mode, which needs no scrolling through months, in the format the calendar expects for the
- * phone's language.
+ * The calendar for picking a range of dates (Material 3's, on the Add form and the map). It types the dates in its
+ * text mode, which needs no scrolling through months.
  */
 object DateRangePickerDialog {
     fun pick(start: LocalDate, end: LocalDate) {
-        Ui.find { hasDescription("Switch to text input mode") }.click()
-        Ui.waitUntil { fields().size == 2 }
-        val dates = listOf(start.format(inputFormat()), end.format(inputFormat()))
-        fields().zip(dates).forEach { (field, date) -> type(field, date) }
-        // OK before the picker has taken the typed dates closes it with no range picked: wait until both fields show them.
-        val shown = Ui.eventually(read = { fieldDigits() }) { it == dates.map(::digits) }
-        assertTrue("The date fields show $dates, not $shown", shown == dates.map(::digits))
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The text input mode button", hasContentDescription("Switch to text input mode")).performClick()
+        val fields = Ui.eventually(read = { ComposeUi.nodes(field) }) { it.size == 2 }
+        assertEquals("Date fields", 2, fields.size)
+        // Material 3's field takes only the digits, in the order of the phone's date format, and adds the separators.
+        val dates = listOf(start, end).map { digits(it.format(inputFormat())) }
+        fields.zip(dates).forEach { (field, date) -> field.performTextReplacement(date) }
+        val shown = ComposeUi.nodes(field).map { digits(it.text()) }
+        assertEquals("The date fields", dates, shown)
         confirm()
     }
 
-    /**
-     * Types [date] into [field]. Material 3's field takes only the digits and adds the separators itself, so it keeps
-     * its old text when given them: then it gets the digits alone. The field may show its new text a moment later.
-     */
-    private fun type(field: UiObject2, date: String) {
-        field.text = date
-        if (!Ui.waitUntil(FIELD_UPDATE_MS) { digits(field.text) == digits(date) }) field.text = digits(date)
-    }
+    private val field = hasSetTextAction() and inDialog
 
-    /** The digits each field shows, top to bottom (empty while a field is being replaced). */
-    private fun fieldDigits(): List<String> = try {
-        fields().map { digits(it.text) }
-    } catch (_: StaleObjectException) {
-        emptyList()
-    }
-
-    private fun digits(text: String?) = text.orEmpty().filter(Char::isDigit)
-
-    private const val FIELD_UPDATE_MS = 1_000L
-
-    /** The start and end fields, top to bottom. */
-    private fun fields() = Ui.device.findObjects(By.clazz("android.widget.EditText"))
-        .sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left }))
+    private fun digits(text: String) = text.filter(Char::isDigit)
 
     /** The calendar's text format: the phone's short date format with two-digit days and months, and four-digit years. */
     private fun inputFormat(): DateTimeFormatter {
@@ -147,41 +111,47 @@ object TimePickerDialog {
     /** Picks [hour] (0-23): on a 12-hour clock, its half of the day first. */
     fun pickHour(hour: Int) {
         if (isTwelveHourClock()) {
-            Ui.find { hasText(if (hour < HALF_DAY) "AM" else "PM") }.click()
+            ComposeUi.waitFor("The AM and PM switch", hasText(if (hour < HALF_DAY) "AM" else "PM") and inDialog).performClick()
             val onClock = (hour % HALF_DAY).let { if (it == 0) HALF_DAY else it }
-            Ui.find { hasDescription("$onClock o'clock") && textAsString().isNullOrEmpty() }.click()
+            clockNumber("$onClock o'clock").tap()
         } else {
-            Ui.find { hasDescription("$hour hours") && textAsString().isNullOrEmpty() }.click()
+            clockNumber("$hour hours").tap()
         }
-        Ui.device.waitForIdle()
     }
+
+    // A number on the clock face is named by its description and shows no text: the shown hour above it has both.
+    private fun clockNumber(name: String) =
+        ComposeUi.waitFor("The clock's \"$name\"", hasContentDescription(name) and ComposeUi.hasNoText and inDialog)
 
     fun assertTwelveHourClock() = assertTrue("The clock does not show AM and PM", isTwelveHourClock())
 
     fun assertTwentyFourHourClock() {
         assertFalse("The clock shows AM and PM", isTwelveHourClock())
-        Ui.assertShown("The clock's hour 23") { hasDescription("23 hours") }
+        clockNumber("23 hours")
     }
 
     /** The hour the dialog shows (0-23): the number above the clock, whose description says the hour ("7 o'clock"). */
     private fun shownHour(): Int {
-        val shown = Ui.find { isShownHour() }.contentDescription.toString().substringBefore(' ').toInt()
+        // Its descriptions: what it is ("Select hour"), then the hour ("7 o'clock" or "19 hours").
+        val descriptions = ComposeUi.waitFor("The shown hour", shownHourBox).fetchSemanticsNode().config
+            .getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+        val hour = descriptions.firstNotNullOfOrNull { HOUR.matchEntire(it) }
+        val shown = checkNotNull(hour) { "No hour in $descriptions" }.groupValues[1].toInt()
         if (!isTwelveHourClock()) return shown
-        val afternoon = Ui.find { hasText("PM") }.parent.isChecked
+        val afternoon = ComposeUi.exists(hasText("PM") and (isSelected() or isOn()) and inDialog)
         return shown % HALF_DAY + if (afternoon) HALF_DAY else 0
     }
 
-    private fun AccessibilityNodeInfo.isShownHour() =
-        textAsString().orEmpty().matches(Regex("""\d{2}""")) && (hasDescriptionEnding(" o'clock") || hasDescriptionEnding(" hours"))
-
-    private fun AccessibilityNodeInfo.hasDescriptionEnding(suffix: String) = contentDescription?.endsWith(suffix) == true
+    private val shownHourBox: SemanticsMatcher = ComposeUi.textMatches(Regex("""\d{2}""")) and
+        (ComposeUi.descriptionEndsWith(" o'clock") or ComposeUi.descriptionEndsWith(" hours")) and inDialog
 
     /** Whether the dialog has the AM and PM buttons. It waits for the dialog, then checks once. */
     private fun isTwelveHourClock(): Boolean {
-        Ui.find { isShownHour() }
-        return Ui.findOrNull(timeoutMs = 0) { hasText("AM") } != null
+        ComposeUi.waitFor("The time picker", shownHourBox)
+        return ComposeUi.exists(hasText("AM") and inDialog)
     }
 
+    private val HOUR = Regex("""(\d+) (o'clock|hours)""")
     private const val HOURS_PER_DAY = 24
     private const val HALF_DAY = 12
 }

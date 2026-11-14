@@ -3,27 +3,23 @@ package com.szabolcshorvath.memorymap.screens
 import android.graphics.Color
 import android.graphics.Point
 import android.os.SystemClock
-import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
-import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.Configurator
-import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.onElement
 import androidx.test.uiautomator.onElementOrNull
 import androidx.test.uiautomator.simpleViewResourceName
 import androidx.test.uiautomator.textAsString
-import com.szabolcshorvath.memorymap.screens.Ui.SCROLL_TIMEOUT_MS
 import org.junit.Assert.assertTrue
 import java.util.Locale
 import kotlin.math.abs
 
 /**
- * Finds things on screen the way a user sees them: by text, content description or hint, and by a resource id
- * only where nothing visible names the element. Only the screen objects in this package look elements up, so a
- * screen that changes (for example to Compose) changes only its screen object, never the tests.
+ * The phone, and what [ComposeUi] can't reach: Android's own dialogs and apps, the map's markers (inside Google's
+ * map view) and the keyboard, found through the accessibility tree with UI Automator. Its waits let the app catch up
+ * ([catchUp]). Only the screen objects in this package look elements up, so a screen that changes changes only its
+ * screen object, never the tests.
  */
 object Ui {
     const val TIMEOUT_MS = 10_000L
@@ -31,8 +27,6 @@ object Ui {
     /** For what a busy emulator can be much slower to show: the map's first markers, and the end of a re-link. */
     const val SLOW_TIMEOUT_MS = 30_000L
     private const val POLL_MS = 100L
-    private const val SETTLE_TIMEOUT_MS = 2_000L
-    private const val SETTLE_CHECK_MS = 150L
 
     val device: UiDevice get() = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
 
@@ -42,12 +36,17 @@ object Ui {
     /** Checks [condition] every [pollMs] until it holds or [timeoutMs] has passed, and returns whether it held. */
     fun waitUntil(timeoutMs: Long = TIMEOUT_MS, pollMs: Long = POLL_MS, condition: () -> Boolean): Boolean {
         val end = SystemClock.uptimeMillis() + timeoutMs
+        catchUp()
         while (!condition()) {
             if (SystemClock.uptimeMillis() >= end) return false
             SystemClock.sleep(pollMs)
+            catchUp()
         }
         return true
     }
+
+    /** Lets the app's Compose screens catch up with the time that passed ([ComposeUi.catchUp]). */
+    fun catchUp() = ComposeUi.catchUp()
 
     /**
      * Reads a value with [read] every [pollMs] until it [matches] or [timeoutMs] has passed, and returns the last one
@@ -71,25 +70,15 @@ object Ui {
 
     /** The first visible element matching [condition] in the active window; fails after [timeoutMs]. */
     fun find(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): UiObject2 =
-        device.onElement(timeoutMs) { isVisibleToUser && condition() }
+        findOrNull(timeoutMs, condition) ?: device.onElement(timeoutMs = 0) { isVisibleToUser && condition() }
 
-    fun findOrNull(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): UiObject2? =
-        device.onElementOrNull(timeoutMs) { isVisibleToUser && condition() }
-
-    /**
-     * Like [find], but waits until the element stops moving, for example while a list above it shrinks after a
-     * removal. A tap on an element that is still moving can land where it just was.
-     */
-    fun findSettled(condition: AccessibilityNodeInfo.() -> Boolean): UiObject2 {
-        val end = SystemClock.uptimeMillis() + SETTLE_TIMEOUT_MS
-        var element = find(condition = condition)
-        while (SystemClock.uptimeMillis() < end) {
-            val bounds = element.visibleBounds
-            SystemClock.sleep(SETTLE_CHECK_MS)
-            element = find(condition = condition)
-            if (element.visibleBounds == bounds) break
+    fun findOrNull(timeoutMs: Long = TIMEOUT_MS, condition: AccessibilityNodeInfo.() -> Boolean): UiObject2? {
+        var found: UiObject2? = null
+        waitUntil(timeoutMs) {
+            found = device.onElementOrNull(timeoutMs = 0) { isVisibleToUser && condition() }
+            found != null
         }
-        return element
+        return found
     }
 
     /** Waits up to [timeoutMs] for a visible element matching [condition]. */
@@ -106,152 +95,10 @@ object Ui {
     fun assertGone(what: String, condition: AccessibilityNodeInfo.() -> Boolean) =
         assertTrue("$what is still shown", isGone(condition = condition))
 
-    /**
-     * Scrolls the page until [condition] matches: back to the top first (a page can come back scrolled after a
-     * rotation), then down by most of a screen at a time. If it reaches the bottom without a match, it starts again
-     * from the top, which waits for content that loads later, such as the backup list. A page only scrolls when it is
-     * taller than the screen. If nothing matches in time, the caller's check fails. Giving up costs
-     * [SCROLL_TIMEOUT_MS], so it is logged with where it was called from: a lookup that can never match shows up in
-     * the test's logcat.
-     */
-    fun scrollTo(condition: AccessibilityNodeInfo.() -> Boolean) {
-        val end = SystemClock.uptimeMillis() + SCROLL_TIMEOUT_MS
-        var atTop = false
-        while (!isShown(timeoutMs = 0, condition = condition) && SystemClock.uptimeMillis() < end) {
-            atTop = try {
-                scrollStep(atTop)
-            } catch (_: StaleObjectException) {
-                // The screen replaced the page meanwhile (for example a tab that just opened builds its view): find
-                // the new page and start again from the top.
-                false
-            }
-        }
-        if (!isShown(timeoutMs = 0, condition = condition)) {
-            Log.w(TAG, "Scrolled for ${SCROLL_TIMEOUT_MS / MS_PER_SECOND} s without finding the element", Throwable())
-        }
-    }
-
-    /** One step of [scrollTo]: up to the top if the page isn't there yet, else down. Returns whether it is at the top. */
-    private fun scrollStep(atTop: Boolean): Boolean {
-        val page = findOrNull(timeoutMs = 0) { isPage() }
-        return when {
-            page == null -> {
-                SystemClock.sleep(SCROLL_PAUSE_MS)
-                atTop
-            }
-
-            !atTop -> {
-                toTop(page)
-                true
-            }
-
-            !canScroll(up = false) -> {
-                // At the bottom: wait a moment, then search again from the top.
-                SystemClock.sleep(SCROLL_PAUSE_MS)
-                false
-            }
-
-            else -> {
-                swipeDown(page, SCROLL_PERCENT)
-                true
-            }
-        }
-    }
-
-    /**
-     * Swipes [page]'s content up by [percent] of its height, and holds still before lifting the finger, so the page
-     * stops there instead of flinging on. Not with `UiObject2.scroll`: it then waits for a scroll event that a Compose
-     * page never sends, a second after every swipe (five after a fling). Not with the page's accessibility scroll
-     * action either: it moves the page by its whole height, part of which is under the top bar on an edge-to-edge
-     * screen, so what passes under the bar is never on screen.
-     */
-    private fun swipeDown(page: UiObject2, percent: Float) {
-        val bounds = page.visibleBounds
-        val x = bounds.centerX()
-        // Through the middle of the page: its edges can be under a bar or a button over it (the Add form's Save).
-        val from = bounds.centerY() + (bounds.height() * percent / 2).toInt()
-        val to = bounds.centerY() - (bounds.height() * percent / 2).toInt()
-        device.swipe(arrayOf(Point(x, from), Point(x, to), Point(x, to)), SWIPE_STEPS)
-        device.waitForIdle()
-    }
-
-    /**
-     * Scrolls [page] up to its top with its own accessibility scroll action, a page at a time: what passes by doesn't
-     * matter on the way up, and the action returns at once. The page offers it only while it can scroll up.
-     */
-    private fun toTop(page: UiObject2) {
-        repeat(MAX_PAGES_UP) {
-            if (!canScroll(up = true)) return
-            if (!page.accessibilityNodeInfo.performAction(AccessibilityAction.ACTION_SCROLL_BACKWARD.id)) return
-            device.waitForIdle()
-        }
-    }
-
-    /**
-     * A page that scrolls up and down: a View `ScrollView` (not a `HorizontalScrollView`), or a Compose list, which
-     * reports itself as a plain `View` but offers to scroll up or down. A row that scrolls sideways is never one.
-     */
-    private fun AccessibilityNodeInfo.isPage(): Boolean {
-        if (!isScrollable) return false
-        val name = className?.toString().orEmpty()
-        return (name.endsWith("ScrollView") && !name.endsWith("HorizontalScrollView")) ||
-            (name == COMPOSE_NODE && actionList.any { it in VERTICAL_SCROLLS })
-    }
-
-    private const val COMPOSE_NODE = "android.view.View"
-    private val VERTICAL_SCROLLS = listOf(AccessibilityAction.ACTION_SCROLL_UP, AccessibilityAction.ACTION_SCROLL_DOWN)
-
-    /** Whether the page can scroll further [up] (or down): it offers that scroll action only when it can. */
-    private fun canScroll(up: Boolean): Boolean {
-        val action = if (up) AccessibilityAction.ACTION_SCROLL_BACKWARD else AccessibilityAction.ACTION_SCROLL_FORWARD
-        return isShown(timeoutMs = 0) { isPage() && actionList.contains(action) }
-    }
-
-    /** Scrolls the page all the way up, for an element that has a namesake further down (a fragment's). */
-    fun scrollToTop() {
-        val page = findOrNull(timeoutMs = 0) { isPage() } ?: return
-        try {
-            toTop(page)
-        } catch (_: StaleObjectException) {
-            scrollToTop()
-        }
-    }
-
-    /** Scrolls the page down by about a third of the screen. */
-    fun scrollDownALittle() {
-        if (!canScroll(up = false)) return
-        findOrNull(timeoutMs = 0) { isPage() }?.let { swipeDown(it, NUDGE_PERCENT) }
-    }
-
-    private const val SCROLL_TIMEOUT_MS = 30_000L
-    private const val MS_PER_SECOND = 1_000L
-    private const val TAG = "UiTestScroll"
-    private const val SCROLL_PERCENT = 0.6f
-    private const val NUDGE_PERCENT = 0.3f
-
-    // Frames for each part of a swipe (the move, then the hold): slow enough not to fling.
-    private const val SWIPE_STEPS = 25
-    private const val SCROLL_PAUSE_MS = 300L
-    private const val MAX_PAGES_UP = 20
-
-    /**
-     * Runs [block] without waiting for the screen to settle first, as UI Automator does before every tap and lookup.
-     * For screens that keep changing (a playing video) or changes that would be over by then (a short flash).
-     */
-    fun <T> withoutSettling(block: () -> T): T {
-        val configurator = Configurator.getInstance()
-        val settleTimeout = configurator.waitForIdleTimeout
-        configurator.waitForIdleTimeout = 0
-        try {
-            return block()
-        } finally {
-            configurator.waitForIdleTimeout = settleTimeout
-        }
-    }
-
     fun pressBack() {
         device.pressBack()
         device.waitForIdle()
+        catchUp()
     }
 
     fun rotateToLandscape() {

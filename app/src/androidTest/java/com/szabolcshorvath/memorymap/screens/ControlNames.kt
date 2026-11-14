@@ -10,7 +10,8 @@ import org.junit.Assert.assertTrue
  * tapped, long-pressed, switched or typed into needs a text, a content description, a hint, a label, or text inside it
  * that is not a control of its own (TalkBack reads that out for it). The off-screen part of a scrolling page is in the
  * element tree too, so it is checked without scrolling; a list only holds the rows it shows. The map's own elements
- * are Google's and are left out.
+ * are Google's and are left out. It reads the accessibility tree, as a screen reader does, not Compose's own
+ * ([ComposeUi]).
  *
  * Create one per test, [check] each screen, and [assertAllNamed] at the end, so one run lists every unnamed control.
  */
@@ -19,6 +20,7 @@ class ControlNames {
 
     /** Notes the unnamed controls now on screen, under [screen]. */
     fun check(screen: String) {
+        Ui.catchUp()
         Ui.device.waitForIdle()
         appRoots().flatMap(::unnamedIn).distinct().forEach { unnamed += "$screen: $it" }
     }

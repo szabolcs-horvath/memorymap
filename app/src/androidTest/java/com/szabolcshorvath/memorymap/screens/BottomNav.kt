@@ -1,8 +1,13 @@
 package com.szabolcshorvath.memorymap.screens
 
-import org.junit.Assert.assertTrue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.performClick
 
-/** The tab bar at the bottom of the app. */
+/** The tab bar at the bottom of the app (a rail at the side on a wide screen). Found through [ComposeUi]. */
 object BottomNav {
     enum class Tab(val label: String) {
         MAP("Map"),
@@ -12,8 +17,7 @@ object BottomNav {
     }
 
     fun select(tab: Tab) {
-        Ui.find { isTab(tab) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The ${tab.label} tab", tab(tab)).performClick()
     }
 
     /** Taps [tab] while it is already shown, which takes it back to its start (the Timeline's top, the Map's home view). */
@@ -22,15 +26,16 @@ object BottomNav {
         select(tab)
     }
 
-    fun assertSelected(tab: Tab) = assertTrue(
-        "The ${tab.label} tab is not selected",
-        Ui.isShown { isTab(tab) && isSelected }
-    )
+    fun assertSelected(tab: Tab) {
+        ComposeUi.waitFor("The ${tab.label} tab, selected,", tab(tab) and isSelected())
+    }
 
     /** The tab bar shows (it hides while the media viewer shows). */
-    fun assertShown() = Ui.assertShown("The tab bar") { isTab(Tab.MAP) }
+    fun assertShown() {
+        ComposeUi.waitFor("The tab bar", tab(Tab.MAP))
+    }
 
-    fun assertGone() = Ui.assertGone("The tab bar") { isTab(Tab.MAP) }
+    fun assertGone() = ComposeUi.assertGone("The tab bar", tab(Tab.MAP))
 
     /** Opens [tab] and checks that its screen shows. */
     fun open(tab: Tab) {
@@ -38,9 +43,9 @@ object BottomNav {
         screenOf(tab).assertShown()
     }
 
-    // A tab is one focusable element; Compose reports its label as a text element inside it.
-    private fun android.view.accessibility.AccessibilityNodeInfo.isTab(tab: Tab) =
-        isFocusable && (0 until childCount).any { getChild(it)?.hasText(tab.label) == true }
+    private val isTab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+
+    private fun tab(tab: Tab) = isTab and hasText(tab.label)
 
     fun screenOf(tab: Tab): TabScreen = when (tab) {
         Tab.MAP -> MapScreen
