@@ -6,8 +6,8 @@ import android.os.Handler
 import android.os.Looper
 import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
-import androidx.room.Room
 import androidx.work.testing.WorkManagerTestInitHelper
+import com.szabolcshorvath.memorymap.awaitOnMain
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryGroup
@@ -15,6 +15,7 @@ import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.data.MemoryRepository
+import com.szabolcshorvath.memorymap.inMemoryDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
@@ -53,7 +54,7 @@ class SaveMediaTest {
         // A save finishes on the main thread. Robolectric gives every test a new one, while Dispatchers.Main would keep
         // the first test's.
         Dispatchers.setMain(Handler(Looper.getMainLooper()).asCoroutineDispatcher())
-        db = Room.inMemoryDatabaseBuilder(context, MemoryMapDatabase::class.java).allowMainThreadQueries().build()
+        db = inMemoryDatabase(mainThreadQueries = true)
         dao = db.memoryGroupDao()
         // A save schedules an automatic backup; the test WorkManager only records it.
         WorkManagerTestInitHelper.initializeTestWorkManager(context)
@@ -166,11 +167,7 @@ class SaveMediaTest {
     private fun save(): MemoryGroupWithMedia {
         form.saveMemoryGroup()
         // The save runs in the background and finishes on the main thread, which the test thread stands in for.
-        val deadline = System.currentTimeMillis() + SAVE_TIMEOUT_MS
-        while (form.isSaving.value && System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(POLL_MS)
-        }
+        awaitOnMain("the save to finish", SAVE_TIMEOUT_MS) { !form.isSaving.value }
         shadowOf(Looper.getMainLooper()).idle()
         return runBlocking {
             val result = withTimeout(SAVE_TIMEOUT_MS.milliseconds) { form.saveResult.first() }
@@ -237,7 +234,6 @@ class SaveMediaTest {
         const val DEVICE = "device"
         const val DATE_TAKEN = 1_700_000_000_000L
         const val SAVE_TIMEOUT_MS = 10_000L
-        const val POLL_MS = 20L
         val BEACH_BYTES = ByteArray(10_000) { (it % 251).toByte() }
         val CASTLE_BYTES = ByteArray(12_000) { (it % 241).toByte() }
         val START: ZonedDateTime = ZonedDateTime.parse("2026-01-04T10:00:00+01:00[Europe/Budapest]")

@@ -1,6 +1,6 @@
 package com.szabolcshorvath.memorymap.data
 
-import androidx.room.Room
+import com.szabolcshorvath.memorymap.inMemoryDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.robolectric.RuntimeEnvironment
 import tech.apter.junit.jupiter.robolectric.RobolectricExtension
 import java.time.ZonedDateTime
 
@@ -20,7 +19,7 @@ class MemoryGroupDaoTest {
 
     @BeforeEach
     fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), MemoryMapDatabase::class.java).build()
+        db = inMemoryDatabase()
         dao = db.memoryGroupDao()
     }
 
