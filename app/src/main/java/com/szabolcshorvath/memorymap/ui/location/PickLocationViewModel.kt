@@ -48,10 +48,19 @@ data class PickLocationUiState(
 @Suppress("TooManyFunctions")
 class PickLocationViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
 
-    val selectedLat: Double? get() = savedState[SELECTED_LAT]
-    val selectedLng: Double? get() = savedState[SELECTED_LNG]
-    val selectedPlaceName: String? get() = savedState[SELECTED_PLACE_NAME]
-    val selectedAddress: String? get() = savedState[SELECTED_ADDRESS]
+    /** The picked spot, or null. Kept in the saved state, so it survives process death. */
+    private var spot: PickedSpot?
+        get() {
+            val lat = savedState.get<Double>(SELECTED_LAT) ?: return null
+            val lng = savedState.get<Double>(SELECTED_LNG) ?: return null
+            return PickedSpot(lat, lng, savedState[SELECTED_PLACE_NAME], savedState[SELECTED_ADDRESS])
+        }
+        set(value) {
+            savedState[SELECTED_LAT] = value?.lat
+            savedState[SELECTED_LNG] = value?.lng
+            savedState[SELECTED_PLACE_NAME] = value?.name
+            savedState[SELECTED_ADDRESS] = value?.address
+        }
 
     /** The searched place being looked up; a pick made meanwhile clears it, and the late result is then ignored. */
     private var activeAutocompletePlaceId: String? = null
@@ -71,7 +80,7 @@ class PickLocationViewModel(application: Application, private val savedState: Sa
     /** The picker is shown: the "you are here" dot follows location access, and with nothing picked it picks the phone. */
     fun onShown() {
         setShowsMyLocation(hasLocationPermission(context))
-        if (selectedLat == null) selectUserLocation()
+        if (spot == null) selectUserLocation()
     }
 
     /**
@@ -81,17 +90,13 @@ class PickLocationViewModel(application: Application, private val savedState: Sa
     fun open(place: FormPlace?) {
         if (savedState.get<Boolean>(OPENED) == true) return
         savedState[OPENED] = true
-        if (place == null) clearSelection() else setInitialLocation(place.lat, place.lng, place.name, place.address)
+        if (place == null) {
+            clear()
+        } else {
+            pick(place.lat, place.lng, place.name, place.address, lookingUp = false)
+            moveCamera(place.lat, place.lng, CAMERA_ZOOM, animate = false)
+        }
     }
-
-    /** Opens the picker on a spot picked before ([lat], [lng], with its name and address). */
-    fun setInitialLocation(lat: Double, lng: Double, placeName: String?, address: String?) {
-        pick(lat, lng, placeName, address, lookingUp = false)
-        moveCamera(lat, lng, CAMERA_ZOOM, animate = false)
-    }
-
-    /** Opens the picker with nothing picked: it picks where the phone is once shown, if it may. */
-    fun clearSelection() = clear()
 
     fun pickOnMap(latLng: LatLng) {
         pick(latLng.latitude, latLng.longitude)
@@ -173,7 +178,7 @@ class PickLocationViewModel(application: Application, private val savedState: Sa
         if (!hasLocationPermission(context)) return
         AppServices.location.lastLocation(context).addOnSuccessListener { location ->
             // Not over a spot the user picked meanwhile.
-            if (location != null && selectedLat == null) selectLocation(LatLng(location.latitude, location.longitude))
+            if (location != null && spot == null) selectLocation(LatLng(location.latitude, location.longitude))
         }
     }
 
@@ -219,28 +224,25 @@ class PickLocationViewModel(application: Application, private val savedState: Sa
         // Ignore a late result for a location the user has since moved away from.
         if (!isPicked(latLng.latitude, latLng.longitude)) return
         // A point of interest whose details failed keeps the name it may already have.
-        val name = selectedPlaceName ?: address?.let { placeName(context, it) }
-        showDetails(name, address?.getAddressLine(0) ?: selectedAddress)
+        val picked = spot
+        val name = picked?.name ?: address?.let { placeName(context, it) }
+        showDetails(name, address?.getAddressLine(0) ?: picked?.address)
     }
 
     /** Whether [lat], [lng] is still the picked spot (a late lookup result for an older spot is ignored). */
-    private fun isPicked(lat: Double, lng: Double) = lat == selectedLat && lng == selectedLng
+    private fun isPicked(lat: Double, lng: Double) = spot?.let { it.lat == lat && it.lng == lng } == true
 
     /** Picks [lat], [lng]. Its name and address are looked up next ([lookingUp]), unless they are given. */
     private fun pick(lat: Double, lng: Double, name: String? = null, address: String? = null, lookingUp: Boolean = true) {
         activeAutocompletePlaceId = null
-        savedState[SELECTED_LAT] = lat
-        savedState[SELECTED_LNG] = lng
-        savedState[SELECTED_PLACE_NAME] = name
-        savedState[SELECTED_ADDRESS] = address
+        spot = PickedSpot(lat, lng, name, address)
         isLookingUp = lookingUp
         publish()
     }
 
     /** The looked-up name and address of the picked spot (null where none was found). */
     private fun showDetails(name: String?, address: String?) {
-        savedState[SELECTED_PLACE_NAME] = name
-        savedState[SELECTED_ADDRESS] = address
+        spot = spot?.copy(name = name, address = address)
         isLookingUp = false
         publish()
     }
@@ -262,10 +264,7 @@ class PickLocationViewModel(application: Application, private val savedState: Sa
 
     private fun clear() {
         activeAutocompletePlaceId = null
-        savedState[SELECTED_LAT] = null
-        savedState[SELECTED_LNG] = null
-        savedState[SELECTED_PLACE_NAME] = null
-        savedState[SELECTED_ADDRESS] = null
+        spot = null
         isLookingUp = false
         publish()
     }
@@ -284,10 +283,7 @@ class PickLocationViewModel(application: Application, private val savedState: Sa
     }
 
     private fun publish() {
-        val lat = selectedLat
-        val lng = selectedLng
-        val picked = if (lat != null && lng != null) PickedSpot(lat, lng, selectedPlaceName, selectedAddress) else null
-        _uiState.value = _uiState.value.copy(picked = picked, isLookingUp = isLookingUp)
+        _uiState.value = _uiState.value.copy(picked = spot, isLookingUp = isLookingUp)
     }
 
     private companion object {
