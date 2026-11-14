@@ -37,9 +37,11 @@ class AddMemoryTest {
         FakeMediaPicker.nextPick = listOf(TestData.galleryPhoto(Color.RED), TestData.galleryPhoto(Color.BLUE))
         openAdd()
 
-        // Without a title, and then without a location, Save keeps the form open and saves nothing.
+        // Without a title, and then without a location, Save says what is missing, keeps the form open and saves nothing.
         AddScreen.save()
+        AddScreen.assertMissingTitleAndPlace()
         AddScreen.assertShown()
+        AddScreen.assertNew()
         AddScreen.typeTitle(PICNIC)
         AddScreen.save()
         AddScreen.assertShown()
@@ -61,16 +63,6 @@ class AddMemoryTest {
         MemoryScreen.assertPhotoLoaded()
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.assertMemoryShown(PICNIC)
-    }
-
-    @Test
-    fun aSaveWithoutATitleOrAPlaceSaysWhatIsMissingAndStaysOnTheForm() {
-        openAdd()
-        AddScreen.save()
-
-        AddScreen.assertMissingTitleAndPlace()
-        AddScreen.assertShown()
-        AddScreen.assertNew()
     }
 
     @Test

@@ -50,56 +50,12 @@ class MyLocationTest {
         MapScreen.assertMarkerShown(BUDAPEST_TRIP)
     }
 
+    /**
+     * With access, the map opens on the area around the phone; "my location" there zooms in on the streets, but never
+     * out from closer than the area; and tapping the Map tab again goes back to the area, not to all the memories.
+     */
     @Test
-    fun withAccessTheMapOpensWhereThePhoneIs() {
-        TestData.phoneAt(Place.BUDAPEST)
-        TestData.grantLocationAccess()
-        addMemories()
-
-        app.launch()
-
-        MapScreen.assertMarkerShown(BUDAPEST_TRIP)
-        MapScreen.assertMarkerGone(ROME_TRIP)
-    }
-
-    @Test
-    fun myLocationAgainZoomsInOnTheStreets() {
-        TestData.phoneAt(Place.BUDAPEST)
-        TestData.grantLocationAccess()
-        TestData.markerClustering(false)
-        TestData.memory(BUDAPEST_TRIP, place = Place.BUDAPEST)
-        TestData.memory(OBUDA_TRIP, place = OBUDA)
-        app.launch()
-        // The map opens on the area around the phone, as the first press of "my location" shows it.
-        MapScreen.assertMarkerShown(BUDAPEST_TRIP)
-        MapScreen.assertMarkerShown(OBUDA_TRIP)
-
-        MapScreen.tapMyLocation()
-
-        MapScreen.assertMarkerGone(OBUDA_TRIP)
-        MapScreen.assertMarkerShown(BUDAPEST_TRIP)
-    }
-
-    @Test
-    fun myLocationNeverZoomsOutFromCloserThanTheArea() {
-        TestData.phoneAt(Place.BUDAPEST)
-        TestData.grantLocationAccess()
-        TestData.markerClustering(false)
-        TestData.memory(BUDAPEST_TRIP, place = Place.BUDAPEST)
-        TestData.memory(OBUDA_TRIP, place = OBUDA)
-        app.launch()
-        // Tapping a pin zooms in on it, closer than the area around the phone: Budapest's centre is off screen.
-        MapScreen.tapMarker(OBUDA_TRIP)
-        MapScreen.assertMarkerGone(BUDAPEST_TRIP)
-
-        MapScreen.tapMyLocation()
-
-        MapScreen.assertMarkerShown(BUDAPEST_TRIP)
-        MapScreen.assertMarkerGone(OBUDA_TRIP)
-    }
-
-    @Test
-    fun withAccessTappingTheMapTabAgainGoesBackToWhereThePhoneIs() {
+    fun withAccessTheMapOpensWhereThePhoneIsAndMyLocationOrTheMapTabGoBackThere() {
         TestData.phoneAt(Place.BUDAPEST)
         TestData.grantLocationAccess()
         TestData.markerClustering(false)
@@ -107,18 +63,33 @@ class MyLocationTest {
         TestData.memory(OBUDA_TRIP, place = OBUDA)
         TestData.memory(ROME_TRIP, place = Place.ROME)
         app.launch()
-        MapScreen.tapMarker(OBUDA_TRIP)
-        MapScreen.assertOverlayShows(OBUDA_TRIP)
-        MapScreen.assertMarkerGone(BUDAPEST_TRIP)
+        // The map opens on the area around the phone, as the first press of "my location" shows it.
+        MapScreen.assertMarkerShown(BUDAPEST_TRIP)
+        MapScreen.assertMarkerShown(OBUDA_TRIP)
+        MapScreen.assertMarkerGone(ROME_TRIP)
 
-        // The first tap closes the card, the second goes back to the area around the phone (not to all memories).
+        // From the area, "my location" zooms in on the streets around the phone.
+        MapScreen.tapMyLocation()
+        MapScreen.assertMarkerGone(OBUDA_TRIP)
+        MapScreen.assertMarkerShown(BUDAPEST_TRIP)
+
+        // The first tap on the Map tab closes the card, the second goes back to the area around the phone.
+        MapScreen.tapMarker(BUDAPEST_TRIP)
+        MapScreen.assertOverlayShows(BUDAPEST_TRIP)
         BottomNav.tapAgain(Tab.MAP)
         MapScreen.assertOverlayGone()
         BottomNav.tapAgain(Tab.MAP)
-
         MapScreen.assertMarkerShown(BUDAPEST_TRIP)
         MapScreen.assertMarkerShown(OBUDA_TRIP)
         MapScreen.assertMarkerStaysGone(ROME_TRIP)
+
+        // Tapping a pin zooms in on it, closer than the area: Budapest's centre is off screen. "My location" then goes
+        // to the streets around the phone, not out to the area.
+        MapScreen.tapMarker(OBUDA_TRIP)
+        MapScreen.assertMarkerGone(BUDAPEST_TRIP)
+        MapScreen.tapMyLocation()
+        MapScreen.assertMarkerShown(BUDAPEST_TRIP)
+        MapScreen.assertMarkerGone(OBUDA_TRIP)
     }
 
     @Test
@@ -140,17 +111,7 @@ class MyLocationTest {
     }
 
     @Test
-    fun withLocationTurnedOffMyLocationSaysSo() {
-        // No TestData.phoneAt: the phone doesn't know where it is.
-        TestData.grantLocationAccess()
-        openMapWithMemories()
-
-        ToastMessage.assertShownAfter(LOCATION_UNAVAILABLE) { MapScreen.tapMyLocation() }
-        MapScreen.assertMarkerShown(ROME_TRIP)
-    }
-
-    @Test
-    fun withAccessButLocationOffTheMapOpensOnAllTheMemories() {
+    fun withAccessButLocationOffTheMapOpensOnAllTheMemoriesAndMyLocationSaysSo() {
         // No TestData.phoneAt: the phone doesn't know where it is. On the map's view of the whole world, before it
         // moves, these four memories are under the date filter or in one cluster.
         TestData.grantLocationAccess()
@@ -165,6 +126,9 @@ class MyLocationTest {
         app.launch()
 
         MapScreen.assertMarkersInView(memories.keys)
+
+        ToastMessage.assertShownAfter(LOCATION_UNAVAILABLE) { MapScreen.tapMyLocation() }
+        MapScreen.assertMarkerShown(ROME_TRIP)
     }
 
     @Test

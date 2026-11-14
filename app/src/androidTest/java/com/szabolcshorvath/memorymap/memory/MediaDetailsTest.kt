@@ -32,6 +32,7 @@ class MediaDetailsTest {
         AddScreen.typeTitle(PICNIC)
         Flows.pickLocationOnMap()
         AddScreen.addPhotos()
+        AddScreen.assertSelectedCount(1)
         AddScreen.save()
         MemoryScreen.assertShowing(PICNIC)
         MemoryScreen.assertPhotoLoaded()

@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 84 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 6 open
+✅ 85 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 6 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -165,7 +165,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [BUILD-5](#build-5) | Low | Material3 is pinned to a release candidate ahead of the Compose BOM |
 | ⬜ | [BUILD-6](#build-6) | Low | Nothing checks the declared dependencies against what the code uses |
 
-**TEST — Coverage gaps** · 3 of 6 fixed
+**TEST — Coverage gaps** · 4 of 6 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -173,7 +173,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [TEST-2](#test-2) | Medium | Critical logic is untested |
 | ✅ | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
 | 🟡 | [TEST-4](#test-4) | Medium | Flaky UI tests |
-| 🟡 | [TEST-5](#test-5) | Medium | The UI suite has grown slow and overlapping |
+| ✅ | [TEST-5](#test-5) | Medium | The UI suite has grown slow and overlapping |
 | ✅ | [TEST-6](#test-6) | Medium | The UI tests drive Compose screens through the accessibility tree |
 
 **I18N / A11Y** · 2 of 4 fixed
@@ -1029,17 +1029,20 @@ When a status changes, update the item's **Status** line, the marker in its head
   - The memory pager (`TimelineTest`'s two Show on Timeline tests, which swipe through 8 and 12 memories: "The timeline is not shown" with the memory still open, or a `StaleObjectException`): `MemoryScreen`'s swipe returned as soon as the next memory's title showed, while that page still slid in. The next swipe or the tap on "Show on timeline" then only stopped the pager (a touch on a moving pager stops it), so the memory stayed open. The swipe now waits until one page alone is shown and its title has stopped moving, and reads the titles without failing on one being drawn again. The two tests then passed eight runs in a row, and `TimelineTest` passed.
   - Still open: the thumbnail failure above (`AddMemoryTest`), seen once.
 
-### <a id="test-5"></a>🟡 TEST-5 · Medium · The UI suite has grown slow and overlapping
+### <a id="test-5"></a>✅ TEST-5 · Medium · The UI suite has grown slow and overlapping
 - **Where:** `app/src/androidTest` (132 tests before this pass, `screens/`, `testing/`)
 - **What:** The suite was written screen by screen, first against the View UI and then kept through the Compose migration, and a full run takes about 35 minutes. Some flows are covered several times over (opening a memory, Show on map and on timeline, rotation and process death on the same screens), tests that set up the same data could share one run, and the waits that keep it reliable (`awaitMarkersSettled`, the pager's settle, and fixed sleeps in `Ui` and `MediaViewerScreen`) cost time in every test. Flaky tests ([TEST-4](#test-4)) make a red run hard to trust.
 - **Fix:** one pass over the whole suite, agreed with the user (2026-11-12): remove tests that check nothing another test doesn't, merge tests that only make sense together (one setup, several checks along one flow), and make it faster and less flaky: wait for the state a step needs rather than for a time, and look for setup that can be shared or made cheaper (the Test Orchestrator's fresh install per test is the largest fixed cost). Keep the coverage: every flow listed under [TEST-3](#test-3) must still have a test. Measure the full run's time and the flaky tests before and after.
 - **Before** (2026-11-12, on the `MemoryMap_UI_Tests` emulator): 132 tests, all passing, in 35 minutes; the tests themselves take 28.7 of them. The rest is the Orchestrator's start of each test (about 2.5 s) and the build and install. In the tests: the app's start, about 3.2 s per test (5.4 minutes); scrolling, 4.3 minutes, because UI Automator waits after every swipe for a scroll event a Compose page never sends (all 79 swipes and flings of the run waited out the whole 1 s or 5 s); and waiting for the screen after taps, about 3 minutes. The slowest test (`AddMemoryTest`, removing photos and clearing the form, 44 s) spent 33 s scrolling.
-- **Status:** Partly fixed (2026-11-13).
+- **Status:** Fixed (2026-11-14), in two passes.
   - Scrolling: `Ui.scrollTo` and `Ui.scrollDownALittle` swipe with `UiDevice.swipe`, which doesn't wait for the scroll event, through the middle of the page (its edges can be under a bar or the Add form's Save button) and holding still at the end so the page doesn't fling. Back to the top goes with the page's own accessibility scroll action (`Ui.scrollToTop`), a page at a time. That action wasn't usable for going down: it moves a whole page height, part of which is under the top bar on an edge-to-edge screen, so what passes under the bar is never on screen (it skipped the Add form's hue slider). Asking an off-screen element to show itself (`ACTION_SHOW_ON_SCREEN`) didn't work either: UI Automator's lookup doesn't return Compose nodes that are off screen. The Timeline's `scrollDown` stays a `UiObject2` swipe: its tests are about a scroll made by hand.
   - The colour preset checks (`ColorPresetsSection`) scroll to the preset or the sliders they check, instead of counting on an earlier scroll having left them on screen, and a preset counts as gone only with the presets on screen.
   - Merged, keeping every check (132 to 118 tests): `RotationTest` and `ProcessDeathTest` into `SavedStateTest`, where each state is turned and then goes through a process death (16 to 7; the map's open panel only through a rotation, as before); `SaveErrorTest`'s two cases into the one with a photo; `TimelineTest`'s two Show on Timeline scroll tests; `MapTest`'s two "tap the Map tab again" tests; `SettingsTest`'s two failed sign-ins; `FragmentsAndColorTest`'s fragment dates, now saved with a date of their own and then edited to an all-day range.
   - **After** (2026-11-13): 118 tests, all passing, in 33.4 minutes (35.0 before); the tests themselves take 26.6 (28.7 before). 4 scroll waits are left (79 before), from the Timeline's own swipes. The emulator's speed varies by a few minutes from run to run (an earlier run of these changes took 31), so this is a modest gain, not the 7 to 9 minutes first estimated: most of the time is the app's start in every test and waiting for the screen after taps. No test failed for flakiness in the two full runs; the thumbnail failure still open under [TEST-4](#test-4) showed once more, in `SettingsTest.reLinkingFindsAPhotoBroughtFromAnotherPhone`.
-  - Left: further merges of tests that share a setup. The waits after taps went with [TEST-6](#test-6).
+  - The waits after taps and the scrolling went with [TEST-6](#test-6) (Compose's test APIs wait until the app is idle): 24.4 minutes for the same 118 tests.
+  - Second pass (2026-11-14), merging tests that share a setup, keeping every check (118 to 106 tests): in `MyLocationTest`, the four with the phone in Budapest and location access (the map opens there, "my location" zooms in on the streets and never out from closer, the Map tab goes back there) into one flow, and the two with location off; in `MapTest`, the Map tab over a memory into the "tap the Map tab again" test, and the toolbar's place with the two "marker above the card" tests (upright, then sideways); in `MissingPhotoTest`, the rotation and process death into the suggestions test, and closing the sheet into the test of how the lost photo looked; in `SettingsTest`, a restore's result into the backup and restore test, and the two re-link tests into one with a photo of each kind; in `AddMemoryTest`, the messages of a save without a title and place into the test that saves a memory.
+  - Two tests saved right after the photo picker returned, before the form had added the pick (`ControlNamesTest`, `MediaDetailsTest`): they wait for the form's count first. UI Automator's slower steps had hidden this.
+  - **After** (2026-11-14): 106 tests in 22.6 minutes, build included (35.0 at the start). Left out on purpose: tests with different preferences or permissions at start (location access allowed or refused, fragment markers, the default filter), which can't share a run without the setting changing mid-test.
 
 ### <a id="test-6"></a>✅ TEST-6 · Medium · The UI tests drive Compose screens through the accessibility tree
 - **Where:** `app/src/androidTest/.../screens/` (the screen objects and `Ui`), `testing/MemoryMapAppRule.kt`
