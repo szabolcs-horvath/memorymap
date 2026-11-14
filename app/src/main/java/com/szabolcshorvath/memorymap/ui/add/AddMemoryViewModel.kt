@@ -5,7 +5,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
 import androidx.core.net.toUri
@@ -61,6 +60,20 @@ class AddMemoryViewModel(
 
     private val _saveResult = Channel<SaveResult>(Channel.BUFFERED)
     val saveResult = _saveResult.receiveAsFlow()
+
+    /** What the user is told after a save, wherever they are: the shell shows it over any screen. */
+    enum class SaveNotice(@param:StringRes val text: Int, val long: Boolean) {
+        /** The save finished after the user left the Add screen. */
+        SAVED(R.string.memory_saved, long = false),
+
+        /** An edit whose memory was deleted meanwhile was saved as a new memory. */
+        SAVED_AS_NEW(R.string.memory_saved_as_new, long = true),
+    }
+
+    private val _saveNotices = Channel<SaveNotice>(Channel.BUFFERED)
+
+    /** Collected whether or not the Add screen is shown, unlike [saveResult]. */
+    val saveNotices = _saveNotices.receiveAsFlow()
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving = _isSaving.asStateFlow()
@@ -410,10 +423,9 @@ class AddMemoryViewModel(
     private suspend fun onSaved(groupId: Int, savedAsNew: Boolean) {
         resetForm()
         if (savedAsNew) {
-            Toast.makeText(getApplication(), R.string.memory_saved_as_new, Toast.LENGTH_LONG).show()
-        }
-        if (!isScreenShown && !savedAsNew) {
-            Toast.makeText(getApplication(), R.string.memory_saved, Toast.LENGTH_SHORT).show()
+            _saveNotices.send(SaveNotice.SAVED_AS_NEW)
+        } else if (!isScreenShown) {
+            _saveNotices.send(SaveNotice.SAVED)
         }
         _saveResult.send(SaveResult.Success(groupId, openMemory = isScreenShown))
     }

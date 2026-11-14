@@ -12,9 +12,9 @@ import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.Keyboard
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
+import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.screens.TimePickerDialog
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
-import com.szabolcshorvath.memorymap.screens.ToastMessage
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
@@ -173,7 +173,8 @@ class AddMemoryTest {
         try {
             AddScreen.save()
             BottomNav.open(Tab.MAP)
-            ToastMessage.assertShownAfter(MEMORY_SAVED) { database.release() }
+            database.release()
+            Snackbar.assertShown(MEMORY_SAVED)
         } finally {
             database.release()
         }
@@ -186,6 +187,25 @@ class AddMemoryTest {
         AddScreen.assertNoTitle()
         AddScreen.assertAllDay(false)
         AddScreen.assertNew()
+    }
+
+    @Test
+    fun anEditOfAMemoryDeletedMeanwhileIsSavedAsANewMemoryAndSaysSo() {
+        TestData.memory(VIENNA)
+        openForEditing(VIENNA)
+        AddScreen.typeTitle(VIENNA_RENAMED)
+
+        // The memory is deleted on its own page while the changed edit stays open on the Add tab.
+        Flows.openMemory(VIENNA)
+        MemoryScreen.delete()
+        Dialog.tap("Delete")
+        Snackbar.assertClosesByItself(MEMORY_DELETED)
+        BottomNav.open(Tab.ADD)
+        AddScreen.assertTitle(VIENNA_RENAMED)
+        AddScreen.save()
+
+        Snackbar.assertShown(SAVED_AS_NEW)
+        MemoryScreen.assertShowing(VIENNA_RENAMED)
     }
 
     /**
@@ -299,6 +319,8 @@ class AddMemoryTest {
         const val VIENNA_RENAMED = "Vienna weekend"
         const val DISCARD_DRAFT = "Discard the new memory?"
         const val MEMORY_SAVED = "Memory saved"
+        const val MEMORY_DELETED = "Memory deleted"
+        const val SAVED_AS_NEW = "This memory was deleted meanwhile, so your changes were saved as a new memory"
 
         // Days and hours that can't be mistaken for one another in the date line ("Aug 5, 2026 8:00 PM - ...").
         const val END_DAY = 15

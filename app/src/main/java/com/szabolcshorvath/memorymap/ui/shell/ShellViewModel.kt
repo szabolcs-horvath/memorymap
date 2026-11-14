@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.ui.shell
 
 import android.os.Bundle
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 sealed interface ShellMessage {
     /** At start: photos need re-linking and the app has no media access; the action asks for it. */
     data object RelinkNeedsAccess : ShellMessage
+
+    /** A message without an action, shown for a short time, or a long one if [long]. */
+    data class Text(@param:StringRes val text: Int, val long: Boolean) : ShellMessage
 }
 
 /**
