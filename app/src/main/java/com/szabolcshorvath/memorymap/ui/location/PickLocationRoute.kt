@@ -43,9 +43,8 @@ fun PickLocationRoute(
             override fun pickOnMap(latLng: LatLng) = viewModel.pickOnMap(latLng)
             override fun pickPoi(poi: PointOfInterest) = viewModel.pickPoi(poi)
             override fun confirm() {
-                val lat = viewModel.selectedLat ?: return
-                val lng = viewModel.selectedLng ?: return
-                confirm(lat, lng, viewModel.selectedPlaceName, viewModel.selectedAddress)
+                val spot = viewModel.uiState.value.picked ?: return
+                confirm(spot.lat, spot.lng, spot.name, spot.address)
             }
 
             override fun onCameraMoved(request: CameraRequest) = viewModel.onCameraMoved(request)
