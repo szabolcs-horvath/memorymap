@@ -1,6 +1,5 @@
 import com.android.build.api.dsl.ManagedVirtualDevice
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
@@ -16,7 +15,7 @@ plugins {
 val localProperties = Properties()
 val localPropertiesFile: File = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
-    localProperties.load(FileInputStream(localPropertiesFile))
+    localPropertiesFile.reader().use { localProperties.load(it) }
 }
 
 kotlin {
@@ -58,10 +57,10 @@ kotlin {
 
         signingConfigs {
             create("release") {
-                storeFile = localProperties["RELEASE_STORE_FILE"]?.let { file(it) }
-                storePassword = localProperties["RELEASE_STORE_PASSWORD"] as String?
-                keyAlias = localProperties["RELEASE_KEY_ALIAS"] as String?
-                keyPassword = localProperties["RELEASE_KEY_PASSWORD"] as String?
+                storeFile = localProperties.getProperty("RELEASE_STORE_FILE")?.let { file(it) }
+                storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+                keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+                keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
             }
         }
 
@@ -144,7 +143,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.datastore.preferences)
 
-    // Jetpack Compose (the screens moved from XML Views so far: ARCH-10)
+    // Jetpack Compose
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
