@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.ui.add
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -125,6 +127,7 @@ interface AddMemoryActions {
  * The Add tab: the form for a new memory or for editing one, under a large top app bar with its title and Clear, and
  * above a Save button that stays in reach. A date or time button opens Material 3's picker over it.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: AddMemoryActions) {
     val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
@@ -157,7 +160,8 @@ fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: A
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .semantics { testTagsAsResourceId = true },
         topBar = { FormTopBar(state, compact, scrollBehavior, actions::clear) },
-        bottomBar = { SaveBar(state, large = !compact, actions::save) },
+        // In a short window the keyboard leaves no room for the pinned Save button too: it gives way while typing.
+        bottomBar = { if (!(compact && WindowInsets.isImeVisible)) SaveBar(state, large = !compact, actions::save) },
         snackbarHost = { SnackbarHost(snackbars) },
         contentWindowInsets = WindowInsets(0),
     ) { padding ->

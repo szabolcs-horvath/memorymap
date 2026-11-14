@@ -9,6 +9,7 @@ import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.DatePickerDialog
 import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.Flows
+import com.szabolcshorvath.memorymap.screens.Keyboard
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.TimePickerDialog
@@ -43,6 +44,9 @@ class AddMemoryTest {
         AddScreen.assertShown()
         AddScreen.assertNew()
         AddScreen.typeTitle(PICNIC)
+        // While the keyboard is open, the tab bar gives way: Save stays right above the keyboard.
+        Keyboard.assertShown()
+        BottomNav.assertGone()
         AddScreen.save()
         AddScreen.assertShown()
         MemoryScreen.assertGone()

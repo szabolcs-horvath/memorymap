@@ -72,14 +72,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -320,21 +324,35 @@ private fun SearchField(query: TextFieldState, searchBarState: SearchBarState) {
     )
 }
 
-/** The search view's results: the matching memories, as the Timeline shows them. */
+/**
+ * The search view's results: the matching memories, as the Timeline shows them. Dragging them closes the keyboard, as
+ * in Android's own searches: with the phone turned sideways, the keyboard leaves room for little more than a header.
+ */
 @Composable
 private fun SearchResults(days: List<TimelineDay>?, query: String, onMemoryClick: (Int) -> Unit) {
-    when {
-        days == null -> Unit
+    val keyboard = LocalSoftwareKeyboardController.current
+    val closeKeyboardOnDrag = remember(keyboard) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y != 0f) keyboard?.hide()
+                return Offset.Zero
+            }
+        }
+    }
+    Box(Modifier.nestedScroll(closeKeyboardOnDrag)) {
+        when {
+            days == null -> Unit
 
-        days.isEmpty() -> EmptyMessage(query, TAG_RESULTS_EMPTY)
+            days.isEmpty() -> EmptyMessage(query, TAG_RESULTS_EMPTY)
 
-        else -> MemoryList(
-            days = days,
-            state = MemoryListState(rememberLazyListState(), remember { FlashState() }),
-            onMemoryClick = onMemoryClick,
-            top = 0.dp,
-            tags = ResultTags,
-        )
+            else -> MemoryList(
+                days = days,
+                state = MemoryListState(rememberLazyListState(), remember { FlashState() }),
+                onMemoryClick = onMemoryClick,
+                top = 0.dp,
+                tags = ResultTags,
+            )
+        }
     }
 }
 
