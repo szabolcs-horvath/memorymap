@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -30,7 +29,10 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
@@ -39,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.SegmentedListItem
@@ -67,6 +70,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryFragment
@@ -93,6 +97,8 @@ private const val KEY_FRAGMENT = "fragment_"
 /** Below this height a window is compact (Material's window size classes): the top app bar is a small one. */
 private val COMPACT_HEIGHT = 480.dp
 private val PAGE_MARGIN = 16.dp
+private val LINK_PADDING = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+private val LINK_MIN_FONT = 11.sp
 
 /** The gap between a segmented list's items and between the photo tiles: Material 3 Expressive's, as on the Timeline. */
 internal val GAP = 4.dp
@@ -335,9 +341,13 @@ private fun DetailsCard(group: MemoryGroup, actions: MemoryActions) {
                 Spacer(Modifier.height(4.dp))
                 InfoLine(R.drawable.ic_location_on, placeOf(group), TAG_LOCATION)
                 Spacer(Modifier.height(12.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TonalButton(R.drawable.ic_map, R.string.show_on_map, actions::showOnMap)
-                    TonalButton(R.drawable.ic_view_agenda, R.string.show_on_timeline, actions::showOnTimeline)
+                // Two ways to see the memory elsewhere, joined as Material 3 Expressive's connected button group: equal halves
+                // of the card's width.
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+                    val leading = ButtonGroupDefaults.connectedLeadingButtonShapes().let { ButtonShapes(it.shape, it.pressedShape) }
+                    val trailing = ButtonGroupDefaults.connectedTrailingButtonShapes().let { ButtonShapes(it.shape, it.pressedShape) }
+                    TonalButton(R.drawable.ic_map, R.string.show_on_map, leading, actions::showOnMap, Modifier.weight(1f))
+                    TonalButton(R.drawable.ic_view_agenda, R.string.show_on_timeline, trailing, actions::showOnTimeline, Modifier.weight(1f))
                 }
             }
         }
@@ -378,11 +388,18 @@ private fun InfoLine(@DrawableRes icon: Int, text: String, tag: String) {
 }
 
 @Composable
-private fun TonalButton(@DrawableRes icon: Int, label: Int, onClick: () -> Unit) {
-    FilledTonalButton(onClick = onClick, contentPadding = ButtonDefaults.ButtonWithIconContentPadding) {
+private fun TonalButton(@DrawableRes icon: Int, label: Int, shapes: ButtonShapes, onClick: () -> Unit, modifier: Modifier) {
+    // Half a card is narrow: a little less padding than Material's, and a label that shrinks rather than wraps where
+    // it still doesn't fit (a large font size).
+    FilledTonalButton(onClick = onClick, modifier = modifier, shapes = shapes, contentPadding = LINK_PADDING) {
         Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-        Text(stringResource(label))
+        val style = LocalTextStyle.current
+        Text(
+            stringResource(label),
+            maxLines = 1,
+            autoSize = TextAutoSize.StepBased(minFontSize = LINK_MIN_FONT, maxFontSize = style.fontSize),
+        )
     }
 }
 
