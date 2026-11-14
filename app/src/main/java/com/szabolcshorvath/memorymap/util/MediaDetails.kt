@@ -172,12 +172,11 @@ object MediaDetails {
     private fun query(context: Context, uri: Uri, projection: Array<String>): Columns? = try {
         context.contentResolver.query(uri, projection, null, null, null)?.use { c ->
             if (!c.moveToFirst()) return@use null
-            fun index(column: String) = c.getColumnIndex(column).takeIf { it != -1 && !c.isNull(it) }
             Columns(
-                displayName = index(OpenableColumns.DISPLAY_NAME)?.let(c::getString),
-                width = index(MediaStore.MediaColumns.WIDTH)?.let(c::getInt)?.takeIf { it > 0 },
-                height = index(MediaStore.MediaColumns.HEIGHT)?.let(c::getInt)?.takeIf { it > 0 },
-                durationMs = index(MediaStore.MediaColumns.DURATION)?.let(c::getLong)?.takeIf { it > 0 }
+                displayName = c.stringOrNull(OpenableColumns.DISPLAY_NAME),
+                width = c.intOrNull(MediaStore.MediaColumns.WIDTH)?.takeIf { it > 0 },
+                height = c.intOrNull(MediaStore.MediaColumns.HEIGHT)?.takeIf { it > 0 },
+                durationMs = c.longOrNull(MediaStore.MediaColumns.DURATION)?.takeIf { it > 0 }
             )
         }
     } catch (e: IllegalArgumentException) {

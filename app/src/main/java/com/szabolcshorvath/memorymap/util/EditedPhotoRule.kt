@@ -29,13 +29,7 @@ internal object EditedPhotoRule {
     }
 
     /** The URI of file [id] in the collection of [type], so only a file of the same type can match. */
-    fun mediaStoreUri(type: MediaType, id: Long): Uri = ContentUris.withAppendedId(
-        when (type) {
-            MediaType.IMAGE -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            MediaType.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        },
-        id
-    )
+    fun mediaStoreUri(type: MediaType, id: Long): Uri = ContentUris.withAppendedId(mediaStoreCollection(type), id)
 
     /**
      * Whether a file is [item]'s photo after an in-place edit: the same date taken, to the millisecond. This also
@@ -47,13 +41,9 @@ internal object EditedPhotoRule {
     fun isSameName(item: MediaItem, fileName: String?): Boolean = item.displayName == null || fileName == null || item.displayName == fileName
 
     /** The name MediaStore has for [uri], or null if it can't be read. */
-    fun displayName(context: Context, uri: Uri): String? = try {
+    fun displayName(context: Context, uri: Uri): String? = readOrNull {
         context.contentResolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-            if (c.moveToFirst() && !c.isNull(0)) c.getString(0) else null
+            if (c.moveToFirst()) c.stringOrNull(MediaStore.MediaColumns.DISPLAY_NAME) else null
         }
-    } catch (_: SecurityException) {
-        null
-    } catch (_: IllegalArgumentException) {
-        null
     }
 }
