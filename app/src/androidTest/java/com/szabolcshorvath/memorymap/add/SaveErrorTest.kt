@@ -24,19 +24,13 @@ class SaveErrorTest {
     @get:Rule
     val app = MemoryMapAppRule()
 
-    @Test
-    fun anEditOfADeletedMemoryIsNotLost() = editDeleteSave(withPhoto = false)
-
-    @Test
-    fun anEditOfADeletedMemoryWithAPhotoIsNotLost() = editDeleteSave(withPhoto = true)
-
     /**
-     * Edits memory [TRIP] and renames it, deletes it from the timeline (for good), then saves the edit. [withPhoto]: the
-     * memory has a photo, which the new memory keeps.
+     * Edits memory [TRIP] and renames it, deletes it from the timeline (for good), then saves the edit. The memory has a
+     * photo, which the new memory keeps.
      */
-    private fun editDeleteSave(withPhoto: Boolean) {
-        val id = TestData.memory(TRIP)
-        if (withPhoto) TestData.photo(id)
+    @Test
+    fun anEditOfADeletedMemoryIsNotLostAndKeepsItsPhoto() {
+        TestData.photo(TestData.memory(TRIP))
         app.launch()
         Flows.openMemory(TRIP)
         MemoryScreen.edit()
@@ -54,10 +48,8 @@ class SaveErrorTest {
 
         BottomNav.open(Tab.TIMELINE)
         TimelineScreen.assertMemoryShown(RENAMED)
-        if (withPhoto) {
-            TimelineScreen.openMemory(RENAMED)
-            MemoryScreen.assertPhotoLoaded()
-        }
+        TimelineScreen.openMemory(RENAMED)
+        MemoryScreen.assertPhotoLoaded()
     }
 
     private companion object {

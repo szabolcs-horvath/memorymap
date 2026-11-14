@@ -321,7 +321,7 @@ class MapTest {
     }
 
     @Test
-    fun tappingTheMapTabAgainClosesTheOpenCardThenShowsAllTheMemories() {
+    fun tappingTheMapTabAgainClosesTheOpenCardOrTheColorStatisticsThenShowsAllTheMemories() {
         TestData.markerClustering(false)
         TestData.memory(MADRID_TRIP, place = Place.MADRID)
         TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
@@ -342,13 +342,8 @@ class MapTest {
         // With nothing open, and no location access, the map shows all the memories again.
         MapScreen.assertMarkerShown(MADRID_TRIP)
         MapScreen.assertMarkerShown(ATHENS_TRIP)
-    }
 
-    @Test
-    fun tappingTheMapTabAgainClosesTheColorStatistics() {
-        TestData.markerClustering(false)
-        TestData.memory(MADRID_TRIP, place = Place.MADRID)
-        openMap()
+        // The colour statistics close the same way, and the map stays as it was.
         MapScreen.toggleColorStatistics()
         MapScreen.assertColorStatisticsShown()
 
@@ -356,6 +351,7 @@ class MapTest {
 
         MapScreen.assertColorStatisticsGone()
         MapScreen.assertMarkerShown(MADRID_TRIP)
+        MapScreen.assertMarkerShown(ATHENS_TRIP)
     }
 
     @Test

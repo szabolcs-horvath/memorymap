@@ -32,12 +32,18 @@ class SettingsTest {
     val app = MemoryMapAppRule()
 
     @Test
-    fun aFailedSignInStaysSignedOutThenSigningInShowsTheBackupsAndSigningOutHidesThem() {
+    fun aFailedSignInSaysWhyAndStaysSignedOutThenSigningInShowsTheBackupsAndSigningOutHidesThem() {
         addBackup(MANUAL_BACKUP)
-        FakeAccountService.signInError = NoCredentialException()
+        // A build without an OAuth client ID can't sign in at all.
+        FakeAccountService.signInError = SignInNotConfiguredException()
         openSettings()
         SettingsScreen.assertSignedOut()
 
+        ToastMessage.assertShownAfter(NOT_SET_UP) { SettingsScreen.signIn() }
+        SettingsScreen.waitUntilIdle()
+        SettingsScreen.assertSignedOut()
+
+        FakeAccountService.signInError = NoCredentialException() // The phone has no Google account.
         ToastMessage.assertShownAfter(NO_ACCOUNT) { SettingsScreen.signIn() }
         SettingsScreen.assertSignedOut()
 
@@ -49,16 +55,6 @@ class SettingsTest {
         SettingsScreen.signOut()
         SettingsScreen.assertSignedOut()
         SettingsScreen.assertBackupGone(MANUAL)
-    }
-
-    @Test
-    fun signingInToABuildWithoutAnOAuthClientIdSaysSoAndStaysSignedOut() {
-        FakeAccountService.signInError = SignInNotConfiguredException()
-        openSettings()
-
-        ToastMessage.assertShownAfter(NOT_SET_UP) { SettingsScreen.signIn() }
-        SettingsScreen.waitUntilIdle()
-        SettingsScreen.assertSignedOut()
     }
 
     @Test

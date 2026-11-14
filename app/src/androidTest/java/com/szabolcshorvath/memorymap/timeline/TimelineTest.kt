@@ -72,8 +72,17 @@ class TimelineTest {
     }
 
     @Test
-    fun showOnTimelineScrollsToAMemoryFarDownAndScrollToTopGoesBackToTheNewest() {
+    fun showOnTimelineScrollsToAMemoryFarDownAndToTheOldestAndScrollToTopGoesBackToTheNewest() {
+        addManyMemories()
+        openTimeline()
+        TimelineScreen.openMemory(memoryTitle(1))
+        swipeToOlder(from = 1, to = FAR_DOWN)
         showOnTimelineScrollsTo(FAR_DOWN)
+
+        // From there to the oldest, at the very end of the list.
+        TimelineScreen.openMemory(memoryTitle(FAR_DOWN))
+        swipeToOlder(from = FAR_DOWN, to = MANY)
+        showOnTimelineScrollsTo(MANY)
 
         TimelineScreen.assertScrollToTopShown()
         TimelineScreen.scrollToTop()
@@ -86,9 +95,6 @@ class TimelineTest {
         TimelineScreen.assertMemoryGone(memoryTitle(1))
         TimelineScreen.assertScrollToTopShown()
     }
-
-    @Test
-    fun showOnTimelineScrollsToTheOldestMemory() = showOnTimelineScrollsTo(MANY)
 
     @Test
     fun showOnTimelineFlashesTheMemory() {
@@ -120,16 +126,17 @@ class TimelineTest {
         TimelineScreen.assertScrollToTopGone()
     }
 
-    /** Opens the newest memory, swipes to memory [n], and checks that Show on Timeline scrolls the list to it. */
-    private fun showOnTimelineScrollsTo(n: Int) {
-        addManyMemories()
-        openTimeline()
-        TimelineScreen.openMemory(memoryTitle(1))
-        for (shown in 2..n) {
+    /** On the open memory [from], swipes to the older ones until memory [to] shows. */
+    private fun swipeToOlder(from: Int, to: Int) {
+        MemoryScreen.assertShowing(memoryTitle(from))
+        for (shown in from + 1..to) {
             MemoryScreen.swipeToOlder()
             MemoryScreen.assertShowing(memoryTitle(shown))
         }
+    }
 
+    /** On the open memory [n], checks that Show on Timeline scrolls the list to it. */
+    private fun showOnTimelineScrollsTo(n: Int) {
         MemoryScreen.showOnTimeline()
 
         TimelineScreen.assertShown()
