@@ -44,7 +44,7 @@ fun MapRoute(viewModel: MapViewModel, onOpenMemory: (Int) -> Unit) {
             override fun tapCluster(position: LatLng) = viewModel.tapCluster(position)
             override fun tapMap() = viewModel.tapMap()
             override fun openMemory(id: Int) = openMemory(id)
-            override fun onMapLoaded() = loadTrace.stop()
+            override fun onMapLoaded() { loadTrace?.stop() }
             override fun onCameraMoved(request: MapCameraRequest) = viewModel.onCameraMoved(request)
             override fun onMapMovedByHand() = viewModel.onMapMovedByHand()
             override fun onMapSized(size: IntSize) = viewModel.onMapSized(size)
