@@ -1,9 +1,17 @@
 package com.szabolcshorvath.memorymap.screens
 
 import android.graphics.Point
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
 
-/** The location picker opened from the Add form. */
+/**
+ * The location picker opened from the Add form. Its own controls are found through [ComposeUi]; the map and its
+ * markers are Google's view, read through [Ui] and screenshots.
+ */
 object LocationPickerScreen {
     private const val CONFIRM = "Use this location"
     private const val SEARCH = "Search for a place"
@@ -13,7 +21,9 @@ object LocationPickerScreen {
     private const val DEFAULT_ACROSS = 0.5f
     private const val DEFAULT_DOWN = 0.25f
 
-    fun assertShown() = Ui.assertShown("The location picker") { hasText(CONFIRM) }
+    fun assertShown() {
+        ComposeUi.waitFor("The location picker", hasText(CONFIRM))
+    }
 
     /**
      * Waits until the map has drawn what it shows and stopped loading. Until the map has fetched what it needs from
@@ -44,7 +54,7 @@ object LocationPickerScreen {
         )
     }
 
-    fun assertGone() = Ui.assertGone("The location picker") { hasText(CONFIRM) }
+    fun assertGone() = ComposeUi.assertGone("The location picker", hasText(CONFIRM))
 
     /**
      * Taps the map at [across] of its width and [down] of its height, which picks that spot: its marker replaces the
@@ -72,14 +82,12 @@ object LocationPickerScreen {
 
     /** Taps "Use this location" once it works: it is turned off while the picked spot's address is looked up. */
     fun confirm() {
-        Ui.find { hasId(CONFIRM_BUTTON) && isEnabled }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The Use this location button, enabled,", hasTestTag(CONFIRM_BUTTON) and isEnabled()).performClick()
     }
 
     /** Taps the search bar, which opens the place search (the fake one in the tests answers at once). */
     fun search() {
-        Ui.find { hasText(SEARCH) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The search bar", hasText(SEARCH)).performClick()
     }
 
     /** The spot named [name] is picked: its marker shows on the map. */
@@ -90,8 +98,7 @@ object LocationPickerScreen {
 
     /** Taps the "my location" button, which picks where the phone is (asking for access first). */
     fun tapMyLocation() {
-        Ui.find { hasDescription(MY_LOCATION) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The my location button", hasContentDescription(MY_LOCATION)).performClick()
     }
 
     /** No spot is picked: no marker shows. It waits a moment, in case one is on its way. */

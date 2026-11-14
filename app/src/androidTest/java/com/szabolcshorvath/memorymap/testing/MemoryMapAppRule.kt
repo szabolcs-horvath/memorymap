@@ -10,11 +10,13 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.services.storage.TestStorage
 import androidx.test.uiautomator.By
 import com.szabolcshorvath.memorymap.MainActivity
+import com.szabolcshorvath.memorymap.screens.ComposeUi
 import com.szabolcshorvath.memorymap.screens.Ui
 import org.junit.Assert.assertTrue
 import org.junit.rules.TestRule
@@ -30,6 +32,12 @@ import org.junit.runners.model.Statement
 class MemoryMapAppRule : TestRule {
     private val application: Application get() = ApplicationProvider.getApplicationContext()
     private val activities = ActivityTracker()
+
+    /**
+     * Compose's test rule, for the screen objects' lookups ([ComposeUi]). It starts no activity of its own: it finds
+     * the app's Compose screens once [launch] has opened them, and waits until they are idle before each lookup.
+     */
+    private val compose = createEmptyComposeRule()
 
     private var isDarkModeOn = false
 
@@ -132,8 +140,13 @@ class MemoryMapAppRule : TestRule {
         }
     }
 
-    override fun apply(base: Statement, description: Description): Statement = object : Statement() {
+    // Inside Compose's rule, which has to be in place before the app's screens are created to find them.
+    override fun apply(base: Statement, description: Description): Statement =
+        compose.apply(appStatement(base, description), description)
+
+    private fun appStatement(base: Statement, description: Description): Statement = object : Statement() {
         override fun evaluate() {
+            ComposeUi.start(compose)
             // A busy emulator can show "System UI isn't responding" over the app. Lookups run watchers while they
             // wait, so this one taps "Wait" and the test carries on.
             Ui.device.registerWatcher(NOT_RESPONDING_WATCHER) {
@@ -154,6 +167,12 @@ class MemoryMapAppRule : TestRule {
                 cleanUp()
             }
         }
+    }
+
+    /** Closes the app's screens, as Back on its last one does, and waits until Android has destroyed them. */
+    private fun closeApp() {
+        activities.finishAll()
+        if (!Ui.waitUntil { activities.noneAlive }) Log.w(TAG, "The app's screens did not close")
     }
 
     private fun startFromLauncher(clearTask: Boolean) {
@@ -194,6 +213,9 @@ class MemoryMapAppRule : TestRule {
 
     private fun cleanUp() {
         Ui.device.removeWatcher(NOT_RESPONDING_WATCHER)
+        // Closes the app before Compose's rule stops its screens from the test's thread: the video player, for one,
+        // may only be touched from the app's main thread, and a screen closed by Android disposes of it there.
+        runCatching { closeApp() }
         runCatching { setDontKeepActivities(false) }
         application.unregisterActivityLifecycleCallbacks(activities)
         runCatching {
@@ -225,6 +247,11 @@ class MemoryMapAppRule : TestRule {
         val lastCreatedFromSavedState: Boolean get() = synchronized(this) { lastCreatedWithState == true }
 
         fun forgetLastCreated() = synchronized(this) { lastCreatedWithState = null }
+
+        fun finishAll() {
+            val open = synchronized(this) { alive.toList() }
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { open.forEach(Activity::finish) }
+        }
 
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = synchronized(this) {
             alive += activity

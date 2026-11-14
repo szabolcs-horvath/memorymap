@@ -2,18 +2,29 @@ package com.szabolcshorvath.memorymap.screens
 
 import android.graphics.Point
 import android.os.SystemClock
-import android.view.accessibility.AccessibilityNodeInfo
-import androidx.test.uiautomator.Direction
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
+import com.szabolcshorvath.memorymap.screens.ComposeUi.centerOnScreen
+import com.szabolcshorvath.memorymap.screens.ComposeUi.tap
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import java.time.LocalDate
 
-/** The Timeline tab. */
+/**
+ * The Timeline tab. Found through [ComposeUi]: a memory counts as shown while its card is placed, which a lazy list
+ * does only for the rows on screen.
+ */
 object TimelineScreen : TabScreen {
-    // Compose shows a text field's placeholder ("Search memories…") as text inside the field, not as its hint, so the
-    // field is found by its id.
     private const val SEARCH_FIELD = "et_search"
     private const val FLASH_WATCH_MS = 8_000L
     private const val CARD_SPOT_PERCENT = 90
@@ -22,58 +33,67 @@ object TimelineScreen : TabScreen {
     private const val FLASH_TOLERANCE = 8
 
     // By the list or the text shown instead of an empty one: the search bar scrolls away with the list.
-    override fun assertShown() = Ui.assertShown("The timeline") { isTimeline() }
+    private val timeline = hasTestTag("rv_timeline") or hasTestTag("emptyView")
+    private val searchView = hasTestTag(RESULTS) or hasTestTag(NO_RESULTS)
 
-    override fun assertGone() = Ui.assertGone("The timeline") { isTimeline() }
+    override fun assertShown() {
+        ComposeUi.waitFor("The timeline", timeline)
+    }
 
-    private fun AccessibilityNodeInfo.isTimeline() = hasId("rv_timeline") || hasId("emptyView")
+    override fun assertGone() = ComposeUi.assertGone("The timeline", timeline)
 
     /**
      * Runs [action] (such as Show on Timeline) and checks that memory [title]'s card then flashes: its colour changes
-     * for a moment. The flash is short, so this doesn't wait for the screen to settle first, and it reads the
-     * card's colour from screenshots, near its right edge on the title's line, once the list has stopped moving. It
-     * stops watching as soon as the card has shown two clearly different colours.
+     * for a moment. It reads the card's colour from screenshots, near its right edge on the title's line, once the
+     * list has stopped moving, letting the app catch up between them. It stops watching as soon as the card has shown
+     * two clearly different colours.
      */
-    fun assertFlashesAfter(title: String, action: () -> Unit) = Ui.withoutSettling {
+    fun assertFlashesAfter(title: String, action: () -> Unit) {
         action()
         val samples = mutableListOf<Int>()
-        var lastTop: Int? = null
+        var lastY: Int? = null
         val end = SystemClock.uptimeMillis() + FLASH_WATCH_MS
         while (SystemClock.uptimeMillis() < end) {
-            val line = Ui.findOrNull(timeoutMs = 0) { hasId("tv_memoryTitle") && hasText(title) }?.visibleBounds
-            if (line != null && line.top == lastTop) {
-                val spot = Point(Ui.device.displayWidth * CARD_SPOT_PERCENT / 100, line.centerY())
+            Ui.catchUp()
+            val line = memory(title).takeIf { ComposeUi.exists(it, unmerged = true) }
+                ?.let { ComposeUi.node(it, unmerged = true).centerOnScreen().y }
+            if (line != null && line == lastY) {
+                val spot = Point(Ui.device.displayWidth * CARD_SPOT_PERCENT / 100, line)
                 val color = ScreenColors.at(listOf(spot)).single()
-                if (samples.any { !ScreenColors.isClose(it, color, FLASH_TOLERANCE) }) return@withoutSettling
+                if (samples.any { !ScreenColors.isClose(it, color, FLASH_TOLERANCE) }) return
                 samples += color
             }
-            lastTop = line?.top
+            lastY = line
         }
         assertTrue("\"$title\" did not show in the timeline", samples.isNotEmpty())
         fail("\"$title\" did not flash: its card stayed ${samples.distinct().map(ScreenColors::hex)}")
     }
 
     // While the search view is open, the memories are its results; the Timeline stays beneath it.
-    fun assertMemoryShown(title: String) = Ui.assertShown("\"$title\" in the ${where()}") { isMemory(title) }
+    fun assertMemoryShown(title: String) {
+        ComposeUi.waitFor("\"$title\" in the ${where()}", memory(title), unmerged = true)
+    }
 
-    fun assertMemoryGone(title: String) = Ui.assertGone("\"$title\" in the ${where()}") { isMemory(title) }
+    fun assertMemoryGone(title: String) = ComposeUi.assertGone("\"$title\" in the ${where()}", memory(title), unmerged = true)
 
-    private fun AccessibilityNodeInfo.isMemory(title: String) = hasId(titleId()) && hasText(title)
+    private fun memory(title: String) = hasTestTag(titleTag()) and hasText(title)
 
-    private fun titleId() = if (isSearchOpen()) RESULT_TITLE else TITLE
+    private fun titleTag() = if (isSearchOpen()) RESULT_TITLE else TITLE
 
     private fun where() = if (isSearchOpen()) "search results" else "timeline"
 
-    private fun isSearchOpen() = Ui.isShown(timeoutMs = 0) { hasId(RESULTS) || hasId(NO_RESULTS) }
+    private fun isSearchOpen() = ComposeUi.exists(searchView)
+
+    private val searchField = hasTestTag(SEARCH_FIELD) and hasSetTextAction()
 
     /** Opens the search view (tapping the search bar), and types [text] in its field. The view stays open. */
     fun search(text: String) {
         if (!isSearchOpen()) {
-            Ui.find { hasId(SEARCH_FIELD) && isEditable }.click()
-            Ui.assertShown("The search view") { hasId(RESULTS) || hasId(NO_RESULTS) }
+            ComposeUi.waitFor("The search bar", searchField).performClick()
+            ComposeUi.waitFor("The search view", searchView)
         }
-        Ui.find { hasId(SEARCH_FIELD) && isEditable && isFocused }.text = text
-        Ui.device.waitForIdle()
+        // The open view's field has the focus; the bar's own stays beneath it.
+        ComposeUi.waitFor("The search field", searchField and isFocused()).performTextReplacement(text)
     }
 
     /** Like [search]: tapping the search bar also opens the keyboard. */
@@ -81,8 +101,8 @@ object TimelineScreen : TabScreen {
 
     /** Closes the search view with its back arrow; the search bar keeps the search. */
     fun closeSearch() {
-        Ui.find { hasDescription(CLOSE_SEARCH) }.click()
-        Ui.assertGone("The search view") { hasId(RESULTS) || hasId(NO_RESULTS) }
+        ComposeUi.waitFor("The search view's back arrow", hasContentDescription(CLOSE_SEARCH)).performClick()
+        ComposeUi.assertGone("The search view", searchView)
     }
 
     /** Closes the search view with the phone's Back: the first Back closes the keyboard, the next one the view. */
@@ -90,7 +110,7 @@ object TimelineScreen : TabScreen {
         Ui.pressBack()
         Keyboard.assertHidden()
         Ui.pressBack()
-        Ui.assertGone("The search view") { hasId(RESULTS) || hasId(NO_RESULTS) }
+        ComposeUi.assertGone("The search view", searchView)
     }
 
     private const val TITLE = "tv_memoryTitle"
@@ -99,12 +119,16 @@ object TimelineScreen : TabScreen {
     private const val RESULT_TITLE = "tv_resultTitle"
     private const val CLOSE_SEARCH = "Close search"
 
-    fun assertSearch(text: String) = Ui.assertShown("The search \"$text\"") { hasId(SEARCH_FIELD) && hasText(text) }
+    fun assertSearch(text: String) {
+        ComposeUi.waitFor("The search \"$text\"", searchField and hasText(text))
+    }
 
-    fun assertEmpty() = Ui.assertShown("The empty timeline message") { hasText("No memories yet. Add some!") }
+    fun assertEmpty() {
+        ComposeUi.waitFor("The empty timeline message", hasText("No memories yet. Add some!"))
+    }
 
-    fun assertNoMatches(query: String) = Ui.assertShown("The no-match message for \"$query\"") {
-        hasText("No memories match \"$query\"")
+    fun assertNoMatches(query: String) {
+        ComposeUi.waitFor("The no-match message for \"$query\"", hasText("No memories match \"$query\""))
     }
 
     /** The header the timeline shows above the memories of [date]. */
@@ -113,33 +137,33 @@ object TimelineScreen : TabScreen {
     /** Day headers and memory titles appear in this order, from top to bottom (all on screen). */
     fun assertTopToBottom(vararg texts: String) {
         val tops = texts.map { text ->
-            Ui.find { (hasId("tv_date") || hasId("tv_memoryTitle")) && hasText(text) }.visibleBounds.top
+            val matcher: SemanticsMatcher = (hasTestTag("tv_date") or hasTestTag(TITLE)) and hasText(text)
+            ComposeUi.waitFor("\"$text\"", matcher, unmerged = true).fetchSemanticsNode().boundsInRoot.top
         }
         assertEquals("The timeline order of ${texts.toList()}", tops.sorted(), tops)
         assertEquals("Two of ${texts.toList()} share a row", tops.size, tops.toSet().size)
     }
 
-    /**
-     * Swipes the list down by most of a screen, as by hand (which also hides the search bar). Returns false at the
-     * bottom.
-     */
-    fun scrollDown(): Boolean = Ui.find { hasId("rv_timeline") }.scroll(Direction.DOWN, SCROLL_PERCENT)
+    /** Swipes the list up by most of a screen, as by hand (which also hides the search bar). */
+    fun scrollDown() {
+        ComposeUi.waitFor("The timeline", hasTestTag("rv_timeline")).performTouchInput { swipeUp() }
+    }
 
-    fun assertScrollToTopShown() = Ui.assertShown("The Scroll to top button") { hasDescription(SCROLL_TO_TOP) }
+    fun assertScrollToTopShown() {
+        ComposeUi.waitFor("The Scroll to top button", hasContentDescription(SCROLL_TO_TOP))
+    }
 
-    fun assertScrollToTopGone() = Ui.assertGone("The Scroll to top button") { hasDescription(SCROLL_TO_TOP) }
+    fun assertScrollToTopGone() = ComposeUi.assertGone("The Scroll to top button", hasContentDescription(SCROLL_TO_TOP))
 
     fun scrollToTop() {
-        Ui.find { hasDescription(SCROLL_TO_TOP) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The Scroll to top button", hasContentDescription(SCROLL_TO_TOP)).performClick()
     }
 
     private const val SCROLL_TO_TOP = "Scroll to top"
-    private const val SCROLL_PERCENT = 0.8f
 
     /** Opens memory [title] from the timeline, or from the search results while the search view is open. */
     fun openMemory(title: String) {
-        Ui.find { isMemory(title) }.click()
-        Ui.device.waitForIdle()
+        // The title is a line inside the card: a tap on it taps the card.
+        ComposeUi.waitFor("\"$title\" in the ${where()}", memory(title), unmerged = true).tap()
     }
 }

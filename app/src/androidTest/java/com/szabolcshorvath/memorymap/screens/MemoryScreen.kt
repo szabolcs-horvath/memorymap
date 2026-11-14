@@ -1,77 +1,90 @@
 package com.szabolcshorvath.memorymap.screens
 
-import android.graphics.Point
-import android.graphics.Rect
-import android.view.accessibility.AccessibilityNodeInfo
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Direction
-import androidx.test.uiautomator.StaleObjectException
-import androidx.test.uiautomator.UiObject2
-import androidx.test.uiautomator.textAsString
-import com.szabolcshorvath.memorymap.screens.MemoryScreen.SWIPE_TIMEOUT_MS
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
+import com.szabolcshorvath.memorymap.screens.ComposeUi.centerOnScreen
+import com.szabolcshorvath.memorymap.screens.ComposeUi.dragOnto
+import com.szabolcshorvath.memorymap.screens.ComposeUi.tap
+import com.szabolcshorvath.memorymap.screens.ComposeUi.text
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.time.LocalDate
 
-/** A memory opened from the map or the timeline (one page of the memory pager). */
+/** A memory opened from the map or the timeline (one page of the memory pager). Found through [ComposeUi]. */
 object MemoryScreen {
     private const val EDIT = "Edit Memory"
 
-    fun assertShown() = Ui.assertShown("A memory") { hasDescription(EDIT) }
+    fun assertShown() {
+        ComposeUi.waitFor("A memory", hasContentDescription(EDIT))
+    }
 
-    fun assertGone() = Ui.assertGone("The memory") { hasDescription(EDIT) }
+    fun assertGone() = ComposeUi.assertGone("The memory", hasContentDescription(EDIT))
 
-    fun assertShowing(title: String) = Ui.assertShown("The memory \"$title\"") { hasId("tv_title") && hasText(title) }
+    fun assertShowing(title: String) {
+        ComposeUi.waitFor("The memory \"$title\"", title(title), unmerged = true)
+    }
 
-    fun showOnMap() = tap { hasText(SHOW_ON_MAP) }
+    private fun title(title: String) = hasTestTag("tv_title") and hasText(title)
 
-    fun showOnTimeline() = tap { hasText("Show on timeline") }
+    fun showOnMap() = tap("\"$SHOW_ON_MAP\"", hasText(SHOW_ON_MAP))
 
-    fun edit() = tap { hasDescription(EDIT) }
+    fun showOnTimeline() = tap("\"Show on timeline\"", hasText("Show on timeline"))
 
-    fun openFirstPhoto() = tap { hasDescription("Open photo") }
+    fun edit() = tap("The Edit button", hasContentDescription(EDIT))
+
+    fun openFirstPhoto() {
+        ComposeUi.scrollTo("A photo", photo).performClick()
+    }
 
     /** Taps Delete in the More menu, which asks for confirmation first ([Dialog] "Delete Memory"). */
     fun delete() {
-        tap { hasDescription("More") }
-        tap { hasText("Delete") }
+        tap("The More button", hasContentDescription("More"))
+        tap("Delete in the More menu", hasText("Delete"))
     }
 
     /** Swipes to the next memory in the timeline's order (an older one). */
-    fun swipeToOlder() = swipe(Direction.LEFT)
+    fun swipeToOlder() = swipe(left = true)
 
     /** Swipes to the previous memory in the timeline's order (a newer one). */
-    fun swipeToNewer() = swipe(Direction.RIGHT)
+    fun swipeToNewer() = swipe(left = false)
 
     /** The date line, such as "Oct 24, 2026 12:00 PM - 2:00 PM", or the day alone for an all-day memory. */
-    fun dateText(): String = Ui.find { hasId("tv_date") }.text
+    fun dateText(): String = ComposeUi.waitFor("The memory's date", hasTestTag("tv_date"), unmerged = true).text()
 
-    fun assertDescription(text: String) = Ui.assertShown("The description \"$text\"") {
-        hasId("tv_description") && hasText(text)
+    fun assertDescription(text: String) {
+        ComposeUi.scrollTo("The description \"$text\"", hasTestTag("tv_description") and hasText(text), unmerged = true)
     }
 
     /** Waits until the memory shows [count] photo thumbnails. */
-    fun assertPhotoCount(count: Int) = assertThumbnailCount(OPEN_PHOTO, count)
+    fun assertPhotoCount(count: Int) = assertThumbnailCount(photo, "Photo", count)
 
     /** Waits until the memory shows [count] video thumbnails (marked with a play icon). */
-    fun assertVideoCount(count: Int) = assertThumbnailCount(OPEN_VIDEO, count)
+    fun assertVideoCount(count: Int) = assertThumbnailCount(video, "Video", count)
 
     fun openFirstVideo() {
-        Ui.scrollTo { hasDescription(OPEN_VIDEO) }
-        tap { hasDescription(OPEN_VIDEO) }
+        ComposeUi.scrollTo("A video", video).performClick()
     }
 
-    private fun assertThumbnailCount(description: String, count: Int) {
-        if (count > 0) Ui.scrollTo { hasDescription(description) }
-        val found = Ui.eventually(read = { Ui.device.findObjects(By.desc(description)).size }) { it == count }
-        assertEquals("Thumbnails described \"$description\"", count, found)
+    private fun assertThumbnailCount(matcher: SemanticsMatcher, what: String, count: Int) {
+        if (count > 0) ComposeUi.scrollTo("A thumbnail", matcher)
+        val found = Ui.eventually(read = { ComposeUi.nodes(matcher).size }) { it == count }
+        assertEquals("$what thumbnails", count, found)
     }
 
     /** Waits until the memory lists [count] fragments. */
     fun assertFragmentCount(count: Int) {
-        if (count > 0) openFragments()
-        val found = Ui.eventually(read = { fragmentCards().size }) { it == count }
+        if (count > 0) ComposeUi.scrollTo("A fragment", fragmentCard)
+        val found = Ui.eventually(read = { ComposeUi.nodes(fragmentCard).size }) { it == count }
         assertEquals("Fragments of the memory", count, found)
     }
 
@@ -80,9 +93,18 @@ object MemoryScreen {
      * A fragment without dates of its own shows none.
      */
     fun assertFragmentStartsOn(date: LocalDate) {
-        val text = fragmentCard().findObject(By.res("tv_time"))?.text.orEmpty()
+        val text = fragmentDates()
         val day = DateTimeFormatterUtil.date(date)
         assertTrue("The fragment's dates \"$text\" don't start on $day", text.startsWith(day))
+    }
+
+    /** The (only) fragment's dates read exactly [text], such as "Sep 10, 2026 - Sep 12, 2026" for an all-day one. */
+    fun assertFragmentDates(text: String) = assertEquals("The fragment's dates", text, fragmentDates())
+
+    private fun fragmentDates(): String {
+        ComposeUi.scrollTo("A fragment", fragmentCard)
+        val dates = hasTestTag("tv_time") and inFragment
+        return if (ComposeUi.exists(dates, unmerged = true)) ComposeUi.node(dates, unmerged = true).text() else ""
     }
 
     /**
@@ -90,10 +112,7 @@ object MemoryScreen {
      * the fragments section is still opening.
      */
     fun assertFragmentColor(color: Int) {
-        val strip = checkNotNull(fragmentCard().findObject(By.res("colorIndicator"))) {
-            "The fragment has no colour strip"
-        }
-        val spot = strip.visibleCenter
+        val spot = ComposeUi.scrollTo("The fragment's colour strip", hasTestTag("colorIndicator"), unmerged = true).centerOnScreen()
         val shown = Ui.eventually(read = { ScreenColors.at(listOf(spot)).single() }) { ScreenColors.isClose(it, color) }
         assertTrue(
             "The fragment's colour ${ScreenColors.hex(shown)} is not ${ScreenColors.hex(color)}",
@@ -101,77 +120,30 @@ object MemoryScreen {
         )
     }
 
-    /** The (only) fragment's dates read exactly [text], such as "Sep 10, 2026 - Sep 12, 2026" for an all-day one. */
-    fun assertFragmentDates(text: String) {
-        val shown = fragmentCard().findObject(By.res("tv_time"))?.text
-        assertEquals("The fragment's dates", text, shown)
-    }
-
-    /** The fragments are listed in this order, from top to bottom, by the place each card shows (all on screen). */
+    /** The fragments are listed in this order, from top to bottom, by the place each card shows. */
     fun assertFragmentsTopToBottom(vararg places: String) {
-        openFragments()
-        Ui.scrollTo { hasId("tv_location") && isInFragmentCard() && hasText(places.last()) }
+        ComposeUi.scrollTo("The fragment at ${places.last()}", fragmentPlace(places.last()), unmerged = true)
         val shown = Ui.eventually(read = ::fragmentPlaces) { it == places.toList() }
         assertEquals("The order of the fragments", places.toList(), shown)
     }
 
-    private fun fragmentPlaces(): List<String> = try {
-        fragmentCards().map { it.findObject(By.res("tv_location")).text }
-    } catch (_: StaleObjectException) {
-        emptyList() // A card was bound again while it was read.
-    }
+    private fun fragmentPlaces(): List<String> =
+        ComposeUi.nodes(hasTestTag(PLACE) and inFragment, unmerged = true).map { it.text() }
 
-    private fun fragmentCards(): List<UiObject2> =
-        Ui.device.findObjects(By.res("fragmentCard")).sortedBy { it.visibleBounds.top }
+    private fun fragmentPlace(place: String) = hasTestTag(PLACE) and hasText(place) and inFragment
 
-    /**
-     * Long-presses the fragment card showing [place] and drags it into the place of the one showing [onto]. The list
-     * moves a card past another only once it covers most of it, so the drag ends at the far edge of [onto].
-     */
+    /** Long-presses the fragment card showing [place] and drags it into the place of the one showing [onto]. */
     fun dragFragment(place: String, onto: String) {
-        fun card(name: String) = fragmentCards().first {
-            it.findObject(By.res("tv_location"))?.text == name
-        }
-
-        val moved = card(place)
-        val target = card(onto).visibleBounds
-        val from = moved.visibleCenter
-        val y = if (target.centerY() < from.y) target.top + EDGE_INSET else target.bottom - EDGE_INSET
-        moved.drag(Point(target.centerX(), y), DRAG_SPEED)
-        Ui.device.waitForIdle()
+        fun card(name: String) = ComposeUi.node(fragmentCard and hasAnyDescendant(hasTestTag(PLACE) and hasText(name)), unmerged = true)
+        card(place).dragOnto(card(onto), horizontal = false)
     }
 
     /** Taps the (only) fragment, which shows it on the map while fragment markers are turned on. */
-    fun showFragmentOnMap() {
-        fragmentCard().click()
-        Ui.device.waitForIdle()
-    }
+    fun showFragmentOnMap() = ComposeUi.scrollTo("A fragment", fragmentCard).tap()
 
     /** Taps "Re-link" on the could-not-load banner, which asks for photo access first if needed. */
     fun relinkMedia() {
-        Ui.scrollTo { hasText(RELINK) }
-        tap { hasText(RELINK) && isEnabled }
-    }
-
-    /** The first fragment's card, on screen. It looks for the card's location line, which every card shows. */
-    private fun fragmentCard(): UiObject2 {
-        openFragments()
-        Ui.scrollTo { hasId("tv_location") && isInFragmentCard() }
-        return Ui.find { hasId("fragmentCard") }
-    }
-
-    private fun AccessibilityNodeInfo.isInFragmentCard(): Boolean {
-        var node = parent
-        while (node != null) {
-            if (node.hasId("fragmentCard")) return true
-            node = node.parent
-        }
-        return false
-    }
-
-    /** Scrolls to the fragments, which are always listed. */
-    private fun openFragments() {
-        Ui.scrollTo { hasText(FRAGMENTS) }
+        ComposeUi.scrollTo("\"$RELINK\"", hasText(RELINK) and isEnabled()).performClick()
     }
 
     /**
@@ -180,13 +152,9 @@ object MemoryScreen {
      * for the thumbnails to load and fade in.
      */
     fun assertPhotoColors(vararg colors: Int) {
-        Ui.scrollTo { hasDescription(OPEN_PHOTO) }
-        // A thumbnail that is bound again while it is read is gone: read them all again next time.
-        fun read() = try {
-            ScreenColors.at(thumbnails().map { it.visibleCenter })
-        } catch (_: StaleObjectException) {
-            emptyList()
-        }
+        ComposeUi.scrollTo("A photo", photo)
+
+        fun read() = ScreenColors.at(ComposeUi.nodes(photo).map { it.centerOnScreen() })
 
         fun List<Int>.matches() = size == colors.size && zip(colors.toList()).all { (a, b) -> ScreenColors.isClose(a, b) }
         val shown = Ui.eventually(read = ::read) { it.matches() }
@@ -198,30 +166,22 @@ object MemoryScreen {
 
     /** Opens photo [index] (0 is the first) in the full-screen viewer. */
     fun openPhoto(index: Int) {
-        Ui.scrollTo { hasDescription(OPEN_PHOTO) }
-        thumbnails()[index].click()
-        Ui.device.waitForIdle()
+        ComposeUi.scrollTo("A photo", photo)
+        ComposeUi.nodes(photo)[index].performClick()
     }
 
     /** Long-presses photo [from] (0 is the first) and drags it into the place of photo [onto]. */
     fun dragPhoto(from: Int, onto: Int) {
-        Ui.scrollTo { hasDescription(OPEN_PHOTO) }
-        val thumbs = thumbnails()
-        val target = thumbs[onto].visibleBounds
-        // The list moves a photo past another only once it covers most of it: end at the far edge.
-        val x = if (onto < from) target.left + EDGE_INSET else target.right - EDGE_INSET
-        thumbs[from].drag(Point(x, target.centerY()), DRAG_SPEED)
-        Ui.device.waitForIdle()
+        ComposeUi.scrollTo("A photo", photo)
+        val photos = ComposeUi.nodes(photo)
+        photos[from].dragOnto(photos[onto], horizontal = true)
     }
-
-    private fun thumbnails(): List<UiObject2> = Ui.device.findObjects(By.desc(OPEN_PHOTO))
-        .sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left }))
 
     /** The photo shows as a thumbnail, without the could-not-load warning. */
     fun assertPhotoLoaded() {
-        Ui.assertShown("A photo thumbnail") { hasDescription("Open photo") }
-        Ui.assertGone("A thumbnail that could not be loaded") { hasId("tvErrorDetails") }
-        Ui.assertGone("The could-not-load warning") { isMediaWarning() }
+        ComposeUi.scrollTo("A photo thumbnail", photo)
+        ComposeUi.assertGone("A thumbnail that could not be loaded", hasTestTag(TILE_DETAILS), unmerged = true)
+        ComposeUi.assertGone("The could-not-load warning", mediaWarning)
     }
 
     /**
@@ -235,65 +195,38 @@ object MemoryScreen {
      * screen warns that some media could not be loaded.
      */
     fun assertPhotoNotLoaded() {
-        Ui.assertShown("The error tile of a photo that could not be loaded") {
-            hasId("tvErrorDetails") && textAsString().orEmpty().startsWith("Photo")
-        }
-        Ui.assertShown("The could-not-load warning") { isMediaWarning() }
+        ComposeUi.scrollTo(
+            "The error tile of a photo that could not be loaded",
+            hasTestTag(TILE_DETAILS) and ComposeUi.textStartsWith("Photo"),
+            unmerged = true
+        )
+        ComposeUi.scrollTo("The could-not-load warning", mediaWarning)
     }
 
-    private fun AccessibilityNodeInfo.isMediaWarning() =
-        textAsString().orEmpty().startsWith("Some media items could not be loaded")
+    private val mediaWarning = ComposeUi.textStartsWith("Some media items could not be loaded")
 
     /**
-     * Swipes slowly across most of the page, so it turns by distance, not speed. A busy emulator can still deliver a
-     * swipe so late that the page doesn't turn, so this swipes again (a few times) until another memory shows.
+     * Swipes across the pager, which turns to the next page once the swipe ends. Compose's own swipe moves the app's
+     * clock with it, and the next lookup waits until the page has settled.
      */
-    private fun swipe(direction: Direction) {
-        val before = settledTitle()
-        repeat(MAX_SWIPES) {
-            Ui.find { hasId("memoryViewPager") }.swipe(direction, SWIPE_PERCENT, SWIPE_SPEED)
-            Ui.device.waitForIdle()
-            if (settledTitle() != before) return
-        }
+    private fun swipe(left: Boolean) {
+        ComposeUi.node(hasTestTag("memoryViewPager")).performTouchInput { if (left) swipeLeft() else swipeRight() }
     }
 
-    /**
-     * The title of the page shown once the pager has stopped: a tap or swipe while it still moves (the next page
-     * sliding in, or the last pixels of its snap) only stops it. Null if it didn't stop within [SWIPE_TIMEOUT_MS].
-     */
-    private fun settledTitle(): String? {
-        var last: Pair<String, Rect>? = null
-        var settled: String? = null
-        Ui.waitUntil(SWIPE_TIMEOUT_MS) {
-            val now = shownTitles().singleOrNull()
-            if (now != null && now == last) settled = now.first
-            last = now
-            settled != null
-        }
-        return settled
+    private fun tap(what: String, matcher: SemanticsMatcher) {
+        ComposeUi.waitFor(what, matcher).performClick()
     }
 
-    /** The titles of the pages on screen and where they are: one once the pager has settled, two while it moves. */
-    private fun shownTitles(): List<Pair<String, Rect>> = try {
-        Ui.device.findObjects(By.res("tv_title")).map { it.text.orEmpty() to it.visibleBounds }
-    } catch (_: StaleObjectException) {
-        emptyList()
-    }
+    private val inFragment = hasAnyAncestor(hasTestTag(FRAGMENT))
+    private val fragmentCard = hasTestTag(FRAGMENT)
+    private val photo = hasContentDescription(OPEN_PHOTO)
+    private val video = hasContentDescription(OPEN_VIDEO)
 
-    private fun tap(condition: AccessibilityNodeInfo.() -> Boolean) {
-        Ui.find(condition = condition).click()
-        Ui.device.waitForIdle()
-    }
-
-    private const val SWIPE_PERCENT = 0.8f
-    private const val FRAGMENTS = "Memory fragments"
+    private const val FRAGMENT = "fragmentCard"
+    private const val PLACE = "tv_location"
+    private const val TILE_DETAILS = "tvErrorDetails"
     private const val SHOW_ON_MAP = "Show on map"
     private const val RELINK = "Re-link"
     private const val OPEN_PHOTO = "Open photo"
     private const val OPEN_VIDEO = "Open video"
-    private const val EDGE_INSET = 2
-    private const val DRAG_SPEED = 600 // Pixels per second.
-    private const val SWIPE_SPEED = 2500 // Pixels per second.
-    private const val MAX_SWIPES = 3
-    private const val SWIPE_TIMEOUT_MS = 3_000L
 }

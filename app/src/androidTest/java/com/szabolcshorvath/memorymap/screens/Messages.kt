@@ -1,29 +1,31 @@
 package com.szabolcshorvath.memorymap.screens
 
 import android.view.accessibility.AccessibilityEvent
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.textAsString
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import java.util.concurrent.TimeoutException
 
 /**
- * The bar at the bottom that confirms an action, such as "Memory deleted" with Undo, or says what went wrong: Compose
- * gives it no ids, so its text finds it, and its action by the action's text.
+ * The bar at the bottom that confirms an action, such as "Memory deleted" with Undo, or says what went wrong: its
+ * text finds it, and its action by the action's text. Found through [ComposeUi].
  */
 object Snackbar {
-    fun assertShown(text: String) = Ui.assertShown("The message \"$text\"") { hasText(text) }
+    fun assertShown(text: String) {
+        ComposeUi.waitFor("The message \"$text\"", hasText(text))
+    }
 
     /** Waits until the message closes by itself (a long message stays for about three seconds). */
     fun assertClosesByItself(text: String) = assertTrue(
         "The message \"$text\" did not close",
-        Ui.isGone(timeoutMs = CLOSE_TIMEOUT_MS) { hasText(text) }
+        Ui.waitUntil(CLOSE_TIMEOUT_MS) { !ComposeUi.exists(hasText(text)) }
     )
 
     fun tap(action: String) {
-        // The action is a button; Compose reports its text as an element inside it, and a tap there taps the button.
-        Ui.find { textAsString().equals(action, ignoreCase = true) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The action \"$action\"", hasText(action, ignoreCase = true) and hasClickAction()).performClick()
     }
 
     private const val CLOSE_TIMEOUT_MS = 15_000L

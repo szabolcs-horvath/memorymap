@@ -5,37 +5,47 @@ import android.graphics.Rect
 import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performClick
 import androidx.test.uiautomator.StaleObjectException
+import com.szabolcshorvath.memorymap.screens.ComposeUi.boundsOnScreen
+import com.szabolcshorvath.memorymap.screens.ComposeUi.tap
 import com.szabolcshorvath.memorymap.screens.MapScreen.MARKERS_STILL_MS
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import java.time.LocalDate
 
-/** The Map tab. */
+/**
+ * The Map tab. Its own controls, its card and its chart are found through [ComposeUi]; the map and its markers are
+ * Google's view, read through [Ui] (the markers' descriptions) and screenshots.
+ */
 object MapScreen : TabScreen {
     private const val STATS = "Color statistics"
 
-    override fun assertShown() = Ui.assertShown("The map") { hasDescription(STATS) }
-
-    override fun assertGone() = Ui.assertGone("The map") { hasDescription(STATS) }
-
-    /** The card that lists the memories at the selected marker shows [title]. */
-    fun assertOverlayShows(title: String) = Ui.assertShown("The map overlay with \"$title\"") {
-        hasId("tv_memoryTitle") && hasText(title)
+    override fun assertShown() {
+        ComposeUi.waitFor("The map", hasContentDescription(STATS))
     }
 
-    fun assertOverlayGone() = Ui.assertGone("The map overlay") { hasId("tv_memoryTitle") }
+    override fun assertGone() = ComposeUi.assertGone("The map", hasContentDescription(STATS))
+
+    /** The card that lists the memories at the selected marker shows [title]. */
+    fun assertOverlayShows(title: String) {
+        ComposeUi.waitFor("The map overlay with \"$title\"", overlayMemory(title), unmerged = true)
+    }
+
+    fun assertOverlayGone() = ComposeUi.assertGone("The map overlay", hasTestTag(OVERLAY_MEMORY), unmerged = true)
 
     /** The overlay card is about the place [name]: the selected marker's place, which heads the card. */
-    fun assertOverlayPlace(name: String) = Ui.assertShown("The map overlay for \"$name\"") {
-        hasId("tv_overlayLocationTitle") && hasText(name)
+    fun assertOverlayPlace(name: String) {
+        ComposeUi.waitFor("The map overlay for \"$name\"", hasTestTag(OVERLAY_PLACE) and hasText(name), unmerged = true)
     }
 
     /** Opens memory [title] from the overlay card. */
     fun openFromOverlay(title: String) {
-        Ui.find { hasId("tv_memoryTitle") && hasText(title) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("\"$title\" on the map overlay", overlayMemory(title), unmerged = true).tap()
     }
 
     /**
@@ -164,7 +174,7 @@ object MapScreen : TabScreen {
      * filter, not under it or in a cluster.
      */
     fun assertMarkersInView(titles: Collection<String>) {
-        val barBottom = Ui.find { hasId(DATE_RANGE) }.visibleBounds.bottom
+        val barBottom = ComposeUi.waitFor("The date filter", hasTestTag(DATE_RANGE)).boundsOnScreen().bottom
         fun List<Pair<String, Rect>>?.inView() = titles.filter { title ->
             this.orEmpty().any { (description, bounds) -> description.trimEnd().removeSuffix(".") == title && bounds.top >= barBottom }
         }
@@ -182,18 +192,19 @@ object MapScreen : TabScreen {
 
     private val CLUSTER = Regex("""\d+ memories nearby""")
 
+    // A memory on the card: its title is a line inside its row, tagged in the tree before merging.
+    private fun overlayMemory(title: String) = hasTestTag(OVERLAY_MEMORY) and hasText(title)
+
     /** Picks a date filter from the quick filter menu ("Last 7 days", ..., "All time"). */
     fun pickQuickFilter(label: String) {
-        Ui.find { hasDescription("Quick date filters") }.click()
-        Ui.find { hasText(label) && !isDateRangeText() }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The quick date filters button", hasContentDescription("Quick date filters")).performClick()
+        ComposeUi.waitFor("\"$label\" in the menu", hasText(label) and !hasTestTag(DATE_RANGE)).performClick()
     }
 
     /** The date filter button shows [label]: a quick filter's name, or the picked dates. */
-    fun assertFilter(label: String) = Ui.assertShown("The date filter \"$label\"") { isDateRangeText() && hasText(label) }
-
-    // A Compose button's text is a node inside the tagged button.
-    private fun AccessibilityNodeInfo.isDateRangeText() = parent?.hasId(DATE_RANGE) == true
+    fun assertFilter(label: String) {
+        ComposeUi.waitFor("The date filter \"$label\"", hasTestTag(DATE_RANGE) and hasText(label))
+    }
 
     /** The date filter button shows the dates from [start] to [end], as the app writes them. */
     fun assertFilter(start: LocalDate, end: LocalDate) {
@@ -202,25 +213,25 @@ object MapScreen : TabScreen {
 
     /** Opens the calendar for picking the dates to show ([DateRangePickerDialog]). */
     fun openDateRangePicker() {
-        Ui.find { hasId(DATE_RANGE) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The date filter", hasTestTag(DATE_RANGE)).performClick()
     }
 
     fun toggleColorStatistics() {
-        Ui.find { hasDescription(STATS) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The colour statistics button", hasContentDescription(STATS)).performClick()
     }
 
-    fun assertColorStatisticsShown() = Ui.assertShown("The colour statistics") { hasId(PIE_CHART) }
+    fun assertColorStatisticsShown() {
+        ComposeUi.waitFor("The colour statistics", hasTestTag(PIE_CHART))
+    }
 
-    fun assertColorStatisticsGone() = Ui.assertGone("The colour statistics") { hasId(PIE_CHART) }
+    fun assertColorStatisticsGone() = ComposeUi.assertGone("The colour statistics", hasTestTag(PIE_CHART))
 
     /**
      * The colour statistics' chart has a slice of each of [colors] and none of [absent]. The chart is drawn, with
      * nothing a screen reader can read, so its colours are read from a screenshot, on a grid across the chart.
      */
     fun assertColorStatisticsShow(colors: List<Int>, absent: List<Int> = emptyList()) {
-        val chart = Ui.find { hasId(PIE_CHART) }.visibleBounds
+        val chart = ComposeUi.waitFor("The colour statistics", hasTestTag(PIE_CHART)).boundsOnScreen()
         val grid = (1 until CHART_GRID).flatMap { i ->
             (1 until CHART_GRID).map { j ->
                 Point(chart.left + chart.width() * i / CHART_GRID, chart.top + chart.height() * j / CHART_GRID)
@@ -245,11 +256,11 @@ object MapScreen : TabScreen {
      */
     fun assertMapKeepsNoRoomAtTheBottom(title: String) {
         val before = markerTip(title)
-        Ui.find { hasDescription(ZOOM_IN) }.click()
+        ComposeUi.waitFor("The Zoom in button", hasContentDescription(ZOOM_IN)).performClick()
         Ui.waitUntil(CAMERA_MOVE_TIMEOUT_MS) { mapMarkers() != null && markerTipNow(title) != before }
         val after = markerTip(title)
         val zoomsAround = 2 * before - after
-        val barBottom = Ui.find { hasId(DATE_RANGE) }.visibleBounds.bottom
+        val barBottom = ComposeUi.waitFor("The date filter", hasTestTag(DATE_RANGE)).boundsOnScreen().bottom
         val mapBottom = Ui.find { hasDescription(GOOGLE_MAP) }.visibleBounds.bottom
         val expected = (barBottom + mapBottom) / 2
         assertTrue(
@@ -274,7 +285,7 @@ object MapScreen : TabScreen {
     /** Once the map has settled, marker [title] points above the open card, not under it. */
     fun assertMarkerAboveTheCard(title: String) {
         val tip = markerTip(title)
-        val cardText = Ui.find { hasId("tv_overlayLocationTitle") }.visibleBounds.top
+        val cardText = ComposeUi.waitFor("The card's place", hasTestTag(OVERLAY_PLACE), unmerged = true).boundsOnScreen().top
         assertTrue("The marker \"$title\" points at y=$tip, under the card (its text starts at $cardText)", tip < cardText)
     }
 
@@ -282,7 +293,7 @@ object MapScreen : TabScreen {
     fun assertToolbarAtRightEdge() {
         val screenWidth = Ui.device.displayWidth
         listOf(ZOOM_IN, ZOOM_OUT, MY_LOCATION).forEach { name ->
-            val bounds = Ui.find { hasDescription(name) }.visibleBounds
+            val bounds = ComposeUi.waitFor("\"$name\"", hasContentDescription(name)).boundsOnScreen()
             assertTrue(
                 "\"$name\" is at $bounds, not at the right edge of a screen $screenWidth wide",
                 bounds.left > screenWidth * TOOLBAR_MIN_LEFT
@@ -292,8 +303,7 @@ object MapScreen : TabScreen {
 
     /** Taps the "my location" button, which moves the map to where the phone is (asking for access first). */
     fun tapMyLocation() {
-        Ui.find { hasDescription(MY_LOCATION) }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The my location button", hasContentDescription(MY_LOCATION)).performClick()
     }
 
     /** Taps an empty spot of the map: the top left corner, away from the markers and the buttons. */
@@ -314,6 +324,8 @@ object MapScreen : TabScreen {
     private const val TOOLBAR_MIN_LEFT = 0.8
     private const val DATE_RANGE = "bt_dateRange"
     private const val PIE_CHART = "pieChart"
+    private const val OVERLAY_MEMORY = "tv_memoryTitle"
+    private const val OVERLAY_PLACE = "tv_overlayLocationTitle"
     private const val EMPTY_SPOT_DIVISOR = 10
     private const val CHART_GRID = 12
     private const val CAMERA_MOVE_TIMEOUT_MS = 3_000L

@@ -2,66 +2,66 @@ package com.szabolcshorvath.memorymap.screens
 
 import android.graphics.Point
 import android.os.SystemClock
-import android.view.InputDevice
-import android.view.MotionEvent
-import android.view.accessibility.AccessibilityNodeInfo
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.Direction
-import com.szabolcshorvath.memorymap.screens.MediaViewerScreen.TAP_MS
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.percentOffset
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 
-/** The full-screen photo and video viewer. */
+/** The full-screen photo and video viewer. Found through [ComposeUi]; what a photo shows, through screenshots. */
 object MediaViewerScreen {
-    fun assertShowingPhoto() = Ui.assertShown("The full-screen photo") { hasDescription("Photo") }
+    fun assertShowingPhoto() {
+        ComposeUi.waitFor("The full-screen photo", hasContentDescription("Photo"))
+    }
 
-    fun assertGone() = Ui.assertGone("The full-screen viewer") { hasDescription("Photo") }
+    fun assertGone() = ComposeUi.assertGone("The full-screen viewer", hasContentDescription("Photo"))
 
     /** Leaves the viewer with its top bar's back arrow (the top bar shows when the viewer opens). */
     fun close() {
-        Ui.find { hasDescription("Back") }.click()
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The back arrow", hasContentDescription("Back")).performClick()
     }
 
     /** A video shows, ready to play: its first frame and the Play button. */
     fun assertShowingVideo() {
-        Ui.assertShown("The full-screen video") { hasDescription("Video") }
-        Ui.assertShown("The Play button") { hasDescription(PLAY) }
+        ComposeUi.waitFor("The full-screen video", hasContentDescription("Video"))
+        ComposeUi.waitFor("The Play button", hasContentDescription(PLAY))
     }
 
-    fun play() = whilePlaying { Ui.find { hasDescription(PLAY) }.click() }
+    fun play() {
+        ComposeUi.waitFor("The Play button", hasContentDescription(PLAY)).performClick()
+    }
 
     fun pause() {
-        whilePlaying { Ui.find { hasDescription(PAUSE) }.click() }
-        Ui.device.waitForIdle()
+        ComposeUi.waitFor("The Pause button", hasContentDescription(PAUSE)).performClick()
     }
 
     /** The video plays: the button offers Pause, and the position bar moves on. */
-    fun assertPlaying() = whilePlaying {
-        Ui.assertShown("The Pause button") { hasDescription(PAUSE) }
+    fun assertPlaying() {
+        ComposeUi.waitFor("The Pause button", hasContentDescription(PAUSE))
         val start = videoPosition()
-        Ui.assertShown("The video moving on from ${start}ms") { hasId(SCRUBBER) && position() > start }
+        val now = Ui.eventually(read = ::videoPosition) { it > start }
+        assertTrue("The video did not move on from ${start}ms", now > start)
     }
-
-    // While a video plays, its position bar moves all the time, so the screen settles only once the video ends.
-    private fun <T> whilePlaying(block: () -> T): T = Ui.withoutSettling(block)
 
     /** The video is paused: the button offers Play again, and the position bar stays where it is. */
     fun assertPaused() {
-        Ui.assertShown("The Play button") { hasDescription(PLAY) }
+        ComposeUi.waitFor("The Play button", hasContentDescription(PLAY))
         val position = videoPosition()
         SystemClock.sleep(PAUSE_CHECK_MS)
+        Ui.catchUp()
         assertEquals("The video's position while paused", position, videoPosition())
     }
 
-    /** Where the video is, in milliseconds, as its position bar reports it (found by id: nothing on screen names it). */
-    private fun videoPosition(): Float {
-        var position = 0f
-        Ui.find { hasId(SCRUBBER).also { found -> if (found) position = position() } }
-        return position
-    }
-
-    private fun AccessibilityNodeInfo.position(): Float = rangeInfo?.current ?: 0f
+    /** Where the video is, in milliseconds, as its position bar reports it (found by its tag: nothing names it). */
+    // Inside the player's controls, which merge their parts: in the tree before merging.
+    private fun videoPosition(): Float = ComposeUi.waitFor("The video's position bar", hasTestTag(SCRUBBER), unmerged = true)
+        .fetchSemanticsNode().config[SemanticsProperties.ProgressBarRangeInfo].current
 
     private const val PLAY = "Play"
     private const val PAUSE = "Pause"
@@ -81,59 +81,25 @@ object MediaViewerScreen {
         )
     }
 
-    fun swipeToNext() = swipe(Direction.LEFT)
+    fun swipeToNext() = swipe(left = true)
 
-    fun swipeToPrevious() = swipe(Direction.RIGHT)
+    fun swipeToPrevious() = swipe(left = false)
 
-    /**
-     * Double-taps the photo at [across] of the screen's width, which zooms in around that spot. Two separate clicks
-     * come too far apart to count as a double tap (each holds the finger down for a while), so this sends the four
-     * touches itself, a short moment apart.
-     */
+    /** Double-taps the photo at [across] of the screen's width, half-way down, which zooms in around that spot. */
     fun doubleTapAt(across: Float) {
-        val spot = spot(across)
-        tap(spot)
-        SystemClock.sleep(TAP_MS)
-        tap(spot)
-        Ui.device.waitForIdle()
+        pager().performTouchInput { doubleClick(percentOffset(across, CENTER)) }
     }
 
-    /** A quick tap: the finger down at [spot] and up again [TAP_MS] later. */
-    private fun tap(spot: Point) {
-        val down = SystemClock.uptimeMillis()
-        inject(down, down, MotionEvent.ACTION_DOWN, spot)
-        SystemClock.sleep(TAP_MS)
-        inject(down, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, spot)
+    /** Swipes across the pager, which turns to the next photo once the swipe ends. */
+    private fun swipe(left: Boolean) {
+        pager().performTouchInput { if (left) swipeLeft() else swipeRight() }
     }
 
-    private fun inject(downTime: Long, eventTime: Long, action: Int, spot: Point) {
-        val event = MotionEvent.obtain(downTime, eventTime, action, spot.x.toFloat(), spot.y.toFloat(), 0)
-        event.source = InputDevice.SOURCE_TOUCHSCREEN
-        InstrumentationRegistry.getInstrumentation().uiAutomation.injectInputEvent(event, true)
-        event.recycle()
-    }
-
-    /**
-     * Swipes slowly across most of the screen, so the page turns by distance, not speed. A busy emulator can deliver
-     * a swipe so late that the page doesn't turn, so this swipes again (a few times) until another photo shows.
-     */
-    private fun swipe(direction: Direction) {
-        val before = colorAt(CENTER)
-        repeat(MAX_SWIPES) {
-            Ui.find { hasId("mediaViewPager") }.swipe(direction, SWIPE_PERCENT, SWIPE_SPEED)
-            Ui.device.waitForIdle()
-            if (Ui.waitUntil(SWIPE_TIMEOUT_MS) { !ScreenColors.isClose(colorAt(CENTER), before) }) return
-        }
-    }
+    private fun pager() = ComposeUi.waitFor("The viewer", hasTestTag("mediaViewPager"))
 
     private fun colorAt(across: Float): Int = ScreenColors.at(listOf(spot(across))).single()
 
     private fun spot(across: Float) = Point((Ui.device.displayWidth * across).toInt(), Ui.device.displayHeight / 2)
 
     private const val CENTER = 0.5f
-    private const val TAP_MS = 50L
-    private const val SWIPE_PERCENT = 0.8f
-    private const val SWIPE_SPEED = 2500 // Pixels per second.
-    private const val MAX_SWIPES = 3
-    private const val SWIPE_TIMEOUT_MS = 3_000L
 }
