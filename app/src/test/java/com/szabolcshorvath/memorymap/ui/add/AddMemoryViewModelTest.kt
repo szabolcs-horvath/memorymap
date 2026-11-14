@@ -42,23 +42,20 @@ class AddMemoryViewModelTest {
 
     @Test
     fun `typing a title is a change, and deleting it again is not`() {
-        viewModel.title = "Trip"
+        viewModel.changeTitle("Trip")
         assertTrue(viewModel.hasUnsavedChanges())
-        viewModel.title = null
+        viewModel.changeTitle("")
         assertFalse(viewModel.hasUnsavedChanges())
     }
 
     @Test
     fun `picking a location, a colour, a date or media is a change`() {
         val changes = listOf<AddMemoryViewModel.() -> Unit>(
-            {
-                lat = 47.5
-                lng = 19.05
-            },
-            { markerHue = 120f },
-            { endDateTime = endDateTime.plusDays(1) },
-            { isAllDay = true },
-            { selectedMedia += SelectedMedia(Uri.parse("content://media/1"), MediaType.IMAGE, "device") }
+            { setPlace(47.5, 19.05, null, null) },
+            { setColor(FormPart.Memory, uiState.value.color.copy(hue = 120f)) },
+            { setDate(FormPart.Memory, isStart = false, uiState.value.end.toLocalDate().plusDays(1)) },
+            { setAllDay(FormPart.Memory, true) },
+            { addPickedMedia(listOf(SelectedMedia(Uri.parse("content://media/1"), MediaType.IMAGE, "device"))) }
         )
         for (change in changes) {
             val form = newForm()
@@ -69,13 +66,16 @@ class AddMemoryViewModelTest {
 
     @Test
     fun `expanding a fragment's sections is not a change, moving it is`() {
-        viewModel.fragments += FragmentEditState(lat = 47.5, lng = 19.05)
+        viewModel.setPlace(47.5, 19.05, null, null)
+        viewModel.addFragment()
         viewModel.markUnchanged()
+        val fragment = FormPart.Fragment(viewModel.uiState.value.fragments.single().localId)
 
-        viewModel.fragments[0] = viewModel.fragments[0].copy(isColorExpanded = true)
+        viewModel.toggleColor(fragment)
         assertFalse(viewModel.hasUnsavedChanges())
 
-        viewModel.fragments[0] = viewModel.fragments[0].copy(lat = 48.0)
+        viewModel.startPickingLocation(fragment) {}
+        viewModel.setPlace(48.0, 19.05, null, null)
         assertTrue(viewModel.hasUnsavedChanges())
     }
 
@@ -85,7 +85,7 @@ class AddMemoryViewModelTest {
         viewModel.markUnchanged()
         assertFalse(viewModel.hasUnsavedChanges())
 
-        viewModel.description = "With friends"
+        viewModel.changeDescription("With friends")
         assertTrue(viewModel.hasUnsavedChanges())
     }
 
@@ -93,15 +93,15 @@ class AddMemoryViewModelTest {
     fun `a loaded memory fills the form, with media and fragments in their saved order`() {
         viewModel.fillForEditing(loadedMemory())
         assertEquals(7, viewModel.editingMemoryId)
-        assertEquals("Trip", viewModel.title)
-        assertEquals(listOf("content://media/1", "content://media/2"), viewModel.selectedMedia.map { it.uri.toString() })
-        assertEquals(listOf("Castle", "Bridge"), viewModel.fragments.map { it.placeName })
+        assertEquals("Trip", viewModel.uiState.value.title)
+        assertEquals(listOf("content://media/1", "content://media/2"), viewModel.uiState.value.media.map { it.uri.toString() })
+        assertEquals(listOf("Castle", "Bridge"), viewModel.uiState.value.fragments.map { it.placeName })
     }
 
     @Test
     fun `clearing the form leaves no unsaved changes`() {
-        viewModel.editingMemoryId = 7
-        viewModel.title = "Trip"
+        viewModel.fillForEditing(loadedMemory())
+        viewModel.changeTitle("Trip again")
         viewModel.resetForm()
         assertFalse(viewModel.hasUnsavedChanges())
     }
@@ -110,7 +110,7 @@ class AddMemoryViewModelTest {
     fun `removing a picked photo releases its grant, and the photo left in the form keeps it`() {
         pick(PICKED_1, PICKED_2)
 
-        viewModel.removeMedia(viewModel.selectedMedia.single { it.uri.toString() == PICKED_1 })
+        viewModel.removeMedia(viewModel.uiState.value.media.single { it.uri.toString() == PICKED_1 })
 
         awaitReleased(PICKED_1)
     }
@@ -137,19 +137,18 @@ class AddMemoryViewModelTest {
     fun `media loaded for editing are never released by the form`() {
         // They may belong to a memory whose delete can still be undone; a save releases what an edit removed.
         viewModel.fillForEditing(loadedMemory())
-        viewModel.removeMedia(viewModel.selectedMedia.first())
+        viewModel.removeMedia(viewModel.uiState.value.media.first())
         viewModel.resetForm()
         pick(PICKED_1)
 
-        viewModel.removeMedia(viewModel.selectedMedia.single { it.uri.toString() == PICKED_1 })
+        viewModel.removeMedia(viewModel.uiState.value.media.single { it.uri.toString() == PICKED_1 })
 
         awaitReleased(PICKED_1) // and nothing before it
     }
 
     /** Picks [uris] as the photo picker does (the pick takes a persisted grant of each). */
     private fun pick(vararg uris: String) {
-        viewModel.onMediaPicked(uris.toList())
-        viewModel.selectedMedia += uris.map { SelectedMedia(Uri.parse(it), MediaType.IMAGE, "device") }
+        viewModel.addPickedMedia(uris.map { SelectedMedia(Uri.parse(it), MediaType.IMAGE, "device") })
     }
 
     /** Waits until the form has asked to release exactly [expected]: the release runs in the background. */

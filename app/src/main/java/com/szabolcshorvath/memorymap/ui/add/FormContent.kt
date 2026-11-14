@@ -2,27 +2,141 @@ package com.szabolcshorvath.memorymap.ui.add
 
 import android.net.Uri
 import android.os.Bundle
+import androidx.core.net.toUri
+import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
+import com.szabolcshorvath.memorymap.data.MemoryFragment
+import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
+import com.szabolcshorvath.memorymap.ui.color.Hsv
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_BRIGHTNESS
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_HUE
+import com.szabolcshorvath.memorymap.util.ColorUtil.DEFAULT_MARKER_SATURATION
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
 
-/** What a save of the Add form would store: to compare the form with how it was, and to keep it through process death. */
+/**
+ * What a save of the Add form would store: the form's content, as the ViewModel keeps it, compares it with how it was,
+ * and keeps it through process death. The defaults are an empty form: starting now, for an hour, in the default colour.
+ */
 internal data class FormContent(
-    val title: String?,
-    val description: String?,
-    val lat: Double?,
-    val lng: Double?,
-    val placeName: String?,
-    val address: String?,
-    val startDateTime: ZonedDateTime,
-    val endDateTime: ZonedDateTime,
-    val isAllDay: Boolean,
-    val markerHue: Float,
-    val markerSaturation: Float,
-    val markerBrightness: Float,
-    val media: List<SelectedMedia>,
-    val fragments: List<FragmentEditState>
-)
+    val title: String? = null,
+    val description: String? = null,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val placeName: String? = null,
+    val address: String? = null,
+    val startDateTime: ZonedDateTime = ZonedDateTime.now(),
+    val endDateTime: ZonedDateTime = startDateTime.plusHours(1),
+    val isAllDay: Boolean = false,
+    val markerHue: Float = DEFAULT_MARKER_HUE,
+    val markerSaturation: Float = DEFAULT_MARKER_SATURATION,
+    val markerBrightness: Float = DEFAULT_MARKER_BRIGHTNESS,
+    val media: List<SelectedMedia> = emptyList(),
+    val fragments: List<FragmentEditState> = emptyList()
+) {
+    val place: FormPlace? get() = FormPlace.of(lat, lng, placeName, address)
+
+    val color: Hsv get() = Hsv(markerHue, markerSaturation, markerBrightness)
+
+    /** Whether a save has everything it needs: a title, and a place for the memory and each fragment. */
+    val isComplete: Boolean get() = !title.isNullOrBlank() && place != null && fragments.all { it.lat != null && it.lng != null }
+
+    fun withPlace(lat: Double, lng: Double, name: String?, address: String?) =
+        copy(lat = lat, lng = lng, placeName = name, address = address)
+
+    fun withColor(color: Hsv) = copy(markerHue = color.hue, markerSaturation = color.saturation, markerBrightness = color.brightness)
+
+    /** The form with [change] applied to fragment [localId]. The list can change while a picker is open, so never by position. */
+    fun withFragment(localId: String, change: (FragmentEditState) -> FragmentEditState) =
+        copy(fragments = fragments.map { if (it.localId == localId) change(it) else it })
+
+    /** Only what a save stores: whether a fragment's colour sliders are open is only how the form looks. */
+    fun withoutLooks() = copy(fragments = fragments.map { it.copy(isColorExpanded = false) })
+
+    /** The memory as it is stored, with id [id] (0 for a new one); an all-day memory spans its days from start to end. */
+    fun toGroup(id: Int): MemoryGroup = MemoryGroup(
+        id = id,
+        title = title.orEmpty(),
+        description = description,
+        latitude = checkNotNull(lat),
+        longitude = checkNotNull(lng),
+        placeName = placeName,
+        address = address,
+        startDate = if (isAllDay) startOfDay(startDateTime) else startDateTime,
+        endDate = if (isAllDay) endOfDay(endDateTime) else endDateTime,
+        isAllDay = isAllDay,
+        markerHue = markerHue,
+        markerSaturation = markerSaturation,
+        markerBrightness = markerBrightness
+    )
+
+    /** The fragments as they are stored (group id still 0), numbered in the form's order. A fragment without dates of its own saves none. */
+    fun fragmentEntities(): List<MemoryFragment> = fragments.mapIndexed { index, f ->
+        val allDay = f.isAllDay && f.isTimeVisible
+        MemoryFragment(
+            groupId = 0,
+            latitude = checkNotNull(f.lat),
+            longitude = checkNotNull(f.lng),
+            placeName = f.placeName,
+            address = f.address,
+            startDate = if (!f.isTimeVisible) null else if (allDay) f.startDate?.let(::startOfDay) else f.startDate,
+            endDate = if (!f.isTimeVisible) null else if (allDay) f.endDate?.let(::endOfDay) else f.endDate,
+            isAllDay = allDay,
+            markerHue = f.markerHue,
+            markerSaturation = f.markerSaturation,
+            markerBrightness = f.markerBrightness,
+            order = index + 1
+        )
+    }
+
+    companion object {
+        /** The form for memory [data], opened for editing: its media and fragments in the order the memory shows them. */
+        fun of(data: MemoryGroupWithMedia): FormContent {
+            val group = data.group
+            return FormContent(
+                title = group.title,
+                description = group.description,
+                lat = group.latitude,
+                lng = group.longitude,
+                placeName = group.placeName,
+                address = group.address,
+                startDateTime = group.startDate,
+                endDateTime = group.endDate,
+                isAllDay = group.isAllDay,
+                markerHue = group.markerHue ?: DEFAULT_MARKER_HUE,
+                markerSaturation = group.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                markerBrightness = group.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
+                media = data.mediaItems.sortedWith(MediaItem.DISPLAY_ORDER).map {
+                    SelectedMedia(it.uri.toUri(), it.type, it.deviceId, it.fileSize, it.dateTaken, it.mediaSignature)
+                },
+                fragments = data.fragments.sortedWith(MemoryFragment.DISPLAY_ORDER).map {
+                    FragmentEditState(
+                        id = it.id,
+                        lat = it.latitude,
+                        lng = it.longitude,
+                        placeName = it.placeName,
+                        address = it.address,
+                        startDate = it.startDate,
+                        endDate = it.endDate,
+                        isAllDay = it.isAllDay,
+                        markerHue = it.markerHue ?: DEFAULT_MARKER_HUE,
+                        markerSaturation = it.markerSaturation ?: DEFAULT_MARKER_SATURATION,
+                        markerBrightness = it.markerBrightness ?: DEFAULT_MARKER_BRIGHTNESS,
+                        isTimeVisible = it.startDate != null,
+                        order = it.order
+                    )
+                }
+            )
+        }
+
+        private fun startOfDay(time: ZonedDateTime) = time.toLocalDate().atStartOfDay(ZoneId.systemDefault())
+
+        private fun endOfDay(time: ZonedDateTime) = time.toLocalDate().atTime(LocalTime.MAX).atZone(ZoneId.systemDefault())
+    }
+}
 
 /** Writes the form to a Bundle for the saved state (read back with [toFormContent]). */
 internal fun FormContent.toBundle() = Bundle().apply {
