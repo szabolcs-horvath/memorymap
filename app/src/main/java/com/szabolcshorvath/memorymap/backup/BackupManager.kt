@@ -6,18 +6,17 @@ import android.util.Log
 import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.appContainer
+import com.szabolcshorvath.memorymap.data.AppPreferences
 import com.szabolcshorvath.memorymap.data.DatabaseContents
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
-import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_FILE_NAME_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil.BACKUP_METADATA_DATE_FORMATTER
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -28,7 +27,7 @@ import java.io.IOException
 import java.time.LocalDateTime
 import com.google.api.services.drive.model.File as DriveFile
 
-class BackupManager(private val context: Context) {
+class BackupManager(private val context: Context, private val preferences: AppPreferences = context.appContainer.preferences) {
 
     private val tempFiles = BackupTempFiles(context.cacheDir)
 
@@ -38,7 +37,7 @@ class BackupManager(private val context: Context) {
      */
     suspend fun runAutomaticBackup(db: MemoryMapDatabase): AutomaticBackupOutcome = withContext(Dispatchers.IO) {
         trace("backup_manager_run_automatic_backup") {
-            val email = context.dataStore.data.map { it[PreferencesKeys.USER_EMAIL_KEY] }.firstOrNull()
+            val email = preferences.email.first()
                 ?: return@trace AutomaticBackupOutcome.NOT_SIGNED_IN
             performBackup(email, db, isAutomatic = true) { Log.d(TAG, "Automatic backup progress: $it") }.fold(
                 onSuccess = { AutomaticBackupOutcome.SUCCEEDED },

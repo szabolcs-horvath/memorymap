@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap
 
 import android.content.Context
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.data.AppPreferences
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.data.PresetRepository
@@ -19,6 +20,8 @@ class AppContainer(context: Context) {
     val memories: MemoryRepository by lazy { MemoryRepository(app, database) }
 
     val presets: PresetRepository by lazy { PresetRepository(app, database) }
+
+    val preferences: AppPreferences by lazy { AppPreferences(app) }
 
     val backupManager: BackupManager by lazy { BackupManager(app) }
 }

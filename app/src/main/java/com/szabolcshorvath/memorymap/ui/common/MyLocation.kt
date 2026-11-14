@@ -23,15 +23,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.ActivityCompat
-import androidx.datastore.preferences.core.edit
 import com.google.android.gms.maps.model.LatLng
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** What a "my location" button does when tapped. */
@@ -68,7 +65,7 @@ class MyLocationRequester internal constructor(
     /** Called when the user taps the button. */
     fun start() {
         scope.launch {
-            val wasDenied = context.dataStore.data.first()[PreferencesKeys.LOCATION_PERMISSION_DENIED] ?: false
+            val wasDenied = context.appContainer.preferences.isLocationDenied()
             val shouldShowRationale = activity != null &&
                 LOCATION_PERMISSIONS.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) }
             when (val step = myLocationStep(hasLocationPermission(context), shouldShowRationale, wasDenied)) {
@@ -146,8 +143,8 @@ fun MyLocationQuestions(requester: MyLocationRequester) {
 }
 
 private fun rememberDenial(context: Context, scope: CoroutineScope, isDenied: Boolean) {
-    val appContext = context.applicationContext
-    scope.launch { appContext.dataStore.edit { it[PreferencesKeys.LOCATION_PERMISSION_DENIED] = isDenied } }
+    val preferences = context.appContainer.preferences
+    scope.launch { preferences.setLocationDenied(isDenied) }
 }
 
 /** Finds where the phone is and passes it on. Only called with location permission. */
