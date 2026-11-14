@@ -197,8 +197,13 @@ object MapScreen : TabScreen {
 
     /** Picks a date filter from the quick filter menu ("Last 7 days", ..., "All time"). */
     fun pickQuickFilter(label: String) {
-        ComposeUi.waitFor("The quick date filters button", hasContentDescription("Quick date filters")).performClick()
+        openQuickFilters()
         ComposeUi.waitFor("\"$label\" in the menu", hasText(label) and !hasTestTag(DATE_RANGE)).performClick()
+    }
+
+    /** Opens the quick filter menu, without picking one. */
+    fun openQuickFilters() {
+        ComposeUi.waitFor("The quick date filters button", hasContentDescription("Quick date filters")).performClick()
     }
 
     /** The date filter button shows [label]: a quick filter's name, or the picked dates. */

@@ -174,9 +174,14 @@ object SettingsScreen : TabScreen {
 
     /** Picks [label] ("Last 7 days", "All time", ...) as the date filter the map opens with. */
     fun setDefaultMapFilter(label: String) {
+        openDefaultMapFilterMenu()
+        ComposeUi.waitFor("\"$label\" in the menu", hasText(label) and isMenuChoice).performClick()
+    }
+
+    /** Opens the menu of the date filter the map opens with, without picking one. */
+    fun openDefaultMapFilterMenu() {
         // The setting's value is a line inside its row: a tap on it opens the menu.
         ComposeUi.scrollTo("The default map filter", defaultFilter, unmerged = true).tap()
-        ComposeUi.waitFor("\"$label\" in the menu", hasText(label) and isMenuChoice).performClick()
     }
 
     fun assertDefaultMapFilter(label: String) {

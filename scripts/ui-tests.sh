@@ -3,6 +3,8 @@
 #
 #   scripts/ui-tests.sh                           the whole suite
 #   scripts/ui-tests.sh "MapTest|TimelineTest"    only the test classes whose names match
+#   scripts/ui-tests.sh ScreenshotTour -Pandroid.testInstrumentationRunnerArguments.screenshots=true
+#                                                 more arguments after the classes go to Gradle as they are
 #
 # It starts the emulator if it isn't running, waits until it has booted, and runs connectedDebugAndroidTest with
 # ANDROID_SERIAL set to it: Gradle otherwise runs the tests on every connected device, and every test clears the debug
@@ -91,7 +93,8 @@ JAVA_HOME="$(find_java_home)"
 if [ -n "$JAVA_HOME" ]; then export JAVA_HOME; JAVA="$JAVA_HOME/bin/java"; else JAVA="java"; fi
 
 gradle_args=(connectedDebugAndroidTest)
-if [ $# -gt 0 ]; then gradle_args+=("-Pandroid.testInstrumentationRunnerArguments.tests_regex=.*($1).*"); fi
+if [ $# -gt 0 ]; then gradle_args+=("-Pandroid.testInstrumentationRunnerArguments.tests_regex=.*($1).*"); shift; fi
+gradle_args+=("$@")
 rm -rf "$RESULTS"
 
 echo "Running the UI tests on $AVD ($serial)..."
