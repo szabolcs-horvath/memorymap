@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.util
 
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.util.MediaDetails.withDetailsOf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

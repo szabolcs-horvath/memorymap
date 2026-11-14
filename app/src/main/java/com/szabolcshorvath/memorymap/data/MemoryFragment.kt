@@ -49,16 +49,6 @@ data class MemoryFragment(
          * The order a memory shows its fragments in: by `order`, and fragments without one after them, the earliest
          * first (fragments without dates last).
          */
-        val DISPLAY_ORDER: Comparator<MemoryFragment> = Comparator { a, b ->
-            when {
-                a.order != null && b.order != null -> a.order.compareTo(b.order)
-                a.order != null -> -1
-                b.order != null -> 1
-                a.startDate != null && b.startDate != null -> a.startDate.compareTo(b.startDate)
-                a.startDate != null -> -1
-                b.startDate != null -> 1
-                else -> 0
-            }
-        }
+        val DISPLAY_ORDER: Comparator<MemoryFragment> = orderedFirst({ it.order }, compareBy(nullsLast()) { it.startDate })
     }
 }

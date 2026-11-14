@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.data
 import android.content.Context
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
-import com.szabolcshorvath.memorymap.util.MediaDetails.withDetailsOf
 import com.szabolcshorvath.memorymap.util.PerfUtil.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

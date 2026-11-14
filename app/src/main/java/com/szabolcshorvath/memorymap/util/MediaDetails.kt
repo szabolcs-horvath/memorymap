@@ -58,16 +58,6 @@ object MediaDetails {
         perceptualHash = details.perceptualHash ?: perceptualHash
     )
 
-    /** This item, with the details it doesn't know taken from [other] (the same file saved before). */
-    fun MediaItem.withDetailsOf(other: MediaItem): MediaItem = copy(
-        displayName = displayName ?: other.displayName,
-        width = width ?: other.width,
-        height = height ?: other.height,
-        mimeType = mimeType ?: other.mimeType,
-        durationMs = durationMs ?: other.durationMs,
-        perceptualHash = perceptualHash ?: other.perceptualHash
-    )
-
     /** Reads [uri]'s details. What can't be read stays null. Reads the file: not on the main thread. */
     fun read(context: Context, uri: Uri, type: MediaType): Details {
         val columns = queryColumns(context, uri)
