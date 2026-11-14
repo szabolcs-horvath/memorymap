@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -100,6 +101,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -401,24 +403,28 @@ private fun MemoryList(
     top: Dp,
     tags: ListTags,
 ) {
-    LazyColumn(
-        state = state.list,
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(tags.list),
-        contentPadding = PaddingValues(top = top, bottom = LIST_BOTTOM_PADDING),
-    ) {
-        for (day in days) {
-            item(key = "date_${day.date}", contentType = "day") { DayHeader(day) }
-            items(day.memories.size, key = { "memory_${day.memories[it].id}" }, contentType = { "memory" }) { i ->
-                val memory = day.memories[i]
-                MemoryCard(
-                    memory = memory,
-                    segment = Segment.of(i, day.memories.size),
-                    flash = state.flash,
-                    titleTag = tags.title,
-                    onClick = { onMemoryClick(memory.id) },
-                )
+    // A wide window centres the list, so the cards don't stretch across it.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val side = sideRoom(maxWidth)
+        LazyColumn(
+            state = state.list,
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(tags.list),
+            contentPadding = PaddingValues(start = side, top = top, end = side, bottom = LIST_BOTTOM_PADDING),
+        ) {
+            for (day in days) {
+                item(key = "date_${day.date}", contentType = "day") { DayHeader(day) }
+                items(day.memories.size, key = { "memory_${day.memories[it].id}" }, contentType = { "memory" }) { i ->
+                    val memory = day.memories[i]
+                    MemoryCard(
+                        memory = memory,
+                        segment = Segment.of(i, day.memories.size),
+                        flash = state.flash,
+                        titleTag = tags.title,
+                        onClick = { onMemoryClick(memory.id) },
+                    )
+                }
             }
         }
     }

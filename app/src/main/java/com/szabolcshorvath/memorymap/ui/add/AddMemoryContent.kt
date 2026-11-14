@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.ui.add
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -68,7 +70,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.ui.color.Hsv
+import com.szabolcshorvath.memorymap.ui.common.MAX_CONTENT_WIDTH
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
+import com.szabolcshorvath.memorymap.ui.common.mediaColumns
+import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.Coordinates
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -162,16 +167,24 @@ fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: A
         snackbarHost = { SnackbarHost(snackbars) },
         contentWindowInsets = WindowInsets(0),
     ) { padding ->
-        LazyColumn(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .testTag(TAG_PAGE),
-            state = listState,
-            contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(ITEM_GAP),
         ) {
-            formItems(state, presets, actions) { picker = it }
+            // A wide window centres the form; the media grid fits as many tiles in a row as its width allows.
+            val side = sideRoom(maxWidth)
+            val columns = mediaColumns(maxWidth - side * 2 - PAGE_MARGIN * 2, MEDIA_GAP)
+            LazyColumn(
+                Modifier
+                    .fillMaxSize()
+                    .testTag(TAG_PAGE),
+                state = listState,
+                contentPadding = PaddingValues(start = side, end = side, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(ITEM_GAP),
+            ) {
+                formItems(state, presets, columns, actions) { picker = it }
+            }
         }
     }
 
@@ -295,7 +308,7 @@ internal fun SectionHeader(@StringRes text: Int, trailing: String? = null) {
 }
 
 /** Photos and videos: their count, the button that adds more, and the picked ones as a grid of tiles. */
-private fun LazyListScope.mediaSection(state: AddFormUiState, actions: AddMemoryActions) {
+private fun LazyListScope.mediaSection(state: AddFormUiState, columns: Int, actions: AddMemoryActions) {
     item(key = "media_header") {
         val count = state.media.size
         SectionHeader(R.string.photos_and_videos, pluralStringResource(R.plurals.items_selected, count, count))
@@ -312,7 +325,7 @@ private fun LazyListScope.mediaSection(state: AddFormUiState, actions: AddMemory
             Text(stringResource(R.string.add_photos))
         }
     }
-    val rows = state.media.chunked(MEDIA_COLUMNS)
+    val rows = state.media.chunked(columns)
     items(rows.size, key = { "media_row_" + rows[it].first().uri }) { index ->
         Row(
             Modifier.padding(horizontal = PAGE_MARGIN),
@@ -321,7 +334,7 @@ private fun LazyListScope.mediaSection(state: AddFormUiState, actions: AddMemory
             rows[index].forEach { item ->
                 SelectedMediaTile(item, state.currentDeviceId, { actions.removeMedia(item) }, Modifier.weight(1f))
             }
-            repeat(MEDIA_COLUMNS - rows[index].size) { Spacer(Modifier.weight(1f)) }
+            repeat(columns - rows[index].size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
@@ -346,6 +359,7 @@ private fun SaveBar(state: AddFormUiState, large: Boolean, onSave: () -> Unit) {
                 Button(
                     onClick = onSave,
                     modifier = Modifier
+                        .widthIn(max = MAX_CONTENT_WIDTH)
                         .fillMaxWidth()
                         .heightIn(min = height)
                         .testTag(TAG_SAVE),
@@ -362,7 +376,6 @@ private fun SaveBar(state: AddFormUiState, large: Boolean, onSave: () -> Unit) {
     }
 }
 
-internal const val MEDIA_COLUMNS = 3
 private val SAVE_BAR_PADDING = 8.dp
 internal val MEDIA_GAP = 4.dp
 
@@ -386,6 +399,7 @@ private fun FormTopBar(state: AddFormUiState, compact: Boolean, scrollBehavior: 
 private fun LazyListScope.formItems(
     state: AddFormUiState,
     presets: List<HSVPreset>,
+    mediaColumns: Int,
     actions: AddMemoryActions,
     onPick: (PickerRequest) -> Unit,
 ) {
@@ -420,5 +434,5 @@ private fun LazyListScope.formItems(
             Text(stringResource(R.string.add_fragment))
         }
     }
-    mediaSection(state, actions)
+    mediaSection(state, mediaColumns, actions)
 }

@@ -106,6 +106,20 @@ class MemoryScreenTest {
         MemoryScreen.assertFragmentsTopToBottom(ATHENS, VIENNA)
     }
 
+    /** Upright the photos fill three columns; sideways the wider page fits more, smaller ones, all four in one row. */
+    @Test
+    fun theWiderPageFitsMorePhotosInARow() {
+        val memory = TestData.memory(MIDDLE)
+        listOf(Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW).forEachIndexed { i, color -> TestData.photo(memory, color, order = i) }
+        open(MIDDLE)
+        MemoryScreen.assertPhotoCount(PHOTOS)
+        MemoryScreen.assertPhotoRows(2)
+
+        Ui.rotateToLandscape()
+        MemoryScreen.assertPhotoRows(1)
+        Ui.rotateToPortrait()
+    }
+
     private fun open(title: String) {
         app.launch()
         Flows.openMemory(title)
@@ -123,6 +137,7 @@ class MemoryScreenTest {
     private companion object {
         const val NEWEST = "Danube walk"
         const val MIDDLE = "Vienna trip"
+        const val PHOTOS = 4
         const val OLDEST = "Lake day"
         const val DELETE_TITLE = "Delete Memory"
         const val DELETED = "Memory deleted"
