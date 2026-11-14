@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** The activity's data, shared by its screens: the memories, the presets and the map preferences, and deleting a memory for good. */
+/** The activity's data, shared by its screens: the memories, the presets and whether fragments show as markers, and deleting a memory for good. */
 class CommonViewModel(
     application: Application,
     private val memories: MemoryRepository,
@@ -31,13 +31,6 @@ class CommonViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS),
             initialValue = PreferencesKeys.SHOW_FRAGMENT_MARKERS_DEFAULT_VALUE
-        )
-
-    val markerClusteringEnabled: StateFlow<Boolean> = preferences.markerClustering
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS),
-            initialValue = PreferencesKeys.MARKER_CLUSTERING_ENABLED_DEFAULT_VALUE
         )
 
     /** Adds the default colour presets when there are none, as on the first start. */

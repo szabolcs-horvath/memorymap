@@ -20,7 +20,9 @@ import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
+import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +43,9 @@ data class ColorCount(@param:ColorInt val color: Int, val count: Int)
 
 /** The pin whose memories the panel lists: where it is, its memories (one row each), and the one shown first. */
 data class MarkerSelection(val position: LatLng, val items: List<Markerable>, val selectedId: Int?)
+
+/** The map's date filter: its first and last day (null: no limit), and the quick filter it came from (null: picked by hand). */
+data class DateFilter(val start: LocalDate?, val end: LocalDate?, val option: DateFilterOption? = null)
 
 /** Where the map's camera should go. The screen moves it once, then clears it ([MapViewModel.onCameraMoved]). */
 sealed interface MapCameraRequest {
@@ -106,96 +111,68 @@ class MapViewModel(
     val selectedMemoryId: Int? get() = screen.value.selection?.selectedId
     val selectedMarkerPosition: LatLng? get() = screen.value.selection?.position
 
-    private val _filterStartDate = MutableStateFlow<LocalDate?>(null)
-    val filterStartDate: StateFlow<LocalDate?> = _filterStartDate.asStateFlow()
+    /** The date filter, or null until the default one is read from the preferences. */
+    private val filter = MutableStateFlow<DateFilter?>(null)
 
-    private val _filterEndDate = MutableStateFlow<LocalDate?>(null)
-    val filterEndDate: StateFlow<LocalDate?> = _filterEndDate.asStateFlow()
-
-    /** The quick filter option applied, or null for dates picked by hand. */
-    private val _appliedFilter = MutableStateFlow<DateFilterOption?>(null)
-
-    private val _isDateFilterLoaded = MutableStateFlow(false)
-    val isDateFilterLoaded: StateFlow<Boolean> = _isDateFilterLoaded.asStateFlow()
+    /** The filter the pins follow: no limit until it is loaded. */
+    private val activeFilter: Flow<DateFilter> = filter.map { it ?: DateFilter(null, null) }
 
     /** What the screen shows apart from the markers and the filter: the panel, the statistics, the camera. */
     private val screen = MutableStateFlow(MapUiState())
 
-    private var cachedMarkerClusters: Pair<StateFlow<Boolean>, StateFlow<List<Markerable.MarkerableCluster>>>? = null
-    private var cachedUiState: StateFlow<MapUiState>? = null
+    private val showFragments = preferences.showFragmentMarkers
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), PreferencesKeys.SHOW_FRAGMENT_MARKERS_DEFAULT_VALUE)
+    private val clustering = preferences.markerClustering
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), PreferencesKeys.MARKER_CLUSTERING_ENABLED_DEFAULT_VALUE)
+
+    /** The pins after the date filter, with fragments if the preferences show them. */
+    val pins: StateFlow<List<Markerable.MarkerableCluster>> = combine(
+        memories.allGroups,
+        memories.allFragments,
+        activeFilter,
+        showFragments
+    ) { groups, fragments, filter, showFrags ->
+        val groupsMap = groups.associateBy { it.id }
+        val candidateItems = mutableListOf<Markerable>()
+        candidateItems.addAll(groups)
+        if (showFrags) {
+            fragments.forEach { fragment ->
+                groupsMap[fragment.groupId]?.let { parent -> candidateItems.add(Markerable.FragmentMarker(fragment, parent.title)) }
+            }
+        }
+        candidateItems.filter { item ->
+            val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
+            val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
+            if (itemStart == null || itemEnd == null) return@filter true
+            overlapsDateFilter(itemStart, itemEnd, filter.start, filter.end)
+        }
+    }.flowOn(Dispatchers.Default).map { filteredItems ->
+        clusterMarkerables(filteredItems)
+    }.flowOn(Dispatchers.Default).stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS),
+        emptyList()
+    )
+
+    /** The whole screen's state: the pins, clustered if the preferences say so, the filter and the rest of the screen. */
+    val uiState: StateFlow<MapUiState> = combine(pins, clustering, activeFilter, screen) { pins, clusters, filter, screen ->
+        screen.copy(
+            pins = pins,
+            clustering = clusters,
+            filterStart = filter.start,
+            filterEnd = filter.end,
+            appliedFilter = filter.option,
+            colorCounts = colorCounts(pins),
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), MapUiState())
 
     init {
         viewModelScope.launch {
             val defaultOption = preferences.defaultFilter.first()
-            if (!_isDateFilterLoaded.value) {
+            if (filter.value == null) {
                 val (start, end) = defaultOption.dateRange(LocalDate.now())
-                updateDateFilter(start, end, defaultOption)
+                filter.value = DateFilter(start, end, defaultOption)
             }
-        }
-    }
-
-    fun updateDateFilter(start: LocalDate?, end: LocalDate?, option: DateFilterOption? = null) {
-        _filterStartDate.value = start
-        _filterEndDate.value = end
-        _appliedFilter.value = option
-        _isDateFilterLoaded.value = true
-    }
-
-    /** The whole screen's state: the pins after the date filter, with fragments if [showFragments], clustered if [clustering]. */
-    fun uiState(showFragments: StateFlow<Boolean>, clustering: StateFlow<Boolean>): StateFlow<MapUiState> =
-        cachedUiState ?: combine(
-            getMarkerClusters(showFragments),
-            clustering,
-            combine(filterStartDate, filterEndDate, _appliedFilter) { start, end, option -> Triple(start, end, option) },
-            screen,
-        ) { pins, clusters, (start, end, option), screen ->
-            screen.copy(
-                pins = pins,
-                clustering = clusters,
-                filterStart = start,
-                filterEnd = end,
-                appliedFilter = option,
-                colorCounts = colorCounts(pins),
-            )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), MapUiState()).also {
-            cachedUiState = it
-        }
-
-    fun getMarkerClusters(showFragmentsEnabledFlow: StateFlow<Boolean>): StateFlow<List<Markerable.MarkerableCluster>> {
-        val cached = cachedMarkerClusters
-        if (cached != null && cached.first === showFragmentsEnabledFlow) {
-            return cached.second
-        }
-
-        return combine(
-            memories.allGroups,
-            memories.allFragments,
-            filterStartDate,
-            filterEndDate,
-            showFragmentsEnabledFlow
-        ) { groups, fragments, start, end, showFrags ->
-            val groupsMap = groups.associateBy { it.id }
-            val candidateItems = mutableListOf<Markerable>()
-            candidateItems.addAll(groups)
-            if (showFrags) {
-                fragments.forEach { fragment ->
-                    groupsMap[fragment.groupId]?.let { parent -> candidateItems.add(Markerable.FragmentMarker(fragment, parent.title)) }
-                }
-            }
-            candidateItems.filter { item ->
-                val itemStart = (item.startDate ?: groupsMap[item.groupId]?.startDate)?.toLocalDate()
-                val itemEnd = (item.endDate ?: groupsMap[item.groupId]?.endDate)?.toLocalDate()
-                if (itemStart == null || itemEnd == null) return@filter true
-                overlapsDateFilter(itemStart, itemEnd, start, end)
-            }
-        }.flowOn(Dispatchers.Default).map { filteredItems ->
-            clusterMarkerables(filteredItems)
-        }.flowOn(Dispatchers.Default).stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS),
-            emptyList()
-        ).also {
-            cachedMarkerClusters = showFragmentsEnabledFlow to it
         }
     }
 
@@ -246,7 +223,7 @@ class MapViewModel(
     fun onMapSized(size: IntSize) {
         val resized = mapSize != null && mapSize != size
         mapSize = size
-        if (resized && showsAllPins) fitAll(pins)
+        if (resized && showsAllPins) fitAll(pins.value)
     }
 
     /** The screen moved the camera for [request]; a newer request that replaced it meanwhile stays. */
@@ -255,19 +232,17 @@ class MapViewModel(
     /** Show memory [id], whose marker is at [lat], [lng]. */
     data class FocusRequest(val id: Int, val lat: Double, val lng: Double)
 
-    private val pins: List<Markerable.MarkerableCluster> get() = cachedMarkerClusters?.second?.value.orEmpty()
-
     private val hasLocationAccess: Boolean get() = hasLocationPermission(getApplication())
 
     fun pickQuickFilter(option: DateFilterOption) {
         val (start, end) = option.dateRange(LocalDate.now())
-        if (start != filterStartDate.value || end != filterEndDate.value) shouldFitNextPins = true
-        updateDateFilter(start, end, option)
+        if (start != filter.value?.start || end != filter.value?.end) shouldFitNextPins = true
+        filter.value = DateFilter(start, end, option)
     }
 
     fun pickDates(start: LocalDate, end: LocalDate) {
         shouldFitNextPins = true
-        updateDateFilter(start, end)
+        filter.value = DateFilter(start, end)
     }
 
     fun tapPin(pin: Markerable.MarkerableCluster) {
@@ -296,23 +271,21 @@ class MapViewModel(
     fun onShown() {
         setShowsMyLocation(hasLocationAccess)
         if (!hasLocationAccess || isInitialZoomDone) return
-        AppServices.location.lastLocation(getApplication())
-            .addOnSuccessListener { location ->
-                if (isInitialZoomDone) return@addOnSuccessListener
-                if (location != null) {
+        withLastLocation(
+            found = { position ->
+                if (!isInitialZoomDone) {
                     isInitialZoomDone = true
-                    moveCamera(MapCameraRequest.Show(LatLng(location.latitude, location.longitude), MY_LOCATION_ZOOM))
-                } else {
-                    showAllInstead()
+                    moveCamera(MapCameraRequest.Show(position, MY_LOCATION_ZOOM))
                 }
-            }
-            .addOnFailureListener { if (!isInitialZoomDone) showAllInstead() }
+            },
+            unknown = { if (!isInitialZoomDone) showAllInstead() },
+        )
     }
 
     /** Without the phone's location the first look shows all the pins, as without location access. */
     private fun showAllInstead() {
         isLocationUnknown = true
-        if (pendingSelection == null) fitAllOnFirstLook(pins)
+        if (pendingSelection == null) fitAllOnFirstLook(pins.value)
     }
 
     /**
@@ -322,16 +295,15 @@ class MapViewModel(
      */
     fun onTabTappedAgain() {
         if (closeOverlays()) return
-        if (!hasLocationAccess) return fitAll(pins)
+        if (!hasLocationAccess) return fitAll(pins.value)
+        withLastLocation(found = { moveCamera(MapCameraRequest.Show(it, MY_LOCATION_ZOOM)) }, unknown = { fitAll(pins.value) })
+    }
+
+    /** Asks where the phone was last: [found] gets the place, [unknown] runs when there is none or the request fails. */
+    private fun withLastLocation(found: (LatLng) -> Unit, unknown: () -> Unit) {
         AppServices.location.lastLocation(getApplication())
-            .addOnSuccessListener { location ->
-                if (location != null) {
-                    moveCamera(MapCameraRequest.Show(LatLng(location.latitude, location.longitude), MY_LOCATION_ZOOM))
-                } else {
-                    fitAll(pins)
-                }
-            }
-            .addOnFailureListener { fitAll(pins) }
+            .addOnSuccessListener { location -> if (location != null) found(LatLng(location.latitude, location.longitude)) else unknown() }
+            .addOnFailureListener { unknown() }
     }
 
     /**
@@ -353,7 +325,7 @@ class MapViewModel(
             memories.allGroups.first { list -> list.any { it.id == request.id } }
         }
         val isFilterLoaded = groups != null && withTimeoutOrNull(DATA_LOAD_TIMEOUT_MS.milliseconds) {
-            isDateFilterLoaded.first { it }
+            filter.first { it != null }
         } != null
 
         if (_pendingFocus.value != request) return // A newer request replaced this one.
@@ -366,18 +338,18 @@ class MapViewModel(
         moveCamera(MapCameraRequest.Show(LatLng(request.lat, request.lng), MAX_FIT_ZOOM))
         val widened = widenFilterFor(memory.startDate.toLocalDate(), memory.endDate.toLocalDate())
         // The filter didn't change, so the pins already there are the ones to select from.
-        if (!widened && pins.isNotEmpty()) selectPendingMemory(pins)
+        if (!widened && pins.value.isNotEmpty()) selectPendingMemory(pins.value)
     }
 
     /** Widens the filter to include all of a memory from [memoryStart] to [memoryEnd], unless it already overlaps. */
     private fun widenFilterFor(memoryStart: LocalDate, memoryEnd: LocalDate): Boolean {
-        val currentStart = filterStartDate.value
-        val currentEnd = filterEndDate.value
+        val currentStart = filter.value?.start
+        val currentEnd = filter.value?.end
         if (overlapsDateFilter(memoryStart, memoryEnd, currentStart, currentEnd)) return false
         val newStart = if (currentStart != null && memoryStart.isBefore(currentStart)) memoryStart else currentStart
         val newEnd = if (currentEnd != null && memoryEnd.isAfter(currentEnd)) memoryEnd else currentEnd
         val widened = newStart != currentStart || newEnd != currentEnd
-        if (widened) updateDateFilter(newStart, newEnd)
+        if (widened) filter.value = DateFilter(newStart, newEnd)
         return widened
     }
 
