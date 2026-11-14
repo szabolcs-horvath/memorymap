@@ -15,6 +15,7 @@ import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.TimePickerDialog
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.ToastMessage
+import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import org.junit.Assert.assertFalse
@@ -185,6 +186,27 @@ class AddMemoryTest {
         AddScreen.assertNoTitle()
         AddScreen.assertAllDay(false)
         AddScreen.assertNew()
+    }
+
+    /**
+     * Sideways the keyboard leaves the form little height: the Save button gives way while it is open, and the date
+     * picker, whose calendar doesn't fit, opens for typing the date.
+     */
+    @Test
+    fun sidewaysTheSaveButtonGivesWayToTheKeyboardAndTheDatePickerOpensForTyping() {
+        openAdd()
+        Ui.rotateToLandscape()
+
+        AddScreen.typeTitle(PICNIC)
+        Keyboard.assertShown()
+        AddScreen.assertSaveGone()
+        Keyboard.hide()
+        AddScreen.assertSaveShown()
+
+        AddScreen.openStartDatePicker()
+        DatePickerDialog.assertTypingOnly()
+        Dialog.tap("Cancel")
+        AddScreen.assertTitle(PICNIC)
     }
 
     @Test

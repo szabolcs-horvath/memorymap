@@ -55,6 +55,12 @@ object DatePickerDialog {
         ComposeUi.waitFor("Day $day", ComposeUi.textMatches(dayOfMonth) and hasClickAction() and inDialog).performClick()
     }
 
+    /** The picker is for typing the date only, without the calendar or a way to it (a short window, such as a phone turned sideways). */
+    fun assertTypingOnly() {
+        ComposeUi.waitFor("The date field", hasSetTextAction() and inDialog)
+        ComposeUi.assertGone("The calendar's mode button", hasContentDescription("Switch to calendar input mode") and inDialog)
+    }
+
     /** The month and year the calendar shows, above its days. */
     private fun shownMonth(): String = ComposeUi.waitFor("The month", ComposeUi.textMatches(MONTH) and inDialog).text()
 
@@ -72,7 +78,10 @@ private fun confirm() {
  */
 object DateRangePickerDialog {
     fun pick(start: LocalDate, end: LocalDate) {
-        ComposeUi.waitFor("The text input mode button", hasContentDescription("Switch to text input mode")).performClick()
+        // Sideways (a short window) it is for typing only, with its date fields and no mode button.
+        val toText = hasContentDescription("Switch to text input mode") and inDialog
+        ComposeUi.waitFor("The calendar's mode button or the date fields", toText or field)
+        if (ComposeUi.exists(toText)) ComposeUi.node(toText).performClick()
         val fields = Ui.eventually(read = { ComposeUi.nodes(field) }) { it.size == 2 }
         assertEquals("Date fields", 2, fields.size)
         // Material 3's field takes only the digits, in the order of the phone's date format, and adds the separators.

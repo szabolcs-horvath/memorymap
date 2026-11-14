@@ -10,6 +10,14 @@ object Keyboard {
 
     fun assertHidden() = assertTrue("The keyboard is still shown", Ui.waitUntil { !showsNow() })
 
+    /** Closes the keyboard with Back, if it shows (Back without it would leave the screen). */
+    fun hide() {
+        if (Ui.waitUntil(SHOW_MS) { showsNow() }) Ui.pressBack()
+        assertHidden()
+    }
+
+    private const val SHOW_MS = 1_000L
+
     /** Closes the keyboard, which shows or is about to (its window can take a few seconds to be listed). */
     fun close() {
         assertShown()

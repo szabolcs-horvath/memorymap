@@ -54,9 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -70,6 +68,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.ui.color.Hsv
+import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.util.Coordinates
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -91,7 +90,6 @@ internal val PAGE_MARGIN = 16.dp
 private val ITEM_GAP = 8.dp
 
 /** On a window shorter than this (a phone turned sideways), the top app bar is a small one. */
-private val COMPACT_HEIGHT = 480.dp
 
 // The fixed items' places in the list, to scroll to the first field a save lacks.
 private const val TITLE_INDEX = 0
@@ -130,8 +128,7 @@ interface AddMemoryActions {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: AddMemoryActions) {
-    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
-    val compact = windowHeight < COMPACT_HEIGHT
+    val compact = isShortWindow()
     val scrollBehavior = if (compact) TopAppBarDefaults.pinnedScrollBehavior() else TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val listState = rememberLazyListState()
     val snackbars = remember { SnackbarHostState() }
