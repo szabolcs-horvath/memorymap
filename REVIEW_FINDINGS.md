@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 85 fixed · 🟡 7 partly fixed · ❔ 0 to verify · ⬜ 6 open
+✅ 85 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 5 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -152,7 +152,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [ARCH-8](#arch-8) | Low | Shared entity mutated off the main thread |
 | ✅ | [ARCH-9](#arch-9) | Low | Dead or misleading code |
 | ✅ | [ARCH-10](#arch-10) | Medium | UI built on XML Views, not Jetpack Compose |
-| ⬜ | [ARCH-11](#arch-11) | Medium | No whole-codebase pass yet for Material 3 Expressive and for simpler code |
+| 🟡 | [ARCH-11](#arch-11) | Medium | No whole-codebase pass yet for Material 3 Expressive and for simpler code |
 
 **BUILD — Build, CI, tooling** · 4 of 6 fixed
 
@@ -918,7 +918,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - The shell's polish (2026-11-12): the tab bar (or the rail) hides while the location picker shows, as it does for the media viewer, so the map has the whole window and no tab can be tapped over the picker, which would close it and lose the spot. Back still returns to the form. `DetailNavigationTest` checks this now instead of a tab tapped over the picker.
 - **Status:** Fixed (2026-11-12). Every screen and the shell around them are in Compose, edge to edge, and the View-era dependencies are gone. Moving Material3 back to the Compose BOM's version is its own item, [BUILD-5](#build-5).
 
-### <a id="arch-11"></a>⬜ ARCH-11 · Medium · No whole-codebase pass yet for Material 3 Expressive and for simpler code
+### <a id="arch-11"></a>🟡 ARCH-11 · Medium · No whole-codebase pass yet for Material 3 Expressive and for simpler code
 - **Where:** the whole codebase: `app/src/main` (the UI in `ui/`, and `data/`, `backup/`, `auth/`, `util/` and the rest), the unit tests, the build files and `scripts/`. The Material 3 Expressive part covers the UI only.
 - **What:** The Compose migration ([ARCH-10](#arch-10)) reviewed each screen against Material 3 Expressive as it moved, one at a time, and the code has grown one finding at a time. Nobody has yet looked at the app as a whole:
   - **Material 3 Expressive:** whether the screens agree with each other (the same kind of control, list, sheet, dialog, empty state or message looks and behaves the same everywhere), and whether each still follows [m3.material.io](https://m3.material.io/) and Compose's defaults now that Material3 1.5 is in (its components, motion, shapes and type scale), in light, dark and the contrast levels, upright and turned.
@@ -927,6 +927,7 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Material 3 Expressive: screenshots of every screen and state, and a written list of what doesn't follow Material 3 Expressive or doesn't match the rest of the app. The user decides what to adopt before anything changes (AGENTS.md: a screen's look is agreed first); each adopted change is deliberate, named in its commit message and covered by updated UI tests in the same commit.
   - The code: simplify, merge and reorganise without changing what the app does, proven by the unit tests and the UI suite passing unchanged. Keep these commits apart from the look changes, so a failing test points at one of them.
 - **Order:** after [TEST-5](#test-5). Both parts need the whole UI suite run many times, and a suite that is faster and trusted makes each run cheaper and a red run meaningful; the refactoring part depends on the tests passing unchanged, which only a suite without flaky tests can prove. Doing it first would also mean updating tests that TEST-5 then merges or removes. Writing the Material 3 list and agreeing it with the user changes no code, so that part can start earlier, while TEST-5 is under way. Not together with TEST-5: changing the tests and the code they check in one pass leaves nothing fixed to prove either.
+- **Status:** Partly fixed (2026-11-14): the Material 3 Expressive part. A screenshot tour (`androidTest/…/tour/ScreenshotTour`, run only with the instrumentation argument `screenshots=true`) took every screen and state in light, dark, medium and high contrast upright, and light and dark turned sideways. Of the 17 findings, the user adopted 14: the tab bar gives way while the keyboard is open, and in a short window so does the Add form's Save button; the map fits its pins again after the phone is turned; photo and video grids adapt their columns to the width; the date pickers are typing-only in a short window (no calendar); pages are centred and at most 720 dp wide; `MaterialExpressiveTheme`; a medium-size Save button with a press shape; the date filter menus' chosen option in the secondary container instead of the palette's lilac tertiary; dialogs that ask in sentence case and name a backup by its kind and date; the memory's map and timeline links as a connected button group of equal halves; the Add form's fragment colour as a strip on the left; plainer re-link wording; Expressive loading indicators; and dragging search results closes the keyboard (the Search key already closed the search; closing the keyboard as results arrive would interrupt typing). Skipped: Delete in the memory's top bar, a hue spectrum in the hue slider. The preset buttons turned out to be a button group already. The palette was not re-exported: its tertiary showed only in those menus. The code part is still open.
 
 [↑ Back to index](#index)
 
