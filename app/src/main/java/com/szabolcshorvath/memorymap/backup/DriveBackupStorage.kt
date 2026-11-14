@@ -19,7 +19,6 @@ object DriveBackupStorage : BackupStorage {
 
     private const val FOLDER_NAME = "Memory Map Backups"
     private const val DRIVE_LIST_PAGE_SIZE = 1000 // Drive's maximum
-    private const val HTTP_UNAUTHORIZED = 401
     private const val TOKEN_ATTEMPTS = 2 // the first token, and one replacing it if Drive rejects it
 
     override fun list(context: Context, email: String): List<DriveFile> = withDrive(context, email) { driveService ->
@@ -86,7 +85,7 @@ object DriveBackupStorage : BackupStorage {
             try {
                 return call(current)
             } catch (e: GoogleJsonResponseException) {
-                if (e.statusCode != HTTP_UNAUTHORIZED) throw e
+                if (e.statusCode != DriveProblem.HTTP_UNAUTHORIZED) throw e
                 clear(current)
                 rejection = e
             }

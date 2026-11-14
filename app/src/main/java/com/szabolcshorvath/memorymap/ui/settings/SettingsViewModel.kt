@@ -18,7 +18,6 @@ import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
 import com.szabolcshorvath.memorymap.data.AppPreferences
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.data.PresetRepository
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
@@ -79,7 +78,6 @@ class SettingsViewModel(
     application: Application,
     presetRepository: PresetRepository,
     private val memories: MemoryRepository,
-    private val database: MemoryMapDatabase,
     private val backupManager: BackupManager,
     private val preferences: AppPreferences,
 ) : AndroidViewModel(application) {
@@ -213,7 +211,7 @@ class SettingsViewModel(
     private fun performBackup(email: String) {
         viewModelScope.launch {
             startBusy(app.getString(R.string.backup_starting))
-            val result = backupManager.performBackup(email, database, isAutomatic = false) { status -> startBusy(status) }
+            val result = backupManager.performBackup(email, isAutomatic = false) { status -> startBusy(status) }
             endBusy()
             result.fold(
                 onSuccess = {
@@ -229,7 +227,7 @@ class SettingsViewModel(
         val email = state.value.email ?: return
         viewModelScope.launch {
             startBusy(app.getString(R.string.restore_starting))
-            val result = backupManager.restoreBackup(email, fileId, database) { status -> startBusy(status) }
+            val result = backupManager.restoreBackup(email, fileId) { status -> startBusy(status) }
             endBusy()
             result.fold(
                 onSuccess = {
@@ -327,7 +325,7 @@ class SettingsViewModel(
             initializer {
                 val app = this[APPLICATION_KEY]!!
                 val container = app.appContainer
-                SettingsViewModel(app, container.presets, container.memories, container.database, container.backupManager, container.preferences)
+                SettingsViewModel(app, container.presets, container.memories, container.backupManager, container.preferences)
             }
         }
     }

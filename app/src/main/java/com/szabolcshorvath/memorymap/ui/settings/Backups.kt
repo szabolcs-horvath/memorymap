@@ -39,6 +39,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
+import com.szabolcshorvath.memorymap.backup.BackupManager.Companion.AUTOMATIC_BACKUP_PREFIX
+import com.szabolcshorvath.memorymap.backup.BackupManager.Companion.MANUAL_BACKUP_PREFIX
 import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.ui.theme.success
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
@@ -50,9 +52,6 @@ private const val TAG_ACCOUNT = "tv_accountName"
 private const val TAG_RESULT = "tv_backupStatusDetails"
 private const val TAG_LIST_PROBLEM = "tv_backupListProblem"
 private const val TAG_BACKUP_NAME = "tv_backup_name"
-
-private const val AUTOMATIC_BACKUP_PREFIX = "MemoryMap_Automatic_Backup_"
-private const val MANUAL_BACKUP_PREFIX = "MemoryMap_Manual_Backup_"
 
 /** How many backups the main page shows, newest first. */
 private const val RECENT_BACKUPS = 5

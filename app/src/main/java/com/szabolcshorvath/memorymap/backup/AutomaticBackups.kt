@@ -12,7 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.appContainer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -71,8 +71,7 @@ enum class AutomaticBackupOutcome { SUCCEEDED, NOT_SIGNED_IN, RETRY, FAILED }
 class AutomaticBackupWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val db = MemoryMapDatabase.getDatabase(applicationContext)
-        return when (BackupManager(applicationContext).runAutomaticBackup(db)) {
+        return when (applicationContext.appContainer.backupManager.runAutomaticBackup()) {
             AutomaticBackupOutcome.SUCCEEDED, AutomaticBackupOutcome.NOT_SIGNED_IN -> Result.success()
             AutomaticBackupOutcome.RETRY -> if (runAttemptCount + 1 < AutomaticBackups.MAX_ATTEMPTS) Result.retry() else Result.failure()
             AutomaticBackupOutcome.FAILED -> Result.failure()
