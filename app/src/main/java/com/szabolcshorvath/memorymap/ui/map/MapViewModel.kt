@@ -13,10 +13,10 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.appContainer
+import com.szabolcshorvath.memorymap.data.AppPreferences
 import com.szabolcshorvath.memorymap.data.MarkerClustering
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.data.MemoryRepository
-import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
@@ -79,7 +79,11 @@ data class MapUiState(
 
 // One function per intent of the screen.
 @Suppress("TooManyFunctions")
-class MapViewModel(application: Application, private val memories: MemoryRepository) : AndroidViewModel(application) {
+class MapViewModel(
+    application: Application,
+    private val memories: MemoryRepository,
+    private val preferences: AppPreferences
+) : AndroidViewModel(application) {
 
     /** The camera has made its first move (to the phone, to all the pins, or to a memory shown from elsewhere). */
     private var isInitialZoomDone = false
@@ -122,7 +126,7 @@ class MapViewModel(application: Application, private val memories: MemoryReposit
 
     init {
         viewModelScope.launch {
-            val defaultOption = DateFilterOption.getFromDataStore(application.dataStore)
+            val defaultOption = preferences.defaultFilter.first()
             if (!_isDateFilterLoaded.value) {
                 val (start, end) = defaultOption.dateRange(LocalDate.now())
                 updateDateFilter(start, end, defaultOption)
@@ -440,7 +444,7 @@ class MapViewModel(application: Application, private val memories: MemoryReposit
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY]!!
-                MapViewModel(app, app.appContainer.memories)
+                MapViewModel(app, app.appContainer.memories, app.appContainer.preferences)
             }
         }
 

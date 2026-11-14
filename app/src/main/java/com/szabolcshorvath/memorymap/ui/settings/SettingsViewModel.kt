@@ -3,7 +3,6 @@ package com.szabolcshorvath.memorymap.ui.settings
 import android.app.Application
 import android.content.IntentSender
 import androidx.annotation.StringRes
-import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -18,20 +17,18 @@ import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.backup.BackupManager
 import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
+import com.szabolcshorvath.memorymap.data.AppPreferences
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.data.PresetRepository
-import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PermissionUtil
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
@@ -84,6 +81,7 @@ class SettingsViewModel(
     private val memories: MemoryRepository,
     private val database: MemoryMapDatabase,
     private val backupManager: BackupManager,
+    private val preferences: AppPreferences,
 ) : AndroidViewModel(application) {
 
     private val state = MutableStateFlow(SettingsUiState())
@@ -96,7 +94,7 @@ class SettingsViewModel(
     val colorPresets = ColorPresetsModel(viewModelScope, presetRepository) { eventChannel.send(SettingsEvent.Message(it)) }
 
     /** The map preferences: their own part of the screen. */
-    val mapPreferences = MapPreferencesModel(viewModelScope, application.dataStore)
+    val mapPreferences = MapPreferencesModel(viewModelScope, preferences)
 
     private val app get() = getApplication<Application>()
 
@@ -112,7 +110,7 @@ class SettingsViewModel(
         viewModelScope.launch { mapPreferences.state.collect { map -> state.update { it.copy(map = map) } } }
         viewModelScope.launch { colorPresets.state.collect { presets -> state.update { it.copy(colorPresets = presets) } } }
         viewModelScope.launch {
-            app.dataStore.data.map { it[PreferencesKeys.USER_EMAIL_KEY] }.distinctUntilChanged().collect(::onAccount)
+            preferences.email.collect(::onAccount)
         }
         viewModelScope.launch {
             var wasRunning = false
@@ -152,13 +150,13 @@ class SettingsViewModel(
 
     /** The user signed in as [email]. */
     suspend fun signedIn(email: String) {
-        app.dataStore.edit { it[PreferencesKeys.USER_EMAIL_KEY] = email }
+        preferences.setEmail(email)
     }
 
     /** The user signed out. */
     suspend fun signedOut() {
         backupsLoadedForEmail = null
-        app.dataStore.edit { it.remove(PreferencesKeys.USER_EMAIL_KEY) }
+        preferences.setEmail(null)
     }
 
     /** Drive access was granted: back up, if that is what it was asked for, else load the list. */
@@ -329,7 +327,7 @@ class SettingsViewModel(
             initializer {
                 val app = this[APPLICATION_KEY]!!
                 val container = app.appContainer
-                SettingsViewModel(app, container.presets, container.memories, container.database, container.backupManager)
+                SettingsViewModel(app, container.presets, container.memories, container.database, container.backupManager, container.preferences)
             }
         }
     }

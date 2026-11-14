@@ -20,7 +20,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
-import com.szabolcshorvath.memorymap.dataStore
+import com.szabolcshorvath.memorymap.data.dataStore
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
 import com.szabolcshorvath.memorymap.fakes.FakeLocationService
 import com.szabolcshorvath.memorymap.screens.Ui

@@ -9,11 +9,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.szabolcshorvath.memorymap.MemoryMapApplication
 import com.szabolcshorvath.memorymap.appContainer
-import com.szabolcshorvath.memorymap.dataStore
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -21,22 +19,21 @@ import kotlinx.coroutines.launch
 class CommonViewModel(
     application: Application,
     private val memories: MemoryRepository,
-    private val presets: PresetRepository
+    private val presets: PresetRepository,
+    preferences: AppPreferences
 ) : AndroidViewModel(application) {
 
     val allGroups = memories.allGroups.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
     val allPresets = presets.allPresets.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), emptyList())
 
-    val showFragmentsEnabled: StateFlow<Boolean> = application.dataStore.data
-        .map { it[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: PreferencesKeys.SHOW_FRAGMENT_MARKERS_DEFAULT_VALUE }
+    val showFragmentsEnabled: StateFlow<Boolean> = preferences.showFragmentMarkers
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS),
             initialValue = PreferencesKeys.SHOW_FRAGMENT_MARKERS_DEFAULT_VALUE
         )
 
-    val markerClusteringEnabled: StateFlow<Boolean> = application.dataStore.data
-        .map { it[PreferencesKeys.MARKER_CLUSTERING_ENABLED] ?: PreferencesKeys.MARKER_CLUSTERING_ENABLED_DEFAULT_VALUE }
+    val markerClusteringEnabled: StateFlow<Boolean> = preferences.markerClustering
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS),
@@ -66,7 +63,7 @@ class CommonViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY]!!
-                CommonViewModel(app, app.appContainer.memories, app.appContainer.presets)
+                CommonViewModel(app, app.appContainer.memories, app.appContainer.presets, app.appContainer.preferences)
             }
         }
     }

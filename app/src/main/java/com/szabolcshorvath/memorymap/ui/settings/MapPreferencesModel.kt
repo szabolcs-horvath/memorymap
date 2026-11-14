@@ -1,14 +1,11 @@
 package com.szabolcshorvath.memorymap.ui.settings
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
+import com.szabolcshorvath.memorymap.data.AppPreferences
 import com.szabolcshorvath.memorymap.util.DateFilterOption
-import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -19,24 +16,24 @@ data class MapPreferences(
     val defaultFilter: DateFilterOption? = null,
 )
 
-/** The map preferences in Settings: read from and stored in the app's DataStore. */
-class MapPreferencesModel(private val scope: CoroutineScope, private val dataStore: DataStore<Preferences>) {
-    val state: StateFlow<MapPreferences> = dataStore.data.map { prefs ->
-        MapPreferences(
-            showFragmentMarkers = prefs[PreferencesKeys.SHOW_FRAGMENT_MARKERS] ?: PreferencesKeys.SHOW_FRAGMENT_MARKERS_DEFAULT_VALUE,
-            markerClustering = prefs[PreferencesKeys.MARKER_CLUSTERING_ENABLED]
-                ?: PreferencesKeys.MARKER_CLUSTERING_ENABLED_DEFAULT_VALUE,
-            defaultFilter = DateFilterOption.ofStoredName(prefs[PreferencesKeys.DEFAULT_DATE_FILTER]),
-        )
-    }.stateIn(scope, SharingStarted.Eagerly, MapPreferences())
+/** The map preferences in Settings: read from and stored in the app's preferences. */
+class MapPreferencesModel(private val scope: CoroutineScope, private val preferences: AppPreferences) {
+    val state: StateFlow<MapPreferences> = combine(
+        preferences.showFragmentMarkers,
+        preferences.markerClustering,
+        preferences.defaultFilter,
+        ::MapPreferences
+    ).stateIn(scope, SharingStarted.Eagerly, MapPreferences())
 
-    fun setShowFragmentMarkers(show: Boolean) = set(PreferencesKeys.SHOW_FRAGMENT_MARKERS, show)
+    fun setShowFragmentMarkers(show: Boolean) {
+        scope.launch { preferences.setShowFragmentMarkers(show) }
+    }
 
-    fun setMarkerClustering(enabled: Boolean) = set(PreferencesKeys.MARKER_CLUSTERING_ENABLED, enabled)
+    fun setMarkerClustering(enabled: Boolean) {
+        scope.launch { preferences.setMarkerClustering(enabled) }
+    }
 
-    fun setDefaultFilter(option: DateFilterOption) = set(PreferencesKeys.DEFAULT_DATE_FILTER, option.name)
-
-    private fun <T> set(key: Preferences.Key<T>, value: T) {
-        scope.launch { dataStore.edit { it[key] = value } }
+    fun setDefaultFilter(option: DateFilterOption) {
+        scope.launch { preferences.setDefaultFilter(option) }
     }
 }

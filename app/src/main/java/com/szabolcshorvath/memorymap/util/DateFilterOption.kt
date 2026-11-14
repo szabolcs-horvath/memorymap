@@ -1,11 +1,8 @@
 package com.szabolcshorvath.memorymap.util
 
 import androidx.annotation.StringRes
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import com.szabolcshorvath.memorymap.R
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -33,13 +30,6 @@ enum class DateFilterOption(
         private const val SEVEN_DAYS_MINUS_ONE = 6L
         private const val THIRTY_DAYS_MINUS_ONE = 29L
         private const val THREE_HUNDRED_SIXTY_FIVE_DAYS_MINUS_ONE = 364L
-
-        suspend fun getFromDataStore(dataStore: DataStore<Preferences>): DateFilterOption {
-            val valueInDataStore = dataStore.data
-                .map { it[PreferencesKeys.DEFAULT_DATE_FILTER] }
-                .firstOrNull()
-            return ofStoredName(valueInDataStore)
-        }
 
         /** The option stored under its enum name, or the default if none is stored or the name is unknown. */
         fun ofStoredName(name: String?): DateFilterOption =
