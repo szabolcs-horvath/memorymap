@@ -307,7 +307,7 @@
     <!-- A backup in a question: its kind (\"Automatic backup\") and when it was made. -->
     <string name="backup_in_question">%1$s from %2$s</string>
     <string name="media_maintenance_title">Media library</string>
-    <string name="media_maintenance_description">Re-scan local gallery storage to locate and re-link missing photo or video files.</string>
+    <string name="media_maintenance_description">Find photos and videos that moved, or that came from another phone.</string>
     <string name="relink_media">Re-link photos and videos</string>
     <string name="relink_complete">Media re-linking complete</string>
     <string name="send_logs">Send debug logs</string>
