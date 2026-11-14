@@ -29,23 +29,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
-      - name: Create local.properties file
-        run: |
-          cat > local.properties <<'EOF'
-          MAPS_API_KEY=${{ secrets.MAPS_API_KEY }}
-          OAUTH_WEB_CLIENT_ID=${{ secrets.OAUTH_WEB_CLIENT_ID }}
-          EOF
-
-      - name: Create google-service.json
+      # Only the Google Services plugin needs a file to build; the analysis needs no API keys.
+      - name: Create google-services.json
         run: |
           cat > app/google-services.json <<'EOF'
           ${{ secrets.GOOGLE_SERVICES_JSON }}
