@@ -12,7 +12,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.gms.maps.model.LatLng
-import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.ui.common.MyLocationQuestions
 import com.szabolcshorvath.memorymap.ui.common.rememberMyLocationRequester
@@ -26,8 +25,8 @@ import java.time.LocalDate
  * with, and what it does once shown (go to the phone, show a memory asked for from another screen).
  */
 @Composable
-fun MapRoute(viewModel: MapViewModel, common: CommonViewModel, onOpenMemory: (Int) -> Unit) {
-    val state by viewModel.uiState(common.showFragmentsEnabled, common.markerClusteringEnabled).collectAsStateWithLifecycle()
+fun MapRoute(viewModel: MapViewModel, onOpenMemory: (Int) -> Unit) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     // The only place the map asks for location access: when the user taps the "my location" button.
     val myLocation = rememberMyLocationRequester(viewModel::showMyLocation)
     val openMemory by rememberUpdatedState(onOpenMemory)
@@ -55,9 +54,9 @@ fun MapRoute(viewModel: MapViewModel, common: CommonViewModel, onOpenMemory: (In
 
     // The pins, while the map is at least started (also hidden behind another screen), keep the panel and camera in step.
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(viewModel, common, lifecycleOwner) {
+    LaunchedEffect(viewModel, lifecycleOwner) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            viewModel.getMarkerClusters(common.showFragmentsEnabled).collect(viewModel::onPinsChanged)
+            viewModel.pins.collect(viewModel::onPinsChanged)
         }
     }
     LifecycleResumeEffect(viewModel) {

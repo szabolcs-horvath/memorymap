@@ -241,7 +241,7 @@ private fun TabItems(selected: Tab, type: NavigationSuiteType, actions: ShellAct
 @Composable
 private fun TabContent(tab: Tab, shell: ShellViewModel, tabs: TabViewModels, actions: ShellActions) {
     when (tab) {
-        Tab.MAP -> MapRoute(tabs.map, tabs.common, onOpenMemory = actions::openMemory)
+        Tab.MAP -> MapRoute(tabs.map, onOpenMemory = actions::openMemory)
         Tab.TIMELINE -> {
             val state by tabs.timeline.uiState.collectAsStateWithLifecycle()
             TimelineContent(
