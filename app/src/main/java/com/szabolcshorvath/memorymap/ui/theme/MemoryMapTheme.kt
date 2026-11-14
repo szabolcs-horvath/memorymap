@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.ui.theme
 import android.app.UiModeManager
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -18,7 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 
 /**
  * The app's Material 3 theme: its colours ([LightColors], [DarkColors]) for the phone's dark mode and contrast setting,
- * with Compose's own Material 3 shapes and type scale. [dark] uses the dark colours whatever the phone's setting, for
+ * with Compose's own Material 3 shapes and type scale and Material 3 Expressive's motion. [dark] uses the dark colours whatever the phone's setting, for
  * a screen that is always dark (the media viewer).
  */
 @Composable
@@ -26,7 +27,8 @@ fun MemoryMapTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable (
     val contrast = phoneContrast()
     val colorScheme = colorScheme(dark, contrast)
     CompositionLocalProvider(LocalSuccess provides if (dark) DarkSuccess else LightSuccess) {
-        MaterialTheme(colorScheme = colorScheme, content = content)
+        // Expressive's theme: its spring-based motion for every component, with the app's colours.
+        MaterialExpressiveTheme(colorScheme = colorScheme, content = content)
     }
 }
 
