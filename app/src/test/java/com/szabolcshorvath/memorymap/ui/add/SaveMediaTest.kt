@@ -71,7 +71,7 @@ class SaveMediaTest {
         val beachAgain = photoFile("beach-copy.jpg", BEACH_BYTES)
         val castle = photoFile("castle.jpg", CASTLE_BYTES)
         newMemory()
-        form.selectedMedia += listOf(beach, beachAgain, castle).map { picked(it) }
+        editForm { it.copy(media = it.media + listOf(beach, beachAgain, castle).map { uri -> picked(uri) }) }
 
         val saved = save()
 
@@ -85,7 +85,7 @@ class SaveMediaTest {
     fun `a photo whose file can't be read is still saved, once`() {
         val gone = File(context.cacheDir, "gone.jpg").toUri()
         newMemory()
-        form.selectedMedia += listOf(picked(gone), picked(gone))
+        editForm { it.copy(media = it.media + listOf(picked(gone), picked(gone))) }
 
         val saved = save()
 
@@ -97,7 +97,7 @@ class SaveMediaTest {
     fun `photos kept through an edit keep their signature and details, in the order the form shows`() {
         val id = storedMemory(stored(PICKER_1, signature = "100_aaa", order = 1), stored(PICKER_2, signature = "200_bbb", order = 2))
         fillFormForEditing(id)
-        form.selectedMedia.reverse()
+        editForm { it.copy(media = it.media.reversed()) }
 
         val saved = save()
 
@@ -118,7 +118,7 @@ class SaveMediaTest {
         storedMemory(stored(PICKER_3, "300_ccc", 1))
         grant(PICKER_1, PICKER_2, PICKER_3, UNRELATED)
         fillFormForEditing(id)
-        form.selectedMedia.removeAll { it.uri.toString() != PICKER_1 }
+        editForm { it.copy(media = it.media.filter { media -> media.uri.toString() == PICKER_1 }) }
 
         val saved = save()
 
@@ -144,7 +144,7 @@ class SaveMediaTest {
     fun `saving a new memory gives up no grants`() {
         grant(PICKER_1)
         newMemory()
-        form.selectedMedia += SelectedMedia(PICKER_1.toUri(), MediaType.IMAGE, DEVICE, 100, DATE_TAKEN, "100_aaa")
+        editForm { it.copy(media = it.media + SelectedMedia(PICKER_1.toUri(), MediaType.IMAGE, DEVICE, 100, DATE_TAKEN, "100_aaa")) }
 
         val saved = save()
 
@@ -153,9 +153,13 @@ class SaveMediaTest {
     }
 
     private fun newMemory() {
-        form.title = "Trip"
-        form.lat = 47.5
-        form.lng = 19.05
+        form.changeTitle("Trip")
+        form.setPlace(47.5, 19.05, null, null)
+    }
+
+    /** Changes the form in a way the screen has no single intent for (several picks at once, a new order). */
+    private fun editForm(change: (FormContent) -> FormContent) {
+        form.form = change(form.form)
     }
 
     /** Saves the form as the Save button does, and returns the saved memory. */
