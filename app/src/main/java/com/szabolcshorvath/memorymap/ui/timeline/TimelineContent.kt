@@ -2,7 +2,7 @@ package com.szabolcshorvath.memorymap.ui.timeline
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -91,34 +92,28 @@ import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.pow
 
-// The UI tests find these elements by these names (screens/TimelineScreen), the names the View version's ids had.
-private const val TAG_LIST = "rv_timeline"
-private const val TAG_EMPTY = "emptyView"
-private const val TAG_DAY = "tv_date"
-private const val TAG_MEMORY_TITLE = "tv_memoryTitle"
-private const val TAG_SEARCH = "et_search"
+// The names the UI tests find these elements by (screens/TimelineScreen).
+private const val TAG_LIST = "timeline_list"
+private const val TAG_EMPTY = "timeline_empty"
+private const val TAG_DAY = "timeline_day"
+private const val TAG_MEMORY_TITLE = "timeline_memory_title"
+private const val TAG_SEARCH = "timeline_search"
 
 // The search view's results, named apart from the Timeline's own list, which stays open beneath it.
 private const val TAG_RESULTS = "search_results"
 private const val TAG_RESULTS_EMPTY = "search_empty"
-private const val TAG_RESULT_TITLE = "tv_resultTitle"
+private const val TAG_RESULT_TITLE = "search_result_title"
 
+/** How long a Show on Timeline flash takes, there and back. */
 private const val FLASH_MILLIS = 1000
-private const val FLASH_PEAK = 0.5f
-
-/** The gamma Android's `ArgbEvaluator` blends colours in, which the flash copies. */
-private const val GAMMA = 2.2f
 
 /**
  * The Timeline tab: a search bar that scrolls away with the list, the memories grouped by day, newest first, and a
  * Scroll to top button. Tapping the search bar opens Material's full-screen search view, which shows the matching
- * memories as the user types; closed, the bar keeps the search and the list stays filtered. [onQueryChange] gets the search as typed (also the one restored after process death),
- * [onScrollHandled] is called once a Show on Timeline request has been scrolled to, and [onScrollToTopHandled] once a
- * request to go back to the top has.
+ * memories as the user types; closed, the bar keeps the search and the list stays filtered. [onQueryChange] gets the
+ * search as typed (also the one restored after process death), [onScrollHandled] is called once a Show on Timeline
+ * request has been scrolled to, and [onScrollToTopHandled] once a request to go back to the top has.
  */
 @Composable
 fun TimelineContent(
@@ -461,12 +456,13 @@ private fun MemoryCard(
     val myFlash = flash.current?.takeIf { it.memoryId == memory.id }
     LaunchedEffect(myFlash) {
         if (myFlash == null) return@LaunchedEffect
+        // To the flash colour and back, each half with Material's standard easing.
         flashProgress.snapTo(0f)
-        flashProgress.animateTo(1f, tween(FLASH_MILLIS, easing = AccelerateDecelerate))
-        flashProgress.snapTo(0f)
+        flashProgress.animateTo(1f, tween(FLASH_MILLIS / 2, easing = FastOutSlowInEasing))
+        flashProgress.animateTo(0f, tween(FLASH_MILLIS / 2, easing = FastOutSlowInEasing))
         flash.end(myFlash)
     }
-    val itemColor = flashColor(flashProgress.value, colors.surfaceContainer, colors.secondaryContainer)
+    val itemColor = lerp(colors.surfaceContainer, colors.secondaryContainer, flashProgress.value)
 
     // The marker colour runs down the item's left edge, as on the memory page's fragments, clipped to its corners.
     Box(
@@ -510,27 +506,6 @@ private fun MemoryDetails(memory: MemoryGroup) {
         }
         Text(memory.getFormattedDate(LocalContext.current).orEmpty(), style = MaterialTheme.typography.bodySmall)
     }
-}
-
-/** Android's `AccelerateDecelerateInterpolator`, which the View version's flash ran with. */
-private val AccelerateDecelerate = Easing { x -> ((1 + cos((x + 1) * PI)) / 2).toFloat() }
-
-/** The flash's colour at [progress]: from [base] to [peak] and back, blended as Android's `ArgbEvaluator` does. */
-private fun flashColor(progress: Float, base: Color, peak: Color): Color = when {
-    progress <= 0f || progress >= 1f -> base
-    progress <= FLASH_PEAK -> blend(base, peak, progress / FLASH_PEAK)
-    else -> blend(peak, base, (progress - FLASH_PEAK) / (1 - FLASH_PEAK))
-}
-
-private fun blend(from: Color, to: Color, fraction: Float): Color {
-    fun linear(channel: Float) = channel.pow(GAMMA)
-    fun mix(a: Float, b: Float) = (linear(a) + (linear(b) - linear(a)) * fraction).pow(1 / GAMMA)
-    return Color(
-        red = mix(from.red, to.red),
-        green = mix(from.green, to.green),
-        blue = mix(from.blue, to.blue),
-        alpha = from.alpha + (to.alpha - from.alpha) * fraction,
-    )
 }
 
 @Composable
