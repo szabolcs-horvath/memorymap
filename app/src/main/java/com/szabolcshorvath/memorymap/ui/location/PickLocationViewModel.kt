@@ -16,13 +16,14 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.add.FormPlace
 import com.szabolcshorvath.memorymap.util.ChosenPlace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.IOException
 import java.util.Locale
+import kotlin.coroutines.resume
 
 /** A spot picked in the location picker, with its name and address once they are known. */
 data class PickedSpot(val lat: Double, val lng: Double, val name: String?, val address: String?)
@@ -189,30 +190,33 @@ class PickLocationViewModel(application: Application, private val savedState: Sa
     }
 
     private fun reverseGeocode(latLng: LatLng) {
-        val showResult = { address: Address? -> viewModelScope.launch(Dispatchers.Main) { showGeocodeResult(latLng, address) } }
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                Geocoder(context, Locale.getDefault()).getFromLocation(
-                    latLng.latitude,
-                    latLng.longitude,
-                    1,
-                    object : Geocoder.GeocodeListener {
-                        override fun onGeocode(addresses: MutableList<Address>) {
-                            showResult(addresses.firstOrNull())
-                        }
+        viewModelScope.launch { showGeocodeResult(latLng, addressAt(latLng)) }
+    }
 
-                        // Offline or on a service error only this is called, never onGeocode.
-                        override fun onError(errorMessage: String?) {
-                            Log.e(TAG, "Reverse geocoding failed for $latLng: $errorMessage")
-                            showResult(null)
-                        }
+    /** Android's address lookup of [latLng]: the first address it finds, or null if it finds none or fails. */
+    private suspend fun addressAt(latLng: LatLng): Address? = suspendCancellableCoroutine { continuation ->
+        try {
+            // Answers on another thread, through the listener; the call itself doesn't wait.
+            Geocoder(context, Locale.getDefault()).getFromLocation(
+                latLng.latitude,
+                latLng.longitude,
+                1,
+                object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<Address>) {
+                        continuation.resume(addresses.firstOrNull())
                     }
-                )
-            } catch (e: IllegalArgumentException) {
-                // Coordinates out of range. A failed lookup is reported to onError instead.
-                Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
-                showResult(null)
-            }
+
+                    // Offline or on a service error only this is called, never onGeocode.
+                    override fun onError(errorMessage: String?) {
+                        Log.e(TAG, "Reverse geocoding failed for $latLng: $errorMessage")
+                        continuation.resume(null)
+                    }
+                }
+            )
+        } catch (e: IllegalArgumentException) {
+            // Coordinates out of range. A failed lookup is reported to onError instead.
+            Log.e(TAG, "Reverse geocoding failed for $latLng: ${e.message}", e)
+            continuation.resume(null)
         }
     }
 
