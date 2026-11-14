@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.ui.settings
 
+import android.content.Context
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -241,14 +242,8 @@ private fun BackupListProblem(problem: DriveProblem, onAllowAccess: () -> Unit, 
 @Composable
 private fun BackupRow(backup: BackupItem, index: Int, count: Int, actions: SettingsActions, enabled: Boolean) {
     val context = LocalContext.current
-    val label = when {
-        backup.name.startsWith(AUTOMATIC_BACKUP_PREFIX) -> stringResource(R.string.backup_automatic)
-        backup.name.startsWith(MANUAL_BACKUP_PREFIX) -> stringResource(R.string.backup_manual)
-        else -> backup.name
-    }
-    val date = backup.modifiedMillis?.let { millis ->
-        DateTimeFormatterUtil.dateTime(context, Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()), withSeconds = true)
-    } ?: stringResource(R.string.unknown_date)
+    val label = backupLabel(context, backup.name)
+    val date = backupDate(context, backup.modifiedMillis, withSeconds = true) ?: stringResource(R.string.unknown_date)
     val size = Formatter.formatFileSize(context, backup.size)
     SegmentedListItem(
         shapes = ListItemDefaults.segmentedShapes(index, count),
@@ -276,4 +271,23 @@ private fun BackupRow(backup: BackupItem, index: Int, count: Int, actions: Setti
     ) {
         Text(label, Modifier.testTag(TAG_BACKUP_NAME))
     }
+}
+
+/** What kind of backup [name] is ("Automatic backup", "Manual backup"), or the name itself if the app didn't make it. */
+private fun backupLabel(context: Context, name: String): String = when {
+    name.startsWith(AUTOMATIC_BACKUP_PREFIX) -> context.getString(R.string.backup_automatic)
+    name.startsWith(MANUAL_BACKUP_PREFIX) -> context.getString(R.string.backup_manual)
+    else -> name
+}
+
+/** When a backup was made ([modifiedMillis]), as the phone shows dates and times; null if Drive didn't say. */
+private fun backupDate(context: Context, modifiedMillis: Long?, withSeconds: Boolean): String? = modifiedMillis?.let { millis ->
+    DateTimeFormatterUtil.dateTime(context, Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()), withSeconds = withSeconds)
+}
+
+/** The backup as a question names it: "Automatic backup from Nov 14, 2026, 1:15 PM", or its kind alone without a date. */
+internal fun backupInQuestion(context: Context, name: String, modifiedMillis: Long?): String {
+    val label = backupLabel(context, name)
+    val date = backupDate(context, modifiedMillis, withSeconds = false) ?: return label
+    return context.getString(R.string.backup_in_question, label, date)
 }

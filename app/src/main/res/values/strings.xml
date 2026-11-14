@@ -12,7 +12,7 @@
     <string name="relink_more_allow">Allow access</string>
     <string name="relink_more_not_now">Not now</string>
     <string name="delete_backup_title">Delete backup?</string>
-    <string name="delete_backup_message">The backup \'%1$s\' will be permanently deleted from Google Drive. This cannot be undone.</string>
+    <string name="delete_backup_message">%1$s is deleted from Google Drive for good.</string>
     <string name="delete_backup_confirm">Delete</string>
     <string name="restore_error_backup_unreadable">This backup could not be read, so nothing was changed. Try another backup.</string>
     <string name="place_search_unavailable">Place search isn\'t available in this build. Tap the map to pick a location.</string>
@@ -209,8 +209,8 @@
 
     <!-- Memory screen. -->
     <string name="edit_memory">Edit Memory</string>
-    <string name="delete_memory">Delete Memory</string>
-    <string name="delete_memory_message">Are you sure you want to delete this memory?</string>
+    <string name="delete_memory">Delete this memory?</string>
+    <string name="delete_memory_message">The memory and its fragments are removed, with its links to photos and videos. The photos and videos stay on your phone.</string>
     <string name="delete">Delete</string>
     <string name="show_on_timeline">Show on timeline</string>
     <string name="show_on_map">Show on map</string>
@@ -253,10 +253,10 @@
         <item quantity="other">%d items selected</item>
     </plurals>
     <string name="clear">Clear</string>
-    <string name="clear_fields_title">Clear Fields</string>
-    <string name="clear_fields_message">Are you sure you want to clear all fields? This action cannot be undone.</string>
-    <string name="discard_changes_title">Discard Changes</string>
-    <string name="discard_changes_message">Are you sure you want to discard your changes?</string>
+    <string name="clear_fields_title">Clear the form?</string>
+    <string name="clear_fields_message">Everything you entered for this memory is removed.</string>
+    <string name="discard_changes_title">Discard your changes?</string>
+    <string name="discard_changes_message">The memory stays as it was before you started editing.</string>
     <!-- What a save still needs. -->
     <string name="save_needs_title">Give the memory a title</string>
     <string name="save_needs_location">Choose where it happened</string>
@@ -274,7 +274,8 @@
     <string name="color_presets">Color presets</string>
     <string name="add_preset">Add current as new preset</string>
     <string name="delete_preset">Delete preset</string>
-    <string name="delete_preset_message">Are you sure you want to delete this color preset?</string>
+    <string name="delete_preset_title">Delete this preset?</string>
+    <string name="delete_preset_message">The color is removed from your presets. Memories that use it keep their color.</string>
     <string name="preset_saved">Preset saved</string>
     <string name="preset_deleted">Preset deleted</string>
     <string name="save">Save</string>
@@ -301,8 +302,10 @@
     <!-- A backup in the list: when it was made, and its size. -->
     <string name="backup_details">%1$s • %2$s</string>
     <string name="restore">Restore</string>
-    <string name="restore_backup_title">Restore Backup</string>
-    <string name="restore_backup_message">Are you sure you want to restore from the backup \'%1$s\'?\n\nThis action will overwrite all your current data and it cannot be undone!</string>
+    <string name="restore_backup_title">Restore this backup?</string>
+    <string name="restore_backup_message">%1$s replaces the memories on this phone. Anything added or changed since it was made is lost.</string>
+    <!-- A backup in a question: its kind (\"Automatic backup\") and when it was made. -->
+    <string name="backup_in_question">%1$s from %2$s</string>
     <string name="media_maintenance_title">Media library</string>
     <string name="media_maintenance_description">Re-scan local gallery storage to locate and re-link missing photo or video files.</string>
     <string name="relink_media">Re-link photos and videos</string>

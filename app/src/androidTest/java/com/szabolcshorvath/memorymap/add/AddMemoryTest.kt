@@ -85,7 +85,7 @@ class AddMemoryTest {
 
         AddScreen.typeTitle(PICNIC)
         AddScreen.clear()
-        Dialog.assertShown("Clear Fields")
+        Dialog.assertShown("Clear the form?")
         Dialog.tap("Cancel")
         AddScreen.assertTitle(PICNIC)
         AddScreen.assertSelectedCount(1)
