@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -156,7 +157,7 @@ fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: A
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .semantics { testTagsAsResourceId = true },
         topBar = { FormTopBar(state, compact, scrollBehavior, actions::clear) },
-        bottomBar = { SaveBar(state, actions::save) },
+        bottomBar = { SaveBar(state, large = !compact, actions::save) },
         snackbarHost = { SnackbarHost(snackbars) },
         contentWindowInsets = WindowInsets(0),
     ) { padding ->
@@ -326,33 +327,42 @@ private fun LazyListScope.mediaSection(state: AddFormUiState, actions: AddMemory
 
 /** Save (or Save changes), pinned under the form; while saving, a wavy progress indicator takes its place. */
 @Composable
-private fun SaveBar(state: AddFormUiState, onSave: () -> Unit) {
+private fun SaveBar(state: AddFormUiState, large: Boolean, onSave: () -> Unit) {
+    // The screen's main action: Expressive's medium button, which squares off a little while pressed. A short window
+    // keeps the small one, for the form's room.
+    val height = if (large) ButtonDefaults.MediumContainerHeight else ButtonDefaults.MinHeight
     Surface(color = MaterialTheme.colorScheme.surface) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = SAVE_BAR_HEIGHT)
-                .padding(horizontal = PAGE_MARGIN, vertical = 8.dp),
+                .heightIn(min = height + SAVE_BAR_PADDING * 2)
+                .padding(horizontal = PAGE_MARGIN, vertical = SAVE_BAR_PADDING),
             contentAlignment = Alignment.Center,
         ) {
             if (state.isSaving) {
-                CircularWavyProgressIndicator(Modifier.size(40.dp))
+                CircularWavyProgressIndicator(Modifier.size(height))
             } else {
                 Button(
                     onClick = onSave,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = height)
                         .testTag(TAG_SAVE),
+                    shapes = ButtonDefaults.shapesFor(height),
+                    contentPadding = ButtonDefaults.contentPaddingFor(height),
                 ) {
-                    Text(stringResource(if (state.editing) R.string.update_memory else R.string.save_memory))
+                    Text(
+                        stringResource(if (state.editing) R.string.update_memory else R.string.save_memory),
+                        style = ButtonDefaults.textStyleFor(height),
+                    )
                 }
             }
         }
     }
 }
 
-private val SAVE_BAR_HEIGHT = 64.dp
 internal const val MEDIA_COLUMNS = 3
+private val SAVE_BAR_PADDING = 8.dp
 internal val MEDIA_GAP = 4.dp
 
 /** The page's title ("New memory" or "Edit memory") with Clear (Discard while editing): a small bar on a short window. */
