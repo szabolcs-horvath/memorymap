@@ -29,7 +29,7 @@ enum class DriveProblem(@StringRes val reason: Int) {
     val isRetryable: Boolean get() = this == NO_CONNECTION || this == DRIVE_UNAVAILABLE
 
     companion object {
-        private const val HTTP_UNAUTHORIZED = 401
+        internal const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val HTTP_SERVER_ERROR = 500
 

@@ -23,7 +23,7 @@ class AppContainer(context: Context) {
 
     val preferences: AppPreferences by lazy { AppPreferences(app) }
 
-    val backupManager: BackupManager by lazy { BackupManager(app) }
+    val backupManager: BackupManager by lazy { BackupManager(app, database, preferences) }
 }
 
 /** The process's [AppContainer]. */
