@@ -1,5 +1,6 @@
-package com.szabolcshorvath.memorymap.data
+package com.szabolcshorvath.memorymap.ui.map
 
+import com.szabolcshorvath.memorymap.data.Markerable
 import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.ceil
@@ -34,7 +35,7 @@ object MarkerClustering {
     private val longitudeCells = ceil(FULL_TURN_DEGREES / CELL_DEGREES).toInt()
 
     /** The pins for [items], each with its items in list order. */
-    fun cluster(items: List<Markerable>): List<Markerable.MarkerableCluster> {
+    fun cluster(items: List<Markerable>): List<MarkerableCluster> {
         val pins = mutableListOf<Pin>()
         val grid = HashMap<Long, MutableList<Pin>>()
         for (item in items) {
@@ -47,7 +48,7 @@ object MarkerClustering {
                 grid.getOrPut(cellKey(row(item.latitude), column(item.longitude))) { mutableListOf() } += newPin
             }
         }
-        return pins.map { Markerable.MarkerableCluster(it.members) }
+        return pins.map { MarkerableCluster(it.members) }
     }
 
     /** The distance between two points in metres (haversine; plenty accurate at these distances). */

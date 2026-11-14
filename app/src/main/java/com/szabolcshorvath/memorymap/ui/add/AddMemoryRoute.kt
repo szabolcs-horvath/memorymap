@@ -19,9 +19,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.ui.add.AddMemoryViewModel.SaveResult
 import com.szabolcshorvath.memorymap.ui.color.Hsv
+import com.szabolcshorvath.memorymap.ui.common.CommonViewModel
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
 import java.time.LocalDate
 import java.time.LocalTime

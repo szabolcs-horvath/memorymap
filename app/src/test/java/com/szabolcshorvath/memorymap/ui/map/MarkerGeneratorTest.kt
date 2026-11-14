@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.util
+package com.szabolcshorvath.memorymap.ui.map
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals

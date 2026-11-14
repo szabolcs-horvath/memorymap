@@ -2,8 +2,6 @@ package com.szabolcshorvath.memorymap.data
 
 import android.content.Context
 import androidx.annotation.ColorInt
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.clustering.ClusterItem
 import com.szabolcshorvath.memorymap.util.ColorUtil
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.ZonedDateTime
@@ -43,20 +41,4 @@ interface Markerable {
      * renamed memory's fragment counts as changed.
      */
     data class FragmentMarker(val fragment: MemoryFragment, override val title: String) : Markerable by fragment
-
-    data class MarkerableCluster(val items: List<Markerable>) : ClusterItem {
-        /** The middle of the items. Longitudes are taken relative to the first item, so a pin on the 180th meridian stays there. */
-        override val position: LatLng = run {
-            val first = items.first()
-            val longitudeOffset = items.sumOf { MarkerClustering.wrapLongitude(it.longitude - first.longitude) } / items.size
-            LatLng(items.sumOf { it.latitude } / items.size, first.longitude + longitudeOffset) // LatLng wraps the longitude
-        }
-
-        override val title: String?
-            get() = if (items.size == 1) items.first().title else null // The map names a pin of several memories itself, in the phone's language.
-
-        override val snippet: String? = null
-
-        override val zIndex: Float? = null
-    }
 }

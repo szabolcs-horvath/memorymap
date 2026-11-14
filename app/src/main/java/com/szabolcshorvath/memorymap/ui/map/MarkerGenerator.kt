@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.util
+package com.szabolcshorvath.memorymap.ui.map
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -14,7 +14,8 @@ import androidx.core.graphics.withClip
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.PinConfig
-import com.szabolcshorvath.memorymap.util.MarkerGenerator.drawnIconCache
+import com.szabolcshorvath.memorymap.ui.map.MarkerGenerator.drawnIconCache
+import com.szabolcshorvath.memorymap.util.ColorUtil
 
 object MarkerGenerator {
     private const val TARGET_CONTRAST_FOR_MARKER_COLORS = 2.0

@@ -12,7 +12,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.gms.maps.model.LatLng
-import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.ui.common.MyLocationQuestions
 import com.szabolcshorvath.memorymap.ui.common.rememberMyLocationRequester
 import com.szabolcshorvath.memorymap.util.DateFilterOption
@@ -41,7 +40,7 @@ fun MapRoute(viewModel: MapViewModel, onOpenMemory: (Int) -> Unit) {
                 myLocation.start()
             }
 
-            override fun tapPin(pin: Markerable.MarkerableCluster) = viewModel.tapPin(pin)
+            override fun tapPin(pin: MarkerableCluster) = viewModel.tapPin(pin)
             override fun tapCluster(position: LatLng) = viewModel.tapCluster(position)
             override fun tapMap() = viewModel.tapMap()
             override fun openMemory(id: Int) = openMemory(id)

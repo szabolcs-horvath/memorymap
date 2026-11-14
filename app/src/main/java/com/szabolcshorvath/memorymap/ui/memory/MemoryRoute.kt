@@ -11,9 +11,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryFragment
+import com.szabolcshorvath.memorymap.ui.common.CommonViewModel
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
 import com.szabolcshorvath.memorymap.ui.common.rememberRelinkRequester
 import kotlinx.coroutines.launch

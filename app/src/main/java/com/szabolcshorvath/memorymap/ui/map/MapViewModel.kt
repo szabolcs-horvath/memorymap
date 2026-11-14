@@ -14,7 +14,6 @@ import com.google.firebase.perf.metrics.AddTrace
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.AppPreferences
-import com.szabolcshorvath.memorymap.data.MarkerClustering
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.data.MemoryRepository
 import com.szabolcshorvath.memorymap.util.DateFilterOption
@@ -66,7 +65,7 @@ sealed interface MapCameraRequest {
 }
 
 data class MapUiState(
-    val pins: List<Markerable.MarkerableCluster> = emptyList(),
+    val pins: List<MarkerableCluster> = emptyList(),
     /** Pins close together are drawn as one circle (Settings). */
     val clustering: Boolean = true,
     val filterStart: LocalDate? = null,
@@ -126,7 +125,7 @@ class MapViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STATE_FLOW_TIMEOUT_MILLIS), PreferencesKeys.MARKER_CLUSTERING_ENABLED_DEFAULT_VALUE)
 
     /** The pins after the date filter, with fragments if the preferences show them. */
-    val pins: StateFlow<List<Markerable.MarkerableCluster>> = combine(
+    val pins: StateFlow<List<MarkerableCluster>> = combine(
         memories.allGroups,
         memories.allFragments,
         activeFilter,
@@ -177,7 +176,7 @@ class MapViewModel(
     }
 
     @AddTrace(name = "map_view_model_cluster_markerables", enabled = true)
-    private fun clusterMarkerables(items: List<Markerable>): List<Markerable.MarkerableCluster> = MarkerClustering.cluster(items)
+    private fun clusterMarkerables(items: List<Markerable>): List<MarkerableCluster> = MarkerClustering.cluster(items)
 
     fun toggleStats() = screen.update { it.copy(isStatsVisible = !it.isStatsVisible) }
 
@@ -245,7 +244,7 @@ class MapViewModel(
         filter.value = DateFilter(start, end)
     }
 
-    fun tapPin(pin: Markerable.MarkerableCluster) {
+    fun tapPin(pin: MarkerableCluster) {
         select(pin.position, pin.items)
         moveCamera(MapCameraRequest.Show(pin.position, MAX_FIT_ZOOM))
     }
@@ -354,7 +353,7 @@ class MapViewModel(
     }
 
     /** Keeps the panel and the camera in step with new [pins] (a filter or data change). */
-    fun onPinsChanged(pins: List<Markerable.MarkerableCluster>) = trace("map_view_model_on_pins_changed") {
+    fun onPinsChanged(pins: List<MarkerableCluster>) = trace("map_view_model_on_pins_changed") {
         val fit = shouldFitNextPins
         shouldFitNextPins = false
         val pending = pendingSelection
@@ -369,26 +368,26 @@ class MapViewModel(
     }
 
     /** The first time the map has pins and won't go to where the phone is, it shows them all. */
-    private fun fitAllOnFirstLook(pins: List<Markerable.MarkerableCluster>) {
+    private fun fitAllOnFirstLook(pins: List<MarkerableCluster>) {
         val goesToPhone = hasLocationAccess && !isLocationUnknown
         if (!isInitialZoomDone && !goesToPhone) fitAll(pins)
     }
 
-    private fun fitAll(pins: List<Markerable.MarkerableCluster>) {
+    private fun fitAll(pins: List<MarkerableCluster>) {
         if (pins.isEmpty()) return
         isInitialZoomDone = true
         moveCamera(MapCameraRequest.Fit(pins.map { it.position }))
     }
 
     /** Opens the panel again on the pin it was open for, now that the pins changed, or closes it if that pin is gone. */
-    private fun reopenSelection(pins: List<Markerable.MarkerableCluster>) {
+    private fun reopenSelection(pins: List<MarkerableCluster>) {
         val selectedId = selectedMemoryId ?: return
         val pin = closestPinWith(selectedId, selectedMarkerPosition, pins)
         if (pin != null) select(pin.position, pin.items, selectedId) else clearSelection()
     }
 
     /** Selects the memory a "show on map" request asked for, on its pin closest to where it was asked for. */
-    private fun selectPendingMemory(pins: List<Markerable.MarkerableCluster>) {
+    private fun selectPendingMemory(pins: List<MarkerableCluster>) {
         val request = pendingSelection ?: return
         pendingSelection = null
         val near = LatLng(request.lat, request.lng)
@@ -398,7 +397,7 @@ class MapViewModel(
     }
 
     /** The pin with memory [id] (a memory and its fragments can have several) closest to [near]. */
-    private fun closestPinWith(id: Int, near: LatLng?, pins: List<Markerable.MarkerableCluster>): Markerable.MarkerableCluster? {
+    private fun closestPinWith(id: Int, near: LatLng?, pins: List<MarkerableCluster>): MarkerableCluster? {
         val candidates = pins.filter { pin -> pin.items.any { it.groupId == id } }
         return if (near == null) candidates.firstOrNull() else candidates.minByOrNull { distanceSquared(it.position, near) }
     }
@@ -421,7 +420,7 @@ class MapViewModel(
         }
 
         /** How many of [pins]' memories have each colour, most common first (ties in colour order, so slices keep their place). */
-        internal fun colorCounts(pins: List<Markerable.MarkerableCluster>): List<ColorCount> =
+        internal fun colorCounts(pins: List<MarkerableCluster>): List<ColorCount> =
             pins.flatMap { it.items }
                 .groupingBy { it.markerColor() }
                 .eachCount()
