@@ -84,13 +84,13 @@ class MemoryRepository(private val context: Context, private val db: MemoryMapDa
     }
 
     /** Stores [items] in this order (numbered from 1). */
-    suspend fun saveMediaOrder(items: List<MediaItem>) = withContext(Dispatchers.IO) {
+    suspend fun saveMediaOrder(items: List<MediaItem>) {
         dao.updateMediaItems(items.mapIndexed { index, item -> item.copy(order = index + 1) })
         AutomaticBackups.schedule(context)
     }
 
     /** Stores [fragments] in this order (numbered from 1). */
-    suspend fun saveFragmentsOrder(fragments: List<MemoryFragment>) = withContext(Dispatchers.IO) {
+    suspend fun saveFragmentsOrder(fragments: List<MemoryFragment>) {
         dao.updateFragments(fragments.mapIndexed { index, fragment -> fragment.copy(order = index + 1) })
         AutomaticBackups.schedule(context)
     }
@@ -99,14 +99,14 @@ class MemoryRepository(private val context: Context, private val db: MemoryMapDa
      * Deletes memory [id] with its media and fragments, and returns what was deleted (null if it was already gone),
      * for [undoDelete] or [finishDelete]. Keeps the media's grants: an undo needs them.
      */
-    suspend fun delete(id: Int): MemoryGroupWithMedia? = withContext(Dispatchers.IO) {
-        val deleted = dao.getGroupWithMedia(id) ?: return@withContext null
+    suspend fun delete(id: Int): MemoryGroupWithMedia? {
+        val deleted = dao.getGroupWithMedia(id) ?: return null
         dao.deleteGroup(deleted.group)
-        deleted
+        return deleted
     }
 
     /** Puts back a memory [delete] removed, with its media and fragments. */
-    suspend fun undoDelete(deleted: MemoryGroupWithMedia) = withContext(Dispatchers.IO) {
+    suspend fun undoDelete(deleted: MemoryGroupWithMedia) {
         dao.restoreDeletedGroup(deleted)
         AutomaticBackups.schedule(context)
     }
