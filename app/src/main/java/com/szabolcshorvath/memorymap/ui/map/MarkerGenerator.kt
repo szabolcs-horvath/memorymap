@@ -144,7 +144,7 @@ object MarkerGenerator {
     private fun drawContent(essentials: Essentials, borderWidth: Float, outlineWidth: Float) {
         drawSegments(essentials)
         drawBorder(essentials, borderWidth)
-        val textY = drawText(essentials)
+        val textY = textBaseline(essentials)
         drawTextOutline(essentials, outlineWidth, textY)
         drawTextFill(essentials, textY)
     }
@@ -178,14 +178,14 @@ object MarkerGenerator {
         essentials.canvas.drawPath(essentials.pinPath, essentials.paint)
     }
 
-    private fun drawText(essentials: Essentials): Float {
+    /** Sets up the paint for the count and returns where its baseline goes, so the text is centred on the icon. */
+    private fun textBaseline(essentials: Essentials): Float {
         essentials.paint.textSize = essentials.textSize
         essentials.paint.textAlign = Paint.Align.CENTER
 
         val textBounds = Rect()
         essentials.paint.getTextBounds(essentials.text, 0, essentials.text.length, textBounds)
-        val textY = essentials.centerY - textBounds.exactCenterY()
-        return textY
+        return essentials.centerY - textBounds.exactCenterY()
     }
 
     private fun drawTextOutline(essentials: Essentials, outlineWidth: Float, textY: Float) {
@@ -193,21 +193,16 @@ object MarkerGenerator {
         essentials.paint.strokeWidth = outlineWidth * 2.0f
         essentials.paint.color = Color.BLACK
         essentials.paint.strokeJoin = Paint.Join.ROUND
-        essentials.text.let {
-            essentials.canvas.drawText(it, essentials.centerX, textY, essentials.paint)
-        }
+        essentials.canvas.drawText(essentials.text, essentials.centerX, textY, essentials.paint)
     }
 
     private fun drawTextFill(essentials: Essentials, textY: Float) {
         essentials.paint.style = Paint.Style.FILL
         essentials.paint.color = Color.WHITE
-        essentials.text.let {
-            essentials.canvas.drawText(it, essentials.centerX, textY, essentials.paint)
-        }
+        essentials.canvas.drawText(essentials.text, essentials.centerX, textY, essentials.paint)
     }
 
     private data class Essentials(
-        val width: Int,
         val height: Int,
         val centerX: Float,
         val centerY: Float,
@@ -233,7 +228,6 @@ object MarkerGenerator {
                 }
 
                 return Essentials(
-                    width = size,
                     height = size,
                     centerX = center,
                     centerY = center,
@@ -262,7 +256,6 @@ object MarkerGenerator {
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
                 return Essentials(
-                    width = width,
                     height = height,
                     centerX = centerX,
                     centerY = centerY,
