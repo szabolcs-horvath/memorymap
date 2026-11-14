@@ -34,8 +34,12 @@ class MapTest {
     @get:Rule
     val app = MemoryMapAppRule()
 
+    /**
+     * The map opens on all the memories, below the date filter, and shows them all again once the phone is turned (it
+     * would otherwise keep the upright zoom, too close for the short sideways map). Each marker lists its memory.
+     */
     @Test
-    fun everyMemoryHasAMarkerThatListsItsMemoryWhichOpensFromThere() {
+    fun everyMemoryHasAMarkerInViewUprightAndSidewaysThatListsItsMemoryWhichOpensFromThere() {
         TestData.markerClustering(false)
         TestData.memory(MADRID_TRIP, place = Place.MADRID)
         TestData.memory(ATHENS_TRIP, place = Place.ATHENS)
@@ -43,9 +47,12 @@ class MapTest {
 
         openMap()
 
-        MapScreen.assertMarkerShown(MADRID_TRIP)
-        MapScreen.assertMarkerShown(ATHENS_TRIP)
-        MapScreen.assertMarkerShown(PARIS_TRIP)
+        val all = listOf(MADRID_TRIP, ATHENS_TRIP, PARIS_TRIP)
+        MapScreen.assertMarkersInView(all)
+        Ui.rotateToLandscape()
+        MapScreen.assertMarkersInView(all)
+        Ui.rotateToPortrait()
+        MapScreen.assertMarkersInView(all)
 
         // A tap on a marker zooms in on it, so the later taps are on the same marker.
         MapScreen.tapMarker(ATHENS_TRIP)

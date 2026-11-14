@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.ui.map
 
 import android.app.Application
 import androidx.annotation.ColorInt
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -219,7 +220,30 @@ class MapViewModel(application: Application, private val memories: MemoryReposit
 
     fun setShowsMyLocation(shows: Boolean) = screen.update { it.copy(showsMyLocation = shows) }
 
-    fun moveCamera(request: MapCameraRequest) = screen.update { it.copy(cameraRequest = request) }
+    fun moveCamera(request: MapCameraRequest) {
+        showsAllPins = request is MapCameraRequest.Fit
+        screen.update { it.copy(cameraRequest = request) }
+    }
+
+    /** Whether the map still shows the view that fits all the pins: nothing moved it since. */
+    private var showsAllPins = false
+
+    fun onMapMovedByHand() {
+        showsAllPins = false
+    }
+
+    /** The map's size when last laid out. Kept here, since a turned phone builds the screen again. */
+    private var mapSize: IntSize? = null
+
+    /**
+     * A turned phone keeps the camera's centre and zoom, which in the new shape can leave pins under the bars or off
+     * the map: a view that showed them all fits them again.
+     */
+    fun onMapSized(size: IntSize) {
+        val resized = mapSize != null && mapSize != size
+        mapSize = size
+        if (resized && showsAllPins) fitAll(pins)
+    }
 
     /** The screen moved the camera for [request]; a newer request that replaced it meanwhile stays. */
     fun onCameraMoved(request: MapCameraRequest) = screen.update { if (it.cameraRequest == request) it.copy(cameraRequest = null) else it }

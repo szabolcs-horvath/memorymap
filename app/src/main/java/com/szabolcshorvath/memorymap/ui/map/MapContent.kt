@@ -50,6 +50,7 @@ import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapEffect
@@ -65,6 +66,7 @@ import com.szabolcshorvath.memorymap.ui.add.RangePicker
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import com.szabolcshorvath.memorymap.ui.common.trackSafeArea
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -151,7 +153,7 @@ private fun BottomControls(
     onPanelSize: (PanelSize.() -> PanelSize) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ToolbarAndPanel(toolbar = { MapToolbar(camera, actions::goToMyLocation) }, modifier) { coversLogo ->
+    ToolbarAndPanel(toolbar = { MapToolbar(camera, actions::goToMyLocation, onZoom = actions::onMapMovedByHand) }, modifier) { coversLogo ->
         LaunchedEffect(coversLogo) { onPanelSize { copy(coversLogo = coversLogo) } }
         // The last selection stays drawn while the panel slides away.
         var shown by remember { mutableStateOf(state.selection) }
@@ -188,8 +190,16 @@ private fun MemoryMap(
     val context = LocalContext.current
     val mapId = stringResource(R.string.map_id)
     val clustering by rememberUpdatedState(state.clustering)
+    // A drag or a pinch: the map no longer shows the view the app chose.
+    LaunchedEffect(camera) {
+        snapshotFlow { camera.isMoving && camera.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE }
+            .filter { it }
+            .collect { actions.onMapMovedByHand() }
+    }
     GoogleMap(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .onSizeChanged(actions::onMapSized),
         cameraPositionState = camera,
         // The pins are advanced markers, which need the map's id.
         googleMapOptionsFactory = { GoogleMapOptions().mapId(mapId) },
