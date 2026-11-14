@@ -55,6 +55,7 @@ import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.END_DATE
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.END_TIME
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.START_DATE
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.START_TIME
+import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.firstDayOfWeek

@@ -13,6 +13,7 @@ import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
 import com.szabolcshorvath.memorymap.data.MemoryRepository
+import com.szabolcshorvath.memorymap.ui.common.STATE_FLOW_TIMEOUT_MILLIS
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import kotlinx.coroutines.Dispatchers
@@ -120,8 +121,6 @@ class MemoryViewModel(
     suspend fun delete(): MemoryGroupWithMedia? = memories.delete(memoryId)
 
     companion object {
-        private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
-
         /** Creates the page's ViewModel for memory [memoryId]. */
         fun factory(memoryId: Int): ViewModelProvider.Factory = viewModelFactory {
             initializer {

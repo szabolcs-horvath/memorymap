@@ -62,6 +62,7 @@ import com.google.maps.android.compose.clustering.rememberClusterManager
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.add.RangePicker
+import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import com.szabolcshorvath.memorymap.ui.common.trackSafeArea
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -113,7 +114,7 @@ fun MapContent(state: MapUiState, actions: MapActions) {
                 .align(Alignment.TopCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 .widthIn(max = MAX_CONTROLS_WIDTH)
-                .padding(horizontal = MARGIN, vertical = TOP_MARGIN),
+                .padding(horizontal = PAGE_MARGIN, vertical = TOP_MARGIN),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(TOP_MARGIN),
         ) {
@@ -169,7 +170,7 @@ private fun BottomControls(
             Box(
                 Modifier
                     .onSizeChanged { size -> onPanelSize { copy(full = size.height) } }
-                    .padding(top = MARGIN)
+                    .padding(top = PAGE_MARGIN)
             ) {
                 shown?.let { MemoriesPanel(it, actions::openMemory) }
             }
@@ -333,7 +334,6 @@ private val CENTRED_TOLERANCE = 24.dp
 /** How long a camera move waits for a panel that opens with it to have a size. */
 private val PANEL_WAIT = 500.milliseconds
 private val FIT_PADDING = 40.dp
-internal val MARGIN = 16.dp
 private val TOP_MARGIN = 8.dp
 internal val MAX_CONTROLS_WIDTH = 500.dp
 

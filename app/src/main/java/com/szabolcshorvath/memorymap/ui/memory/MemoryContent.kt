@@ -76,6 +76,7 @@ import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_WIDTH
 import com.szabolcshorvath.memorymap.ui.common.MEDIA_TILE_MIN
+import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.Coordinates
@@ -96,8 +97,6 @@ private const val TAG_FRAGMENT_COLOR = "colorIndicator"
 private const val KEY_MEDIA = "media_"
 private const val KEY_FRAGMENT = "fragment_"
 
-/** Below this height a window is compact (Material's window size classes): the top app bar is a small one. */
-private val PAGE_MARGIN = 16.dp
 private val LINK_PADDING = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
 private val LINK_MIN_FONT = 11.sp
 

@@ -71,6 +71,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.common.MAX_CONTENT_WIDTH
+import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.ui.common.mediaColumns
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
@@ -87,9 +88,6 @@ private const val TAG_LOCATION_ITEM = "bt_selectLocation"
 internal const val TAG_LOCATION = "tv_location"
 private const val TAG_SAVE = "bt_save"
 private const val TAG_CLEAR = "bt_clear"
-
-/** The page's side margin. */
-internal val PAGE_MARGIN = 16.dp
 
 /** The gap between the page's items. */
 private val ITEM_GAP = 8.dp
