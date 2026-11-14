@@ -56,6 +56,9 @@ private const val FRACTION_STEP = 0.05f
 private const val LIGHT_COLOR = 0.5f
 
 internal val COLOR_STRIP_HEIGHT = 12.dp
+
+/** The strip along a card's left edge in its memory's or fragment's marker colour. */
+internal val COLOR_STRIP_WIDTH = 8.dp
 internal val SWATCH_SIZE = 44.dp
 internal val SWATCH_GAP = 4.dp
 

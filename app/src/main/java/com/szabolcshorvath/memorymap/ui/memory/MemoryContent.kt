@@ -74,6 +74,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_WIDTH
 import com.szabolcshorvath.memorymap.ui.common.MEDIA_TILE_MIN
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
@@ -102,7 +103,6 @@ private val LINK_MIN_FONT = 11.sp
 
 /** The gap between a segmented list's items and between the photo tiles: Material 3 Expressive's, as on the Timeline. */
 internal val GAP = 4.dp
-private val COLOR_STRIP_WIDTH = 8.dp
 
 /** What the user can do on a memory's page. What needs an activity, or asks first, is the route's to do. */
 interface MemoryActions {
