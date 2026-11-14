@@ -96,7 +96,7 @@ class BackupManager(private val context: Context, private val db: MemoryMapDatab
         }
     }
 
-    @AddTrace(name = "backup_manager_prepare_database_for_backup", enabled = true)
+    @AddTrace(name = "backup_manager_prepare_database_for_backup")
     private fun prepareDatabaseForBackup() {
         db.openHelper.writableDatabase
             .query("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -134,7 +134,7 @@ class BackupManager(private val context: Context, private val db: MemoryMapDatab
         }
     }
 
-    @AddTrace(name = "backup_manager_create_metadata_file", enabled = true)
+    @AddTrace(name = "backup_manager_create_metadata_file")
     private fun createMetadataFile(dbFile: File, isAutomatic: Boolean, tempDir: File): File {
         val metadata = JSONObject()
         metadata.put("timestamp", System.currentTimeMillis())
@@ -149,7 +149,7 @@ class BackupManager(private val context: Context, private val db: MemoryMapDatab
         return metadataFile
     }
 
-    @AddTrace(name = "backup_manager_zip_backup", enabled = true)
+    @AddTrace(name = "backup_manager_zip_backup")
     private fun zipBackup(snapshotDir: File, metadataFile: File, zipFile: File): File {
         // Closing the verified copy normally merges the WAL into the main file; include it if it is still there.
         val entries = listOf(BackupZip.DATABASE, BackupZip.DATABASE_WAL)
@@ -159,7 +159,7 @@ class BackupManager(private val context: Context, private val db: MemoryMapDatab
         return zipFile
     }
 
-    @AddTrace(name = "backup_manager_upload_backup", enabled = true)
+    @AddTrace(name = "backup_manager_upload_backup")
     private fun uploadBackup(email: String, isAutomatic: Boolean, zipFile: File) {
         val prefix = if (isAutomatic) AUTOMATIC_BACKUP_PREFIX else MANUAL_BACKUP_PREFIX
         val name = "$prefix${LocalDateTime.now().format(BACKUP_FILE_NAME_DATE_FORMATTER)}.zip"
@@ -199,20 +199,20 @@ class BackupManager(private val context: Context, private val db: MemoryMapDatab
             }
         }
 
-    @AddTrace(name = "backup_manager_download_backup", enabled = true)
+    @AddTrace(name = "backup_manager_download_backup")
     private fun downloadBackup(email: String, fileId: String, zipFile: File): File {
         AppServices.backupStorage.download(context, email, fileId, zipFile)
         return zipFile
     }
 
-    @AddTrace(name = "backup_manager_unzip_backup", enabled = true)
+    @AddTrace(name = "backup_manager_unzip_backup")
     private fun unzipBackup(zipFile: File, extractDir: File) {
         BackupZip.extract(zipFile, extractDir)
         // A stale shared-memory file is never needed (SQLite rebuilds it from the WAL), so don't trust it.
         File(extractDir, BackupZip.DATABASE_SHM).delete()
     }
 
-    @AddTrace(name = "backup_manager_verify_backup_metadata", enabled = true)
+    @AddTrace(name = "backup_manager_verify_backup_metadata")
     private fun verifyBackupMetadata(extractDir: File) {
         requireBackupFiles(extractDir)
         val metadataFile = File(extractDir, BackupZip.METADATA)

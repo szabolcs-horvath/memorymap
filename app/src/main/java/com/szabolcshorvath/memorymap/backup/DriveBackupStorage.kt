@@ -93,7 +93,7 @@ object DriveBackupStorage : BackupStorage {
         throw DriveAccessNeededException(consent = null, cause = rejection)
     }
 
-    @AddTrace(name = "drive_backup_storage_get_or_create_backup_folder", enabled = true)
+    @AddTrace(name = "drive_backup_storage_get_or_create_backup_folder")
     private fun getOrCreateBackupFolder(driveService: Drive): String {
         val query = "mimeType = 'application/vnd.google-apps.folder' and name = '$FOLDER_NAME' and trashed = false"
         val result = driveService.files().list().setQ(query).setSpaces("drive").execute()

@@ -176,7 +176,7 @@ class MapViewModel(
         }
     }
 
-    @AddTrace(name = "map_view_model_cluster_markerables", enabled = true)
+    @AddTrace(name = "map_view_model_cluster_markerables")
     private fun clusterMarkerables(items: List<Markerable>): List<MarkerableCluster> = MarkerClustering.cluster(items)
 
     fun toggleStats() = screen.update { it.copy(isStatsVisible = !it.isStatsVisible) }

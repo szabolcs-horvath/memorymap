@@ -41,13 +41,6 @@ object ColorUtil {
     }
 
     @ColorInt
-    fun hsvToColor(vararg hsv: Float): Int {
-        @Suppress("MagicNumber")
-        check(hsv.size == 3) { "You must provide exactly 3 values for HSV" }
-        return hsvToColor(hsv[0], hsv[1], hsv[2])
-    }
-
-    @ColorInt
     fun hsvToColor(hue: Float, saturation: Float, brightness: Float): Int {
         // The values come from the database and from backups, so out-of-range ones are clamped instead of failing.
         val h = if (hue.isFinite()) normalizeHue(hue) else DEFAULT_MARKER_HUE
