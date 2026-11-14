@@ -116,6 +116,7 @@ Local setup needs files that are **not** in git:
 
 - Robolectric tests use `@ExtendWith(RobolectricExtension::class)` (JUnit 5).
 - DAO tests run on Room under Robolectric (`MemoryGroupDaoTest`, `RestoreCompatibilityTest`) and get the DAOs from the database, as the app does (`db.memoryGroupDao()`).
+- Unit tests get an empty database from `inMemoryDatabase()` and wait for background work with `awaitOnMain`, which also runs what was posted to the main thread (both in `app/src/test/.../TestSupport.kt`), instead of a wait loop of their own.
 - `RestoreCompatibilityTest` builds a database for every schema version a backup can have (6 to `DB_VERSION`) from `app/schemas` (`SchemaDatabases`) and runs it through the restore steps. A new `DB_VERSION` is picked up automatically; it needs the exported schema JSON. Keep this test passing: it is what guarantees old backups stay restorable.
 - No dedicated per-migration tests yet (`TEST-1`).
 - A Robolectric test that saves through a ViewModel (`SaveMediaTest`) builds it with a `MemoryRepository` on an in-memory database, sets `Dispatchers.Main` to the test's main looper (Robolectric gives every test a new one, and `Main` would keep the first test's) and starts a test WorkManager (`WorkManagerTestInitHelper`), because a save schedules an automatic backup. Don't start a Firebase app in unit tests: Crashlytics then contacts Google's servers. `PerfUtil.trace` runs its work untraced without one.

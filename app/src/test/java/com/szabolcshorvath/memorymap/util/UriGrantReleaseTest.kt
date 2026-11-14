@@ -2,12 +2,12 @@ package com.szabolcshorvath.memorymap.util
 
 import android.content.Intent
 import androidx.core.net.toUri
-import androidx.room.Room
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.inMemoryDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -27,7 +27,7 @@ class UriGrantReleaseTest {
 
     @BeforeEach
     fun setUp() {
-        db = Room.inMemoryDatabaseBuilder(context, MemoryMapDatabase::class.java).build()
+        db = inMemoryDatabase()
         dao = db.memoryGroupDao()
     }
 

@@ -3,6 +3,7 @@ package com.szabolcshorvath.memorymap.ui.add
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import com.szabolcshorvath.memorymap.appContainer
+import com.szabolcshorvath.memorymap.awaitOnMain
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.data.MemoryFragment
@@ -153,8 +154,7 @@ class AddMemoryViewModelTest {
 
     /** Waits until the form has asked to release exactly [expected]: the release runs in the background. */
     private fun awaitReleased(vararg expected: String) {
-        val deadline = System.currentTimeMillis() + RELEASE_TIMEOUT_MS
-        while (released.size < expected.size && System.currentTimeMillis() < deadline) Thread.sleep(POLL_MS)
+        awaitOnMain("${expected.size} released grants") { released.size >= expected.size }
         assertEquals(expected.sorted(), released.sorted())
     }
 
@@ -202,8 +202,6 @@ class AddMemoryViewModelTest {
     private companion object {
         const val PICKED_1 = "content://media/picker/0/com.android.providers.media.photopicker/media/31"
         const val PICKED_2 = "content://media/picker/0/com.android.providers.media.photopicker/media/32"
-        const val RELEASE_TIMEOUT_MS = 5_000L
-        const val POLL_MS = 20L
         val START: ZonedDateTime = ZonedDateTime.parse("2026-01-04T10:00:00+01:00[Europe/Budapest]")
     }
 }

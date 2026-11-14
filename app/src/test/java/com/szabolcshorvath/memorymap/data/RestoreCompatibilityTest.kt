@@ -2,8 +2,8 @@ package com.szabolcshorvath.memorymap.data
 
 import android.content.Context
 import android.database.sqlite.SQLiteException
-import androidx.room.Room
 import com.szabolcshorvath.memorymap.data.SchemaDatabases.SAMPLE_DATE
+import com.szabolcshorvath.memorymap.inMemoryDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -33,7 +33,7 @@ class RestoreCompatibilityTest {
 
     @BeforeEach
     fun setUp() = runBlocking {
-        live = Room.inMemoryDatabaseBuilder(context, MemoryMapDatabase::class.java).build()
+        live = inMemoryDatabase()
         // The user's current data, which a restore must replace (or, on failure, leave alone).
         live.memoryGroupDao().insertGroup(LIVE_GROUP)
         live.databaseContentsDao().insertPresets(listOf(HSVPreset(id = 70, hue = 10f, saturation = 1f, brightness = 1f)))
