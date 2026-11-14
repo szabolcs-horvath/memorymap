@@ -358,6 +358,12 @@ internal fun DateFilterMenu(
                     text = { Text(stringResource(option.label)) },
                     shapes = MenuDefaults.itemShape(i, options.size),
                     selectedLeadingIcon = { Icon(painterResource(R.drawable.ic_check), contentDescription = null) },
+                    // The palette's tertiary is a loud lilac next to its blues: the chosen option takes the secondary container.
+                    colors = MenuDefaults.selectableItemColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
                 )
             }
         }
