@@ -19,44 +19,55 @@ import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
-import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Every screen keeps what it shows when the phone is turned, and turned back. */
+/**
+ * Every screen keeps what it shows when the phone is turned and turned back, and when Android killed the app in the
+ * background and the user returns to it ([MemoryMapAppRule.simulateProcessDeath]). Each state goes through both
+ * ([keeps]), so a screen's setup is paid for once.
+ */
 @RunWith(AndroidJUnit4::class)
-class RotationTest {
+class SavedStateTest {
     @get:Rule
     val app = MemoryMapAppRule()
 
     @Test
-    fun theMapTheTimelineAndSettingsSignedOut() {
-        TestData.memory(TITLE)
+    fun theMapTheTimelineWithItsSearchAndSettingsSignedOut() {
+        TestData.memory(OTHER_TITLE, daysAgo = 1)
+        TestData.memory(TITLE, daysAgo = 5)
         app.launch()
         MapScreen.assertShown()
-        rotateAndBack {
+        keeps {
             MapScreen.assertShown()
             BottomNav.assertSelected(Tab.MAP)
         }
 
         BottomNav.open(Tab.TIMELINE)
-        rotateAndBack {
+        TimelineScreen.search("Vienna")
+        TimelineScreen.assertMemoryGone(OTHER_TITLE)
+        TimelineScreen.closeSearch()
+        keeps {
             TimelineScreen.assertShown()
-            TimelineScreen.assertMemoryShown(TITLE)
             BottomNav.assertSelected(Tab.TIMELINE)
+            TimelineScreen.assertSearch("Vienna")
+            TimelineScreen.assertMemoryShown(TITLE)
+            TimelineScreen.assertMemoryGone(OTHER_TITLE)
         }
 
         BottomNav.open(Tab.SETTINGS)
         SettingsScreen.assertSignedOut()
-        rotateAndBack {
+        keeps {
             SettingsScreen.assertShown()
+            BottomNav.assertSelected(Tab.SETTINGS)
             SettingsScreen.assertSignedOut()
         }
     }
 
+    /** Only through a rotation: the open panel is the map's own state, which a process death doesn't keep. */
     @Test
-    fun theMapKeepsThePanelOfATappedPin() {
+    fun theMapKeepsThePanelOfATappedPinWhenTurned() {
         TestData.memory(TITLE)
         app.launch()
         MapScreen.tapMarker(TITLE)
@@ -71,30 +82,21 @@ class RotationTest {
     }
 
     @Test
-    fun settingsSignedInWithBackups() {
+    fun settingsSignedInWithBackupsAndTheRestoreQuestion() {
         TestData.signIn()
         FakeBackupStorage.add(FakeAccountService.DEFAULT_EMAIL, MANUAL_BACKUP, modifiedMillis = System.currentTimeMillis())
         app.launch()
         BottomNav.open(Tab.SETTINGS)
         SettingsScreen.assertSignedIn(FakeAccountService.DEFAULT_EMAIL)
         SettingsScreen.assertBackupShown("Manual backup")
-
-        rotateAndBack {
+        keeps {
             SettingsScreen.assertSignedIn(FakeAccountService.DEFAULT_EMAIL)
             SettingsScreen.assertBackupShown("Manual backup")
         }
-    }
 
-    @Test
-    fun restoreConfirmationStaysOpen() {
-        TestData.signIn()
-        FakeBackupStorage.add(FakeAccountService.DEFAULT_EMAIL, MANUAL_BACKUP, modifiedMillis = System.currentTimeMillis())
-        app.launch()
-        BottomNav.open(Tab.SETTINGS)
         SettingsScreen.tapRestoreOnFirstBackup()
         Dialog.assertShown(RESTORE_TITLE)
-
-        rotateAndBack {
+        keeps {
             Dialog.assertShown(RESTORE_TITLE)
         }
 
@@ -103,77 +105,108 @@ class RotationTest {
     }
 
     @Test
-    fun aMemoryStaysOnTheSameMemoryAndTheViewerKeepsThePhoto() {
-        TestData.memory("Newer", daysAgo = 1)
+    fun aMemoryAndTheViewerStayAsTheyWereAndBackStillWorks() {
+        TestData.memory(OTHER_TITLE, daysAgo = 1)
         TestData.photo(TestData.memory(TITLE, daysAgo = 5))
         app.launch()
         Flows.openMemory(TITLE)
-        rotateAndBack {
+        keeps {
             MemoryScreen.assertShowing(TITLE)
         }
 
         MemoryScreen.openFirstPhoto()
         MediaViewerScreen.assertShowingPhoto()
-        rotateAndBack {
+        keeps {
             MediaViewerScreen.assertShowingPhoto()
             MemoryScreen.assertGone()
         }
 
         Ui.pressBack()
+        MediaViewerScreen.assertGone()
         MemoryScreen.assertShowing(TITLE)
+        Ui.pressBack()
+        MemoryScreen.assertGone()
+        TimelineScreen.assertShown()
+        BottomNav.assertSelected(Tab.TIMELINE)
     }
 
     @Test
-    fun locationPickerKeepsThePickedSpot() {
+    fun theAddFormKeepsWhatWasTypedAndTheLocationPickerItsSpot() {
         app.launch()
         BottomNav.open(Tab.ADD)
+        AddScreen.typeTitle("Picnic")
+        keeps {
+            AddScreen.assertShown()
+            BottomNav.assertSelected(Tab.ADD)
+            AddScreen.assertTitle("Picnic")
+        }
+
         AddScreen.selectLocation()
         LocationPickerScreen.tapMap()
         LocationPickerScreen.assertLocationPicked()
-
-        rotateAndBack {
+        keeps {
             LocationPickerScreen.assertShown()
             LocationPickerScreen.assertLocationPicked()
         }
 
         LocationPickerScreen.confirm()
         AddScreen.assertHasLocation()
+        keeps {
+            AddScreen.assertShown()
+            AddScreen.assertTitle("Picnic")
+            AddScreen.assertHasLocation()
+        }
     }
 
     @Test
-    fun theAddFormKeepsWhatWasTypedAndItsDateAndTimePickersStayOpenAndStillWork() {
+    fun anEditKeepsEditingTheSameMemory() {
+        TestData.memory(TITLE)
+        app.launch()
+        Flows.editMemory(TITLE)
+
+        keeps {
+            AddScreen.assertShown()
+            BottomNav.assertSelected(Tab.ADD)
+            AddScreen.assertTitle(TITLE)
+            AddScreen.assertEditing()
+        }
+    }
+
+    @Test
+    fun theDateAndTimePickersStayOpenAndStillWork() {
         app.launch()
         BottomNav.open(Tab.ADD)
-        AddScreen.typeTitle("Picnic")
-        rotateAndBack {
-            AddScreen.assertShown()
-            AddScreen.assertTitle("Picnic")
-            BottomNav.assertSelected(Tab.ADD)
-        }
-
-        val dateBefore = AddScreen.startDateText()
         AddScreen.openStartDatePicker()
         Dialog.assertShown(DATE_PICKER_TITLE)
-        rotateAndBack {
+        keeps {
             Dialog.assertShown(DATE_PICKER_TITLE)
         }
         DatePickerDialog.pickDayInPreviousMonth(15)
         Dialog.tap("OK")
         Dialog.assertGone(DATE_PICKER_TITLE)
         AddScreen.assertShown()
-        assertNotEquals("The picked date was not applied", dateBefore, AddScreen.startDateText())
+        AddScreen.assertStartDay(15)
 
-        val timeBefore = AddScreen.startTimeText()
         AddScreen.openStartTimePicker()
         Dialog.assertShown(TIME_PICKER_TITLE)
-        rotateAndBack {
+        keeps {
             Dialog.assertShown(TIME_PICKER_TITLE)
         }
-        TimePickerDialog.pickNextHour()
+        val hour = TimePickerDialog.pickNextHour()
         Dialog.tap("OK")
         Dialog.assertGone(TIME_PICKER_TITLE)
         AddScreen.assertShown()
-        assertNotEquals("The picked time was not applied", timeBefore, AddScreen.startTimeText())
+        AddScreen.assertStartHour(hour)
+    }
+
+    /**
+     * Turns the phone to landscape and back, then lets Android kill the app in the background and returns to it,
+     * checking [expectations] after each.
+     */
+    private fun keeps(expectations: () -> Unit) {
+        rotateAndBack(expectations)
+        app.simulateProcessDeath()
+        expectations()
     }
 
     /** Turns the phone to landscape and back, checking [expectations] in both. */
@@ -186,6 +219,7 @@ class RotationTest {
 
     private companion object {
         const val TITLE = "Vienna trip"
+        const val OTHER_TITLE = "Lake day"
         const val MANUAL_BACKUP = "MemoryMap_Manual_Backup_20261020_101500.zip"
         const val RESTORE_TITLE = "Restore Backup"
         const val DATE_PICKER_TITLE = "Select start date"

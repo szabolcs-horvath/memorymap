@@ -70,7 +70,7 @@ class FragmentsAndColorTest {
     }
 
     @Test
-    fun aFragmentKeepsDatesOfItsOwn() {
+    fun aFragmentKeepsDatesOfItsOwnAndThenItsOwnAllDayRange() {
         TestData.memory(VIENNA)
         openForEditing()
 
@@ -82,17 +82,12 @@ class FragmentsAndColorTest {
 
         MemoryScreen.assertShowing(VIENNA)
         MemoryScreen.assertFragmentStartsOn(LocalDate.now().minusMonths(1).withDayOfMonth(PICKED_DAY))
-    }
 
-    @Test
-    fun anAllDayFragmentKeepsItsOwnDays() {
-        TestData.memory(VIENNA)
-        openForEditing()
+        // Edited again, the fragment becomes all day, over a range of its own.
         val start = LocalDate.now().minusDays(ALL_DAY_START_DAYS_AGO)
         val end = LocalDate.now().minusDays(ALL_DAY_END_DAYS_AGO)
-
-        AddScreen.addFragment()
-        AddScreen.openFragmentAllDayRangePicker()
+        MemoryScreen.edit()
+        AddScreen.openFragmentAllDayRangePicker(hasOwnDates = true)
         DateRangePickerDialog.pick(start, end)
         AddScreen.save()
 

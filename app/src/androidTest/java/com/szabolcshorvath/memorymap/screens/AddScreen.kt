@@ -269,11 +269,11 @@ object AddScreen : TabScreen {
     }
 
     /**
-     * Gives the first fragment dates of its own, makes it all day, and opens the calendar for its range of days
-     * ([DateRangePickerDialog]).
+     * Gives the first fragment dates of its own (unless it [hasOwnDates] already), makes it all day, and opens the
+     * calendar for its range of days ([DateRangePickerDialog]).
      */
-    fun openFragmentAllDayRangePicker() {
-        tapInFragmentCard(By.res(OWN_TIME))
+    fun openFragmentAllDayRangePicker(hasOwnDates: Boolean = false) {
+        if (!hasOwnDates) tapInFragmentCard(By.res(OWN_TIME))
         tapInFragmentCard(By.res(ALL_DAY))
         tapInFragmentCard(By.res("bt_dateRange")) // It shows the days picked so far.
     }
