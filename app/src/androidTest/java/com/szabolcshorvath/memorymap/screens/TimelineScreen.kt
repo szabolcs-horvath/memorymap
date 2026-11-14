@@ -119,7 +119,10 @@ object TimelineScreen : TabScreen {
         assertEquals("Two of ${texts.toList()} share a row", tops.size, tops.toSet().size)
     }
 
-    /** Scrolls the list down by most of a screen. Returns false at the bottom. */
+    /**
+     * Swipes the list down by most of a screen, as by hand (which also hides the search bar). Returns false at the
+     * bottom.
+     */
     fun scrollDown(): Boolean = Ui.find { hasId("rv_timeline") }.scroll(Direction.DOWN, SCROLL_PERCENT)
 
     fun assertScrollToTopShown() = Ui.assertShown("The Scroll to top button") { hasDescription(SCROLL_TO_TOP) }

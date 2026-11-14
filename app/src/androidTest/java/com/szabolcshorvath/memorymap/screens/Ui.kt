@@ -8,7 +8,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.Configurator
-import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
@@ -109,10 +108,11 @@ object Ui {
 
     /**
      * Scrolls the page until [condition] matches: back to the top first (a page can come back scrolled after a
-     * rotation), then down. If it reaches the bottom without a match, it starts again from the top, which waits for
-     * content that loads later, such as the backup list. A page only scrolls when it is taller than the screen. If
-     * nothing matches in time, the caller's check fails. Giving up costs [SCROLL_TIMEOUT_MS], so it is logged with
-     * where it was called from: a lookup that can never match shows up in the test's logcat.
+     * rotation), then down by most of a screen at a time. If it reaches the bottom without a match, it starts again
+     * from the top, which waits for content that loads later, such as the backup list. A page only scrolls when it is
+     * taller than the screen. If nothing matches in time, the caller's check fails. Giving up costs
+     * [SCROLL_TIMEOUT_MS], so it is logged with where it was called from: a lookup that can never match shows up in
+     * the test's logcat.
      */
     fun scrollTo(condition: AccessibilityNodeInfo.() -> Boolean) {
         val end = SystemClock.uptimeMillis() + SCROLL_TIMEOUT_MS
@@ -141,8 +141,7 @@ object Ui {
             }
 
             !atTop -> {
-                // A fling that can't move the page waits seconds for a scroll that never comes: ask first.
-                for (fling in 1..MAX_FLINGS) if (!canScroll(up = true) || !page.fling(Direction.UP)) break
+                toTop(page)
                 true
             }
 
@@ -152,12 +151,39 @@ object Ui {
                 false
             }
 
-            // The page says whether it can scroll further; the swipe's own answer can't tell. A swipe that only
-            // collapses a top app bar scrolls nothing, and UI Automator then answers that the page can't scroll.
             else -> {
-                page.scroll(Direction.DOWN, SCROLL_PERCENT, SCROLL_SPEED)
+                swipeDown(page, SCROLL_PERCENT)
                 true
             }
+        }
+    }
+
+    /**
+     * Swipes [page]'s content up by [percent] of its height, and holds still before lifting the finger, so the page
+     * stops there instead of flinging on. Not with `UiObject2.scroll`: it then waits for a scroll event that a Compose
+     * page never sends, a second after every swipe (five after a fling). Not with the page's accessibility scroll
+     * action either: it moves the page by its whole height, part of which is under the top bar on an edge-to-edge
+     * screen, so what passes under the bar is never on screen.
+     */
+    private fun swipeDown(page: UiObject2, percent: Float) {
+        val bounds = page.visibleBounds
+        val x = bounds.centerX()
+        // Through the middle of the page: its edges can be under a bar or a button over it (the Add form's Save).
+        val from = bounds.centerY() + (bounds.height() * percent / 2).toInt()
+        val to = bounds.centerY() - (bounds.height() * percent / 2).toInt()
+        device.swipe(arrayOf(Point(x, from), Point(x, to), Point(x, to)), SWIPE_STEPS)
+        device.waitForIdle()
+    }
+
+    /**
+     * Scrolls [page] up to its top with its own accessibility scroll action, a page at a time: what passes by doesn't
+     * matter on the way up, and the action returns at once. The page offers it only while it can scroll up.
+     */
+    private fun toTop(page: UiObject2) {
+        repeat(MAX_PAGES_UP) {
+            if (!canScroll(up = true)) return
+            if (!page.accessibilityNodeInfo.performAction(AccessibilityAction.ACTION_SCROLL_BACKWARD.id)) return
+            device.waitForIdle()
         }
     }
 
@@ -185,30 +211,28 @@ object Ui {
     fun scrollToTop() {
         val page = findOrNull(timeoutMs = 0) { isPage() } ?: return
         try {
-            for (fling in 1..MAX_FLINGS) if (!canScroll(up = true) || !page.fling(Direction.UP)) break
+            toTop(page)
         } catch (_: StaleObjectException) {
             scrollToTop()
         }
-        device.waitForIdle()
     }
 
     /** Scrolls the page down by about a third of the screen. */
     fun scrollDownALittle() {
         if (!canScroll(up = false)) return
-        findOrNull(timeoutMs = 0) { isPage() }?.scroll(Direction.DOWN, NUDGE_PERCENT, SCROLL_SPEED)
-        device.waitForIdle()
+        findOrNull(timeoutMs = 0) { isPage() }?.let { swipeDown(it, NUDGE_PERCENT) }
     }
 
     private const val SCROLL_TIMEOUT_MS = 30_000L
     private const val MS_PER_SECOND = 1_000L
     private const val TAG = "UiTestScroll"
+    private const val SCROLL_PERCENT = 0.6f
     private const val NUDGE_PERCENT = 0.3f
-    private const val SCROLL_PERCENT = 0.7f
 
-    // Pixels per second. Slow enough not to fling, so a scroll never carries the page past what it looks for.
-    private const val SCROLL_SPEED = 1000
+    // Frames for each part of a swipe (the move, then the hold): slow enough not to fling.
+    private const val SWIPE_STEPS = 25
     private const val SCROLL_PAUSE_MS = 300L
-    private const val MAX_FLINGS = 10
+    private const val MAX_PAGES_UP = 20
 
     /**
      * Runs [block] without waiting for the screen to settle first, as UI Automator does before every tap and lookup.
