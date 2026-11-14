@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -257,7 +258,13 @@ private fun TabContent(tab: Tab, shell: ShellViewModel, tabs: TabViewModels, act
             // A save that finishes while the form isn't shown must not open the memory once the form is shown again.
             val shown = shell.tab == Tab.ADD && !shell.hasDetail
             LaunchedEffect(shown) { tabs.add.isScreenShown = shown }
-            AddMemoryRoute(tabs.add, tabs.common, onPickLocation = actions::pickLocation, onSaved = actions::openMemory)
+            AddMemoryRoute(
+                viewModel = tabs.add,
+                common = tabs.common,
+                onPickLocation = actions::pickLocation,
+                onSaved = actions::openMemory,
+                onNotice = { shell.show(ShellMessage.Text(it.text, it.long)) },
+            )
         }
 
         Tab.SETTINGS -> SettingsRoute(tabs.settings)
@@ -326,10 +333,11 @@ private fun PickLocation(detail: Detail.PickLocation, shell: ShellViewModel, act
     )
 }
 
-/** The shell's own messages: at start, an offer of media access when photos need re-linking. */
+/** The shell's messages: at start, an offer of media access when photos need re-linking; and the screens' plain ones. */
 @Composable
 private fun ShellMessages(shell: ShellViewModel, snackbar: SnackbarHostState) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val text = stringResource(R.string.relink_needs_access_message)
     val grant = stringResource(R.string.relink_grant)
     val scope = rememberCoroutineScope()
@@ -348,6 +356,13 @@ private fun ShellMessages(shell: ShellViewModel, snackbar: SnackbarHostState) {
                         duration = SnackbarDuration.Long,
                     )
                     if (result == SnackbarResult.ActionPerformed) mediaAccess.launch(PermissionUtil.getRequiredMediaPermissions())
+                }
+
+                is ShellMessage.Text -> scope.launch {
+                    snackbar.showSnackbar(
+                        resources.getString(message.text),
+                        duration = if (message.long) SnackbarDuration.Long else SnackbarDuration.Short,
+                    )
                 }
             }
         }
