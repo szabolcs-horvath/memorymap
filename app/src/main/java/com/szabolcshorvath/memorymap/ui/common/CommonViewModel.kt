@@ -55,8 +55,6 @@ class CommonViewModel(
     }
 
     companion object {
-        private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
-
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY]!!

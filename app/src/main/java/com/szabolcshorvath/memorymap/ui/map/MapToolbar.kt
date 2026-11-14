@@ -24,6 +24,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -95,9 +96,9 @@ internal fun ToolbarAndPanel(
     BoxWithConstraints(
         modifier
             .fillMaxWidth()
-            .padding(MARGIN)
+            .padding(PAGE_MARGIN)
     ) {
-        val besideTheLogo = (maxWidth - minOf(maxWidth, PANEL_WIDTH)) / 2 + MARGIN >= LOGO_ROOM
+        val besideTheLogo = (maxWidth - minOf(maxWidth, PANEL_WIDTH)) / 2 + PAGE_MARGIN >= LOGO_ROOM
         // Centred, the panel leaves room for the toolbar on both sides.
         if (maxWidth >= PANEL_WIDTH + TOOLBAR_ROOM * 2) {
             Box(
@@ -130,12 +131,12 @@ private val LOGO_ROOM = 96.dp
 private val TOOLBAR_ROOM = 96.dp
 
 /** The filter bar's width: the controls' width less the bar's margins. */
-private val PANEL_WIDTH = MAX_CONTROLS_WIDTH - MARGIN * 2
+private val PANEL_WIDTH = MAX_CONTROLS_WIDTH - PAGE_MARGIN * 2
 
 /**
  * The panel at the map's bottom, in pixels: its height as it opens or closes ([shown]), its full height ([full]), and
  * whether it covers the bottom left corner, where Google's logo is ([coversLogo]: on a phone held upright). Both
- * heights include the [MARGIN] gap above the panel, which is as wide as the margin under it: so the panel's height is
+ * heights include the [PAGE_MARGIN] gap above the panel, which is as wide as the margin under it: so the panel's height is
  * also how far up the map's bottom it reaches, and the gap opens and closes with it instead of jumping.
  */
 internal data class PanelSize(val shown: Int = 0, val full: Int = 0, val coversLogo: Boolean = true) {

@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryRepository
+import com.szabolcshorvath.memorymap.ui.common.STATE_FLOW_TIMEOUT_MILLIS
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -43,7 +44,6 @@ class MediaViewerViewModel(
 
     companion object {
         private const val CURRENT_ITEM_ID = "current_item_id"
-        private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
 
         /** Creates the viewer's ViewModel for memory [memoryId]'s media, opened on item [itemId]. */
         fun factory(memoryId: Int, itemId: Int): ViewModelProvider.Factory = viewModelFactory {

@@ -16,6 +16,7 @@ import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.AppPreferences
 import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.data.MemoryRepository
+import com.szabolcshorvath.memorymap.ui.common.STATE_FLOW_TIMEOUT_MILLIS
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
 import com.szabolcshorvath.memorymap.util.PermissionUtil.hasLocationPermission
@@ -409,7 +410,6 @@ class MapViewModel(
     }
 
     companion object {
-        private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
         private const val DATA_LOAD_TIMEOUT_MS = 3000L
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {

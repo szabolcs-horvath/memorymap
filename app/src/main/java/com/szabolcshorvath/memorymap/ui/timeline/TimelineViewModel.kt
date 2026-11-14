@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MemoryGroup
 import com.szabolcshorvath.memorymap.data.MemoryRepository
+import com.szabolcshorvath.memorymap.ui.common.STATE_FLOW_TIMEOUT_MILLIS
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,8 +68,6 @@ class TimelineViewModel(memories: MemoryRepository) : ViewModel() {
     }
 
     companion object {
-        private const val STATE_FLOW_TIMEOUT_MILLIS = 5000L
-
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer { TimelineViewModel(this[APPLICATION_KEY]!!.appContainer.memories) }
         }

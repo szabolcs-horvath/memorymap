@@ -49,6 +49,7 @@ import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.color.SWATCH_GAP
 import com.szabolcshorvath.memorymap.ui.color.Swatch
 import com.szabolcshorvath.memorymap.ui.color.toColor
+import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.SquareMediaTile
 import com.szabolcshorvath.memorymap.ui.common.TileMedia
 import com.szabolcshorvath.memorymap.util.Coordinates

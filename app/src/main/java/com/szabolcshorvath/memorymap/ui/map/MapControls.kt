@@ -54,6 +54,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.Markerable
+import com.szabolcshorvath.memorymap.ui.common.PANEL_ELEVATION
+import com.szabolcshorvath.memorymap.ui.common.PANEL_PADDING
 import com.szabolcshorvath.memorymap.ui.settings.DateFilterMenu
 import com.szabolcshorvath.memorymap.util.Coordinates
 import com.szabolcshorvath.memorymap.util.DateFilterOption
@@ -150,7 +152,7 @@ internal fun ColorStats(counts: List<ColorCount>) {
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shadowElevation = ELEVATION,
+        shadowElevation = PANEL_ELEVATION,
     ) {
         Box(
             Modifier
@@ -215,7 +217,7 @@ internal fun MemoriesPanel(selection: MarkerSelection, onOpen: (Int) -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shadowElevation = ELEVATION,
+        shadowElevation = PANEL_ELEVATION,
     ) {
         Column(Modifier.padding(vertical = PANEL_PADDING)) {
             Text(
@@ -274,12 +276,10 @@ private const val FULL_CIRCLE = 360f
 private const val RING_START_DEGREES = -90f
 private const val RING_GAP_DEGREES = 3f
 private val BAR_HEIGHT = ButtonDefaults.MediumContainerHeight
-private val ELEVATION = 3.dp
 private val STATS_SIZE = 200.dp
 private val STATS_PADDING = 16.dp
 private val RING_WIDTH = 24.dp
 private val LABEL_INSET = 14.dp
-private val PANEL_PADDING = 20.dp
 private val PANEL_LIST_HEIGHT = 300.dp
 private val LIST_PADDING = 12.dp
 private val ROW_GAP = 4.dp

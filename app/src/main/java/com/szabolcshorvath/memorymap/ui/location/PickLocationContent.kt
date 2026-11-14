@@ -63,6 +63,9 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
+import com.szabolcshorvath.memorymap.ui.common.PANEL_ELEVATION
+import com.szabolcshorvath.memorymap.ui.common.PANEL_PADDING
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import com.szabolcshorvath.memorymap.ui.common.trackSafeArea
 import com.szabolcshorvath.memorymap.ui.map.MAX_CONTROLS_WIDTH
@@ -118,7 +121,7 @@ fun PickLocationContent(state: PickLocationUiState, actions: PickLocationActions
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                 // As wide as the Map's filter bar, so it lines up with the place panel when the phone is turned.
                 .widthIn(max = MAX_CONTROLS_WIDTH)
-                .padding(MARGIN),
+                .padding(PAGE_MARGIN),
         )
         BottomControls(
             state,
@@ -231,7 +234,7 @@ private fun SearchField(onBack: () -> Unit, onSearch: () -> Unit, modifier: Modi
             .height(SearchBarDefaults.InputFieldHeight),
         shape = SearchBarDefaults.inputFieldShape,
         color = mapControlColor(),
-        shadowElevation = ELEVATION,
+        shadowElevation = PANEL_ELEVATION,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
@@ -248,7 +251,7 @@ private fun SearchField(onBack: () -> Unit, onSearch: () -> Unit, modifier: Modi
             Icon(
                 painterResource(R.drawable.ic_search),
                 contentDescription = null,
-                modifier = Modifier.padding(horizontal = MARGIN),
+                modifier = Modifier.padding(horizontal = PAGE_MARGIN),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -272,7 +275,7 @@ private fun BottomControls(
             actions::confirm,
             Modifier
                 .onSizeChanged { size -> onPanelSize { copy(shown = size.height, full = size.height) } }
-                .padding(top = MARGIN),
+                .padding(top = PAGE_MARGIN),
         )
     }
 }
@@ -286,7 +289,7 @@ private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit, modifi
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shadowElevation = ELEVATION,
+        shadowElevation = PANEL_ELEVATION,
     ) {
         Column(Modifier.padding(PANEL_PADDING)) {
             val spot = state.picked
@@ -322,7 +325,7 @@ private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit, modifi
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.height(MARGIN))
+            Spacer(Modifier.height(PAGE_MARGIN))
             Button(
                 onClick = onConfirm,
                 enabled = spot != null && !state.isLookingUp,
@@ -337,7 +340,4 @@ private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit, modifi
 }
 
 private const val TAG_CONFIRM = "bt_confirm"
-private val MARGIN = 16.dp
-private val PANEL_PADDING = 20.dp
-private val ELEVATION = 3.dp
 private val LOADING_SIZE = 32.dp
