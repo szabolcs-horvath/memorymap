@@ -19,8 +19,8 @@ import kotlinx.coroutines.flow.map
 internal val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
 /**
- * The app's preferences (keys and defaults in [PreferencesKeys]): the map's, the signed-in account, and what the app
- * remembers between starts. Writes may be called from the main thread.
+ * The app's preferences (keys and defaults in [PreferencesKeys]): the map's, the signed-in account, and whether the user
+ * said no to location access. Writes may be called from the main thread.
  */
 class AppPreferences(context: Context) {
     private val store = context.applicationContext.dataStore
@@ -54,19 +54,6 @@ class AppPreferences(context: Context) {
     suspend fun isLocationDenied(): Boolean = store.data.first()[PreferencesKeys.LOCATION_PERMISSION_DENIED] ?: false
 
     suspend fun setLocationDenied(denied: Boolean) = set(PreferencesKeys.LOCATION_PERMISSION_DENIED, denied)
-
-    /** Whether the app hasn't finished a start yet on this installation. */
-    suspend fun isFirstRun(): Boolean = store.data.first()[PreferencesKeys.IS_FIRST_RUN] ?: true
-
-    suspend fun setFirstRunDone() = set(PreferencesKeys.IS_FIRST_RUN, false)
-
-    /**
-     * Records [version] as the version this installation last ran, if it is newer. Nothing reads it yet: it is kept for
-     * a future step that must run once after an update.
-     */
-    suspend fun recordAppVersion(version: Long) {
-        store.edit { if (version > (it[PreferencesKeys.LAST_APP_VERSION] ?: 0L)) it[PreferencesKeys.LAST_APP_VERSION] = version }
-    }
 
     private fun <T> read(value: (Preferences) -> T): Flow<T> = store.data.map(value).distinctUntilChanged()
 

@@ -1,6 +1,5 @@
 package com.szabolcshorvath.memorymap
 
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -13,7 +12,6 @@ import com.szabolcshorvath.memorymap.ui.shell.ShellMessage
 import com.szabolcshorvath.memorymap.ui.shell.ShellViewModel
 import com.szabolcshorvath.memorymap.ui.shell.TabViewModels
 import com.szabolcshorvath.memorymap.ui.theme.MemoryMapTheme
-import com.szabolcshorvath.memorymap.util.InstallationIdentifier
 import com.szabolcshorvath.memorymap.util.MediaDetailsBackfill
 import com.szabolcshorvath.memorymap.util.MediaRelinker
 import com.szabolcshorvath.memorymap.util.PerfUtil.trace
@@ -44,16 +42,6 @@ class MainActivity : ComponentActivity() {
     private suspend fun checkAppStatus() {
         trace("main_activity_check_app_status") {
             try {
-                val currentVersion =
-                    packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).longVersionCode
-
-                val preferences = appContainer.preferences
-                preferences.recordAppVersion(currentVersion)
-                if (preferences.isFirstRun()) {
-                    InstallationIdentifier.getInstallationIdentifier(applicationContext)
-                    preferences.setFirstRunDone()
-                }
-
                 val needsPermissionForRelink = withContext(Dispatchers.IO) {
                     tabs.common.addDefaultPresetsIfEmpty()
                     val relinkResult = MediaRelinker.relink(applicationContext)
