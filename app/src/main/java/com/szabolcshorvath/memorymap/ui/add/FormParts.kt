@@ -36,7 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +56,7 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.HSVPreset
 import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_HEIGHT
+import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_WIDTH
 import com.szabolcshorvath.memorymap.ui.color.ColorSliders
 import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.color.SWATCH_GAP
@@ -195,13 +198,14 @@ internal fun FragmentCard(
         shape = ListItemDefaults.segmentedShapes(0, 1).shape,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(COLOR_STRIP_HEIGHT)
-                    .background(color.toColor())
-            )
+        // The fragment's colour as a strip along its left edge, as the memory page and the timeline show it. Drawn behind
+        // the content rather than laid out beside it: the colour controls can't be measured for an intrinsic height.
+        val strip = color.toColor()
+        Column(
+            Modifier
+                .drawBehind { drawRect(strip, size = Size(COLOR_STRIP_WIDTH.toPx(), size.height)) }
+                .padding(start = COLOR_STRIP_WIDTH)
+        ) {
             FragmentPlace(FormPlace.of(fragment.lat, fragment.lng, fragment.placeName, fragment.address), showErrors, { actions.pickLocation(part) }) {
                 actions.removeFragment(fragment.localId)
             }
