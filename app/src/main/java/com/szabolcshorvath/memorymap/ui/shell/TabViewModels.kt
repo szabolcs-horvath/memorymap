@@ -3,8 +3,8 @@ package com.szabolcshorvath.memorymap.ui.shell
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
-import com.szabolcshorvath.memorymap.data.CommonViewModel
 import com.szabolcshorvath.memorymap.ui.add.AddMemoryViewModel
+import com.szabolcshorvath.memorymap.ui.common.CommonViewModel
 import com.szabolcshorvath.memorymap.ui.map.MapViewModel
 import com.szabolcshorvath.memorymap.ui.settings.SettingsViewModel
 import com.szabolcshorvath.memorymap.ui.timeline.TimelineViewModel

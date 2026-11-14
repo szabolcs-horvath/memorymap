@@ -1,4 +1,4 @@
-package com.szabolcshorvath.memorymap.data
+package com.szabolcshorvath.memorymap.ui.common
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -9,6 +9,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.szabolcshorvath.memorymap.MemoryMapApplication
 import com.szabolcshorvath.memorymap.appContainer
+import com.szabolcshorvath.memorymap.data.AppPreferences
+import com.szabolcshorvath.memorymap.data.MemoryGroupWithMedia
+import com.szabolcshorvath.memorymap.data.MemoryRepository
+import com.szabolcshorvath.memorymap.data.PresetRepository
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

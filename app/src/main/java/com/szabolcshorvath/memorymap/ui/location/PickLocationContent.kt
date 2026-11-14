@@ -67,13 +67,13 @@ import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import com.szabolcshorvath.memorymap.ui.common.trackSafeArea
 import com.szabolcshorvath.memorymap.ui.map.MAX_CONTROLS_WIDTH
 import com.szabolcshorvath.memorymap.ui.map.MapToolbar
+import com.szabolcshorvath.memorymap.ui.map.MarkerGenerator
 import com.szabolcshorvath.memorymap.ui.map.PanelSize
 import com.szabolcshorvath.memorymap.ui.map.ToolbarAndPanel
 import com.szabolcshorvath.memorymap.ui.map.cameraTargetFor
 import com.szabolcshorvath.memorymap.ui.map.mapControlColor
 import com.szabolcshorvath.memorymap.ui.map.runCameraMove
 import com.szabolcshorvath.memorymap.util.Coordinates
-import com.szabolcshorvath.memorymap.util.MarkerGenerator
 
 /**
  * The location picker: the map, a search bar over its top (it opens Google's place search screen), and at the bottom

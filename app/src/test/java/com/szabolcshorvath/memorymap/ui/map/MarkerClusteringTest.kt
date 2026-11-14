@@ -1,9 +1,10 @@
-package com.szabolcshorvath.memorymap.data
+package com.szabolcshorvath.memorymap.ui.map
 
 import android.content.Context
-import com.szabolcshorvath.memorymap.data.MarkerClustering.SAME_LOCATION_METERS
-import com.szabolcshorvath.memorymap.data.MarkerClustering.SAME_PLACE_METERS
-import com.szabolcshorvath.memorymap.data.MarkerClustering.distanceMeters
+import com.szabolcshorvath.memorymap.data.Markerable
+import com.szabolcshorvath.memorymap.ui.map.MarkerClustering.SAME_LOCATION_METERS
+import com.szabolcshorvath.memorymap.ui.map.MarkerClustering.SAME_PLACE_METERS
+import com.szabolcshorvath.memorymap.ui.map.MarkerClustering.distanceMeters
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -35,7 +36,7 @@ class MarkerClusteringTest {
     private fun markerNorthBy(id: Int, meters: Double, placeName: String? = null, address: String? = null) =
         TestMarker(id, BASE_LATITUDE + meters / metersPerDegreeLatitude, BASE_LONGITUDE, placeName, address)
 
-    private fun List<Markerable.MarkerableCluster>.groupIds() = map { cluster -> cluster.items.map { it.groupId } }
+    private fun List<MarkerableCluster>.groupIds() = map { cluster -> cluster.items.map { it.groupId } }
 
     @Test
     fun `markers closer than the threshold share a pin`() {

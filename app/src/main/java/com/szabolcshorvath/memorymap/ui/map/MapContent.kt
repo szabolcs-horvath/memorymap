@@ -61,7 +61,6 @@ import com.google.maps.android.compose.clustering.Clustering
 import com.google.maps.android.compose.clustering.rememberClusterManager
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.ui.add.RangePicker
 import com.szabolcshorvath.memorymap.ui.common.rememberSafeArea
 import com.szabolcshorvath.memorymap.ui.common.trackSafeArea
@@ -216,7 +215,7 @@ private fun MemoryMap(
         onMapLoaded = actions::onMapLoaded,
         contentPadding = padding,
     ) {
-        val clusterManager = rememberClusterManager<Markerable.MarkerableCluster>()
+        val clusterManager = rememberClusterManager<MarkerableCluster>()
         MapEffect(clusterManager) { map ->
             val manager = clusterManager ?: return@MapEffect
             manager.renderer = MarkerRenderer(context, map, manager) { clustering }

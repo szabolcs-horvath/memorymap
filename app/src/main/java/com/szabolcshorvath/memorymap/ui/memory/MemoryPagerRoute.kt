@@ -11,7 +11,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.szabolcshorvath.memorymap.data.CommonViewModel
+import com.szabolcshorvath.memorymap.ui.common.CommonViewModel
 
 private const val TAG_PAGER = "memoryViewPager"
 

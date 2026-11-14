@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.ui.map
 
 import androidx.compose.ui.unit.IntSize
 import com.google.android.gms.maps.model.LatLng
-import com.szabolcshorvath.memorymap.data.Markerable
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import java.time.LocalDate
 
@@ -12,7 +11,7 @@ interface MapActions {
     fun pickDates(start: LocalDate, end: LocalDate)
     fun toggleStats()
     fun goToMyLocation()
-    fun tapPin(pin: Markerable.MarkerableCluster)
+    fun tapPin(pin: MarkerableCluster)
     fun tapCluster(position: LatLng)
     fun tapMap()
     fun openMemory(id: Int)
