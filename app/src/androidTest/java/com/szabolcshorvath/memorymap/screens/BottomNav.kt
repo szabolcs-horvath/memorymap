@@ -17,6 +17,9 @@ object BottomNav {
     }
 
     fun select(tab: Tab) {
+        // The tab bar gives way while the keyboard shows: close it first, as a user would. The bar goes as soon as the
+        // app sees the keyboard, before UI Automator lists its window, so this waits for the tab rather than asks.
+        if (!Ui.waitUntil(KEYBOARD_GRACE_MS) { ComposeUi.exists(tab(tab)) }) Keyboard.close()
         ComposeUi.waitFor("The ${tab.label} tab", tab(tab)).performClick()
     }
 
@@ -30,7 +33,7 @@ object BottomNav {
         ComposeUi.waitFor("The ${tab.label} tab, selected,", tab(tab) and isSelected())
     }
 
-    /** The tab bar shows (it hides while the media viewer shows). */
+    /** The tab bar shows (it hides while the media viewer or the keyboard shows). */
     fun assertShown() {
         ComposeUi.waitFor("The tab bar", tab(Tab.MAP))
     }
@@ -42,6 +45,8 @@ object BottomNav {
         select(tab)
         screenOf(tab).assertShown()
     }
+
+    private const val KEYBOARD_GRACE_MS = 2_000L
 
     private val isTab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
 

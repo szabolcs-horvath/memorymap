@@ -11,6 +11,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -91,6 +93,7 @@ import kotlinx.coroutines.launch
  * slide in and out and follow the predictive Back gesture. The tabs stay composed under them ([TabHost]). Back on a
  * tab other than the Map goes to the Map; on the Map it leaves the app.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AppShell(shell: ShellViewModel, tabs: TabViewModels) {
     val snackbar = remember { SnackbarHostState() }
@@ -104,11 +107,11 @@ fun AppShell(shell: ShellViewModel, tabs: TabViewModels) {
         actions.onTabDrawn()
     }
 
-    val type = navigationType(immersive = shell.mediaViewerShown || shell.locationPickerShown)
+    val type = navigationType(immersive = shell.mediaViewerShown || shell.locationPickerShown, typing = WindowInsets.isImeVisible)
     // NavigationSuiteScaffold, taken apart only to give the rail its narrow width.
     Surface(
-        // Edge to edge: each screen keeps clear of the system bars itself. The keyboard pushes the whole shell up, the tab
-        // bar included; while it shows, the tab bar keeps no room for the navigation bar it covers.
+        // Edge to edge: each screen keeps clear of the system bars itself. The keyboard pushes the whole shell up (the tab
+        // bar gives way while it shows, the rail moves up with the screen).
         Modifier.windowInsetsPadding(WindowInsets.ime),
         color = NavigationSuiteScaffoldDefaults.containerColor,
         contentColor = NavigationSuiteScaffoldDefaults.contentColor,
@@ -205,13 +208,17 @@ private fun rememberShellActions(shell: ShellViewModel, tabs: TabViewModels, sna
     }
 }
 
-/** The short navigation bar, or a collapsed navigation rail when the window is wide or short; none while [immersive]. */
+/**
+ * The short navigation bar, or a collapsed navigation rail when the window is wide or short; none while [immersive].
+ * The bar also gives way while [typing], as Material's navigation bar does, so the keyboard leaves the screen its room;
+ * the rail stays, since it takes width, not height.
+ */
 @Composable
-private fun navigationType(immersive: Boolean): NavigationSuiteType {
+private fun navigationType(immersive: Boolean, typing: Boolean): NavigationSuiteType {
     val recommended = NavigationSuiteScaffoldDefaults.navigationSuiteType(currentWindowAdaptiveInfoV2())
     return when {
         immersive -> NavigationSuiteType.None
-        recommended == NavigationSuiteType.ShortNavigationBarCompact -> recommended
+        recommended == NavigationSuiteType.ShortNavigationBarCompact -> if (typing) NavigationSuiteType.None else recommended
         // A phone in landscape is short: Material suggests a wider bar there, but a rail leaves the map its height.
         else -> NavigationSuiteType.WideNavigationRailCollapsed
     }

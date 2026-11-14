@@ -55,8 +55,10 @@ object AddScreen : TabScreen {
 
     private val titleField = hasTestTag("titleInput") and hasSetTextAction()
 
+    /** Types [title] into the title field, which opens the keyboard: waits until it shows, so what comes next sees it. */
     fun typeTitle(title: String) {
         ComposeUi.scrollTo("The title field", titleField).performTextReplacement(title)
+        Keyboard.assertShown()
     }
 
     fun assertTitle(title: String) = assertText("The title", title) { ComposeUi.scrollTo("The title field", titleField).text() }
@@ -64,9 +66,11 @@ object AddScreen : TabScreen {
     /** The title field is empty: a new, cleared form. */
     fun assertNoTitle() = assertText("The title", "") { ComposeUi.scrollTo("The title field", titleField).text() }
 
+    /** Types [text] into the description field; as [typeTitle], waits until the keyboard shows. */
     fun typeDescription(text: String) {
         ComposeUi.scrollTo("The description field", hasTestTag("descriptionInput") and hasSetTextAction())
             .performTextReplacement(text)
+        Keyboard.assertShown()
     }
 
     /** Taps "Save memory", or "Save changes" while editing: pinned under the form, it needs no scrolling. */
