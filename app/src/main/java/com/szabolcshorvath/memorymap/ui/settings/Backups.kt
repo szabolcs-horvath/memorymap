@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -167,7 +167,7 @@ private fun AutomaticBackupLine(status: AutomaticBackupStatus) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (status == AutomaticBackupStatus.RUNNING) {
-            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            CircularWavyProgressIndicator(Modifier.size(20.dp))
             Spacer(Modifier.width(12.dp))
         }
         Text(
