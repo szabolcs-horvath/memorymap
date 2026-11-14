@@ -58,8 +58,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -70,6 +68,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 
 // The UI tests find these elements by these names (screens/SettingsScreen), the names the View version's ids had.
@@ -84,7 +83,6 @@ private const val TAG_ALL_BACKUPS_PAGE = "scroll_all_backups"
 private const val ARROW_OPEN = 180f
 
 /** Below this height a window is compact (Material's window size classes): the top app bar is a small one. */
-private val COMPACT_HEIGHT = 480.dp
 
 /** What the user can do on the Settings tab. What needs an activity, or asks first, is the route's to do. */
 interface SettingsActions {
@@ -169,8 +167,7 @@ private fun SettingsPage(
 ) {
     // On a short window (a phone turned sideways) the large title would take a third of the screen: a small bar, which
     // stays put. Each keeps its own scroll state, so the small one never takes on how far the large one had collapsed.
-    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
-    val compact = windowHeight < COMPACT_HEIGHT
+    val compact = isShortWindow()
     val scrollBehavior = if (compact) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {

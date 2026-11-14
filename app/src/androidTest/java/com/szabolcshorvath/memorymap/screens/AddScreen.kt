@@ -78,6 +78,13 @@ object AddScreen : TabScreen {
         ComposeUi.waitFor("The Save button", hasTestTag(SAVE_BUTTON)).performClick()
     }
 
+    /** The Save button gives way while the keyboard is open in a short window (a phone turned sideways). */
+    fun assertSaveGone() = ComposeUi.assertGone("The Save button", hasTestTag(SAVE_BUTTON))
+
+    fun assertSaveShown() {
+        ComposeUi.waitFor("The Save button", hasTestTag(SAVE_BUTTON))
+    }
+
     /** The form edits an existing memory: its button saves the changes instead of saving a new memory. */
     fun assertEditing() {
         ComposeUi.waitFor("The Save changes button of a memory being edited", hasTestTag(SAVE_BUTTON) and hasText(UPDATE))

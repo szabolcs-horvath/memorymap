@@ -16,6 +16,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -31,6 +32,7 @@ import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +55,7 @@ import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.END_DATE
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.END_TIME
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.START_DATE
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.START_TIME
+import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.firstDayOfWeek
 import java.time.Instant
@@ -246,7 +249,9 @@ private const val RANGE_DAY_SKELETON = "MMMd"
 @Composable
 private fun DayPicker(@StringRes title: Int, day: LocalDate, onClose: () -> Unit, onPicked: (LocalDate) -> Unit) {
     WithPhonesWeek {
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = day.toPickerMillis())
+        val typingOnly = isShortWindow()
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = day.toPickerMillis(), initialDisplayMode = modeFor(typingOnly))
+        TypingOnlyWhenShort(typingOnly, { pickerState.displayMode }, { pickerState.displayMode = it })
         DatePickerDialog(
             onDismissRequest = onClose,
             confirmButton = {
@@ -261,6 +266,7 @@ private fun DayPicker(@StringRes title: Int, day: LocalDate, onClose: () -> Unit
                 pickerState,
                 modifier = Modifier.semantics { testTagsAsResourceId = true },
                 title = { PickerTitle(title) },
+                showModeToggle = !typingOnly,
             )
         }
     }
@@ -279,10 +285,13 @@ internal fun RangePicker(
     onPicked: (LocalDate, LocalDate) -> Unit,
 ) {
     WithPhonesWeek {
+        val typingOnly = isShortWindow()
         val pickerState = rememberDateRangePickerState(
             initialSelectedStartDateMillis = first?.toPickerMillis(),
             initialSelectedEndDateMillis = last?.toPickerMillis(),
+            initialDisplayMode = modeFor(typingOnly),
         )
+        TypingOnlyWhenShort(typingOnly, { pickerState.displayMode }, { pickerState.displayMode = it })
         DatePickerDialog(
             onDismissRequest = onClose,
             confirmButton = {
@@ -302,6 +311,7 @@ internal fun RangePicker(
                     .weight(1f)
                     .semantics { testTagsAsResourceId = true },
                 title = { PickerTitle(title) },
+                showModeToggle = !typingOnly,
             )
         }
     }
@@ -334,6 +344,12 @@ private fun ClockPicker(@StringRes title: Int, time: LocalTime, onClose: () -> U
     }
 }
 
+/**
+ * A short window (a phone turned sideways) has no room for the calendar: the date pickers are for typing only, without
+ * the button that switches to the calendar ([typingOnly]).
+ */
+private fun modeFor(typingOnly: Boolean): DisplayMode = if (typingOnly) DisplayMode.Input else DisplayMode.Picker
+
 @Composable
 private fun PickerTitle(@StringRes title: Int) {
     Text(stringResource(title), Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp))
@@ -343,3 +359,21 @@ private fun PickerTitle(@StringRes title: Int) {
 private fun LocalDate.toPickerMillis() = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 
 private fun Long.toPickerDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+
+/**
+ * A picker open while the phone is turned: sideways ([typingOnly]) it switches to typing, and upright again it goes back
+ * to the calendar, unless the user had chosen typing themselves.
+ */
+@Composable
+private fun TypingOnlyWhenShort(typingOnly: Boolean, mode: () -> DisplayMode, setMode: (DisplayMode) -> Unit) {
+    var switched by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(typingOnly) {
+        if (typingOnly && mode() == DisplayMode.Picker) {
+            setMode(DisplayMode.Input)
+            switched = true
+        } else if (!typingOnly && switched) {
+            setMode(DisplayMode.Picker)
+            switched = false
+        }
+    }
+}
