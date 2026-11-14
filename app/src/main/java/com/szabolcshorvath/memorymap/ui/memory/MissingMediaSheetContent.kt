@@ -37,13 +37,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.video.VideoFrameDecoder
-import coil3.video.videoFrameMicros
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaType
+import com.szabolcshorvath.memorymap.ui.common.rememberMediaRequest
 import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetViewModel.State
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import com.szabolcshorvath.memorymap.util.NearbyFile
@@ -203,12 +200,7 @@ private fun Suggestion(file: NearbyFile, item: MediaItem, onClick: () -> Unit) {
     val context = LocalContext.current
     val taken = whenTaken(context, file.dateTaken - item.dateTaken)
     val description = stringResource(if (file.looksAlike) R.string.nearby_use_alike else R.string.nearby_use, taken)
-    val request = ImageRequest.Builder(context).data(file.uri).crossfade(true).apply {
-        if (item.type == MediaType.VIDEO) {
-            videoFrameMicros(0)
-            decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
-        }
-    }.build()
+    val request = rememberMediaRequest(file.uri, item.type)
     ListItem(
         onClick = onClick,
         modifier = Modifier
