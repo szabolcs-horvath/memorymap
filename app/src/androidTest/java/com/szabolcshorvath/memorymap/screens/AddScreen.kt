@@ -230,7 +230,6 @@ object AddScreen : TabScreen {
     /** The marker colour's preset [color] is highlighted as the form's colour, or not. */
     fun assertPresetHighlighted(color: Hsv, highlighted: Boolean = true) {
         openColor()
-        Ui.scrollTo { hasId("tv_BrightnessValue") } // The swatches and the sliders below them, on screen.
         if (highlighted) ColorPresetsSection.assertSelected(color) else ColorPresetsSection.assertNotSelected(color)
     }
 

@@ -247,16 +247,25 @@ object ColorPresetsSection {
         Ui.device.waitForIdle()
     }
 
-    fun assertShown(color: Hsv) = Ui.assertShown("The preset ${describe(color)}") { isSwatch(color) }
-
-    fun assertGone(color: Hsv) = Ui.assertGone("The preset ${describe(color)}") { isSwatch(color) }
-
-    fun assertSelected(color: Hsv) = Ui.assertShown("The preset ${describe(color)}, selected") {
-        isSwatch(color) && isChosen()
+    fun assertShown(color: Hsv) {
+        Ui.scrollTo { isSwatch(color) }
+        Ui.assertShown("The preset ${describe(color)}") { isSwatch(color) }
     }
 
-    fun assertNotSelected(color: Hsv) = Ui.assertShown("The preset ${describe(color)}, not selected") {
-        isSwatch(color) && !isChosen()
+    /** No preset is [color]: checked with the presets on screen, so one scrolled away doesn't count as gone. */
+    fun assertGone(color: Hsv) {
+        Ui.scrollTo { isAnySwatch() }
+        Ui.assertGone("The preset ${describe(color)}") { isSwatch(color) }
+    }
+
+    fun assertSelected(color: Hsv) {
+        Ui.scrollTo { isSwatch(color) }
+        Ui.assertShown("The preset ${describe(color)}, selected") { isSwatch(color) && isChosen() }
+    }
+
+    fun assertNotSelected(color: Hsv) {
+        Ui.scrollTo { isSwatch(color) }
+        Ui.assertShown("The preset ${describe(color)}, not selected") { isSwatch(color) && !isChosen() }
     }
 
     /** The presets appear in this order, from left to right (all on screen, once the first is). */
@@ -268,7 +277,7 @@ object ColorPresetsSection {
 
     /** The sliders show [color], as they do for the selected preset. */
     fun assertSlidersShow(color: Hsv) {
-        Ui.scrollTo { hasId("tv_BrightnessValue") }
+        showSliders()
         Ui.assertShown("Hue ${color.hue.toInt()}") { hasId("tv_HueValue") && hasText(color.hue.toInt().toString()) }
         Ui.assertShown("Saturation ${color.saturation}") {
             hasId("tv_SaturationValue") && hasText(decimal(color.saturation))
@@ -280,7 +289,7 @@ object ColorPresetsSection {
 
     /** Taps the hue slider at [fraction] of its width (0 left, 1 right) and returns the hue it shows then. */
     fun tapHue(fraction: Float): Int {
-        Ui.scrollTo { hasId("tv_BrightnessValue") } // The sliders sit below the swatches; this keeps both on screen.
+        showSliders()
         // The Add form's Material sliders (Views) report themselves as not visible to accessibility services, so they
         // can't be looked up. The hue slider spans the row between the "Hue" line (label and value) and the
         // "Saturation" line.
@@ -325,6 +334,17 @@ object ColorPresetsSection {
 
     private fun AccessibilityNodeInfo.isSwatch(color: Hsv) = hasDescription(describe(color))
 
+    private fun AccessibilityNodeInfo.isAnySwatch() = contentDescription?.startsWith(SWATCH_PREFIX) == true
+
+    /**
+     * Brings the three sliders on screen: the hue's line first (the page may be scrolled below it), then the
+     * brightness's, which keeps the hue's on screen above it.
+     */
+    private fun showSliders() {
+        Ui.scrollTo { hasId("tv_HueValue") }
+        Ui.scrollTo { hasId("tv_BrightnessValue") }
+    }
+
     // Selected: the Add form's View swatch says so itself; a Compose swatch is a checked item whose colour is a node inside it.
     private fun AccessibilityNodeInfo.isChosen() = isSelected || isChecked || parent?.isChecked == true
 
@@ -340,6 +360,7 @@ object ColorPresetsSection {
 
     private const val HEADER = "Color presets"
     private const val ADD = "Add current as new preset"
+    private const val SWATCH_PREFIX = "Color preset: "
     private const val DRAG_SPEED = 600 // Pixels per second.
     private const val EDGE_INSET = 2
 }
