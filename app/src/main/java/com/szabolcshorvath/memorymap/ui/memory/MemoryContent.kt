@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -73,7 +74,9 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryFragment
 import com.szabolcshorvath.memorymap.data.MemoryGroup
+import com.szabolcshorvath.memorymap.ui.common.MEDIA_TILE_MIN
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
+import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.Coordinates
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyGridState
@@ -89,7 +92,6 @@ private const val TAG_FRAGMENT = "fragmentCard"
 private const val TAG_FRAGMENT_DATES = "tv_time"
 private const val TAG_FRAGMENT_COLOR = "colorIndicator"
 
-private const val GRID_COLUMNS = 3
 private const val KEY_MEDIA = "media_"
 private const val KEY_FRAGMENT = "fragment_"
 
@@ -219,27 +221,31 @@ private fun MemoryPage(state: MemoryUiState, group: MemoryGroup, showFragmentMar
                 fragments = fragments.moved(fromKey, toKey) { KEY_FRAGMENT + it.id }
         }
     }
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(GRID_COLUMNS),
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(TAG_PAGE),
-        state = gridState,
-        contentPadding = PaddingValues(start = PAGE_MARGIN, end = PAGE_MARGIN, bottom = PAGE_MARGIN),
-        horizontalArrangement = Arrangement.spacedBy(GAP),
-        verticalArrangement = Arrangement.spacedBy(GAP),
-    ) {
-        fullWidth("details") { DetailsCard(group, actions) }
-        fragmentRows(fragments, reorder, onShowOnMap = actions::showFragmentOnMap.takeIf { showFragmentMarkers }) {
-            if (fragments.map { it.id } != state.fragments.map { it.id }) actions.saveFragmentsOrder(fragments)
-        }
-        if (media.isNotEmpty()) {
-            fullWidth("media_header") { SectionHeader(R.string.media) }
-            if (state.hasMissingMedia || state.relinking) {
-                fullWidth("media_warning") { MissingMediaBanner(state, actions::relinkMedia) }
+    // A wide window centres the page; the tiles fill as many columns as its width allows.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val side = PAGE_MARGIN + sideRoom(maxWidth)
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(MEDIA_TILE_MIN),
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(TAG_PAGE),
+            state = gridState,
+            contentPadding = PaddingValues(start = side, end = side, bottom = PAGE_MARGIN),
+            horizontalArrangement = Arrangement.spacedBy(GAP),
+            verticalArrangement = Arrangement.spacedBy(GAP),
+        ) {
+            fullWidth("details") { DetailsCard(group, actions) }
+            fragmentRows(fragments, reorder, onShowOnMap = actions::showFragmentOnMap.takeIf { showFragmentMarkers }) {
+                if (fragments.map { it.id } != state.fragments.map { it.id }) actions.saveFragmentsOrder(fragments)
             }
-            mediaTiles(media, reorder, actions::openMedia) {
-                if (media.map { it.item.id } != state.media.map { it.item.id }) actions.saveMediaOrder(media.map { it.item })
+            if (media.isNotEmpty()) {
+                fullWidth("media_header") { SectionHeader(R.string.media) }
+                if (state.hasMissingMedia || state.relinking) {
+                    fullWidth("media_warning") { MissingMediaBanner(state, actions::relinkMedia) }
+                }
+                mediaTiles(media, reorder, actions::openMedia) {
+                    if (media.map { it.item.id } != state.media.map { it.item.id }) actions.saveMediaOrder(media.map { it.item })
+                }
             }
         }
     }

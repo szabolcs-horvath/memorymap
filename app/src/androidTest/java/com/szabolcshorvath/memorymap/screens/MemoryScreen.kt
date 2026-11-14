@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
+import com.szabolcshorvath.memorymap.screens.ComposeUi.boundsOnScreen
 import com.szabolcshorvath.memorymap.screens.ComposeUi.centerOnScreen
 import com.szabolcshorvath.memorymap.screens.ComposeUi.dragOnto
 import com.szabolcshorvath.memorymap.screens.ComposeUi.tap
@@ -67,6 +68,13 @@ object MemoryScreen {
 
     /** Waits until the memory shows [count] photo thumbnails. */
     fun assertPhotoCount(count: Int) = assertThumbnailCount(photo, "Photo", count)
+
+    /** The photos fill [rows] rows: as many fit side by side as the page's width allows. */
+    fun assertPhotoRows(rows: Int) {
+        ComposeUi.scrollTo("A photo", photo)
+        val found = Ui.eventually(read = { ComposeUi.nodes(photo).map { it.boundsOnScreen().top }.distinct().size }) { it == rows }
+        assertEquals("Rows of photos", rows, found)
+    }
 
     /** Waits until the memory shows [count] video thumbnails (marked with a play icon). */
     fun assertVideoCount(count: Int) = assertThumbnailCount(video, "Video", count)

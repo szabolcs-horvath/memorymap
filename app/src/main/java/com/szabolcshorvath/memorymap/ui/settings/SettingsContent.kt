@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -69,6 +70,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
+import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 
 // The UI tests find these elements by these names (screens/SettingsScreen), the names the View version's ids had.
@@ -203,14 +205,18 @@ private fun SettingsPage(
             state = pull,
             indicator = { RefreshIndicator(pull, state.refreshing, Modifier.align(Alignment.TopCenter)) },
         ) {
-            LazyColumn(
-                Modifier
-                    .fillMaxSize()
-                    .testTag(listTag),
-                state = listState,
-                contentPadding = PaddingValues(bottom = PAGE_BOTTOM_PADDING),
-                content = content,
-            )
+            // A wide window centres the page, so lines stay short and switches stay near their labels.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val side = sideRoom(maxWidth)
+                LazyColumn(
+                    Modifier
+                        .fillMaxSize()
+                        .testTag(listTag),
+                    state = listState,
+                    contentPadding = PaddingValues(start = side, end = side, bottom = PAGE_BOTTOM_PADDING),
+                    content = content,
+                )
+            }
         }
     }
 }
