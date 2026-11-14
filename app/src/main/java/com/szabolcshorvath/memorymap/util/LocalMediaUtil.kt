@@ -12,7 +12,6 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryGroupDao
 import com.szabolcshorvath.memorymap.util.LocalMediaUtil.needsRelink
-import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 object LocalMediaUtil {
@@ -94,34 +93,19 @@ object LocalMediaUtil {
      * The size and date taken the provider reports for [uri] (0 for one it doesn't), or null when it can't be read.
      * Does a content resolver call: not on the main thread.
      */
-    fun queryMetadata(context: Context, uri: Uri): MediaMetadata? = try {
+    fun queryMetadata(context: Context, uri: Uri): MediaMetadata? = readOrNull {
         context.contentResolver.query(uri, METADATA_PROJECTION, null, null, null)?.use { c ->
             if (!c.moveToFirst()) return@use null
-            val sizeCol = c.getColumnIndex(MediaStore.MediaColumns.SIZE)
-            val dateCol = c.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
             MediaMetadata(
-                size = if (sizeCol != -1 && !c.isNull(sizeCol)) c.getLong(sizeCol) else 0L,
-                dateTaken = if (dateCol != -1 && !c.isNull(dateCol)) c.getLong(dateCol) else 0L
+                size = c.longOrNull(MediaStore.MediaColumns.SIZE) ?: 0L,
+                dateTaken = c.longOrNull(MediaStore.MediaColumns.DATE_TAKEN) ?: 0L
             )
         }
-    } catch (_: SecurityException) {
-        null
-    } catch (_: IllegalArgumentException) {
-        null
-    } catch (_: IllegalStateException) {
-        null
     }
 
-    fun signatureOrNull(context: Context, uri: Uri): String? = try {
+    /** [uri]'s signature ([MediaHasher]), or null when the file can't be read. Reads the file: not on the main thread. */
+    fun signatureOrNull(context: Context, uri: Uri): String? = readOrNull {
         MediaHasher.calculateMediaSignature(context, uri).takeIf { it.isNotEmpty() }
-    } catch (_: IOException) {
-        null
-    } catch (_: SecurityException) {
-        null
-    } catch (_: IllegalStateException) {
-        null
-    } catch (_: IllegalArgumentException) {
-        null
     }
 
     private class SignatureCache(private val compute: (Uri) -> String?) {

@@ -156,7 +156,7 @@ private class PhoneLibrary(private val context: Context) {
     fun storedState(uri: String): StoredUriState = try {
         resolver.query(uri.toUri(), STORED_PROJECTION, null, null, null)?.use { c ->
             if (c.moveToFirst()) {
-                StoredUriState.Readable(c.long(MediaStore.MediaColumns.SIZE) ?: 0L, c.long(MediaStore.MediaColumns.DATE_TAKEN) ?: 0L)
+                StoredUriState.Readable(c.longOrNull(MediaStore.MediaColumns.SIZE) ?: 0L, c.longOrNull(MediaStore.MediaColumns.DATE_TAKEN) ?: 0L)
             } else {
                 StoredUriState.Unreadable("query returned no row")
             }
@@ -178,7 +178,7 @@ private class PhoneLibrary(private val context: Context) {
             for (chunk in wanted.chunked(SIZE_QUERY_CHUNK)) {
                 val selection = "${MediaStore.MediaColumns.SIZE} IN (${chunk.joinToString(",")})"
                 query(contentUri, SIZE_PROJECTION, Selection(selection)) { c ->
-                    val size = c.long(MediaStore.MediaColumns.SIZE) ?: return@query
+                    val size = c.longOrNull(MediaStore.MediaColumns.SIZE) ?: return@query
                     found.getOrPut(size) { mutableListOf() } += ContentUris.withAppendedId(contentUri, c.getLong(0)).toString()
                 }
             }
@@ -229,18 +229,21 @@ private class PhoneLibrary(private val context: Context) {
 
     private fun phoneFile(contentUri: Uri, c: Cursor) = PhoneFile(
         uri = ContentUris.withAppendedId(contentUri, c.getLong(c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID))).toString(),
-        displayName = c.string(MediaStore.MediaColumns.DISPLAY_NAME),
-        relativePath = c.string(MediaStore.MediaColumns.RELATIVE_PATH),
-        mimeType = c.string(MediaStore.MediaColumns.MIME_TYPE),
-        size = c.long(MediaStore.MediaColumns.SIZE) ?: 0L,
-        dateTaken = c.long(MediaStore.MediaColumns.DATE_TAKEN) ?: 0L,
-        dateModified = (c.long(MediaStore.MediaColumns.DATE_MODIFIED) ?: 0L) * MILLIS_PER_SECOND,
-        width = c.long(MediaStore.MediaColumns.WIDTH)?.toInt() ?: 0,
-        height = c.long(MediaStore.MediaColumns.HEIGHT)?.toInt() ?: 0,
-        ownerPackage = c.string(MediaStore.MediaColumns.OWNER_PACKAGE_NAME),
-        isTrashed = c.long(MediaStore.MediaColumns.IS_TRASHED) == 1L,
-        isPending = c.long(MediaStore.MediaColumns.IS_PENDING) == 1L,
-        ids = FileIds(documentId = c.string(MediaStore.MediaColumns.DOCUMENT_ID), originalDocumentId = c.string(MediaStore.MediaColumns.ORIGINAL_DOCUMENT_ID))
+        displayName = c.stringOrNull(MediaStore.MediaColumns.DISPLAY_NAME),
+        relativePath = c.stringOrNull(MediaStore.MediaColumns.RELATIVE_PATH),
+        mimeType = c.stringOrNull(MediaStore.MediaColumns.MIME_TYPE),
+        size = c.longOrNull(MediaStore.MediaColumns.SIZE) ?: 0L,
+        dateTaken = c.longOrNull(MediaStore.MediaColumns.DATE_TAKEN) ?: 0L,
+        dateModified = (c.longOrNull(MediaStore.MediaColumns.DATE_MODIFIED) ?: 0L) * MILLIS_PER_SECOND,
+        width = c.longOrNull(MediaStore.MediaColumns.WIDTH)?.toInt() ?: 0,
+        height = c.longOrNull(MediaStore.MediaColumns.HEIGHT)?.toInt() ?: 0,
+        ownerPackage = c.stringOrNull(MediaStore.MediaColumns.OWNER_PACKAGE_NAME),
+        isTrashed = c.longOrNull(MediaStore.MediaColumns.IS_TRASHED) == 1L,
+        isPending = c.longOrNull(MediaStore.MediaColumns.IS_PENDING) == 1L,
+        ids = FileIds(
+            documentId = c.stringOrNull(MediaStore.MediaColumns.DOCUMENT_ID),
+            originalDocumentId = c.stringOrNull(MediaStore.MediaColumns.ORIGINAL_DOCUMENT_ID)
+        )
     )
 
     /** Runs [onRow] for every row. Returns false if the query failed or returned no cursor. */
@@ -299,7 +302,3 @@ private class PhoneLibrary(private val context: Context) {
         )
     }
 }
-
-private fun Cursor.long(column: String): Long? = getColumnIndex(column).takeIf { it != -1 && !isNull(it) }?.let(::getLong)
-
-private fun Cursor.string(column: String): String? = getColumnIndex(column).takeIf { it != -1 && !isNull(it) }?.let(::getString)

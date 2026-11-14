@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.util
 
 import android.content.Context
 import android.net.Uri
-import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
@@ -18,7 +17,6 @@ import com.szabolcshorvath.memorymap.util.MediaDetails.withDetails
  */
 object MissingMedia {
     private const val TAG = "MissingMedia"
-    private val METADATA_PROJECTION = arrayOf(MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_TAKEN)
 
     /** A file the user chose to use instead. */
     data class MediaFile(val uri: String, val type: MediaType, val size: Long, val dateTaken: Long, val signature: String)
@@ -28,18 +26,10 @@ object MissingMedia {
         val signature = LocalMediaUtil.signatureOrNull(context, uri) ?: return null
         val resolver = context.contentResolver
         val type = if (resolver.getType(uri)?.startsWith("video/") == true) MediaType.VIDEO else MediaType.IMAGE
-        val (size, dateTaken) = try {
-            resolver.query(uri, METADATA_PROJECTION, null, null, null)?.use { c ->
-                if (!c.moveToFirst()) return@use null
-                val size = c.getColumnIndex(MediaStore.MediaColumns.SIZE).takeIf { it != -1 && !c.isNull(it) }?.let(c::getLong)
-                val date = c.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN).takeIf { it != -1 && !c.isNull(it) }?.let(c::getLong)
-                (size ?: 0L) to (date ?: 0L)
-            }
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Could not read the details of $uri", e)
-            null
-        } ?: (0L to 0L)
-        return MediaFile(uri.toString(), type, size.takeIf { it > 0 } ?: signature.substringBefore('_').toLongOrNull() ?: 0L, dateTaken, signature)
+        val metadata = LocalMediaUtil.queryMetadata(context, uri)
+        if (metadata == null) Log.w(TAG, "Could not read the details of $uri")
+        val size = metadata?.size?.takeIf { it > 0 } ?: signature.substringBefore('_').toLongOrNull() ?: 0L
+        return MediaFile(uri.toString(), type, size, metadata?.dateTaken ?: 0L, signature)
     }
 
     /**

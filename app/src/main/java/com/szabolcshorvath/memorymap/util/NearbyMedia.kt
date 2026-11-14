@@ -10,7 +10,6 @@ import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
 import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.data.MediaType
 import java.util.Locale
 import kotlin.math.abs
 
@@ -36,7 +35,7 @@ internal object NearbyMedia {
      */
     fun find(context: Context, item: MediaItem, memoryItems: List<MediaItem>, windowMs: Long): List<NearbyFile> {
         if (item.dateTaken <= 0) return emptyList()
-        val files = query(context, collection(item.type), item.dateTaken - windowMs, item.dateTaken + windowMs)
+        val files = query(context, mediaStoreCollection(item.type), item.dateTaken - windowMs, item.dateTaken + windowMs)
         val nearest = pick(item, files, memoryItems, LIMIT) { LocalMediaUtil.signatureOrNull(context, it.toUri()) }
         return rankByLooks(item, nearest) { MediaDetails.hashOf(context, it.toUri()) }
     }
@@ -89,11 +88,6 @@ internal object NearbyMedia {
     private const val MILLIS_PER_SECOND = 1000L
     private const val SECONDS_PER_MINUTE = 60L
     private const val MINUTES_PER_HOUR = 60L
-
-    fun collection(type: MediaType): Uri = when (type) {
-        MediaType.IMAGE -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        MediaType.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-    }
 
     private fun query(context: Context, collection: Uri, from: Long, to: Long): List<NearbyFile> = try {
         val selection = "${MediaStore.MediaColumns.DATE_TAKEN} BETWEEN ? AND ?"
