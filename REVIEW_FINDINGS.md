@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 83 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 6 open
+✅ 83 fixed · 🟡 8 partly fixed · ❔ 0 to verify · ⬜ 7 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -165,7 +165,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ⬜ | [BUILD-5](#build-5) | Low | Material3 is pinned to a release candidate ahead of the Compose BOM |
 | ⬜ | [BUILD-6](#build-6) | Low | Nothing checks the declared dependencies against what the code uses |
 
-**TEST — Coverage gaps** · 2 of 5 fixed
+**TEST — Coverage gaps** · 2 of 6 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
@@ -174,6 +174,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [TEST-3](#test-3) | Low | No UI or instrumentation tests |
 | 🟡 | [TEST-4](#test-4) | Medium | Flaky UI tests |
 | 🟡 | [TEST-5](#test-5) | Medium | The UI suite has grown slow and overlapping |
+| ⬜ | [TEST-6](#test-6) | Medium | The UI tests drive Compose screens through the accessibility tree |
 
 **I18N / A11Y** · 2 of 4 fixed
 
@@ -1038,7 +1039,18 @@ When a status changes, update the item's **Status** line, the marker in its head
   - The colour preset checks (`ColorPresetsSection`) scroll to the preset or the sliders they check, instead of counting on an earlier scroll having left them on screen, and a preset counts as gone only with the presets on screen.
   - Merged, keeping every check (132 to 118 tests): `RotationTest` and `ProcessDeathTest` into `SavedStateTest`, where each state is turned and then goes through a process death (16 to 7; the map's open panel only through a rotation, as before); `SaveErrorTest`'s two cases into the one with a photo; `TimelineTest`'s two Show on Timeline scroll tests; `MapTest`'s two "tap the Map tab again" tests; `SettingsTest`'s two failed sign-ins; `FragmentsAndColorTest`'s fragment dates, now saved with a date of their own and then edited to an all-day range.
   - **After** (2026-11-13): 118 tests, all passing, in 33.4 minutes (35.0 before); the tests themselves take 26.6 (28.7 before). 4 scroll waits are left (79 before), from the Timeline's own swipes. The emulator's speed varies by a few minutes from run to run (an earlier run of these changes took 31), so this is a modest gain, not the 7 to 9 minutes first estimated: most of the time is the app's start in every test and waiting for the screen after taps. No test failed for flakiness in the two full runs; the thumbnail failure still open under [TEST-4](#test-4) showed once more, in `SettingsTest.reLinkingFindsAPhotoBroughtFromAnotherPhone`.
-  - Left: the waits after taps (about 3 minutes), and further merges of tests that share a setup.
+  - Left: the waits after taps (about 3 minutes), and further merges of tests that share a setup. The waits are better solved by [TEST-6](#test-6) than by tuning them.
+
+### <a id="test-6"></a>⬜ TEST-6 · Medium · The UI tests drive Compose screens through the accessibility tree
+- **Where:** `app/src/androidTest/.../screens/` (the screen objects and `Ui`), `testing/MemoryMapAppRule.kt`
+- **What:** The screen objects find and tap everything with UI Automator, which sees only the accessibility tree and can't tell when Compose has finished recomposing, animating or scrolling. So they make up for it with guesses about time and layout: polling (`Ui.waitUntil`), waiting for an element to stop moving (`findSettled`, the map's markers, the memory pager), swiping with a hold at the end because `UiObject2.scroll` waits for a scroll event Compose never sends, swiping through the middle of a page because its edges can be under a bar or a button, and checks that scroll to what they check because an earlier step may have moved it away ([TEST-5](#test-5)). Each guess is a place a test can be slow or flaky. TEST-3 chose UI Automator so the tests would survive the move from Views to Compose ([ARCH-10](#arch-10)); that move is done, so the reason is gone.
+- **Fix:** what Google recommends: Compose's own test APIs for the app's own screens, and UI Automator only for what isn't the app's Compose UI. Agreed with the user (2026-11-14), starting with a pilot.
+  - A Compose test rule (`createEmptyComposeRule()`, which finds the app's Compose UI in whatever activity shows it, so it keeps working when `simulateProcessDeath` or a rotation recreates the activity) in `MemoryMapAppRule`, next to UI Automator.
+  - The screen objects find nodes by test tag, text or content description through the semantics tree (`onNodeWithTag`, `onNodeWithText`), scroll with `performScrollTo` and `performScrollToNode` (exactly as far as needed, inside lazy lists too, with no swipe), tap with `performClick`, and check with `assertIsDisplayed`, `assertIsSelected`, `assertTextEquals`. The rule waits by itself until Compose is idle, which replaces the polling, the settle checks and most fixed waits in `Ui`.
+  - UI Automator stays for what Compose's tree doesn't hold: Android's permission dialogs, the share sheet, toasts, the map's markers (inside Google's map View), Home and Back, rotation, "Don't keep activities", and reading the screen's colours.
+  - The test classes barely change: only the screen objects look elements up, which is what that layer is for.
+  - Pilot first: move `AddScreen` and the colour section (`ColorPresetsSection`, the most scrolling), run `AddMemoryTest`, `FragmentsAndColorTest` and `ColorPresetsTest` several times, and compare their time and flaky failures with UI Automator's. Move the rest screen by screen only if the pilot is clearly better, then delete the workarounds from `Ui`; otherwise record why and close this.
+  - To check: process death under a Compose rule ("Don't keep activities" recreates the activity, which `createEmptyComposeRule` should follow); the Timeline's flash, read from the screen's colours in real time, while the rule's clock drives animations; drag-to-reorder (`performTouchInput`); and screens that mix the map with Compose.
 
 [↑ Back to index](#index)
 
