@@ -261,7 +261,11 @@ class MapTest {
         // Red, as every memory starts.
         TestData.memory(TODAY, daysAgo = 0, place = Place.MADRID)
         TestData.memory(YESTERDAY, daysAgo = 1, place = Place.ROME)
-        TestData.markerColor(TestData.memory(TWENTY_DAYS_AGO, daysAgo = 20, place = Place.PARIS), BLUE)
+        val blue = TestData.memory(TWENTY_DAYS_AGO, daysAgo = 20, place = Place.PARIS)
+        TestData.markerColor(blue, BLUE)
+        // A red fragment marker on the map: the statistics count memories, so it adds nothing to them.
+        TestData.showFragmentMarkers(true)
+        TestData.fragment(blue, Place.ATHENS)
         openMap()
 
         MapScreen.toggleColorStatistics()

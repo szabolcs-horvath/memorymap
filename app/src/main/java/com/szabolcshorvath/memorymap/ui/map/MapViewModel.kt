@@ -419,9 +419,13 @@ class MapViewModel(
             }
         }
 
-        /** How many of [pins]' memories have each colour, most common first (ties in colour order, so slices keep their place). */
+        /**
+         * How many of [pins]' memories have each colour, most common first (ties in colour order, so slices keep their
+         * place). Fragment markers aren't counted: the statistics count memories, the same with fragment markers on or off.
+         */
         internal fun colorCounts(pins: List<MarkerableCluster>): List<ColorCount> =
             pins.flatMap { it.items }
+                .filterNot { it is Markerable.FragmentMarker }
                 .groupingBy { it.markerColor() }
                 .eachCount()
                 .map { (color, count) -> ColorCount(color, count) }
