@@ -44,9 +44,9 @@ import com.szabolcshorvath.memorymap.util.ColorUtil
 import kotlin.math.roundToInt
 
 // The UI tests find the slider values by these names (screens/ColorPresetsSection): on Settings and the Add form.
-private const val TAG_HUE_VALUE = "tv_HueValue"
-private const val TAG_SATURATION_VALUE = "tv_SaturationValue"
-private const val TAG_BRIGHTNESS_VALUE = "tv_BrightnessValue"
+private const val TAG_HUE_VALUE = "color_hue_value"
+private const val TAG_SATURATION_VALUE = "color_saturation_value"
+private const val TAG_BRIGHTNESS_VALUE = "color_brightness_value"
 
 private const val MAX_HUE = 360f
 private const val HUE_STEP = 5f

@@ -73,13 +73,13 @@ import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 
-// The UI tests find these elements by these names (screens/SettingsScreen), the names the View version's ids had.
-private const val TAG_PAGE = "scroll_settings"
-private const val TAG_DEFAULT_FILTER = "spinner_defaultFilter"
-private const val TAG_BUSY = "loadingOverlay"
-private const val TAG_RELINK = "bt_relinkMedia"
-private const val TAG_SEND_LOGS = "bt_sendLogs"
-private const val TAG_ALL_BACKUPS_PAGE = "scroll_all_backups"
+// The names the UI tests find these elements by (screens/SettingsScreen).
+private const val TAG_PAGE = "settings_page"
+private const val TAG_DEFAULT_FILTER = "settings_default_filter"
+private const val TAG_BUSY = "settings_busy"
+private const val TAG_RELINK = "settings_relink"
+private const val TAG_SEND_LOGS = "settings_send_logs"
+private const val TAG_ALL_BACKUPS_PAGE = "settings_all_backups_page"
 
 /** The default filter's arrow points up while its menu is open. */
 private const val ARROW_OPEN = 180f

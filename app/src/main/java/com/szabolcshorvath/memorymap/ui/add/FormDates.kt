@@ -67,12 +67,12 @@ import java.time.ZonedDateTime
 import java.util.Locale
 
 // The UI tests find the memory's date buttons by these names (screens/AddScreen); a fragment's have the same names.
-private const val TAG_DATE_RANGE = "bt_dateRange"
-private const val TAG_START_DATE = "bt_startDate"
-private const val TAG_START_TIME = "bt_startTime"
-private const val TAG_END_DATE = "bt_endDate"
-private const val TAG_END_TIME = "bt_endTime"
-private const val TAG_ALL_DAY = "switch_allDay"
+private const val TAG_DATE_RANGE = "add_date_range"
+private const val TAG_START_DATE = "add_start_date"
+private const val TAG_START_TIME = "add_start_time"
+private const val TAG_END_DATE = "add_end_date"
+private const val TAG_END_TIME = "add_end_time"
+private const val TAG_ALL_DAY = "add_all_day"
 
 // The widths of a date row's label and buttons, so the rows' buttons line up.
 private const val LABEL_WEIGHT = 0.8f

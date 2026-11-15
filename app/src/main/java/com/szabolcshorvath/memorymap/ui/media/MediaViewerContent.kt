@@ -68,9 +68,9 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
 import androidx.media3.common.MediaItem as PlayerItem
 
-// The UI tests find these elements by these names (screens/MediaViewerScreen), the names the View version's ids had.
-private const val TAG_PAGER = "mediaViewPager"
-private const val TAG_SCRUBBER = "videoScrubber"
+// The names the UI tests find these elements by (screens/MediaViewerScreen).
+private const val TAG_PAGER = "viewer_pager"
+private const val TAG_SCRUBBER = "viewer_scrubber"
 
 /** How often the position slider tells a screen reader where the video is. */
 private const val POSITION_TICK_MS = 1_000L

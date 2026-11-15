@@ -81,13 +81,13 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 // The UI tests find these by name (screens/AddScreen).
-internal const val TAG_PAGE = "scroll_add"
-private const val TAG_TITLE = "titleInput"
-private const val TAG_DESCRIPTION = "descriptionInput"
-private const val TAG_LOCATION_ITEM = "bt_selectLocation"
-internal const val TAG_LOCATION = "tv_location"
-private const val TAG_SAVE = "bt_save"
-private const val TAG_CLEAR = "bt_clear"
+internal const val TAG_PAGE = "add_page"
+private const val TAG_TITLE = "add_title"
+private const val TAG_DESCRIPTION = "add_description"
+private const val TAG_LOCATION_ITEM = "add_location"
+internal const val TAG_LOCATION = "add_location_text"
+private const val TAG_SAVE = "add_save"
+private const val TAG_CLEAR = "add_clear"
 
 /** The gap between the page's items. */
 private val ITEM_GAP = 8.dp

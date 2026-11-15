@@ -34,10 +34,10 @@ object SettingsScreen : TabScreen {
     }
 
     fun assertSignedIn(email: String) {
-        ComposeUi.scrollTo("The signed-in account $email", hasTestTag("tv_accountName") and hasText(email), unmerged = true)
+        ComposeUi.scrollTo("The signed-in account $email", hasTestTag("settings_account") and hasText(email), unmerged = true)
     }
 
-    private fun backup(label: String) = hasTestTag("tv_backup_name") and hasText(label)
+    private fun backup(label: String) = hasTestTag("settings_backup_name") and hasText(label)
 
     /** The backup list shows a backup with [label] ("Manual Backup", "Automatic Backup" or the file name). */
     fun assertBackupShown(label: String) {
@@ -91,7 +91,7 @@ object SettingsScreen : TabScreen {
     }
 
     fun assertNoBackupListProblem() =
-        ComposeUi.assertGone("A backup list problem", hasTestTag("tv_backupListProblem"), unmerged = true)
+        ComposeUi.assertGone("A backup list problem", hasTestTag("settings_backup_list_problem"), unmerged = true)
 
     fun assertAllowAccessGone() = ComposeUi.assertGone("The Allow access button", hasText(ALLOW_ACCESS))
 
@@ -134,14 +134,14 @@ object SettingsScreen : TabScreen {
         ComposeUi.waitFor("The Re-link item, enabled again", relinkItem and isEnabled(), timeoutMs = Ui.SLOW_TIMEOUT_MS)
     }
 
-    private val relinkItem = hasTestTag("bt_relinkMedia")
+    private val relinkItem = hasTestTag("settings_relink")
 
     /**
      * Waits until a backup, restore or delete and anything after it (a restore re-links media) is over: the
      * loading overlay is gone and the buttons work again.
      */
     fun waitUntilIdle() {
-        if (!Ui.waitUntil(BUSY_TIMEOUT_MS) { !ComposeUi.exists(hasTestTag("loadingOverlay")) }) {
+        if (!Ui.waitUntil(BUSY_TIMEOUT_MS) { !ComposeUi.exists(hasTestTag("settings_busy")) }) {
             throw AssertionError("Settings is still busy")
         }
         waitForRelinkToFinish()
@@ -149,7 +149,7 @@ object SettingsScreen : TabScreen {
 
     /** The result line of the last backup, restore or delete starts with [text], such as "Backup successful". */
     fun assertResult(text: String) {
-        val result = hasTestTag("tv_backupStatusDetails") and ComposeUi.textStartsWith(text)
+        val result = hasTestTag("settings_backup_result") and ComposeUi.textStartsWith(text)
         ComposeUi.scrollTo("The result \"$text\"", result, unmerged = true)
     }
 
@@ -188,7 +188,7 @@ object SettingsScreen : TabScreen {
         ComposeUi.scrollTo("The default map filter \"$label\"", defaultFilter and hasText(label), unmerged = true)
     }
 
-    private val defaultFilter = hasTestTag("spinner_defaultFilter")
+    private val defaultFilter = hasTestTag("settings_default_filter")
     private val isMenuChoice = SemanticsMatcher.keyIsDefined(SemanticsProperties.Selected)
 
     // A switch stays disabled until the saved setting is loaded.
@@ -213,8 +213,8 @@ object SettingsScreen : TabScreen {
 
     private const val CLUSTERING = "Enable marker clustering"
     private const val RELINK = "Re-link photos and videos"
-    private const val PAGE = "scroll_settings"
-    private const val ALL_BACKUPS_PAGE = "scroll_all_backups"
+    private const val PAGE = "settings_page"
+    private const val ALL_BACKUPS_PAGE = "settings_all_backups_page"
     private const val SHOW_ALL = "Show all backups"
     private const val BUSY_TIMEOUT_MS = 30_000L
     private const val RELINK_START_MS = 2_000L

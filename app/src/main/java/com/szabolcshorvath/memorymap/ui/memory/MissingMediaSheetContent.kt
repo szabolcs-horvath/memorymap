@@ -49,9 +49,9 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.math.abs
 
-// The UI tests find these elements by these names (screens/MissingPhotoSheet), the names the View version's ids had.
-private const val TAG_MESSAGE = "tvMissingMessage"
-private const val TAG_FILE = "tvMissingFile"
+// The names the UI tests find these elements by (screens/MissingPhotoSheet).
+private const val TAG_MESSAGE = "missing_message"
+private const val TAG_FILE = "missing_file"
 
 private const val MILLIS_PER_SECOND = 1000L
 private val SHEET_PADDING = 24.dp

@@ -268,10 +268,10 @@ private fun MemoryRow(item: Markerable, index: Int, count: Int, onClick: () -> U
     }
 }
 
-private const val TAG_DATE_RANGE = "bt_dateRange"
-private const val TAG_STATS = "pieChart"
-private const val TAG_PLACE = "tv_overlayLocationTitle"
-private const val TAG_MEMORY_TITLE = "tv_memoryTitle"
+private const val TAG_DATE_RANGE = "map_date_range"
+private const val TAG_STATS = "map_stats"
+private const val TAG_PLACE = "map_overlay_place"
+private const val TAG_MEMORY_TITLE = "map_overlay_memory_title"
 private const val FULL_CIRCLE = 360f
 private const val RING_START_DEGREES = -90f
 private const val RING_GAP_DEGREES = 3f

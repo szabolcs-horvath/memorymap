@@ -43,7 +43,7 @@ import com.szabolcshorvath.memorymap.data.MediaType
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 
 // The UI tests read an unavailable tile's details by this name (screens/MemoryScreen, screens/AddScreen).
-private const val TAG_TILE_DETAILS = "tvErrorDetails"
+private const val TAG_TILE_DETAILS = "media_tile_details"
 
 /** How much of an unavailable photo's stored thumbnail shows through: enough to recognise it, faint enough to read on. */
 private const val THUMBNAIL_ALPHA = 0.45f

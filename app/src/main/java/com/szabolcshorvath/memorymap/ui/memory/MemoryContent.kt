@@ -84,15 +84,15 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyGridState
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
-// The UI tests find these elements by these names (screens/MemoryScreen), the names the View version's ids had.
+// The names the UI tests find these elements by (screens/MemoryScreen).
 private const val TAG_PAGE = "memory_page"
-private const val TAG_TITLE = "tv_title"
-private const val TAG_DESCRIPTION = "tv_description"
-private const val TAG_DATE = "tv_date"
-private const val TAG_LOCATION = "tv_location"
-private const val TAG_FRAGMENT = "fragmentCard"
-private const val TAG_FRAGMENT_DATES = "tv_time"
-private const val TAG_FRAGMENT_COLOR = "colorIndicator"
+private const val TAG_TITLE = "memory_title"
+private const val TAG_DESCRIPTION = "memory_description"
+private const val TAG_DATE = "memory_date"
+private const val TAG_LOCATION = "memory_location"
+private const val TAG_FRAGMENT = "memory_fragment"
+private const val TAG_FRAGMENT_DATES = "memory_fragment_dates"
+private const val TAG_FRAGMENT_COLOR = "memory_fragment_color"
 
 private const val KEY_MEDIA = "media_"
 private const val KEY_FRAGMENT = "fragment_"
