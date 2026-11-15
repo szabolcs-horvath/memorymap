@@ -33,6 +33,7 @@ fun MemoryMapTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable (
 }
 
 /** Green for a finished task (a backup or restore that worked): Material 3 has no colour role for it. */
+@Suppress("UnusedReceiverParameter")
 val MaterialTheme.success: Color
     @Composable
     @ReadOnlyComposable
