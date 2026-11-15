@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -98,7 +99,6 @@ private const val TAG_FRAGMENT_COLOR = "memory_fragment_color"
 private const val KEY_MEDIA = "media_"
 private const val KEY_FRAGMENT = "fragment_"
 
-private val LINK_PADDING = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
 private val LINK_MIN_FONT = 11.sp
 
 /** The gap between a segmented list's items and between the photo tiles: Material 3 Expressive's, as on the Timeline. */
@@ -395,11 +395,17 @@ private fun InfoLine(@DrawableRes icon: Int, text: String, tag: String) {
 
 @Composable
 private fun TonalButton(@DrawableRes icon: Int, label: Int, shapes: ButtonShapes, onClick: () -> Unit, modifier: Modifier) {
-    // Half a card is narrow: a little less padding than Material's, and a label that shrinks rather than wraps where
-    // it still doesn't fit (a large font size).
-    FilledTonalButton(onClick = onClick, modifier = modifier, shapes = shapes, contentPadding = LINK_PADDING) {
-        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+    // Material 3 Expressive's extra-small size: two secondary actions in a card. The touch target stays 48 dp. Half a
+    // card is narrow, so the label shrinks rather than wraps where it still doesn't fit (a large font size).
+    val height = ButtonDefaults.ExtraSmallContainerHeight
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = height),
+        shapes = shapes,
+        contentPadding = ButtonDefaults.contentPaddingFor(height, hasStartIcon = true),
+    ) {
+        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(height)))
+        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
         val style = LocalTextStyle.current
         Text(
             stringResource(label),
