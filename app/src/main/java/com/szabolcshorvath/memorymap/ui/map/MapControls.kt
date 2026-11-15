@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.Markerable
+import com.szabolcshorvath.memorymap.ui.color.COLOR_STRIP_WIDTH
 import com.szabolcshorvath.memorymap.ui.common.PANEL_ELEVATION
 import com.szabolcshorvath.memorymap.ui.common.PANEL_PADDING
 import com.szabolcshorvath.memorymap.ui.settings.DateFilterMenu
@@ -283,4 +284,3 @@ private val LABEL_INSET = 14.dp
 private val PANEL_LIST_HEIGHT = 300.dp
 private val LIST_PADDING = 12.dp
 private val ROW_GAP = 4.dp
-private val COLOR_STRIP_WIDTH = 6.dp
