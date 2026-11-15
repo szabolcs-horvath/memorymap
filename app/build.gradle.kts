@@ -140,13 +140,13 @@ ksp {
 
 dependencies {
     // Core & UI
-    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core)
     implementation(libs.datastore.preferences)
+    implementation(libs.kotlinx.coroutines.core)
 
     // Jetpack Compose
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
-    implementation(libs.compose.ui.tooling.preview)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.lifecycle.viewmodel.compose)
@@ -160,16 +160,16 @@ dependencies {
     implementation(libs.google.places)
     implementation(libs.play.services.location)
     implementation(libs.play.services.maps)
-    implementation(libs.android.maps.utils)
+    implementation(libs.android.maps.utils.clustering)
     implementation(libs.maps.compose)
     implementation(libs.maps.compose.utils)
 
     // Room
-    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
 
     // Background work (automatic backups)
-    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.work.runtime)
 
     // Media
     implementation(libs.coil)
@@ -183,12 +183,15 @@ dependencies {
 
     // Auth
     implementation(libs.credentials)
-    implementation(libs.credentials.play.services.auth)
+    runtimeOnly(libs.credentials.play.services.auth) // Credential Manager finds it at run time.
     implementation(libs.googleid)
     implementation(libs.play.services.auth)
 
     // Drive
     implementation(libs.google.api.services.drive)
+    // The Drive code calls these itself, not only through the Drive service.
+    implementation(libs.google.api.client)
+    implementation(libs.google.http.client)
 
     // JSON
     implementation(libs.google.http.client.gson)
@@ -202,21 +205,35 @@ dependencies {
     // Testing
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
-    testImplementation(libs.robolectric)
+    testImplementation(libs.robolectric.shadows.framework)
+    testRuntimeOnly(libs.robolectric)
     testImplementation(libs.androidx.work.testing)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlinx.coroutines.android)
     testRuntimeOnly(libs.junit.platform.launcher)
     androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.test.core.ktx)
+    androidTestImplementation(libs.junit4)
+    androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.uiautomator)
+    // Not a duplicate of the app's Compose BOM line, whatever the IDE says: the UI tests' runtime classpath doesn't get the
+    // app's platform, and without it can't resolve the Compose test library's version.
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.test.services.storage)
     androidTestUtil(libs.androidx.test.orchestrator)
     androidTestUtil(libs.androidx.test.services)
 
     // Debug tools
-    debugImplementation(libs.leakcanary)
+    debugRuntimeOnly(libs.leakcanary)
+
+    constraints {
+        // core-ktx is empty now (its Kotlin API is in core), but libraries still bring older ones that aren't: keep it at
+        // core's version, so the compile classpath doesn't get the same classes twice.
+        implementation(libs.androidx.core.ktx)
+        // maps-compose-utils brings android-maps-utils 6: keep all of it at the clustering module's version.
+        implementation(libs.android.maps.utils)
+        // Compose's test library brings an older Espresso, which fails on API 37. Nothing uses Espresso directly.
+        androidTestImplementation(libs.androidx.test.espresso.core)
+    }
 }
