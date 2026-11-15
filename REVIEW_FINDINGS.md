@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 89 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 5 open
+✅ 90 fixed · 🟡 4 partly fixed · ❔ 0 to verify · ⬜ 4 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -163,7 +163,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
 | ✅ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
 | ⬜ | [BUILD-5](#build-5) | Low | Material3 is pinned to a release candidate ahead of the Compose BOM |
-| ⬜ | [BUILD-6](#build-6) | Low | Nothing checks the declared dependencies against what the code uses |
+| ✅ | [BUILD-6](#build-6) | Low | Nothing checks the declared dependencies against what the code uses |
 
 **TEST — Coverage gaps** · 4 of 6 fixed
 
@@ -967,7 +967,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **What:** The Compose BOM takes only stable releases, and the app needs Material 3 1.5 (Material 3 Expressive's button groups, wavy progress indicators and `SegmentedListItem`). So Material3 is pinned on its own, to `1.5.0-rc01`, while the rest of Compose comes from the BOM (`2026.09.00`, the latest on 2026-11-12, still on Material3 1.4). A release candidate can still change, and the pin has to be moved by hand.
 - **Fix:** Once a BOM has Material3 1.5 (stable), drop `composeMaterial3` and take Material3 from the BOM again; check that the unit tests, lint and the UI suite still pass. Until then, move the pin to 1.5.0 when it is released.
 
-### <a id="build-6"></a>⬜ BUILD-6 · Low · Nothing checks the declared dependencies against what the code uses
+### <a id="build-6"></a>✅ BUILD-6 · Low · Nothing checks the declared dependencies against what the code uses
 - **Where:** `gradle/libs.versions.toml`, `build.gradle.kts`, `app/build.gradle.kts`
 - **What:** Dependencies are added and removed by hand. Nothing reports a library nothing uses any more (the View-era clean-up dropped AppCompat, Material Components, ConstraintLayout and `fragment-ktx` only because someone looked), a library the code uses but only gets through another one (it breaks when that one drops it), a test-only library declared for the app, or an unused annotation processor. Android lint doesn't check this.
 - **Fix:** Add the [Dependency Analysis Gradle Plugin](https://github.com/autonomousapps/dependency-analysis-gradle-plugin) (DAGP), off by default and run once in a while, so it never has to be added again (agreed with the user, 2026-11-12):
@@ -977,6 +977,11 @@ When a status changes, update the item's **Status** line, the marker in its head
   - Document the command in AGENTS.md's Build section, next to detekt and the UI tests.
   - Check DAGP's compatibility table first: the project runs very new AGP, Gradle and Kotlin versions, which DAGP sometimes supports only later.
   - Then act on the first report: remove unused libraries, declare the ones used through others, and move test-only ones to `testImplementation`.
+- **Status:** Fixed (2026-11-15). DAGP 3.20.3 is in the catalog and the root build, applied only with `-PdependencyAnalysis` (`./gradlew buildHealth -PdependencyAnalysis`), and `dependency-analysis.yml` runs it on the first of every month or by hand, showing the report on its summary page; it never fails. DAGP is tested up to AGP 9.3.1 and warns about the project's 9.5.1, but works with it. Its first report, acted on with the user's approval:
+  - Swapped the empty `-ktx` artifacts for the ones the code uses (`core`, `room-runtime`, `work-runtime`), `android-maps-utils` for its `-clustering` module and the UI tests' `androidx.test:core-ktx` for `core`; removed `compose-ui-tooling-preview` (no `@Preview` in the code). `leakcanary`, `credentials-play-services-auth` and `robolectric` are runtime-only; the unit tests declare `shadows-framework`, which they use.
+  - Declared what the code uses through unrelated libraries: `kotlinx-coroutines-core`, `google-api-client` and `google-http-client` (the Drive code), JUnit 4 for the UI tests and `kotlinx-coroutines-android` for the unit tests. Modules of a family the build declares (Compose, lifecycle, activity, DataStore, Room, Media3, AndroidX Test, Coil, telephoto) count as declared, through DAGP's bundles.
+  - The icons tinted with AppCompat's `?attr/colorControlNormal`, which the app got only through the Places SDK; they use Android's own `?android:attr/colorControlNormal` now (the theme is `Theme.Material`, and Compose's `Icon` sets the colour anyway). DAGP still matches the attribute by name, so AppCompat is excluded, with a comment.
+  - Not what the report said: three declarations raised versions other libraries bring, so dropping them would have lowered `core-ktx` on the compile classpath (to 1.18.0, which still has classes: 140 of them twice) and `android-maps-utils` and its heatmaps module (to 6.0.0, under a 7.0.0 clustering module). They are `constraints` now, as is Espresso 3.7.0 (raised for API 37), each with a comment. The runtime classpaths resolve the same versions as before; only the empty or unused artifacts are gone. AGENTS.md's Build section says how to run it and to compare the classpaths before trusting a change.
 
 [↑ Back to index](#index)
 
