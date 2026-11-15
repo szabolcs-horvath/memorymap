@@ -5,10 +5,16 @@ import android.graphics.Rect
 import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.uiautomator.StaleObjectException
 import com.szabolcshorvath.memorymap.screens.ComposeUi.boundsOnScreen
 import com.szabolcshorvath.memorymap.screens.ComposeUi.tap
@@ -226,17 +232,53 @@ object MapScreen : TabScreen {
     }
 
     fun assertColorStatisticsShown() {
-        ComposeUi.waitFor("The colour statistics", hasTestTag(PIE_CHART))
+        ComposeUi.waitFor("The colour statistics", hasTestTag(STATS_CARD))
     }
 
-    fun assertColorStatisticsGone() = ComposeUi.assertGone("The colour statistics", hasTestTag(PIE_CHART))
+    fun assertColorStatisticsGone() = ComposeUi.assertGone("The colour statistics", hasTestTag(STATS_CARD))
 
     /**
-     * The colour statistics' chart has a slice of each of [colors] and none of [absent]. The chart is drawn, with
-     * nothing a screen reader can read, so its colours are read from a screenshot, on a grid across the chart.
+     * The colour statistics' legend has a row per colour with [counts] in this order (largest first), and [total]
+     * under them. The rows are read as a screen reader reads them: the dots' colours are in the ring.
+     */
+    fun assertColorLegend(counts: List<Int>, total: Int) {
+        val expected = counts.map(::memories)
+        val shown = Ui.eventually(read = { ComposeUi.nodes(hasTestTag(STATS_COLOR)).map { it.description() } }) { it == expected }
+        assertEquals("The colour statistics' legend", expected, shown)
+        ComposeUi.waitFor("The total $total under the legend", hasTestTag(STATS_TOTAL) and hasContentDescription(memoriesShown(total)))
+    }
+
+    /**
+     * The colour statistics' legend is longer than the card has room for: it scrolls, to its end, while the
+     * total under it stays shown.
+     */
+    fun assertLongLegendScrollsWithTheTotalShown() {
+        val total = ComposeUi.waitFor("The total under the legend", hasTestTag(STATS_TOTAL))
+        total.assertIsDisplayed()
+        val legend = ComposeUi.node(hasTestTag(STATS_LEGEND))
+        fun range() = legend.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+        val end = range().maxValue()
+        assertTrue("The legend has room for all its colours, so it doesn't scroll", end > 0f)
+        // The action runs on the main thread: it may not read the screen itself.
+        legend.performSemanticsAction(SemanticsActions.ScrollBy) { scroll -> scroll(0f, end) }
+        val position = Ui.eventually(read = { range().value() }) { it == end }
+        assertEquals("The legend's scroll position", end, position)
+        total.assertIsDisplayed()
+    }
+
+    private fun SemanticsNodeInteraction.description() =
+        fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString()
+
+    private fun memories(count: Int) = if (count == 1) "1 memory" else "$count memories"
+
+    private fun memoriesShown(count: Int) = if (count == 1) "1 memory shown" else "$count memories shown"
+
+    /**
+     * The colour statistics' ring has a slice of each of [colors] and none of [absent]. The ring is drawn, with
+     * nothing a screen reader can read, so its colours are read from a screenshot, on a grid across the ring.
      */
     fun assertColorStatisticsShow(colors: List<Int>, absent: List<Int> = emptyList()) {
-        val chart = ComposeUi.waitFor("The colour statistics", hasTestTag(PIE_CHART)).boundsOnScreen()
+        val chart = ComposeUi.waitFor("The colour statistics' ring", hasTestTag(STATS_RING)).boundsOnScreen()
         val grid = (1 until CHART_GRID).flatMap { i ->
             (1 until CHART_GRID).map { j ->
                 Point(chart.left + chart.width() * i / CHART_GRID, chart.top + chart.height() * j / CHART_GRID)
@@ -328,7 +370,11 @@ object MapScreen : TabScreen {
     /** The toolbar's buttons start in the right fifth of the screen. */
     private const val TOOLBAR_MIN_LEFT = 0.8
     private const val DATE_RANGE = "map_date_range"
-    private const val PIE_CHART = "map_stats"
+    private const val STATS_CARD = "map_stats"
+    private const val STATS_RING = "map_stats_ring"
+    private const val STATS_COLOR = "map_stats_color"
+    private const val STATS_TOTAL = "map_stats_total"
+    private const val STATS_LEGEND = "map_stats_legend"
     private const val OVERLAY_MEMORY = "map_overlay_memory_title"
     private const val OVERLAY_PLACE = "map_overlay_place"
     private const val EMPTY_SPOT_DIVISOR = 10

@@ -258,19 +258,36 @@ class MapTest {
     @Test
     fun colorStatisticsShowTheColorsOfTheMemoriesOnTheMapUntilTheMapIsTapped() {
         TestData.markerClustering(false)
-        TestData.memory(TODAY, daysAgo = 0, place = Place.MADRID) // Red, as every memory starts.
+        // Red, as every memory starts.
+        TestData.memory(TODAY, daysAgo = 0, place = Place.MADRID)
+        TestData.memory(YESTERDAY, daysAgo = 1, place = Place.ROME)
         TestData.markerColor(TestData.memory(TWENTY_DAYS_AGO, daysAgo = 20, place = Place.PARIS), BLUE)
         openMap()
 
         MapScreen.toggleColorStatistics()
         MapScreen.assertColorStatisticsShown()
         MapScreen.assertColorStatisticsShow(listOf(color(RED), color(BLUE)))
+        MapScreen.assertColorLegend(counts = listOf(2, 1), total = 3)
 
         MapScreen.pickQuickFilter("Last 7 days")
         MapScreen.assertColorStatisticsShow(listOf(color(RED)), absent = listOf(color(BLUE)))
+        MapScreen.assertColorLegend(counts = listOf(2), total = 2)
 
         MapScreen.tapEmptyMap()
         MapScreen.assertColorStatisticsGone()
+    }
+
+    /** Many colours: the statistics fit under the date filter, the legend scrolls and the total stays in view. */
+    @Test
+    fun aLongColorLegendScrollsAndKeepsTheTotalInView() {
+        repeat(MANY_COLORS) { i ->
+            TestData.markerColor(TestData.memory("Memory $i", daysAgo = i.toLong()), Hsv(i * FULL_CIRCLE / MANY_COLORS))
+        }
+        openMap()
+
+        MapScreen.toggleColorStatistics()
+        MapScreen.assertColorLegend(counts = List(MANY_COLORS) { 1 }, total = MANY_COLORS)
+        MapScreen.assertLongLegendScrollsWithTheTotalShown()
     }
 
     /**
@@ -379,6 +396,7 @@ class MapTest {
         const val EURO_TRIP = "Euro trip"
         const val GRAND_TOUR = "Grand tour"
         const val TODAY = "Today"
+        const val YESTERDAY = "Yesterday"
         const val TWENTY_DAYS_AGO = "Twenty days ago"
         const val TWO_HUNDRED_DAYS_AGO = "Two hundred days ago"
         const val TWO_YEARS_AGO = "Two years ago"
@@ -386,6 +404,8 @@ class MapTest {
         const val NEARBY = 4
         val RED = Hsv(0f)
         val BLUE = Hsv(240f)
+        const val MANY_COLORS = 30
+        const val FULL_CIRCLE = 360f
         const val NEARBY_STEP_DEGREES = 0.0005 // About 55 metres.
         const val SPREAD_STEP_DEGREES = 0.27 // About 30 km.
         const val MAX_CLUSTER_TAPS = 12

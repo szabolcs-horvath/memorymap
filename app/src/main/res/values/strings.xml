@@ -134,12 +134,19 @@
         <item quantity="one">%d memory</item>
         <item quantity="other">%d memories</item>
     </plurals>
-    <!-- The colour statistics, for screen readers: how many memories the map shows. -->
+    <!-- The colour statistics' total, for screen readers: how many memories the map shows. -->
     <plurals name="memories_shown">
         <item quantity="one">%d memory shown</item>
         <item quantity="other">%d memories shown</item>
     </plurals>
-    <!-- Under the total in the middle of the colour statistics. -->
+    <!-- A colour in the colour statistics' legend, for screen readers: how many memories have it. -->
+    <plurals name="memories_count">
+        <item quantity="one">%d memory</item>
+        <item quantity="other">%d memories</item>
+    </plurals>
+    <!-- The last line of the colour statistics' legend, before the number of memories shown. -->
+    <string name="map_stats_total">Total</string>
+    <!-- In the middle of the colour statistics' ring. -->
     <string name="map_stats_heart" translatable="false">❤️</string>
     <!-- A cluster of pins that splits up when the map zooms in. -->
     <plurals name="memories_nearby">
