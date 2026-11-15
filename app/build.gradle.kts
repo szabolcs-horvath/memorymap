@@ -31,7 +31,7 @@ kotlin {
             applicationId = "com.szabolcshorvath.memorymap"
             minSdk = 34
             targetSdk = 37
-            versionCode = 40
+            versionCode = 41
             versionName = "New look for my queen"
 
             // Installs fakes for sign-in and Drive before the app starts (androidTest).
