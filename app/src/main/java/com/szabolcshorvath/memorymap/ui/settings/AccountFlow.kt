@@ -99,7 +99,7 @@ class AccountFlow internal constructor(
     fun allowDriveAccess() {
         val consent = viewModel.driveConsent()
         if (consent != null) {
-            viewModel.isBackupRequested = false
+            viewModel.startDriveAuthorization(forBackup = false)
             consentLauncher.launch(IntentSenderRequest.Builder(consent).build())
         } else {
             requestDriveAuthorization(isBackup = false)
@@ -114,11 +114,11 @@ class AccountFlow internal constructor(
             viewModel.endBusy()
             return
         }
-        viewModel.isBackupRequested = isBackup
+        viewModel.startDriveAuthorization(forBackup = isBackup)
         scope.launch {
             try {
                 when (val authorization = AppServices.accounts.authorizeDrive(activity, email)) {
-                    DriveAuthorization.Granted -> viewModel.onDriveAuthorized()
+                    DriveAuthorization.Granted -> viewModel.onDriveAuthorization(granted = true)
 
                     is DriveAuthorization.NeedsConsent ->
                         consentLauncher.launch(IntentSenderRequest.Builder(authorization.intentSender).build())
@@ -127,8 +127,7 @@ class AccountFlow internal constructor(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to authorize", e)
-                viewModel.isBackupRequested = false
-                viewModel.endBusy()
+                viewModel.onDriveAuthorization(granted = false)
             }
         }
     }
@@ -149,11 +148,10 @@ fun rememberAccountFlow(viewModel: SettingsViewModel): AccountFlow {
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         try {
             AppServices.accounts.checkDriveConsentResult(activity, result.data)
-            viewModel.onDriveAuthorized()
+            viewModel.onDriveAuthorization(granted = true)
         } catch (e: ApiException) {
             Log.e(AccountFlow.TAG, "Authorization failed", e)
-            viewModel.isBackupRequested = false
-            viewModel.endBusy()
+            viewModel.onDriveAuthorization(granted = false)
         }
     }
     return remember(activity, scope, viewModel, consent, messages) { AccountFlow(activity, scope, viewModel, consent, messages) }

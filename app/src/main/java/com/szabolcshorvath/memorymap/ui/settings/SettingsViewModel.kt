@@ -96,7 +96,7 @@ class SettingsViewModel(
     private var backupListFailure: Throwable? = null
 
     /** Whether a Drive authorization under way is for a backup (else for loading the list). */
-    var isBackupRequested: Boolean = false
+    private var isBackupRequested: Boolean = false
 
     init {
         viewModelScope.launch { mapPreferences.state.collect { map -> state.update { it.copy(map = map) } } }
@@ -151,10 +151,18 @@ class SettingsViewModel(
         preferences.setEmail(null)
     }
 
-    /** Drive access was granted: back up, if that is what it was asked for, else load the list. */
-    fun onDriveAuthorized() {
+    /** A Drive authorization starts: for a backup if [forBackup], else for loading the list. */
+    fun startDriveAuthorization(forBackup: Boolean) {
+        isBackupRequested = forBackup
+    }
+
+    /**
+     * The Drive authorization ended. [granted]: back up, if that is what it was asked for, else load the list; otherwise
+     * (it failed or the user turned it down) nothing is backed up or loaded.
+     */
+    fun onDriveAuthorization(granted: Boolean) {
         val email = state.value.email
-        if (email == null) {
+        if (!granted || email == null) {
             isBackupRequested = false
             endBusy()
             return
