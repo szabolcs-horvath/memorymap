@@ -150,7 +150,7 @@ private fun ShowOutcomes(viewModel: MissingMediaSheetViewModel, state: State, sh
                     dismiss()
                 } else {
                     // In a coroutine of its own, so the next outcome is collected while this one shows.
-                    launch { sheetMessages.showSnackbar(resources.getString(text), duration = SnackbarDuration.Long) }
+                    this@repeatOnLifecycle.launch { sheetMessages.showSnackbar(resources.getString(text), duration = SnackbarDuration.Long) }
                 }
             }
         }
