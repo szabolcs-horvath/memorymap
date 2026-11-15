@@ -65,6 +65,12 @@ object MemoryScreen {
     /** The date line, such as "Oct 24, 2026 12:00 PM - 2:00 PM", or the day alone for an all-day memory. */
     fun dateText(): String = ComposeUi.waitFor("The memory's date", hasTestTag("memory_date"), unmerged = true).text()
 
+    /** The memory's own place line (not a fragment's) reads [text]: its name and address on two lines, or one alone. */
+    fun assertPlace(text: String) {
+        val shown = Ui.eventually(read = { ComposeUi.node(hasTestTag(PLACE) and !inFragment, unmerged = true).text() }) { it == text }
+        assertEquals("The memory's place", text, shown)
+    }
+
     fun assertDescription(text: String) {
         ComposeUi.scrollTo("The description \"$text\"", hasTestTag("memory_description") and hasText(text), unmerged = true)
     }

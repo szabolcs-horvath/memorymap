@@ -1,7 +1,10 @@
 package com.szabolcshorvath.memorymap.ui.add
 
+import android.content.Context
 import androidx.annotation.StringRes
 import com.szabolcshorvath.memorymap.ui.color.Hsv
+import com.szabolcshorvath.memorymap.util.Coordinates
+import com.szabolcshorvath.memorymap.util.PlaceName
 import java.time.ZonedDateTime
 
 /** What the Add form shows: a new memory or one being edited ([editing]). */
@@ -31,6 +34,16 @@ data class AddFormUiState(
 
 /** A place picked on the map, with its name and address when the picker had them. */
 data class FormPlace(val lat: Double, val lng: Double, val name: String?, val address: String?) {
+    /** The name to show, or null when there is none or the address says it already ([PlaceName]). */
+    val shownName: String? get() = PlaceName.besideAddress(name, address)
+
+    /** What names the place on its own: its name, its address, or its coordinates. */
+    fun headline(context: Context): String =
+        shownName ?: address?.takeIf { it.isNotEmpty() } ?: Coordinates.format(context, lat, lng)
+
+    /** The address under a [headline] that shows the name; null when the headline is the address or there is none. */
+    val addressBelowName: String? get() = if (shownName != null) address?.takeIf { it.isNotEmpty() } else null
+
     companion object {
         fun of(lat: Double?, lng: Double?, name: String?, address: String?): FormPlace? =
             if (lat != null && lng != null) FormPlace(lat, lng, name, address) else null

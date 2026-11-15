@@ -52,7 +52,6 @@ import com.szabolcshorvath.memorymap.ui.color.toColor
 import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.SquareMediaTile
 import com.szabolcshorvath.memorymap.ui.common.TileMedia
-import com.szabolcshorvath.memorymap.util.Coordinates
 import java.time.ZonedDateTime
 
 // The UI tests find these by name (screens/AddScreen).
@@ -239,17 +238,9 @@ private fun FragmentPlace(place: FormPlace?, showErrors: Boolean, onPick: () -> 
                 .weight(1f)
                 .padding(horizontal = 16.dp)
         ) {
-            val headline = when {
-                place == null -> stringResource(R.string.no_location_selected)
-                !place.name.isNullOrEmpty() -> place.name
-                else -> Coordinates.format(context, place.lat, place.lng)
-            }
+            val headline = place?.headline(context) ?: stringResource(R.string.no_location_selected)
             Text(headline, Modifier.testTag(TAG_LOCATION), style = MaterialTheme.typography.bodyLarge)
-            val supporting = when {
-                missing -> stringResource(R.string.save_needs_fragment_locations)
-                place != null && !place.name.isNullOrEmpty() -> place.address?.takeIf { it.isNotEmpty() }
-                else -> null
-            }
+            val supporting = if (missing) stringResource(R.string.save_needs_fragment_locations) else place?.addressBelowName
             if (supporting != null) {
                 Text(
                     supporting,

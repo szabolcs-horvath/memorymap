@@ -75,7 +75,6 @@ import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.ui.common.mediaColumns
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
-import com.szabolcshorvath.memorymap.util.Coordinates
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.LocalTime
@@ -252,16 +251,8 @@ private fun firstErrorIndex(state: AddFormUiState): Int? = when {
 internal fun LocationItem(place: FormPlace?, showErrors: Boolean, @StringRes missingText: Int, onClick: () -> Unit) {
     val context = LocalContext.current
     val missing = showErrors && place == null
-    val headline = when {
-        place == null -> stringResource(R.string.no_location_selected)
-        !place.name.isNullOrEmpty() -> place.name
-        else -> Coordinates.format(context, place.lat, place.lng)
-    }
-    val supporting = when {
-        missing -> stringResource(missingText)
-        place != null && !place.name.isNullOrEmpty() -> place.address?.takeIf { it.isNotEmpty() }
-        else -> null
-    }
+    val headline = place?.headline(context) ?: stringResource(R.string.no_location_selected)
+    val supporting = if (missing) stringResource(missingText) else place?.addressBelowName
     val errorColor = MaterialTheme.colorScheme.error
     SegmentedListItem(
         onClick = onClick,

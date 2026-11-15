@@ -2,6 +2,7 @@ package com.szabolcshorvath.memorymap.memory
 
 import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.Dialog
 import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
@@ -125,6 +126,26 @@ class MemoryScreenTest {
         Flows.openMemory(title)
     }
 
+    /**
+     * A spot named after its street and house number shows only its address, here and on the Add form, since the
+     * address says the name again. A place with a name of its own shows the name above its address.
+     */
+    @Test
+    fun aPlaceNamedAfterItsStreetShowsOnlyItsAddressWhileAPlaceWithItsOwnNameShowsBoth() {
+        TestData.memory(NEWEST, place = STREET_ONLY)
+        TestData.memory(OLDEST, daysAgo = 3, place = ZOO)
+        app.launch()
+
+        Flows.openMemory(OLDEST)
+        MemoryScreen.assertPlace("${ZOO.name}\n${ZOO.address}")
+        Ui.pressBack()
+
+        Flows.openMemory(NEWEST)
+        MemoryScreen.assertPlace(STREET_ONLY.address!!)
+        MemoryScreen.edit()
+        AddScreen.assertLocationIsOnlyTheAddress(STREET_ONLY.address!!, repeatedName = STREET_ONLY.name!!)
+    }
+
     /** Deletes the open memory, which goes back to the timeline with an Undo message. */
     private fun deleteOpenMemory() {
         MemoryScreen.delete()
@@ -144,5 +165,7 @@ class MemoryScreenTest {
         const val UNDO_SECONDS = 15
         val VIENNA = Place.VIENNA.name!!
         val ATHENS = Place.ATHENS.name!!
+        val STREET_ONLY = Place(47.4851, 19.1302, "Dér u. 42", "Budapest, Dér u. 42, 1104")
+        val ZOO = Place(47.5185, 19.0779, "Fővárosi Állat- és Növénykert", "Budapest, Állatkerti krt. 6-12, 1146")
     }
 }
