@@ -8,6 +8,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -109,6 +110,16 @@ fun MapContent(state: MapUiState, actions: MapActions) {
             actions = actions,
             onReady = { mapReady = true },
         )
+        BottomControls(
+            state,
+            camera,
+            actions,
+            onPanelSize = { change -> panel = panel.change() },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)),
+        )
+        // After the map's buttons, so over them: a long colour legend reaches down to them (a tap on the map closes it).
         Column(
             Modifier
                 .align(Alignment.TopCenter)
@@ -127,15 +138,6 @@ fun MapContent(state: MapUiState, actions: MapActions) {
             )
             StatsCard(state)
         }
-        BottomControls(
-            state,
-            camera,
-            actions,
-            onPanelSize = { change -> panel = panel.change() },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)),
-        )
     }
     if (pickingDates) {
         RangePicker(state.filterStart, state.filterEnd, onClose = { pickingDates = false }, title = R.string.map_pick_dates) { start, end ->
@@ -341,14 +343,18 @@ private val FIT_PADDING = 40.dp
 private val TOP_MARGIN = 8.dp
 internal val MAX_CONTROLS_WIDTH = 500.dp
 
-/** The colour statistics under the filter bar, opening and closing as the filter's menu does, from their button. */
+/**
+ * The colour statistics under the filter bar, opening and closing as the filter's menu does, from their button. They
+ * get at most the height left under the bar: a long legend scrolls.
+ */
 @Composable
-private fun StatsCard(state: MapUiState) {
+private fun ColumnScope.StatsCard(state: MapUiState) {
     val motion = MaterialTheme.motionScheme
     // The statistics button is at the bar's right end, right above the card's top right corner.
     val fromButton = TransformOrigin(1f, 0f)
     AnimatedVisibility(
         state.isStatsVisible,
+        Modifier.weight(1f, fill = false),
         enter = scaleIn(motion.fastSpatialSpec(), CLOSED_SCALE, fromButton) + fadeIn(motion.fastEffectsSpec()),
         exit = scaleOut(motion.fastSpatialSpec(), CLOSED_SCALE, fromButton) + fadeOut(motion.fastEffectsSpec()),
     ) {
