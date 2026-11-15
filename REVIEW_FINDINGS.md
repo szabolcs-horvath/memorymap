@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 92 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 4 open
+✅ 93 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 3 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -96,7 +96,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUG-18](#bug-18) | Medium | Saving an edit of a deleted memory loses the edit |
 | ✅ | [BUG-19](#bug-19) | Low | A save finished on another tab leaves the old title in the Add form |
 | ✅ | [BUG-20](#bug-20) | Low | A picked photo edited afterwards can't be re-linked |
-| ⬜ | [BUG-21](#bug-21) | Low | Show on map can leave the memory's pin inside a cluster |
+| ✅ | [BUG-21](#bug-21) | Low | Show on map can leave the memory's pin inside a cluster |
 | ✅ | [BUG-22](#bug-22) | Medium | Back doesn't close the Timeline's search |
 
 **PERF — Performance** · 10 of 10 fixed
@@ -462,10 +462,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Status:** Fixed. When the signature finds nothing, `EditedPhotoRule` takes the MediaStore file whose id is in a local picker URI, under the three conditions above (cloud picker URIs are skipped). Decided (2026-11-03): the item then takes the edited file's size and signature (`updateMediaLink` now writes both; a file found by its signature keeps its own), and the old URI's grant is released if no item uses it. The re-link summary counts these links ("… of them to an edited version"), and `RelinkDiagnostics` reports per item what the rule would find. Covered by `LocalMediaUtilTest` (the conditions), `MemoryGroupDaoTest`, `RelinkReportTest`, and the UI test `SettingsTest.reLinkingFindsAPickedPhotoEditedAfterwards` (a picker item whose file was edited in place shows the edited photo after a re-link).
 - **Rejected:** matching any file with the same date taken to the millisecond, regardless of id (it would also catch "save as copy" edits). It was rejected as too risky: dates with only whole seconds (videos, messenger images) collide for shots taken in the same second, and two different edits share a date. A wrong link is worse than a missing one; [UX-19](#ux-19) leaves such cases to the user.
 
-### <a id="bug-21"></a>⬜ BUG-21 · Low · Show on map can leave the memory's pin inside a cluster
+### <a id="bug-21"></a>✅ BUG-21 · Low · Show on map can leave the memory's pin inside a cluster
 - **Where:** `ui/map/MapViewModel.kt` (`handleFocus`, `selectPendingMemory`, which zoom to `MAX_FIT_ZOOM`), the map's clustering (`ui/map/`, `maps-compose-utils`' `Clustering`)
 - **What:** Now and then, "Show on map" on a memory zooms the map to the memory, but its pin is still drawn as part of a cluster instead of on its own. Seen by the user while trying the Compose shell (2026-11-12); not every time, and the shell didn't change the map's code, so it most likely comes from the map itself.
 - **To find out:** whether `MAX_FIT_ZOOM` is close enough to separate the pin from memories near it (the clustering groups pins within a fixed distance on screen, at any zoom), and whether the clustering runs again once the camera stops after the zoom, or keeps the clusters it made for the zoom before (a race between the camera move and the re-clustering would explain why it happens only sometimes).
+- **Why:** it was the race. `ClusterManager.cluster()` groups the pins for the zoom the camera is at when the grouping starts, and the library groups again only when the camera stops at another zoom than it last stopped at. "Show on map" for a memory outside the date filter moves the camera and widens the filter, so the pins change in mid-flight and are grouped for a zoom far out, where a whole city is one cluster. If the camera last stopped at `MAX_FIT_ZOOM` too (an earlier "Show on map" or a tapped pin), stopping there again counts as no zoom change, and the stale groups stay. The app's own extra call (for a move within one frame) had the same check.
+- **Status:** Fixed (2026-11-15). The map groups the pins again (`clusterManager.cluster()`) every time the camera stops, at whatever zoom (`ui/map/MapContent.kt`). The library keeps the groups it made for each zoom, so this costs little after a pan. Not tested on purpose: the race depends on the timing of the camera's animation, so a test for it would be flaky. The map, location and detail navigation UI tests pass (27 tests).
+  - Left as it is: 4 or more pins within about 100 dp of each other at `MAX_FIT_ZOOM` (about ±160 m in Budapest) are still drawn as a cluster after "Show on map", as the clustering's distance is fixed on screen. Tapping the cluster zooms in to them.
 
 ### <a id="bug-22"></a>✅ BUG-22 · Medium · Back doesn't close the Timeline's search
 - **Where:** `ui/shell/TabHost.kt`
