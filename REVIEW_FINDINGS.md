@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 93 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 3 open
+✅ 94 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 2 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -183,7 +183,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [I18N-1](#i18n-1) | Medium | All UI text is hard-coded |
 | ⬜ | [I18N-2](#i18n-2) | Low | RTL disabled |
 | ✅ | [A11Y-1](#a11y-1) | Medium | Missing content descriptions |
-| ⬜ | [A11Y-2](#a11y-2) | Low | Colour is the only signal |
+| ✅ | [A11Y-2](#a11y-2) | Low | Colour is the only signal |
 
 ---
 
@@ -1109,9 +1109,12 @@ When a status changes, update the item's **Status** line, the marker in its head
   - `edge/ControlNamesTest` keeps it that way: on the map (with a marker's memories and the colour statistics), the timeline, Settings (signed in, with a backup, presets open and one being edited), the Add form (a photo, a video, a fragment, colours open), the location picker, a memory, the media viewer (photo and video) and the missing-photo sheet, every element that can be tapped, long-pressed, switched, typed into or slid has a name (`screens/ControlNames`; Google's map elements are left out).
   - Pictures that only show a colour (the colour indicators, the timeline bars) are not controls and have no name: that colour is their only signal is [A11Y-2](#a11y-2).
 
-### <a id="a11y-2"></a>⬜ A11Y-2 · Low · Colour is the only signal
+### <a id="a11y-2"></a>✅ A11Y-2 · Low · Colour is the only signal
 - **What:** Marker colour, the pie-chart stats and the timeline colour bars carry meaning only through colour. The preset outline uses fixed `Color.BLACK` / `LTGRAY` (`ColorPresetAdapter.kt:42`), which is invisible on a dark theme.
 - **Fix:** Add labels or patterns, and use theme attributes for the outlines.
 - **Compose migration ([ARCH-10](#arch-10)):** the preset outline lives in `ColorPresetAdapter`, which the migration removes; the Compose version should use the theme's outline colour. Labels or patterns for markers, the pie chart and the timeline are a design change that doesn't depend on the migration.
+- **Status:** Fixed (2026-11-15).
+  - The preset outline: the Compose swatches (`ui/color/ColorControls.kt`) are outlined with the theme's `outlineVariant`, so they show on a dark theme too. A selected one also gets a ring in `onSurface` and a check mark, and screen readers say "selected" and the colour's numbers.
+  - Labels and patterns are left out by decision: the colours are the user's own (any hue, saturation and brightness), so the app knows no meaning to name. A name made from the numbers ("dark blue") would say little more than they do, and two close colours would get the same one. The colour statistics show each slice's count as text, and the pins and the timeline say which memory they are.
 
 [↑ Back to index](#index)
