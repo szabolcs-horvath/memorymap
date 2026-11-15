@@ -231,12 +231,16 @@ private fun MemoryMap(
             onReady()
         }
         if (clusterManager != null) {
-            // Clustering regroups the pins when it sees the camera stop, which it misses for a move within one frame.
+            // Groups the pins again each time the camera stops. The library does so only when the camera stops at another
+            // zoom than it last stopped at, and misses a move within one frame. But pins that change while the camera moves
+            // (a filter widened to show a memory) are grouped for the zoom it is passing through, and stay grouped that way
+            // if it then stops at the zoom it last stopped at. The groups of each zoom are kept, so grouping again after a
+            // pan costs little.
             LaunchedEffect(clusterManager) {
-                snapshotFlow { if (camera.isMoving) null else camera.position.zoom }
+                snapshotFlow { if (camera.isMoving) null else camera.position }
                     .filterNotNull()
                     .distinctUntilChanged()
-                    .collect { clusterManager.onCameraIdle() }
+                    .collect { clusterManager.cluster() }
             }
             // Turning clustering on or off draws the pins again.
             key(state.clustering) { Clustering(items = state.pins, clusterManager = clusterManager) }
