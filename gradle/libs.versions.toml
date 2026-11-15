@@ -5,6 +5,7 @@ agp = "9.5.1"
 googleServices = "4.6.0"
 ksp = "2.3.13"
 detekt = "1.23.8"
+dependencyAnalysis = "3.20.3"
 
 # Core & UI
 coreKtx = "1.19.1"
@@ -79,6 +80,7 @@ firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "fireb
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+dependency-analysis = { id = "com.autonomousapps.dependency-analysis", version.ref = "dependencyAnalysis" }
 robolectric-extension-gradle-plugin = { id = "tech.apter.junit5.jupiter.robolectric-extension-gradle-plugin", version.ref = "robolectricExtensionGradlePlugin" }
 
 [libraries]
