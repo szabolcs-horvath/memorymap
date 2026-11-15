@@ -14,8 +14,8 @@ import android.util.Log
 import androidx.core.net.toUri
 import androidx.exifinterface.media.ExifInterface
 import com.google.firebase.perf.trace
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -50,7 +50,7 @@ object RelinkDiagnostics {
 
     private suspend fun collect(context: Context): RelinkReport {
         val installationId = InstallationIdentifier.getInstallationIdentifier(context)
-        val items = MemoryMapDatabase.getDatabase(context).memoryGroupDao().getAllMediaItems()
+        val items = context.appContainer.database.memoryGroupDao().getAllMediaItems()
         val library = PhoneLibrary(context)
         val grants = context.contentResolver.persistedUriPermissions.mapTo(HashSet()) { it.uri.toString() }
 
@@ -89,7 +89,7 @@ object RelinkDiagnostics {
     }
 
     private suspend fun detailsCoverage(context: Context, items: List<MediaItem>): DetailsCoverage {
-        val withThumbnail = MemoryMapDatabase.getDatabase(context).mediaThumbnailDao().getSignatures().toHashSet()
+        val withThumbnail = context.appContainer.database.mediaThumbnailDao().getSignatures().toHashSet()
         return DetailsCoverage(
             withThumbnail = items.count { it.mediaSignature in withThumbnail },
             withHash = items.count { it.perceptualHash != null },

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.net.toUri
 import com.google.firebase.perf.trace
 import com.szabolcshorvath.memorymap.MemoryMapApplication
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaThumbnail
 import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
@@ -36,7 +37,7 @@ object MediaDetailsBackfill {
 
     /** Fills in what it can, one file at a time. Returns how many items it filled in. */
     internal suspend fun run(context: Context): Int = trace("media_details_backfill_run") {
-        val db = MemoryMapDatabase.getDatabase(context)
+        val db = context.appContainer.database
         val thumbnails = db.mediaThumbnailDao()
         val pruned = thumbnails.deleteUnused()
         val withThumbnail = thumbnails.getSignatures().toHashSet()

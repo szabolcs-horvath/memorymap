@@ -4,11 +4,11 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
+import com.szabolcshorvath.memorymap.appContainer
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MediaThumbnail
 import com.szabolcshorvath.memorymap.data.MediaType
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
 import com.szabolcshorvath.memorymap.util.MediaDetails.withDetails
 
 /**
@@ -37,7 +37,7 @@ object MissingMedia {
      * (an edit, a restore or a re-link), and then changes nothing.
      */
     suspend fun replace(context: Context, item: MediaItem, file: MediaFile): Boolean {
-        val db = MemoryMapDatabase.getDatabase(context)
+        val db = context.appContainer.database
         val details = MediaDetails.read(context, file.uri.toUri(), file.type)
         val replacement = MediaItem(
             groupId = item.groupId,
@@ -58,7 +58,7 @@ object MissingMedia {
 
     /** Removes [item] from its memory and closes the gap it leaves in the order. Returns false if it changed or is gone. */
     suspend fun remove(context: Context, item: MediaItem): Boolean {
-        val dao = MemoryMapDatabase.getDatabase(context).memoryGroupDao()
+        val dao = context.appContainer.database.memoryGroupDao()
         val media = dao.getGroupWithMedia(item.groupId)?.mediaItems.orEmpty()
         val current = media.find { it.id == item.id && it.isStill(item) } ?: return false
         dao.deleteMediaAndRenumber(listOf(current), LocalMediaUtil.closeOrderGaps(media - current))

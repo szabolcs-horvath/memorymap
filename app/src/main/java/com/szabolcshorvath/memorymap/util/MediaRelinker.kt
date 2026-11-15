@@ -3,7 +3,7 @@ package com.szabolcshorvath.memorymap.util
 import android.content.Context
 import android.util.Log
 import com.szabolcshorvath.memorymap.MemoryMapApplication
-import com.szabolcshorvath.memorymap.data.MemoryMapDatabase
+import com.szabolcshorvath.memorymap.appContainer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -38,7 +38,7 @@ object MediaRelinker {
             val run = app.applicationScope.async {
                 runner.run {
                     try {
-                        val dao = MemoryMapDatabase.getDatabase(app).memoryGroupDao()
+                        val dao = app.appContainer.database.memoryGroupDao()
                         LocalMediaUtil.verifyAndFixMediaItems(app, dao) { _progress.value = it }
                     } finally {
                         _progress.value = null
