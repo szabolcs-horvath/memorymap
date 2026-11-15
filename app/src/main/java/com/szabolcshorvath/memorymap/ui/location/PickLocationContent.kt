@@ -339,5 +339,5 @@ private fun PlacePanel(state: PickLocationUiState, onConfirm: () -> Unit, modifi
     }
 }
 
-private const val TAG_CONFIRM = "bt_confirm"
+private const val TAG_CONFIRM = "picker_confirm"
 private val LOADING_SIZE = 32.dp

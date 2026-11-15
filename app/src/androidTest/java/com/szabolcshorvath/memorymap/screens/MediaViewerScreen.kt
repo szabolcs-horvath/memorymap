@@ -64,7 +64,7 @@ object MediaViewerScreen {
 
     private const val PLAY = "Play"
     private const val PAUSE = "Pause"
-    private const val SCRUBBER = "videoScrubber"
+    private const val SCRUBBER = "viewer_scrubber"
     private const val PAUSE_CHECK_MS = 1_000L
 
     /**
@@ -94,7 +94,7 @@ object MediaViewerScreen {
         pager().performTouchInput { if (left) swipeLeft() else swipeRight() }
     }
 
-    private fun pager() = ComposeUi.waitFor("The viewer", hasTestTag("mediaViewPager"))
+    private fun pager() = ComposeUi.waitFor("The viewer", hasTestTag("viewer_pager"))
 
     private fun colorAt(across: Float): Int = ScreenColors.at(listOf(spot(across))).single()
 

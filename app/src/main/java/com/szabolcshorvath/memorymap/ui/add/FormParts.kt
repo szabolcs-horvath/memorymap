@@ -56,8 +56,8 @@ import com.szabolcshorvath.memorymap.util.Coordinates
 import java.time.ZonedDateTime
 
 // The UI tests find these by name (screens/AddScreen).
-private const val TAG_FRAGMENT_CARD = "fragmentEditCard"
-private const val TAG_OWN_TIME = "switch_useSpecificTime"
+private const val TAG_FRAGMENT_CARD = "add_fragment"
+private const val TAG_OWN_TIME = "add_fragment_own_time"
 
 /** Turns the right-pointing chevron down while the sliders are open. */
 private const val CHEVRON_OPEN = 90f

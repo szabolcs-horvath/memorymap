@@ -15,7 +15,7 @@ import org.junit.Assert.assertTrue
 object LocationPickerScreen {
     private const val CONFIRM = "Use this location"
     private const val SEARCH = "Search for a place"
-    private const val CONFIRM_BUTTON = "bt_confirm"
+    private const val CONFIRM_BUTTON = "picker_confirm"
     private const val MAX_TAPS = 3
     private const val MARKER_TIMEOUT_MS = 5_000L
     private const val DEFAULT_ACROSS = 0.5f

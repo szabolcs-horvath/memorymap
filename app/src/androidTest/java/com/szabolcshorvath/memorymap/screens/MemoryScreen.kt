@@ -35,7 +35,7 @@ object MemoryScreen {
         ComposeUi.waitFor("The memory \"$title\"", title(title), unmerged = true)
     }
 
-    private fun title(title: String) = hasTestTag("tv_title") and hasText(title)
+    private fun title(title: String) = hasTestTag("memory_title") and hasText(title)
 
     fun showOnMap() = tap("\"$SHOW_ON_MAP\"", hasText(SHOW_ON_MAP))
 
@@ -63,10 +63,10 @@ object MemoryScreen {
     fun swipeToNewer() = swipe(left = false)
 
     /** The date line, such as "Oct 24, 2026 12:00 PM - 2:00 PM", or the day alone for an all-day memory. */
-    fun dateText(): String = ComposeUi.waitFor("The memory's date", hasTestTag("tv_date"), unmerged = true).text()
+    fun dateText(): String = ComposeUi.waitFor("The memory's date", hasTestTag("memory_date"), unmerged = true).text()
 
     fun assertDescription(text: String) {
-        ComposeUi.scrollTo("The description \"$text\"", hasTestTag("tv_description") and hasText(text), unmerged = true)
+        ComposeUi.scrollTo("The description \"$text\"", hasTestTag("memory_description") and hasText(text), unmerged = true)
     }
 
     /** Waits until the memory shows [count] photo thumbnails. */
@@ -114,7 +114,7 @@ object MemoryScreen {
 
     private fun fragmentDates(): String {
         ComposeUi.scrollTo("A fragment", fragmentCard)
-        val dates = hasTestTag("tv_time") and inFragment
+        val dates = hasTestTag("memory_fragment_dates") and inFragment
         return if (ComposeUi.exists(dates, unmerged = true)) ComposeUi.node(dates, unmerged = true).text() else ""
     }
 
@@ -123,7 +123,7 @@ object MemoryScreen {
      * the fragments section is still opening.
      */
     fun assertFragmentColor(color: Int) {
-        val spot = ComposeUi.scrollTo("The fragment's colour strip", hasTestTag("colorIndicator"), unmerged = true).centerOnScreen()
+        val spot = ComposeUi.scrollTo("The fragment's colour strip", hasTestTag("memory_fragment_color"), unmerged = true).centerOnScreen()
         val shown = Ui.eventually(read = { ScreenColors.at(listOf(spot)).single() }) { ScreenColors.isClose(it, color) }
         assertTrue(
             "The fragment's colour ${ScreenColors.hex(shown)} is not ${ScreenColors.hex(color)}",
@@ -221,7 +221,7 @@ object MemoryScreen {
      * clock with it, and the next lookup waits until the page has settled.
      */
     private fun swipe(left: Boolean) {
-        ComposeUi.node(hasTestTag("memoryViewPager")).performTouchInput { if (left) swipeLeft() else swipeRight() }
+        ComposeUi.node(hasTestTag("memory_pager")).performTouchInput { if (left) swipeLeft() else swipeRight() }
     }
 
     private fun tap(what: String, matcher: SemanticsMatcher) {
@@ -233,9 +233,9 @@ object MemoryScreen {
     private val photo = hasContentDescription(OPEN_PHOTO)
     private val video = hasContentDescription(OPEN_VIDEO)
 
-    private const val FRAGMENT = "fragmentCard"
-    private const val PLACE = "tv_location"
-    private const val TILE_DETAILS = "tvErrorDetails"
+    private const val FRAGMENT = "memory_fragment"
+    private const val PLACE = "memory_location"
+    private const val TILE_DETAILS = "media_tile_details"
     private const val SHOW_ON_MAP = "Show on map"
     private const val RELINK = "Re-link"
     private const val OPEN_PHOTO = "Open photo"

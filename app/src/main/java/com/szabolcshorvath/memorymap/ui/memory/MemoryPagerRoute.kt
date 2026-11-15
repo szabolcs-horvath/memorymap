@@ -13,7 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.szabolcshorvath.memorymap.ui.common.CommonViewModel
 
-private const val TAG_PAGER = "memoryViewPager"
+private const val TAG_PAGER = "memory_pager"
 
 /**
  * The memories as pages, newest first, opened on memory [initialMemoryId]: swiping moves to the next or previous one.

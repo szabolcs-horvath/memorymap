@@ -32,14 +32,14 @@ object AddScreen : TabScreen {
     private const val NO_LOCATION = "No location selected"
     private const val SAVE = "Save memory"
     private const val UPDATE = "Save changes"
-    private const val PAGE = "scroll_add"
-    private const val LOCATION_ITEM = "bt_selectLocation"
-    private const val LOCATION = "tv_location"
-    private const val SAVE_BUTTON = "bt_save"
+    private const val PAGE = "add_page"
+    private const val LOCATION_ITEM = "add_location"
+    private const val LOCATION = "add_location_text"
+    private const val SAVE_BUTTON = "add_save"
     private const val HALF_DAY = 12
 
     /** Inside a fragment's card, whose place, dates, switches and colours are named like the memory's own. */
-    internal val inFragment: SemanticsMatcher = hasAnyAncestor(hasTestTag("fragmentEditCard"))
+    internal val inFragment: SemanticsMatcher = hasAnyAncestor(hasTestTag("add_fragment"))
 
     /** [matcher], for the memory itself: not inside a fragment's card. */
     private fun ofMemory(matcher: SemanticsMatcher) = matcher and !inFragment
@@ -53,7 +53,7 @@ object AddScreen : TabScreen {
 
     override fun assertGone() = ComposeUi.assertGone("The Add form", hasTestTag(PAGE))
 
-    private val titleField = hasTestTag("titleInput") and hasSetTextAction()
+    private val titleField = hasTestTag("add_title") and hasSetTextAction()
 
     /** Types [title] into the title field, which opens the keyboard: waits until it shows, so what comes next sees it. */
     fun typeTitle(title: String) {
@@ -68,7 +68,7 @@ object AddScreen : TabScreen {
 
     /** Types [text] into the description field; as [typeTitle], waits until the keyboard shows. */
     fun typeDescription(text: String) {
-        ComposeUi.scrollTo("The description field", hasTestTag("descriptionInput") and hasSetTextAction())
+        ComposeUi.scrollTo("The description field", hasTestTag("add_description") and hasSetTextAction())
             .performTextReplacement(text)
         Keyboard.assertShown()
     }
@@ -136,13 +136,13 @@ object AddScreen : TabScreen {
     private fun locationText(): String =
         ComposeUi.scrollTo("The memory's place", ofMemory(hasTestTag(LOCATION)), unmerged = true).text()
 
-    fun openStartDatePicker() = tapDateButton("bt_startDate")
+    fun openStartDatePicker() = tapDateButton("add_start_date")
 
-    fun openStartTimePicker() = tapDateButton("bt_startTime")
+    fun openStartTimePicker() = tapDateButton("add_start_time")
 
-    fun openEndDatePicker() = tapDateButton("bt_endDate")
+    fun openEndDatePicker() = tapDateButton("add_end_date")
 
-    fun openEndTimePicker() = tapDateButton("bt_endTime")
+    fun openEndTimePicker() = tapDateButton("add_end_time")
 
     private fun tapDateButton(tag: String) {
         ComposeUi.scrollTo("The memory's $tag", ofMemory(hasTestTag(tag))).press()
@@ -151,17 +151,17 @@ object AddScreen : TabScreen {
     private fun dateButtonText(tag: String): String = ComposeUi.scrollTo("The memory's $tag", ofMemory(hasTestTag(tag))).text()
 
     /** The start date shows [day] as its day of the month (for example "Sep 15, 2026" for 15). */
-    fun assertStartDay(day: Int) = assertDay("The start date", dateButtonText("bt_startDate"), day)
+    fun assertStartDay(day: Int) = assertDay("The start date", dateButtonText("add_start_date"), day)
 
-    fun assertEndDay(day: Int) = assertDay("The end date", dateButtonText("bt_endDate"), day)
+    fun assertEndDay(day: Int) = assertDay("The end date", dateButtonText("add_end_date"), day)
 
     private fun assertDay(what: String, text: String, day: Int) =
         assertTrue("$what \"$text\" is not on day $day", Regex("\\b$day\\b").containsMatchIn(text))
 
     /** The start time shows [hour] (0-23), in the 24-hour or the 12-hour clock ("21:05" or "9:05 PM" for 21). */
-    fun assertStartHour(hour: Int) = assertHour("The start time", dateButtonText("bt_startTime"), hour)
+    fun assertStartHour(hour: Int) = assertHour("The start time", dateButtonText("add_start_time"), hour)
 
-    fun assertEndHour(hour: Int) = assertHour("The end time", dateButtonText("bt_endTime"), hour)
+    fun assertEndHour(hour: Int) = assertHour("The end time", dateButtonText("add_end_time"), hour)
 
     private fun assertHour(what: String, text: String, hour: Int) {
         val shown = text.substringBefore(':').trim().toIntOrNull()
@@ -170,9 +170,9 @@ object AddScreen : TabScreen {
     }
 
     /** The start time reads as [time] in full, such as `20:\d{2}` on a 24-hour clock (spaces before AM and PM are plain). */
-    fun assertStartTime(time: Regex) = assertTime("The start time", dateButtonText("bt_startTime"), time)
+    fun assertStartTime(time: Regex) = assertTime("The start time", dateButtonText("add_start_time"), time)
 
-    fun assertEndTime(time: Regex) = assertTime("The end time", dateButtonText("bt_endTime"), time)
+    fun assertEndTime(time: Regex) = assertTime("The end time", dateButtonText("add_end_time"), time)
 
     private fun assertTime(what: String, text: String, time: Regex) {
         val shown = text.replace(NARROW_SPACE, ' ')
@@ -200,7 +200,7 @@ object AddScreen : TabScreen {
 
     /** Taps Clear (Discard while editing) in the top bar, which asks first ([Dialog] "Clear the form?", or "Discard your changes?"). */
     fun clear() {
-        ComposeUi.waitFor("The Clear button", hasTestTag("bt_clear")).performClick()
+        ComposeUi.waitFor("The Clear button", hasTestTag("add_clear")).performClick()
     }
 
     private val allDay = ofMemory(hasTestTag(ALL_DAY))
@@ -245,7 +245,7 @@ object AddScreen : TabScreen {
 
     private fun openColor() {
         val header = ComposeUi.scrollTo("The marker colour", ofMemory(hasText(MARKER_COLOR)))
-        if (!ComposeUi.exists(ofMemory(hasTestTag("tv_HueValue")))) header.press()
+        if (!ComposeUi.exists(ofMemory(hasTestTag("color_hue_value")))) header.press()
     }
 
     fun addFragment() = tap("Add a memory fragment")
@@ -271,7 +271,7 @@ object AddScreen : TabScreen {
     /** Gives the first fragment dates of its own ("Own date and time") and opens the picker for its start date. */
     fun openFragmentStartDatePicker() {
         tapInFragmentCard(hasTestTag(OWN_TIME))
-        tapInFragmentCard(hasTestTag("bt_startDate"))
+        tapInFragmentCard(hasTestTag("add_start_date"))
     }
 
     /**
@@ -281,7 +281,7 @@ object AddScreen : TabScreen {
     fun openFragmentAllDayRangePicker(hasOwnDates: Boolean = false) {
         if (!hasOwnDates) tapInFragmentCard(hasTestTag(OWN_TIME))
         tapInFragmentCard(hasTestTag(ALL_DAY))
-        tapInFragmentCard(hasTestTag("bt_dateRange")) // It shows the days picked so far.
+        tapInFragmentCard(hasTestTag("add_date_range")) // It shows the days picked so far.
     }
 
     /** Picks [color] from the first fragment's own presets. */
@@ -291,8 +291,8 @@ object AddScreen : TabScreen {
         ComposeUi.scrollTo("The fragment's ${matcher.description}", ofFragment(matcher)).press()
     }
 
-    private const val ALL_DAY = "switch_allDay"
-    private const val OWN_TIME = "switch_useSpecificTime"
+    private const val ALL_DAY = "add_all_day"
+    private const val OWN_TIME = "add_fragment_own_time"
     private const val MARKER_COLOR = "Marker color"
     private const val REMOVE_FRAGMENT = "Remove fragment"
     private const val NEEDS_TITLE = "Give the memory a title"

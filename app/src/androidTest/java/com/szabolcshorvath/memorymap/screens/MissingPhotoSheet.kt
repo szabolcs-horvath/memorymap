@@ -34,7 +34,7 @@ object MissingPhotoSheet {
 
     /** The sheet says [text], such as that it needs access or that nothing was taken nearby. */
     fun assertMessage(text: String) {
-        ComposeUi.waitFor("The message \"$text\"", hasTestTag("tvMissingMessage") and hasText(text), unmerged = true)
+        ComposeUi.waitFor("The message \"$text\"", hasTestTag("missing_message") and hasText(text), unmerged = true)
     }
 
     /**
@@ -56,7 +56,7 @@ object MissingPhotoSheet {
 
     /** The sheet names the lost file: [text], such as "IMG_1.jpg · 640 × 480". */
     fun assertFile(text: String) {
-        ComposeUi.waitFor("The file \"$text\"", hasTestTag("tvMissingFile") and hasText(text), unmerged = true)
+        ComposeUi.waitFor("The file \"$text\"", hasTestTag("missing_file") and hasText(text), unmerged = true)
     }
 
     /** Taps the suggestion taken [whenTaken], which asks first ([USE_TITLE]). */

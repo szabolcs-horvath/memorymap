@@ -47,11 +47,11 @@ import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
 import java.time.Instant
 import java.time.ZoneId
 
-// The UI tests find these elements by these names (screens/SettingsScreen), the names the View version's ids had.
-private const val TAG_ACCOUNT = "tv_accountName"
-private const val TAG_RESULT = "tv_backupStatusDetails"
-private const val TAG_LIST_PROBLEM = "tv_backupListProblem"
-private const val TAG_BACKUP_NAME = "tv_backup_name"
+// The names the UI tests find these elements by (screens/SettingsScreen).
+private const val TAG_ACCOUNT = "settings_account"
+private const val TAG_RESULT = "settings_backup_result"
+private const val TAG_LIST_PROBLEM = "settings_backup_list_problem"
+private const val TAG_BACKUP_NAME = "settings_backup_name"
 
 /** How many backups the main page shows, newest first. */
 private const val RECENT_BACKUPS = 5

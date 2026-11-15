@@ -127,9 +127,9 @@ object ColorPresetsSection {
     private const val HEADER = "Color presets"
     private const val ADD = "Add current as new preset"
     private const val HUE = "Hue"
-    private const val HUE_VALUE = "tv_HueValue"
-    private const val SATURATION_VALUE = "tv_SaturationValue"
-    private const val BRIGHTNESS_VALUE = "tv_BrightnessValue"
+    private const val HUE_VALUE = "color_hue_value"
+    private const val SATURATION_VALUE = "color_saturation_value"
+    private const val BRIGHTNESS_VALUE = "color_brightness_value"
     private const val SWATCH_PREFIX = "Color preset: "
     private const val CENTER = 0.5f
 }

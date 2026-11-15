@@ -327,10 +327,10 @@ object MapScreen : TabScreen {
 
     /** The toolbar's buttons start in the right fifth of the screen. */
     private const val TOOLBAR_MIN_LEFT = 0.8
-    private const val DATE_RANGE = "bt_dateRange"
-    private const val PIE_CHART = "pieChart"
-    private const val OVERLAY_MEMORY = "tv_memoryTitle"
-    private const val OVERLAY_PLACE = "tv_overlayLocationTitle"
+    private const val DATE_RANGE = "map_date_range"
+    private const val PIE_CHART = "map_stats"
+    private const val OVERLAY_MEMORY = "map_overlay_memory_title"
+    private const val OVERLAY_PLACE = "map_overlay_place"
     private const val EMPTY_SPOT_DIVISOR = 10
     private const val CHART_GRID = 12
     private const val CAMERA_MOVE_TIMEOUT_MS = 3_000L
