@@ -8,6 +8,7 @@ import com.szabolcshorvath.memorymap.screens.Flows
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.MissingPhotoSheet
 import com.szabolcshorvath.memorymap.screens.PermissionDialog
+import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
@@ -155,7 +156,22 @@ class MissingPhotoTest {
 
         MemoryScreen.assertPhotoLoaded()
         MissingPhotoSheet.assertGone()
+        Snackbar.assertShown(FOUND)
         MemoryScreen.assertPhotoColors(BLUE)
+    }
+
+    @Test
+    fun aPhotoAlreadyInTheMemoryIsNotUsedAndTheSheetSaysSo() {
+        val memory = TestData.memory(TRIP)
+        TestData.missingPhoto(memory, dateTaken = 0, order = 1)
+        FakeMediaPicker.nextPick = listOf(TestData.photo(memory, BLUE, order = 2))
+        openMissingPhoto()
+
+        MissingPhotoSheet.chooseAnother()
+
+        // In the sheet, which stays open: the app's own messages would be hidden under it.
+        Snackbar.assertShown(ALREADY_IN_MEMORY)
+        MissingPhotoSheet.assertShown()
     }
 
     private fun openMissingPhoto() {
@@ -168,6 +184,8 @@ class MissingPhotoTest {
 
     private companion object {
         const val TRIP = "Vienna trip"
+        const val FOUND = "Found it: it's linked again."
+        const val ALREADY_IN_MEMORY = "That one is already in this memory."
         const val NOTHING_WITHIN_5_MINUTES = "It isn't on this phone anymore, and nothing else was taken within 5 minutes of it."
         const val NEEDS_ACCESS =
             "To look for it, and for what was taken around the same time, Memory Map needs access to all your photos and videos."

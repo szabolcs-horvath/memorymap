@@ -1,7 +1,6 @@
 package com.szabolcshorvath.memorymap.ui.settings
 
 import android.content.Context
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -23,6 +22,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
+import com.szabolcshorvath.memorymap.ui.common.LocalMessages
+import com.szabolcshorvath.memorymap.ui.common.Messages
 import com.szabolcshorvath.memorymap.ui.common.RelinkRequester
 import com.szabolcshorvath.memorymap.ui.common.rememberRelinkRequester
 import com.szabolcshorvath.memorymap.util.DateFilterOption
@@ -79,6 +80,7 @@ private val QuestionSaver = Saver<MutableState<Question?>, List<String>>(
 @Composable
 fun SettingsRoute(viewModel: SettingsViewModel) {
     val context = LocalContext.current
+    val messages = LocalMessages.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val accounts = rememberAccountFlow(viewModel)
     val relink = rememberRelinkRequester(viewModel::relink)
@@ -92,8 +94,8 @@ fun SettingsRoute(viewModel: SettingsViewModel) {
         pendingRestore?.let(viewModel::restoreBackup)
         pendingRestore = null
     }
-    val actions = remember(viewModel, accounts, relink, scope) {
-        settingsActions(viewModel, accounts, relink, ask = { question = it }) { sendLogs(context, viewModel, scope) }
+    val actions = remember(viewModel, accounts, relink, scope, messages) {
+        settingsActions(viewModel, accounts, relink, ask = { question = it }) { sendLogs(context, viewModel, scope, messages) }
     }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -101,7 +103,7 @@ fun SettingsRoute(viewModel: SettingsViewModel) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.events.collect { event ->
                 when (event) {
-                    is SettingsEvent.Message -> Toast.makeText(context, event.text, Toast.LENGTH_SHORT).show()
+                    is SettingsEvent.Message -> messages.show(event.text, long = false)
                     SettingsEvent.OfferMoreMediaAccess -> question = Question.MoreAccess
                 }
             }
@@ -160,7 +162,7 @@ private fun QuestionDialog(question: Question, onClose: () -> Unit, onConfirm: (
 }
 
 /** Shares the logs ("Send logs"), with the date of the latest backup. */
-private fun sendLogs(context: Context, viewModel: SettingsViewModel, scope: CoroutineScope) {
+private fun sendLogs(context: Context, viewModel: SettingsViewModel, scope: CoroutineScope, messages: Messages) {
     viewModel.startBusy(context.getString(R.string.preparing_logs))
     scope.launch {
         try {
@@ -169,7 +171,7 @@ private fun sendLogs(context: Context, viewModel: SettingsViewModel, scope: Coro
                 DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
                     .format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()))
             }
-            LogManager.sendDebugLogs(context, lastBackupDate)
+            if (!LogManager.sendDebugLogs(context, lastBackupDate)) messages.show(R.string.logs_failed, long = true)
         } finally {
             viewModel.endBusy()
         }

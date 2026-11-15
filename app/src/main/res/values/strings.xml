@@ -312,6 +312,7 @@
     <string name="relink_complete">Media re-linking complete</string>
     <string name="send_logs">Send debug logs</string>
     <string name="preparing_logs">Preparing logs…</string>
+    <string name="logs_failed">The logs couldn\'t be put together. Try again.</string>
 
     <!-- A backup, restore or delete running, then its result. -->
     <string name="backup_starting">Starting backup…</string>

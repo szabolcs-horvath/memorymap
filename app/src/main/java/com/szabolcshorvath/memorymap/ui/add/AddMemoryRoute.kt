@@ -19,19 +19,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
-import com.szabolcshorvath.memorymap.ui.add.AddMemoryViewModel.SaveNotice
 import com.szabolcshorvath.memorymap.ui.add.AddMemoryViewModel.SaveResult
 import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.common.CommonViewModel
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
+import com.szabolcshorvath.memorymap.ui.common.LocalMessages
 import java.time.LocalDate
 import java.time.LocalTime
 
 /**
  * The Add form with its ViewModel: the form, the photo picker, the questions before the form is cleared or an edit
  * request replaces unsaved changes, and what follows a save. [onPickLocation] opens the location picker on the place
- * the memory or fragment has; [onSaved] opens a memory saved while the form is shown; [onNotice] shows what the user
- * is told after a save, also while the form is hidden.
+ * the memory or fragment has; [onSaved] opens a memory saved while the form is shown.
  */
 @Composable
 fun AddMemoryRoute(
@@ -39,13 +38,12 @@ fun AddMemoryRoute(
     common: CommonViewModel,
     onPickLocation: (FormPlace?) -> Unit,
     onSaved: (memoryId: Int) -> Unit,
-    onNotice: (SaveNotice) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val presets by common.allPresets.collectAsStateWithLifecycle(emptyList())
     val pickLocation by rememberUpdatedState(onPickLocation)
     val saved by rememberUpdatedState(onSaved)
-    val notice by rememberUpdatedState(onNotice)
+    val messages = LocalMessages.current
     var askingToClear by rememberSaveable { mutableStateOf(false) }
     val pick = rememberLauncherForActivityResult(AppServices.mediaPicker, viewModel::mediaPicked)
     val actions = remember(viewModel, pick) {
@@ -59,7 +57,7 @@ fun AddMemoryRoute(
 
     LaunchedEffect(viewModel) { viewModel.onShown() }
     // Also while hidden: the shell shows these over whatever screen is shown.
-    LaunchedEffect(viewModel) { viewModel.saveNotices.collect { notice(it) } }
+    LaunchedEffect(viewModel) { viewModel.saveNotices.collect { messages.show(it.text, it.long) } }
     // Only while shown: a hidden tab keeps its view, and a save error must not show over another screen.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(viewModel, lifecycle) {

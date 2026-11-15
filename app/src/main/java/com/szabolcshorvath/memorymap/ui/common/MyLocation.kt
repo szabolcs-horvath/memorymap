@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -57,7 +56,8 @@ class MyLocationRequester internal constructor(
     private val context: Context,
     private val activity: Activity?,
     private val scope: CoroutineScope,
-    private val onLocation: State<(LatLng) -> Unit>,
+    // Null: the phone's location isn't available.
+    private val onLocation: State<(LatLng?) -> Unit>,
     internal val launcher: ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>,
     /** The question open now; saved, so it comes back after the phone is turned. */
     internal val question: MutableState<MyLocationStep?>,
@@ -90,13 +90,16 @@ class MyLocationRequester internal constructor(
     }
 }
 
-/** A [MyLocationRequester] that passes the location it finds to [onLocation]. */
+/** A [MyLocationRequester] that passes the location it finds to [onLocation], or says it isn't available. */
 @Composable
 fun rememberMyLocationRequester(onLocation: (LatLng) -> Unit): MyLocationRequester {
     val context = LocalContext.current
     val activity = LocalActivity.current
     val scope = rememberCoroutineScope()
-    val currentOnLocation = rememberUpdatedState(onLocation)
+    val messages = LocalMessages.current
+    val currentOnLocation = rememberUpdatedState<(LatLng?) -> Unit> { latLng ->
+        if (latLng != null) onLocation(latLng) else messages.show(R.string.location_unavailable, long = true)
+    }
     val question = rememberSaveable { mutableStateOf<MyLocationStep?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
         // Approximate location alone is enough.
@@ -147,15 +150,11 @@ private fun rememberDenial(context: Context, scope: CoroutineScope, isDenied: Bo
     scope.launch { preferences.setLocationDenied(isDenied) }
 }
 
-/** Finds where the phone is and passes it on. Only called with location permission. */
-private fun fetchLocation(context: Context, onLocation: (LatLng) -> Unit) {
+/** Finds where the phone is and passes it on, or null if it can't. Only called with location permission. */
+private fun fetchLocation(context: Context, onLocation: (LatLng?) -> Unit) {
     AppServices.location.currentLocation(context).addOnCompleteListener { task ->
         // Null when the phone's location is turned off or there is no fix yet.
         val location = if (task.isSuccessful) task.result else null
-        if (location != null) {
-            onLocation(LatLng(location.latitude, location.longitude))
-        } else {
-            Toast.makeText(context, R.string.location_unavailable, Toast.LENGTH_LONG).show()
-        }
+        onLocation(location?.let { LatLng(it.latitude, it.longitude) })
     }
 }

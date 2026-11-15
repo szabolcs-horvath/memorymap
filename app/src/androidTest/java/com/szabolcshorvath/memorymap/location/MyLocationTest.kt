@@ -7,7 +7,7 @@ import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
 import com.szabolcshorvath.memorymap.screens.LocationAccess
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MapScreen
-import com.szabolcshorvath.memorymap.screens.ToastMessage
+import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import com.szabolcshorvath.memorymap.testing.TestData.Place
@@ -127,7 +127,8 @@ class MyLocationTest {
 
         MapScreen.assertMarkersInView(memories.keys)
 
-        ToastMessage.assertShownAfter(LOCATION_UNAVAILABLE) { MapScreen.tapMyLocation() }
+        MapScreen.tapMyLocation()
+        Snackbar.assertShown(LOCATION_UNAVAILABLE)
         MapScreen.assertMarkerShown(ROME_TRIP)
     }
 

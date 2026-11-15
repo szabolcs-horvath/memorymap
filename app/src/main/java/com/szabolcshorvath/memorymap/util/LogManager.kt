@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.szabolcshorvath.memorymap.BuildConfig
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +24,8 @@ object LogManager {
     private const val ZIP_FILENAME = "debug_logs.zip"
     private const val BYTE_IN_KILOBYTE = 1024
 
-    suspend fun sendDebugLogs(context: Context, lastBackupDate: String?) {
+    /** Gathers the logs and opens Android's share sheet with them. Returns false if they couldn't be gathered (logged). */
+    suspend fun sendDebugLogs(context: Context, lastBackupDate: String?): Boolean =
         withContext(Dispatchers.IO) {
             try {
                 // Must match the folder shared in res/xml/file_paths.xml.
@@ -58,14 +58,12 @@ object LogManager {
                 val chooser = Intent.createChooser(intent, "Send Debug Logs")
                 chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(chooser)
+                true
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to prepare debug logs", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Failed to prepare debug logs: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                }
+                false
             }
         }
-    }
 
     /** Older versions wrote the log files straight into the cache directory. */
     private fun deleteLegacyFiles(cacheDir: File) {
