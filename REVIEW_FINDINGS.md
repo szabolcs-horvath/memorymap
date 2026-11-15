@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 94 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 2 open
+✅ 95 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 1 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -181,7 +181,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ✅ | [I18N-1](#i18n-1) | Medium | All UI text is hard-coded |
-| ⬜ | [I18N-2](#i18n-2) | Low | RTL disabled |
+| ✅ | [I18N-2](#i18n-2) | Low | RTL disabled |
 | ✅ | [A11Y-1](#a11y-1) | Medium | Missing content descriptions |
 | ✅ | [A11Y-2](#a11y-2) | Low | Colour is the only signal |
 
@@ -1095,8 +1095,10 @@ When a status changes, update the item's **Status** line, the marker in its head
   - The texts stay the same, except: "..." became "…"; a photo that can't be shown says "Photo" or "Video" on its tile instead of the code's "IMAGE" or "VIDEO"; one picked photo reads "1 item selected"; time differences read "7 sec" and "1 hr, 5 min" instead of "7 s" and "1 h 5 min". The UI tests that read these follow.
   - Fixed on purpose: what is stored or looked up rather than shown (the Drive folder name, backup file names, saved-state and dialog keys), the logs and the re-link diagnostics.
 
-### <a id="i18n-2"></a>⬜ I18N-2 · Low · RTL disabled
+### <a id="i18n-2"></a>✅ I18N-2 · Low · RTL disabled
 - **Where:** `AndroidManifest.xml:29` (`supportsRtl="false"`)
+- **Status:** Fixed (2026-11-15), by decision: `supportsRtl` stays off while the app has no right-to-left translation. The app's text is English everywhere, so a phone set to Arabic, Hebrew or Persian shows it left to right, as the text reads; turned on, the screens would mirror around English text. Text the user types in a right-to-left script still reads right to left (Compose's `Text` takes the direction from the text), only aligned to the left.
+  - When a right-to-left translation is added, turn it on and check what the app draws itself: the colour statistics' ring and labels, the colour strip, the map's controls and panel, the pager's swipe direction, the drag-to-reorder lists, and icons that point a way (back arrows, mirrored with `autoMirror`). Run the UI tests in that language.
 
 ### <a id="a11y-1"></a>✅ A11Y-1 · Medium · Missing content descriptions
 - **What:** Only 6 `contentDescription`s among about 59 image and button views (thumbnails, colour swatches, play/pause, chevrons, pick-media, colour indicators).
