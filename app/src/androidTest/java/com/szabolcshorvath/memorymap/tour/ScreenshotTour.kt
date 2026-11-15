@@ -39,7 +39,7 @@ import org.junit.runner.RunWith
 
 /**
  * Not a test: a walk through every screen and state that saves a screenshot of each, for reviewing the app's look as
- * a whole (ARCH-11). It runs only when asked for, with the instrumentation argument `screenshots=true`, and is skipped
+ * a whole. It runs only when asked for, with the instrumentation argument `screenshots=true`, and is skipped
  * otherwise. Each test takes the whole walk in one configuration; the screenshots are named `<configuration>_<nn>_<step>.png`
  * and land with the failed tests' screenshots (`app/build/outputs/connected_android_test_additional_output/`). A step
  * that fails is logged and saved as `..._FAILED.png`, and the walk goes on with the next section.
