@@ -77,6 +77,7 @@ import com.szabolcshorvath.memorymap.ui.map.cameraTargetFor
 import com.szabolcshorvath.memorymap.ui.map.mapControlColor
 import com.szabolcshorvath.memorymap.ui.map.runCameraMove
 import com.szabolcshorvath.memorymap.util.Coordinates
+import com.szabolcshorvath.memorymap.util.PlaceName
 
 /**
  * The location picker: the map, a search bar over its top (it opens Google's place search screen), and at the bottom
@@ -222,7 +223,7 @@ private fun PickerMap(
 }
 
 private fun PickedSpot.title(context: android.content.Context): String =
-    name ?: address ?: Coordinates.format(context, lat, lng)
+    PlaceName.besideAddress(name, address) ?: address ?: Coordinates.format(context, lat, lng)
 
 /** A search bar's look, but a tap opens Google's place search screen, where the typing happens. */
 @Composable

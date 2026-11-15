@@ -80,6 +80,7 @@ import com.szabolcshorvath.memorymap.ui.common.PAGE_MARGIN
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.Coordinates
+import com.szabolcshorvath.memorymap.util.PlaceName
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyGridState
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -356,12 +357,15 @@ private fun DetailsCard(group: MemoryGroup, actions: MemoryActions) {
     }
 }
 
-/** The place's name with its address, either one alone, or the coordinates if it has neither. */
+/**
+ * The place's name with its address, either one alone (the address alone when it says the name already), or the
+ * coordinates if it has neither.
+ */
 @Composable
 private fun placeOf(group: MemoryGroup): String {
     val context = LocalContext.current
-    val name = group.placeName?.takeIf { it.isNotEmpty() }
     val address = group.address?.takeIf { it.isNotEmpty() }
+    val name = PlaceName.besideAddress(group.placeName, address)
     return when {
         name != null && address != null -> stringResource(R.string.place_and_address, name, address)
         name != null -> name

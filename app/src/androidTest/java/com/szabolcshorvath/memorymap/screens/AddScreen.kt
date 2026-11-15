@@ -102,6 +102,12 @@ object AddScreen : TabScreen {
 
     fun assertNoLocation() = assertEquals(NO_LOCATION, locationText())
 
+    /** The memory's place row shows [address] alone, without a name above it that only repeats a part of it. */
+    fun assertLocationIsOnlyTheAddress(address: String, repeatedName: String) {
+        assertEquals("The memory's place", address, locationText())
+        ComposeUi.assertGone("The name \"$repeatedName\" above the address", ofMemory(hasText(repeatedName)), unmerged = true)
+    }
+
     /** The memory's location has no name or address, only its coordinates (as when the address lookup failed). */
     fun assertLocationIsCoordinates() {
         val text = locationText()
