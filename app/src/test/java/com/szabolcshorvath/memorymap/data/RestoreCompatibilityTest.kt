@@ -104,6 +104,21 @@ class RestoreCompatibilityTest {
     }
 
     @Test
+    fun `line breaks in place names become spaces when a version 17 backup is migrated`() = runBlocking {
+        val file = SchemaDatabases.create(context, "line_breaks_v17.db", 17)
+        context.openOrCreateDatabase(file.name, Context.MODE_PRIVATE, null).use { db ->
+            db.execSQL("UPDATE memory_groups SET placeName = ?", arrayOf("Windows\r\nOld Mac\rUnix\nend"))
+            db.execSQL("UPDATE memory_fragments SET placeName = ?", arrayOf("a\r\n\r\nb"))
+        }
+
+        restore(file.name)
+
+        assertEquals("Windows Old Mac Unix end", live.databaseContentsDao().getAllGroups().single().placeName)
+        // Each break becomes one space: a Windows break is one break, not two.
+        assertEquals("a  b", live.databaseContentsDao().getAllFragments().single().placeName)
+    }
+
+    @Test
     fun `a corrupt backup is rejected and the live data is kept`() = runBlocking {
         val file = SchemaDatabases.create(context, "corrupt.db", MemoryMapDatabase.DB_VERSION)
         RandomAccessFile(file, "rw").use { raf ->
