@@ -1,9 +1,12 @@
 package com.szabolcshorvath.memorymap.ui.memory
 
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -12,7 +15,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -21,10 +27,12 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
+import com.szabolcshorvath.memorymap.ui.common.LocalMessages
 import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetViewModel.Outcome
 import com.szabolcshorvath.memorymap.ui.memory.MissingMediaSheetViewModel.State
 import com.szabolcshorvath.memorymap.util.NearbyFile
 import com.szabolcshorvath.memorymap.util.PermissionUtil
+import kotlinx.coroutines.launch
 
 /**
  * The missing-photo sheet's content with its ViewModel, for item [itemId]: asking for media access, choosing another
@@ -63,9 +71,14 @@ fun MissingMediaSheetRoute(viewModel: MissingMediaSheetViewModel, itemId: Int, o
     }
 
     LaunchedEffect(viewModel, itemId) { viewModel.start(itemId) }
-    ShowOutcomes(viewModel, state, onDismiss)
+    // The sheet is a window of its own, above the shell's messages: what leaves it open shows in it.
+    val sheetMessages = remember { SnackbarHostState() }
+    ShowOutcomes(viewModel, state, sheetMessages, onDismiss)
 
-    MissingMediaSheetContent(state, viewModel.item, viewModel.thumbnail, actions)
+    Box {
+        MissingMediaSheetContent(state, viewModel.item, viewModel.thumbnail, actions)
+        SnackbarHost(sheetMessages, Modifier.align(Alignment.BottomCenter))
+    }
 
     askingToUse?.let { uri ->
         val nearby = (state as? State.NotFound)?.nearby?.firstOrNull { it.uri == uri }
@@ -103,15 +116,19 @@ fun MissingMediaSheetRoute(viewModel: MissingMediaSheetViewModel, itemId: Int, o
     }
 }
 
-/** Says what came of the user's actions, and closes the sheet once the photo is found again, replaced or removed. */
+/**
+ * Says what came of the user's actions, and closes the sheet once the photo is found again, replaced or removed: then
+ * in the shell's messages, and otherwise in the sheet's own ([sheetMessages]).
+ */
 @Composable
-private fun ShowOutcomes(viewModel: MissingMediaSheetViewModel, state: State, onDismiss: () -> Unit) {
-    val context = LocalContext.current
+private fun ShowOutcomes(viewModel: MissingMediaSheetViewModel, state: State, sheetMessages: SnackbarHostState, onDismiss: () -> Unit) {
+    val messages = LocalMessages.current
+    val resources = LocalResources.current
     val dismiss by rememberUpdatedState(onDismiss)
     LaunchedEffect(state) {
         when (state) {
             State.Found -> {
-                Toast.makeText(context, R.string.missing_media_found, Toast.LENGTH_SHORT).show()
+                messages.show(R.string.missing_media_found, long = false)
                 dismiss()
             }
 
@@ -128,8 +145,13 @@ private fun ShowOutcomes(viewModel: MissingMediaSheetViewModel, state: State, on
                     Outcome.ALREADY_IN_MEMORY -> R.string.missing_media_already_in_memory
                     Outcome.UNREADABLE -> R.string.missing_media_unreadable
                 }
-                Toast.makeText(context, text, Toast.LENGTH_LONG).show()
-                if (outcome == Outcome.CHANGED) dismiss()
+                if (outcome == Outcome.CHANGED) {
+                    messages.show(text, long = true)
+                    dismiss()
+                } else {
+                    // In a coroutine of its own, so the next outcome is collected while this one shows.
+                    launch { sheetMessages.showSnackbar(resources.getString(text), duration = SnackbarDuration.Long) }
+                }
             }
         }
     }

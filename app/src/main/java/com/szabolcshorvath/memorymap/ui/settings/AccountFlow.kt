@@ -2,7 +2,6 @@ package com.szabolcshorvath.memorymap.ui.settings
 
 import android.app.Activity
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,6 +20,8 @@ import com.szabolcshorvath.memorymap.AppServices
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.auth.DriveAuthorization
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
+import com.szabolcshorvath.memorymap.ui.common.LocalMessages
+import com.szabolcshorvath.memorymap.ui.common.Messages
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -35,6 +36,7 @@ class AccountFlow internal constructor(
     private val scope: CoroutineScope,
     private val viewModel: SettingsViewModel,
     private val consentLauncher: ManagedActivityResultLauncher<IntentSenderRequest, ActivityResult>,
+    private val messages: Messages,
 ) {
     // Credential Manager throws many kinds of exception: each is logged for "Send logs", and the user gets plain words.
     @Suppress("TooGenericExceptionCaught")
@@ -60,7 +62,7 @@ class AccountFlow internal constructor(
         when (e) {
             is SignInNotConfiguredException -> {
                 Log.e(TAG, "Sign in is not configured", e)
-                toast(R.string.sign_in_not_configured)
+                say(R.string.sign_in_not_configured)
             }
 
             // The user closed the account picker: nothing to tell them.
@@ -68,12 +70,12 @@ class AccountFlow internal constructor(
 
             is NoCredentialException -> {
                 Log.w(TAG, "Sign in failed: no account", e)
-                toast(R.string.sign_in_no_account)
+                say(R.string.sign_in_no_account)
             }
 
             else -> {
                 Log.e(TAG, "Sign in failed", e)
-                toast(R.string.sign_in_failed)
+                say(R.string.sign_in_failed)
             }
         }
     }
@@ -131,7 +133,7 @@ class AccountFlow internal constructor(
         }
     }
 
-    private fun toast(@StringRes text: Int) = Toast.makeText(activity, text, Toast.LENGTH_LONG).show()
+    private fun say(@StringRes text: Int) = messages.show(text, long = true)
 
     internal companion object {
         const val TAG = "AccountFlow"
@@ -143,6 +145,7 @@ class AccountFlow internal constructor(
 fun rememberAccountFlow(viewModel: SettingsViewModel): AccountFlow {
     val activity = checkNotNull(LocalActivity.current) { "Settings must be shown in an activity" }
     val scope = rememberCoroutineScope()
+    val messages = LocalMessages.current
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         try {
             AppServices.accounts.checkDriveConsentResult(activity, result.data)
@@ -153,5 +156,5 @@ fun rememberAccountFlow(viewModel: SettingsViewModel): AccountFlow {
             viewModel.endBusy()
         }
     }
-    return remember(activity, scope, viewModel, consent) { AccountFlow(activity, scope, viewModel, consent) }
+    return remember(activity, scope, viewModel, consent, messages) { AccountFlow(activity, scope, viewModel, consent, messages) }
 }

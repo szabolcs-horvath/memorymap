@@ -39,6 +39,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +72,8 @@ import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.add.AddMemoryRoute
+import com.szabolcshorvath.memorymap.ui.common.LocalMessages
+import com.szabolcshorvath.memorymap.ui.common.Messages
 import com.szabolcshorvath.memorymap.ui.common.rememberRelinkRequester
 import com.szabolcshorvath.memorymap.ui.location.PickLocationRoute
 import com.szabolcshorvath.memorymap.ui.location.PickLocationViewModel
@@ -123,7 +126,10 @@ fun AppShell(shell: ShellViewModel, tabs: TabViewModels) {
             },
             navigationSuiteType = type,
         ) {
-            ShellContent(shell, tabs, actions, snackbar, Modifier.consumeWindowInsets(navigationInsets(type)))
+            val messages = remember(shell) { Messages { text, long -> shell.show(ShellMessage.Text(text, long)) } }
+            CompositionLocalProvider(LocalMessages provides messages) {
+                ShellContent(shell, tabs, actions, snackbar, Modifier.consumeWindowInsets(navigationInsets(type)))
+            }
         }
     }
 }
@@ -261,7 +267,6 @@ private fun TabContent(tab: Tab, shell: ShellViewModel, tabs: TabViewModels, act
                 common = tabs.common,
                 onPickLocation = actions::pickLocation,
                 onSaved = actions::openMemory,
-                onNotice = { shell.show(ShellMessage.Text(it.text, it.long)) },
             )
         }
 

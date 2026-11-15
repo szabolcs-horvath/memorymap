@@ -16,8 +16,8 @@ import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.MemoryScreen
 import com.szabolcshorvath.memorymap.screens.SettingsScreen
 import com.szabolcshorvath.memorymap.screens.ShareSheet
+import com.szabolcshorvath.memorymap.screens.Snackbar
 import com.szabolcshorvath.memorymap.screens.TimelineScreen
-import com.szabolcshorvath.memorymap.screens.ToastMessage
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
@@ -39,12 +39,14 @@ class SettingsTest {
         openSettings()
         SettingsScreen.assertSignedOut()
 
-        ToastMessage.assertShownAfter(NOT_SET_UP) { SettingsScreen.signIn() }
+        SettingsScreen.signIn()
+        Snackbar.assertShown(NOT_SET_UP)
         SettingsScreen.waitUntilIdle()
         SettingsScreen.assertSignedOut()
 
         FakeAccountService.signInError = NoCredentialException() // The phone has no Google account.
-        ToastMessage.assertShownAfter(NO_ACCOUNT) { SettingsScreen.signIn() }
+        SettingsScreen.signIn()
+        Snackbar.assertShown(NO_ACCOUNT)
         SettingsScreen.assertSignedOut()
 
         FakeAccountService.signInError = null // The user tries again, and it works.
