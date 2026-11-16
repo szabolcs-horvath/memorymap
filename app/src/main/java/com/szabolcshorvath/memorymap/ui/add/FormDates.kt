@@ -6,17 +6,20 @@ import android.text.format.DateFormat
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DisplayMode
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -48,7 +51,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.DATE_RANGE
 import com.szabolcshorvath.memorymap.ui.add.PickerRequest.Kind.END_DATE
@@ -78,6 +83,8 @@ private const val TAG_ALL_DAY = "add_all_day"
 private const val LABEL_WEIGHT = 0.8f
 private const val DATE_WEIGHT = 1.3f
 private const val TIME_WEIGHT = 1f
+private val DATE_BUTTON_PADDING = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+private val DATE_MIN_FONT = 11.sp
 
 /** A picker the form shows over itself: what it picks ([kind]) and for which part of the form. */
 internal data class PickerRequest(val part: FormPart, val kind: Kind) {
@@ -183,7 +190,17 @@ private fun DateRow(@StringRes label: Int, buttons: @Composable RowScope.() -> U
 
 @Composable
 private fun DateButton(modifier: Modifier, text: String, tag: String, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = modifier.testTag(tag)) { Text(text, maxLines = 1) }
+    // A date can be long ("2026. nov. 15."), and with a large font even the time: less padding than Material's, and
+    // text that shrinks to fit. Left to wrap, its last word would go to a second line the button cuts off.
+    OutlinedButton(onClick = onClick, modifier = modifier.testTag(tag), contentPadding = DATE_BUTTON_PADDING) {
+        val style = LocalTextStyle.current
+        Text(
+            text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            autoSize = TextAutoSize.StepBased(minFontSize = DATE_MIN_FONT, maxFontSize = style.fontSize),
+        )
+    }
 }
 
 /** The picker [request] asks for, showing what the form holds now; picking changes the form, and either way it closes. */
