@@ -101,6 +101,9 @@ private const val KEY_FRAGMENT = "fragment_"
 
 private val LINK_MIN_FONT = 11.sp
 
+/** How far the 48 dp touch target of an extra-small button reaches past it, above and below. */
+private val LINK_TOUCH_MARGIN = (48.dp - ButtonDefaults.ExtraSmallContainerHeight) / 2
+
 /** The gap between a segmented list's items and between the photo tiles: Material 3 Expressive's, as on the Timeline. */
 internal val GAP = 4.dp
 
@@ -335,7 +338,9 @@ private fun DetailsCard(group: MemoryGroup, actions: MemoryActions) {
                     .fillMaxHeight()
                     .background(Color(group.markerColor()))
             )
-            Column(Modifier.padding(16.dp)) {
+            // The buttons are drawn smaller than the 48 dp they take for touch: the space around them is reduced by the
+            // difference, so the card looks evenly spaced.
+            Column(Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp - LINK_TOUCH_MARGIN)) {
                 group.description?.takeIf { it.isNotEmpty() }?.let {
                     Text(it, Modifier.testTag(TAG_DESCRIPTION), style = MaterialTheme.typography.bodyLarge)
                     Spacer(Modifier.height(12.dp))
@@ -343,7 +348,7 @@ private fun DetailsCard(group: MemoryGroup, actions: MemoryActions) {
                 InfoLine(R.drawable.ic_calendar_month, group.getFormattedDate(context).orEmpty(), TAG_DATE)
                 Spacer(Modifier.height(4.dp))
                 InfoLine(R.drawable.ic_location_on, placeOf(group), TAG_LOCATION)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp - LINK_TOUCH_MARGIN))
                 // Two ways to see the memory elsewhere, joined as Material 3 Expressive's connected button group: equal halves
                 // of the card's width.
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
