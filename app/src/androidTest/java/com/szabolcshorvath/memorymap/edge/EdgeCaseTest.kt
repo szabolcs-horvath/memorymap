@@ -16,6 +16,8 @@ import com.szabolcshorvath.memorymap.testing.TestData.Place
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /** Edge cases across the app: very long texts, a large database and dark mode. */
 @RunWith(AndroidJUnit4::class)
@@ -82,8 +84,28 @@ class EdgeCaseTest {
         ScreenColors.assertDark("Settings")
     }
 
+    /**
+     * With a larger font, the Add form's dates and times still fit their buttons (a long date, such as Hungarian's
+     * "2026. nov. 15.", used to lose its day to a second line the button cut off). The memory is on a day with two
+     * digits, so its date is as long as dates get.
+     */
+    @Test
+    fun withALargerFontTheAddFormsDatesFitTheirButtons() {
+        val day = LocalDate.now().minusMonths(1).withDayOfMonth(LONG_DAY)
+        TestData.memory(TRIP, daysAgo = ChronoUnit.DAYS.between(day, LocalDate.now()))
+        app.useFontScale(LARGE_FONT)
+        app.launch()
+
+        Flows.openMemory(TRIP)
+        MemoryScreen.edit()
+        AddScreen.assertShown()
+        AddScreen.assertDatesFitTheirButtons()
+    }
+
     private companion object {
         const val TRIP = "Lake trip"
+        const val LONG_DAY = 28
+        const val LARGE_FONT = 1.3f
         const val LONG_TITLE_REPEATS = 14 // About 320 characters.
         const val LONG_DESCRIPTION_REPEATS = 45 // About 2,100 characters.
         const val LARGE = 500

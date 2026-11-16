@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.screens
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
@@ -11,8 +12,10 @@ import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isOff
 import androidx.compose.ui.test.isOn
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.platform.app.InstrumentationRegistry
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.screens.ComposeUi.press
@@ -155,6 +158,24 @@ object AddScreen : TabScreen {
     }
 
     private fun dateButtonText(tag: String): String = ComposeUi.scrollTo("The memory's $tag", ofMemory(hasTestTag(tag))).text()
+
+    /**
+     * The memory's start and end dates and times each show in full on one line of their button: none is cut off,
+     * wrapped onto a hidden second line, or shortened with "…".
+     */
+    fun assertDatesFitTheirButtons() {
+        listOf("add_start_date", "add_start_time", "add_end_date", "add_end_time").forEach { tag ->
+            val text = ComposeUi.scrollTo("The memory's $tag", ofMemory(hasTestTag(tag)))
+            val label = ComposeUi.node(hasAnyAncestor(ofMemory(hasTestTag(tag))) and hasText(text.text()), unmerged = true)
+            val layouts = mutableListOf<TextLayoutResult>()
+            label.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { getLayout -> getLayout(layouts) }
+            val layout = layouts.single()
+            assertTrue(
+                "The $tag button's \"${text.text()}\" doesn't fit it",
+                layout.lineCount == 1 && !layout.hasVisualOverflow && !layout.isLineEllipsized(0),
+            )
+        }
+    }
 
     /** The start date shows [day] as its day of the month (for example "Sep 15, 2026" for 15). */
     fun assertStartDay(day: Int) = assertDay("The start date", dateButtonText("add_start_date"), day)

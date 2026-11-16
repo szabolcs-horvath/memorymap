@@ -143,7 +143,7 @@ class MemoryScreenTest {
         Flows.openMemory(NEWEST)
         MemoryScreen.assertPlace(STREET_ONLY.address!!)
         MemoryScreen.edit()
-        AddScreen.assertLocationIsOnlyTheAddress(STREET_ONLY.address!!, repeatedName = STREET_ONLY.name!!)
+        AddScreen.assertLocationIsOnlyTheAddress(STREET_ONLY.address, repeatedName = STREET_ONLY.name!!)
     }
 
     /** Deletes the open memory, which goes back to the timeline with an Undo message. */

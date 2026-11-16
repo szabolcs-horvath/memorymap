@@ -85,6 +85,17 @@ class MemoryMapAppRule : TestRule {
         Ui.device.executeShellCommand("settings put system $TIME_12_24 $hours")
     }
 
+    private var fontScaleBefore: String? = null
+
+    /**
+     * Sets Android's font size to [scale] times the normal one, as the "Font size" setting does. Call it before
+     * [launch]: the app reads it when its screens are made. The rule puts back the size from before after the test.
+     */
+    fun useFontScale(scale: Float) {
+        if (fontScaleBefore == null) fontScaleBefore = Ui.device.executeShellCommand("settings get system $FONT_SCALE").trim()
+        Ui.device.executeShellCommand("settings put system $FONT_SCALE $scale")
+    }
+
     /** Puts a setting back to [before], as `settings get` printed it: "null" when it wasn't set. */
     private fun restoreSetting(namespace: String, key: String, before: String) {
         if (before.isEmpty() || before == "null") {
@@ -226,6 +237,7 @@ class MemoryMapAppRule : TestRule {
         animationScaleBefore?.let { before -> runCatching { restoreSetting("global", ANIMATOR_SCALE, before) } }
         interactiveTimeoutBefore?.let { before -> runCatching { restoreSetting("secure", INTERACTIVE_TIMEOUT, before) } }
         clockBefore?.let { before -> runCatching { restoreSetting("system", TIME_12_24, before) } }
+        fontScaleBefore?.let { before -> runCatching { restoreSetting("system", FONT_SCALE, before) } }
         if (isOffline) {
             runCatching {
                 Ui.device.executeShellCommand("svc wifi enable")
@@ -284,6 +296,7 @@ class MemoryMapAppRule : TestRule {
         const val ANIMATOR_SCALE = "animator_duration_scale"
         const val INTERACTIVE_TIMEOUT = "accessibility_interactive_ui_timeout_ms"
         const val TIME_12_24 = "time_12_24"
+        const val FONT_SCALE = "font_scale"
         const val IMMERSIVE_CONFIRMATIONS = "immersive_mode_confirmations"
         const val MS_PER_SECOND = 1_000
         const val SET_ALWAYS_FINISH = "android.permission.SET_ALWAYS_FINISH"
