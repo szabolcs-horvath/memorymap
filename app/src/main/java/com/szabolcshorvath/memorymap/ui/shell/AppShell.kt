@@ -9,7 +9,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
@@ -95,7 +94,6 @@ import kotlinx.coroutines.launch
  * slide in and out and follow the predictive Back gesture. The tabs stay composed under them ([TabHost]). Back on a
  * tab other than the Map goes to the Map; on the Map it leaves the app.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AppShell(shell: ShellViewModel, tabs: TabViewModels) {
     val snackbar = remember { SnackbarHostState() }

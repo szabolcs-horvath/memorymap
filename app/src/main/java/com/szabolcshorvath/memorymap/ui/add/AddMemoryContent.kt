@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -127,7 +126,6 @@ interface AddMemoryActions {
  * The Add tab: the form for a new memory or for editing one, under a large top app bar with its title and Clear, and
  * above a Save button that stays in reach. A date or time button opens Material 3's picker over it.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddMemoryContent(state: AddFormUiState, presets: List<HSVPreset>, actions: AddMemoryActions) {
     val compact = isShortWindow()
