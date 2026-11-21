@@ -15,7 +15,7 @@ lifecycleCompose = "2.11.1"
 # rememberLauncherForActivityResult, LocalActivity and BackHandler; it moves `activity` itself to the same version.
 activityCompose = "1.13.0"
 # The screens over the tabs (the memory, the media viewer, the location picker, the missing-photo sheet)
-navigation3 = "1.2.1"
+navigation3 = "1.2.2"
 work = "2.12.0"
 kotlinxCoroutines = "1.11.0"
 
