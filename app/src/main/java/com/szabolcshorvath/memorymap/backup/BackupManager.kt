@@ -63,6 +63,8 @@ class BackupManager(private val context: Context, private val db: MemoryMapDatab
 
             onProgress(context.getString(R.string.backup_uploading))
             uploadBackup(email, isAutomatic, zipFile)
+            // Still holding the lock, so no restore downloads a backup while it is moved to the trash.
+            if (isAutomatic) BackupTrimming.trim(context, email, preferences.backupRetention.first())
         }
 
     /**

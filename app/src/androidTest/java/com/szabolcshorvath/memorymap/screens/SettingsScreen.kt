@@ -188,6 +188,24 @@ object SettingsScreen : TabScreen {
         ComposeUi.scrollTo("The default map filter \"$label\"", defaultFilter and hasText(label), unmerged = true)
     }
 
+    /** Picks how old automatic backups may get, from the setting's menu ("Older than 1 month"). */
+    fun setBackupRetention(label: String) {
+        ComposeUi.scrollTo("The backup retention", retention, unmerged = true).tap()
+        ComposeUi.waitFor("\"$label\" in the menu", hasText(label) and isMenuChoice).performClick()
+        assertBackupRetention(label)
+    }
+
+    fun assertBackupRetention(label: String) {
+        ComposeUi.scrollTo("The backup retention \"$label\"", retention and hasText(label), unmerged = true)
+    }
+
+    /** The note under the retention setting, shown while old backups are deleted. */
+    fun assertBackupRetentionNote(shown: Boolean) {
+        val note = hasText("Manual backups and the newest 3 automatic backups are always kept.", substring = true)
+        if (shown) ComposeUi.scrollTo("The backup retention note", note) else ComposeUi.assertGone("The note", note)
+    }
+
+    private val retention = hasTestTag("settings_backup_retention")
     private val defaultFilter = hasTestTag("settings_default_filter")
     private val isMenuChoice = SemanticsMatcher.keyIsDefined(SemanticsProperties.Selected)
 

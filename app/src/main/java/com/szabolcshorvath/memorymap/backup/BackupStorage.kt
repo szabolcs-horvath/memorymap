@@ -17,4 +17,7 @@ interface BackupStorage {
     fun download(context: Context, email: String, fileId: String, target: File)
 
     fun delete(context: Context, email: String, fileId: String)
+
+    /** Moves backup [fileId] to the trash, where it can still be got back until the trash is emptied. */
+    fun trash(context: Context, email: String, fileId: String)
 }

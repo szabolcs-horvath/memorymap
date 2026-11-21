@@ -41,6 +41,8 @@ import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
 import com.szabolcshorvath.memorymap.backup.BackupManager.Companion.AUTOMATIC_BACKUP_PREFIX
 import com.szabolcshorvath.memorymap.backup.BackupManager.Companion.MANUAL_BACKUP_PREFIX
+import com.szabolcshorvath.memorymap.backup.BackupRetention
+import com.szabolcshorvath.memorymap.backup.BackupTrimming.KEPT_AUTOMATIC_BACKUPS
 import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.ui.theme.success
 import com.szabolcshorvath.memorymap.util.DateTimeFormatterUtil
@@ -52,6 +54,7 @@ private const val TAG_ACCOUNT = "settings_account"
 private const val TAG_RESULT = "settings_backup_result"
 private const val TAG_LIST_PROBLEM = "settings_backup_list_problem"
 private const val TAG_BACKUP_NAME = "settings_backup_name"
+private const val TAG_RETENTION = "settings_backup_retention"
 
 /** How many backups the main page shows, newest first. */
 private const val RECENT_BACKUPS = 5
@@ -81,6 +84,21 @@ internal fun LazyListScope.backupSection(
     }
     item(key = "automatic_backup") { AutomaticBackupLine(state.automaticBackup) }
     item(key = "result") { ResultBanner(state.result) }
+    item(key = "retention") {
+        ChoiceItem(
+            label = R.string.backup_retention_title,
+            choice = state.backupRetention,
+            choices = BackupRetention.entries,
+            choiceLabel = BackupRetention::label,
+            tag = TAG_RETENTION,
+            first = false,
+            onChange = actions::setBackupRetention,
+        )
+    }
+    // What is never deleted, said only while old backups are.
+    if (state.backupRetention != null && state.backupRetention != BackupRetention.NEVER) {
+        item(key = "retention_note") { RetentionNote() }
+    }
     sectionHeader(R.string.available_backups)
     // The newest few, so the page stays short; the rest are a tap away.
     val hasMore = state.backups.size > RECENT_BACKUPS
@@ -176,6 +194,17 @@ private fun AutomaticBackupLine(status: AutomaticBackupStatus) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** Under the retention setting: which backups are never deleted, and where deleted ones go. */
+@Composable
+private fun RetentionNote() {
+    Text(
+        pluralStringResource(R.plurals.backup_retention_note, KEPT_AUTOMATIC_BACKUPS, KEPT_AUTOMATIC_BACKUPS),
+        modifier = Modifier.padding(start = LIST_MARGIN + ITEM_PADDING, end = LIST_MARGIN, top = 8.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /** How the last backup, restore or delete went: a tonal banner, with an icon that says which. */

@@ -27,7 +27,7 @@ object DriveBackupStorage : BackupStorage {
         collectAllPages { pageToken ->
             val result = driveService.files().list()
                 .setQ(query)
-                .setFields("nextPageToken, files(id, name, modifiedTime, size)")
+                .setFields("nextPageToken, files(id, name, createdTime, modifiedTime, size)")
                 .setOrderBy("modifiedTime desc")
                 .setPageSize(DRIVE_LIST_PAGE_SIZE)
                 .setPageToken(pageToken)
@@ -57,6 +57,12 @@ object DriveBackupStorage : BackupStorage {
 
     override fun delete(context: Context, email: String, fileId: String) = withDrive(context, email) { driveService ->
         driveService.files().delete(fileId).execute()
+        Unit
+    }
+
+    // Drive keeps a trashed file for 30 days before deleting it for good.
+    override fun trash(context: Context, email: String, fileId: String) = withDrive(context, email) { driveService ->
+        driveService.files().update(fileId, DriveFile().setTrashed(true)).setFields("id").execute()
         Unit
     }
 

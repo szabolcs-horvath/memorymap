@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import com.szabolcshorvath.memorymap.backup.BackupRetention
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import com.szabolcshorvath.memorymap.util.PreferencesKeys
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +20,7 @@ import kotlinx.coroutines.flow.map
 internal val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "googleAuthDatastore")
 
 /**
- * The app's preferences (keys and defaults in [PreferencesKeys]): the map's, the signed-in account, and whether the user
+ * The app's preferences (keys and defaults in [PreferencesKeys]): the map's, the signed-in account, how long automatic backups are kept, and whether the user
  * said no to location access. Writes may be called from the main thread.
  */
 class AppPreferences(context: Context) {
@@ -39,11 +40,16 @@ class AppPreferences(context: Context) {
     /** The signed-in account's email, or null. */
     val email: Flow<String?> = read { it[PreferencesKeys.USER_EMAIL_KEY] }
 
+    /** How long automatic backups are kept before they are moved to Drive's trash. */
+    val backupRetention: Flow<BackupRetention> = read { BackupRetention.ofStoredName(it[PreferencesKeys.AUTOMATIC_BACKUP_RETENTION]) }
+
     suspend fun setShowFragmentMarkers(show: Boolean) = set(PreferencesKeys.SHOW_FRAGMENT_MARKERS, show)
 
     suspend fun setMarkerClustering(enabled: Boolean) = set(PreferencesKeys.MARKER_CLUSTERING_ENABLED, enabled)
 
     suspend fun setDefaultFilter(option: DateFilterOption) = set(PreferencesKeys.DEFAULT_DATE_FILTER, option.name)
+
+    suspend fun setBackupRetention(retention: BackupRetention) = set(PreferencesKeys.AUTOMATIC_BACKUP_RETENTION, retention.name)
 
     /** Stores the signed-in account's [email], or forgets it (null) when the user signs out. */
     suspend fun setEmail(email: String?) {

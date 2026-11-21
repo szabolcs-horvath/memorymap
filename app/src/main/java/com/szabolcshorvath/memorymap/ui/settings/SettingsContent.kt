@@ -69,6 +69,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.backup.BackupRetention
 import com.szabolcshorvath.memorymap.ui.common.isShortWindow
 import com.szabolcshorvath.memorymap.ui.common.sideRoom
 import com.szabolcshorvath.memorymap.util.DateFilterOption
@@ -94,6 +95,7 @@ interface SettingsActions {
     fun signIn()
     fun signOut()
     fun backUpNow()
+    fun setBackupRetention(retention: BackupRetention)
     fun refreshBackups()
     fun allowDriveAccess()
 
@@ -307,7 +309,17 @@ private fun LazyListScope.mapSection(state: SettingsUiState, actions: SettingsAc
     item(key = "clustering") {
         SwitchItem(first = false, R.string.enable_marker_clustering, state.map.markerClustering, actions::setMarkerClustering)
     }
-    item(key = "filter") { DefaultFilterItem(state.map.defaultFilter, actions::setDefaultFilter) }
+    item(key = "filter") {
+        ChoiceItem(
+            label = R.string.default_map_filter,
+            choice = state.map.defaultFilter,
+            choices = DateFilterOption.entries,
+            choiceLabel = DateFilterOption::label,
+            tag = TAG_DEFAULT_FILTER,
+            first = false,
+            onChange = actions::setDefaultFilter,
+        )
+    }
 }
 
 /** A setting turned on or off; [checked] is null until the stored value is loaded, and the switch is off till then. */
@@ -327,20 +339,30 @@ private fun SwitchItem(first: Boolean, @StringRes label: Int, checked: Boolean?,
 }
 
 /**
- * The date filter the map opens with: shown under the setting's name, chosen from a menu that opens from the arrow at
- * the row's end. The arrow turns up while the menu is open.
+ * A setting with one of [choices]: the [choice] shown under the setting's [label] (tagged [tag]), picked from a menu
+ * that opens from the arrow at the row's end. The arrow turns up while the menu is open. [choice] is null until the
+ * stored value is loaded, and the row is off till then.
  */
 @Composable
-private fun DefaultFilterItem(filter: DateFilterOption?, onChange: (DateFilterOption) -> Unit) {
+@Suppress("LongParameterList")
+internal fun <T> ChoiceItem(
+    @StringRes label: Int,
+    choice: T?,
+    choices: List<T>,
+    choiceLabel: (T) -> Int,
+    tag: String,
+    first: Boolean,
+    onChange: (T) -> Unit,
+) {
     var menuOpen by remember { mutableStateOf(false) }
-    val arrowRotation by animateFloatAsState(if (menuOpen) ARROW_OPEN else 0f, label = "filter_arrow")
+    val arrowRotation by animateFloatAsState(if (menuOpen) ARROW_OPEN else 0f, label = "choice_arrow")
     SegmentedListItem(
         onClick = { menuOpen = true },
         shapes = standaloneShapes(),
-        modifier = Modifier.standalone(first = false),
-        enabled = filter != null,
+        modifier = Modifier.standalone(first),
+        enabled = choice != null,
         supportingContent = {
-            Text(filter?.let { stringResource(it.label) }.orEmpty(), Modifier.testTag(TAG_DEFAULT_FILTER))
+            Text(choice?.let { stringResource(choiceLabel(it)) }.orEmpty(), Modifier.testTag(tag))
         },
         trailingContent = {
             Box {
@@ -349,40 +371,53 @@ private fun DefaultFilterItem(filter: DateFilterOption?, onChange: (DateFilterOp
                     contentDescription = null,
                     modifier = Modifier.rotate(arrowRotation),
                 )
-                DateFilterMenu(
+                ChoiceMenu(
                     expanded = menuOpen,
-                    selected = filter,
+                    choices = choices,
+                    selected = choice,
+                    choiceLabel = choiceLabel,
                     onDismiss = { menuOpen = false },
-                    onPick = { option ->
+                    onPick = { picked ->
                         menuOpen = false
-                        onChange(option)
+                        onChange(picked)
                     },
                 )
             }
         },
         colors = segmentColors(),
     ) {
-        Text(stringResource(R.string.default_map_filter))
+        Text(stringResource(label))
     }
 }
 
-/** Material 3 Expressive's menu of choices: the chosen one is filled and has a check mark. */
+/** The map's date filters as a menu of choices ([ChoiceMenu]). */
 @Composable
 internal fun DateFilterMenu(
     expanded: Boolean,
     selected: DateFilterOption?,
     onDismiss: () -> Unit,
     onPick: (DateFilterOption) -> Unit,
+) = ChoiceMenu(expanded, DateFilterOption.entries, selected, DateFilterOption::label, onDismiss, onPick)
+
+/** Material 3 Expressive's menu of choices: the chosen one is filled and has a check mark. */
+@Composable
+@Suppress("LongParameterList")
+private fun <T> ChoiceMenu(
+    expanded: Boolean,
+    choices: List<T>,
+    selected: T?,
+    choiceLabel: (T) -> Int,
+    onDismiss: () -> Unit,
+    onPick: (T) -> Unit,
 ) {
     DropdownMenuPopup(expanded = expanded, onDismissRequest = onDismiss) {
-        val options = DateFilterOption.entries
         DropdownMenuGroup(shapes = MenuDefaults.groupShape(0, 1)) {
-            options.forEachIndexed { i, option ->
+            choices.forEachIndexed { i, option ->
                 SelectableDropdownMenuItem(
                     selected = option == selected,
                     onClick = { onPick(option) },
-                    text = { Text(stringResource(option.label)) },
-                    shapes = MenuDefaults.itemShape(i, options.size),
+                    text = { Text(stringResource(choiceLabel(option))) },
+                    shapes = MenuDefaults.itemShape(i, choices.size),
                     selectedLeadingIcon = { Icon(painterResource(R.drawable.ic_check), contentDescription = null) },
                     // The palette's tertiary is a loud lilac next to its blues: the chosen option takes the secondary container.
                     colors = MenuDefaults.selectableItemColors(

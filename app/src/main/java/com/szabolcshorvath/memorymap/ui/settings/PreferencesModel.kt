@@ -1,5 +1,6 @@
 package com.szabolcshorvath.memorymap.ui.settings
 
+import com.szabolcshorvath.memorymap.backup.BackupRetention
 import com.szabolcshorvath.memorymap.data.AppPreferences
 import com.szabolcshorvath.memorymap.util.DateFilterOption
 import kotlinx.coroutines.CoroutineScope
@@ -16,9 +17,9 @@ data class MapPreferences(
     val defaultFilter: DateFilterOption? = null,
 )
 
-/** The map preferences in Settings: read from and stored in the app's preferences. */
-class MapPreferencesModel(private val scope: CoroutineScope, private val preferences: AppPreferences) {
-    val state: StateFlow<MapPreferences> = combine(
+/** The plain preferences in Settings (the map's, and how long automatic backups are kept): read and stored as they are. */
+class PreferencesModel(private val scope: CoroutineScope, private val preferences: AppPreferences) {
+    val map: StateFlow<MapPreferences> = combine(
         preferences.showFragmentMarkers,
         preferences.markerClustering,
         preferences.defaultFilter,
@@ -35,5 +36,10 @@ class MapPreferencesModel(private val scope: CoroutineScope, private val prefere
 
     fun setDefaultFilter(option: DateFilterOption) {
         scope.launch { preferences.setDefaultFilter(option) }
+    }
+
+    /** From the next automatic backup on, automatic backups older than [retention] go to Drive's trash. */
+    fun setBackupRetention(retention: BackupRetention) {
+        scope.launch { preferences.setBackupRetention(retention) }
     }
 }

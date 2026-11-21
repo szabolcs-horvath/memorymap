@@ -16,19 +16,31 @@ object FakeBackupStorage : BackupStorage {
     private class StoredBackup(val file: DriveFile, val content: ByteArray?)
 
     private val backups = mutableMapOf<String, MutableList<StoredBackup>>()
+    private val trashed = mutableMapOf<String, MutableList<StoredBackup>>()
     private val nextId = AtomicInteger(1)
 
-    /** Adds a backup for [email]. Without [content], restoring it fails like a broken download would. */
+    /**
+     * Adds a backup for [email], made at [modifiedMillis] (Drive's creation time too). Without [content], restoring it
+     * fails like a broken download would.
+     */
     @Synchronized
     fun add(email: String, name: String, modifiedMillis: Long, content: ByteArray? = null): DriveFile {
         val file = DriveFile()
             .setId("fake-backup-${nextId.getAndIncrement()}")
             .setName(name)
+            .setCreatedTime(DateTime(modifiedMillis))
             .setModifiedTime(DateTime(modifiedMillis))
             .setSize(content?.size?.toLong() ?: 0L)
         backups.getOrPut(email) { mutableListOf() } += StoredBackup(file, content)
         return file
     }
+
+    /** The names of [email]'s backups, and of those the app moved to the trash. */
+    @Synchronized
+    fun names(email: String): Set<String> = backups[email].orEmpty().map { it.file.name }.toSet()
+
+    @Synchronized
+    fun trashedNames(email: String): Set<String> = trashed[email].orEmpty().map { it.file.name }.toSet()
 
     /** What each call throws instead of doing its work, as Drive does when offline, failing, or when access lapsed. */
     @Volatile
@@ -66,6 +78,15 @@ object FakeBackupStorage : BackupStorage {
     override fun delete(context: Context, email: String, fileId: String) {
         deleteFailure?.let { throw it }
         backups[email]?.remove(find(email, fileId))
+    }
+
+    /** Moves a backup to the trash: it is no longer listed, but [trashedNames] tells it was trashed, not deleted. */
+    @Synchronized
+    override fun trash(context: Context, email: String, fileId: String) {
+        deleteFailure?.let { throw it }
+        val backup = find(email, fileId)
+        backups[email]?.remove(backup)
+        trashed.getOrPut(email) { mutableListOf() } += backup
     }
 
     private fun find(email: String, fileId: String): StoredBackup =
