@@ -20,7 +20,7 @@ work = "2.12.0"
 kotlinxCoroutines = "1.11.0"
 
 # Google Maps
-places = "6.0.2"
+places = "6.1.0"
 playServicesLocation = "21.4.0"
 playServicesMaps = "20.1.0"
 androidMapsUtils = "7.0.0"
