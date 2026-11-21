@@ -11,7 +11,7 @@ dependencyAnalysis = "3.20.3"
 core = "1.19.1"
 datastorePreferences = "1.3.0"
 composeBom = "2026.11.01"
-lifecycleCompose = "2.11.0"
+lifecycleCompose = "2.11.1"
 # rememberLauncherForActivityResult, LocalActivity and BackHandler; it moves `activity` itself to the same version.
 activityCompose = "1.13.0"
 # The screens over the tabs (the memory, the media viewer, the location picker, the missing-photo sheet)
