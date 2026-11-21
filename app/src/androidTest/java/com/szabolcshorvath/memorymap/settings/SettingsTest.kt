@@ -5,6 +5,8 @@ import androidx.credentials.exceptions.NoCredentialException
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.szabolcshorvath.memorymap.auth.SignInNotConfiguredException
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
+import com.szabolcshorvath.memorymap.backup.BackupManager.Companion.AUTOMATIC_BACKUP_PREFIX
+import com.szabolcshorvath.memorymap.backup.BackupManager.Companion.MANUAL_BACKUP_PREFIX
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService
 import com.szabolcshorvath.memorymap.fakes.FakeAccountService.DEFAULT_EMAIL
 import com.szabolcshorvath.memorymap.fakes.FakeBackupStorage
@@ -21,9 +23,15 @@ import com.szabolcshorvath.memorymap.screens.TimelineScreen
 import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /** The Settings tab: the Google account, Drive backups and restores, map preferences and media maintenance. */
 @RunWith(AndroidJUnit4::class)
@@ -172,6 +180,38 @@ class SettingsTest {
         SettingsScreen.assertBackupAppears(AUTOMATIC, timeoutMs = AUTOMATIC_BACKUP_TIMEOUT_MS)
     }
 
+    /**
+     * Once old automatic backups are to be deleted, the next automatic backup moves those older than that to the trash,
+     * but never the newest three automatic ones nor a manual one, and the setting stays set.
+     */
+    @Test
+    fun anAutomaticBackupTrashesOldAutomaticBackupsButKeepsTheNewestThreeAndManualOnes() {
+        AutomaticBackups.debounceSeconds = AUTOMATIC_BACKUP_DELAY_SECONDS
+        TestData.signIn()
+        val recent = listOf(oldBackup(AUTOMATIC_BACKUP_PREFIX, daysAgo = 2), oldBackup(AUTOMATIC_BACKUP_PREFIX, daysAgo = 40))
+        val tooOld = listOf(50L, 60L, 400L).map { oldBackup(AUTOMATIC_BACKUP_PREFIX, daysAgo = it) }
+        val manual = oldBackup(MANUAL_BACKUP_PREFIX, daysAgo = 500)
+        openSettings()
+        SettingsScreen.assertBackupRetention("Never")
+        SettingsScreen.assertBackupRetentionNote(shown = false)
+
+        SettingsScreen.setBackupRetention("Older than 1 month")
+        SettingsScreen.assertBackupRetentionNote(shown = true)
+        SettingsScreen.addColorPreset()
+
+        val trashed = Ui.eventually(AUTOMATIC_BACKUP_TIMEOUT_MS, read = { FakeBackupStorage.trashedNames(DEFAULT_EMAIL) }) {
+            it.isNotEmpty()
+        }
+        assertEquals(tooOld.toSet(), trashed)
+        val kept = FakeBackupStorage.names(DEFAULT_EMAIL)
+        // The new automatic backup is the third of the newest three.
+        assertEquals(recent.size + 2, kept.size)
+        assertTrue("Kept: $kept", kept.containsAll(recent + manual))
+        BottomNav.open(Tab.MAP)
+        BottomNav.open(Tab.SETTINGS)
+        SettingsScreen.assertBackupRetention("Older than 1 month")
+    }
+
     @Test
     fun mapPreferencesStaySet() {
         openSettings()
@@ -235,7 +275,16 @@ class SettingsTest {
         FakeBackupStorage.add(DEFAULT_EMAIL, name, modifiedMillis = System.currentTimeMillis() - minutesAgo * MINUTE_MS)
     }
 
+    /** Adds a backup named with [prefix], made [daysAgo]; returns its name. */
+    private fun oldBackup(prefix: String, daysAgo: Long): String {
+        val made = Instant.now().minus(Duration.ofDays(daysAgo))
+        val name = prefix + BACKUP_TIME.format(made.atZone(ZoneOffset.UTC)) + ".zip"
+        FakeBackupStorage.add(DEFAULT_EMAIL, name, modifiedMillis = made.toEpochMilli())
+        return name
+    }
+
     private companion object {
+        val BACKUP_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
         const val KEPT = "Vienna trip"
         const val ADDED_AFTER_THE_BACKUP = "Lake day"
         const val EDITED = "Picnic"

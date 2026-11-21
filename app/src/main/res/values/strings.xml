@@ -292,6 +292,17 @@
     <string name="disconnect">Disconnect</string>
     <string name="signing_in">Signing in…</string>
     <string name="backup_now">Back up now</string>
+    <!-- The setting that moves old automatic backups to Drive's trash, and its choices. -->
+    <string name="backup_retention_title">Delete old automatic backups</string>
+    <string name="backup_retention_never">Never</string>
+    <string name="backup_retention_one_month">Older than 1 month</string>
+    <string name="backup_retention_three_months">Older than 3 months</string>
+    <string name="backup_retention_one_year">Older than 1 year</string>
+    <!-- Under the setting: what is never deleted, and where deleted backups go. -->
+    <plurals name="backup_retention_note">
+        <item quantity="one">Manual backups and the newest automatic backup are always kept. Deleted backups go to your Drive\'s trash.</item>
+        <item quantity="other">Manual backups and the newest %d automatic backups are always kept. Deleted backups go to your Drive\'s trash.</item>
+    </plurals>
     <string name="available_backups">Backups</string>
     <string name="show_all_backups">Show all backups</string>
     <string name="all_backups_title">All backups</string>

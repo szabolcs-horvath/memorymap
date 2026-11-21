@@ -15,6 +15,7 @@ import com.szabolcshorvath.memorymap.auth.DriveAccessNeededException
 import com.szabolcshorvath.memorymap.backup.AutomaticBackupStatus
 import com.szabolcshorvath.memorymap.backup.AutomaticBackups
 import com.szabolcshorvath.memorymap.backup.BackupManager
+import com.szabolcshorvath.memorymap.backup.BackupRetention
 import com.szabolcshorvath.memorymap.backup.DriveProblem
 import com.szabolcshorvath.memorymap.backup.RestoreRejectedException
 import com.szabolcshorvath.memorymap.data.AppPreferences
@@ -55,6 +56,8 @@ data class SettingsUiState(
     val busy: Busy? = null,
     val result: OperationResult? = null,
     val automaticBackup: AutomaticBackupStatus = AutomaticBackupStatus.IDLE,
+    /** How long automatic backups are kept, or null until it is read. */
+    val backupRetention: BackupRetention? = null,
 )
 
 /** What Settings asks the route to show or do once: a short message, or the offer of full media access. */
@@ -85,8 +88,8 @@ class SettingsViewModel(
     /** The colour presets: their own part of the screen. */
     val colorPresets = ColorPresetsModel(viewModelScope, presetRepository) { eventChannel.send(SettingsEvent.Message(it)) }
 
-    /** The map preferences: their own part of the screen. */
-    val mapPreferences = MapPreferencesModel(viewModelScope, preferences)
+    /** The plain preferences: their own part of the screen. */
+    val settings = PreferencesModel(viewModelScope, preferences)
 
     private val app get() = getApplication<Application>()
 
@@ -99,10 +102,13 @@ class SettingsViewModel(
     private var isBackupRequested: Boolean = false
 
     init {
-        viewModelScope.launch { mapPreferences.state.collect { map -> state.update { it.copy(map = map) } } }
+        viewModelScope.launch { settings.map.collect { map -> state.update { it.copy(map = map) } } }
         viewModelScope.launch { colorPresets.state.collect { presets -> state.update { it.copy(colorPresets = presets) } } }
         viewModelScope.launch {
             preferences.email.collect(::onAccount)
+        }
+        viewModelScope.launch {
+            preferences.backupRetention.collect { retention -> state.update { it.copy(backupRetention = retention) } }
         }
         viewModelScope.launch {
             var wasRunning = false

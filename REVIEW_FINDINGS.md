@@ -34,13 +34,13 @@ When a status changes, update the item's **Status** line, the marker in its head
 | 7 | ✅ | [BUG-2](#bug-2) | On Android 13+, a failed reverse-geocode leaves "Confirm location" disabled forever (offline location picking is impossible). |
 | 8 | ✅ | [PERF-1](#perf-1) | A Firebase trace is started for every pair of markers in the O(N²) clustering loop. |
 | 9 | ✅ | [ARCH-1](#arch-1) | Hidden tabs have their views destroyed on every tab switch (the map is rebuilt each time). |
-| 10 | 🟡 | [DATA-4](#data-4) | Automatic backups are never pruned ~~and the backup list is capped at 100 entries~~ (list paging fixed; pruning postponed). |
+| 10 | ✅ | [DATA-4](#data-4) | Automatic backups are never pruned and the backup list is capped at 100 entries. |
 
 ---
 
 ## <a id="index"></a>Index
 
-✅ 96 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 0 open
+✅ 97 fixed · 🟡 1 partly fixed · ❔ 0 to verify · ⬜ 0 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -55,14 +55,14 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [SEC-7](#sec-7) | Low | Auto Backup enabled with empty rules |
 | ✅ | [SEC-8](#sec-8) | Low | Missing OAuth client ID becomes the string `"null"` |
 
-**DATA — Data loss / integrity** · 10 of 12 fixed
+**DATA — Data loss / integrity** · 11 of 12 fixed
 
 | | ID | Severity | Finding |
 |---|---|---|---|
 | ✅ | [DATA-1](#data-1) | High | Destructive migration is enabled; restoring a newer backup wipes everything |
 | ✅ | [DATA-2](#data-2) | High | Undo of a delete loses the memory's fragments |
 | ✅ | [DATA-3](#data-3) | High | Concurrent backups clobber each other's files |
-| 🟡 | [DATA-4](#data-4) | Medium | Unbounded automatic backups; list truncated at 100 |
+| ✅ | [DATA-4](#data-4) | Medium | Unbounded automatic backups; list truncated at 100 |
 | ✅ | [DATA-5](#data-5) | Medium | Backup copies a live database file; restore is not atomic |
 | ✅ | [DATA-6](#data-6) | Medium | Restore closes the database under live users |
 | ✅ | [DATA-7](#data-7) | Medium | Deleting a memory never releases URI grants and never backs up |
@@ -262,11 +262,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Fix:** Use a unique temp dir per run (`createTempFile`) and serialize backups with a `Mutex`, or move them to WorkManager unique work (ARCH-3).
 - **Status:** Fixed. Backup and restore share a process-wide `Mutex`, and every run uses its own temp directory (`BackupTempFiles`), with stale leftovers deleted at the start of the next run. Concurrent automatic backups now run one after another instead of in parallel. Saves no longer wait for them at all since UX-1 and PERF-6 moved automatic backups to WorkManager.
 
-### <a id="data-4"></a>🟡 DATA-4 · Medium · Unbounded automatic backups; list truncated at 100
+### <a id="data-4"></a>✅ DATA-4 · Medium · Unbounded automatic backups; list truncated at 100
 - **Where:** `BackupManager.kt:160-193`
 - **What:** Every edit, reorder or preset change uploads a full new zip, and nothing is ever deleted. `files().list()` has no `pageSize` or paging, so after 100 files the oldest (including manual backups) stop showing up. Drive quota grows without limit.
 - **Fix:** Keep the last N automatic backups (delete older ones after a successful upload), and page through `nextPageToken`.
-- **Status:** Partly fixed. `listBackups` now pages through `nextPageToken` (1000 per page), so every backup is listed. Pruning is postponed by decision: the app still never deletes backups. If it is added later, never delete manual backups, and keep older ones too (for example one per day and one per month), so a bad change cannot quickly rotate out every good backup.
+- **Status:** Fixed. `listBackups` pages through `nextPageToken` (1000 per page), so every backup is listed. Pruning is the user's choice: Settings has "Delete old automatic backups" (Never, the default, or older than 1 month, 3 months or 1 year). After each successful automatic backup, still under the backup lock, `BackupTrimming` picks the automatic backups older than that by Drive's `createdTime`, and they go to Drive's trash (recoverable for 30 days), not deleted outright. Manual backups are never touched, nor the newest 3 automatic ones however old, so months without a change still leave backups, and a backup without a creation time is kept. A failed trim is only logged; the backup itself has succeeded. Covered by `BackupTrimmingTest` and `SettingsTest`.
 
 ### <a id="data-5"></a>✅ DATA-5 · Medium · Backup copies a live database file; restore is not atomic
 - **Where:** `BackupManager.kt:115-157, 278-303`
@@ -302,7 +302,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Where:** `data/MediaItem.kt`, `AddMemoryGroupFragment.readPickedMedia`, `AddMemoryGroupFragmentViewModel.prepareMediaItems`, `util/LocalMediaUtil.kt`
 - **What:** A media item stores only its URI, size, date taken and signature (size + hash of the first and last 4 KB). Re-linking needs the exact same bytes, so any edit, re-encoding (Google Photos "Storage saver", a messenger) or metadata rewrite makes the photo unfindable. A missing photo also shows only its type, size and date, so neither the app nor the user can tell what it looked like. Raised by the owner after the main user's logs (2026-11-01): 52 of 1,788 items unlinked; see [UX-19](#ux-19) and [BUG-20](#bug-20).
 - **Fix (proposed, not decided):** Store more about each item, but only fields that a matching rule or the [UX-19](#ux-19) chooser uses. Each extra field means a schema change, and a field that nothing reads only adds risk. Most of these can be read from the picked file itself when it is picked (the app already opens it to compute the signature), so they don't need full media access:
-  - **Small thumbnail** (about 128 px JPEG, 3–6 KB). This is the most useful field: a missing tile can show what the photo was, and [UX-19](#ux-19) can show it next to the candidates. Cost: about 10 MB for 2,000 items, in the database and in every Drive backup (backups are never pruned, [DATA-4](#data-4)). Decide the size, and whether thumbnails belong in the backup (keeping them out loses them on a new phone, where they help most).
+  - **Small thumbnail** (about 128 px JPEG, 3–6 KB). This is the most useful field: a missing tile can show what the photo was, and [UX-19](#ux-19) can show it next to the candidates. Cost: about 10 MB for 2,000 items, in the database and in every Drive backup (old automatic backups are deleted only if the user chooses to, [DATA-4](#data-4)). Decide the size, and whether thumbnails belong in the backup (keeping them out loses them on a new phone, where they help most).
   - **Original file name, width, height, MIME type, video duration.** These come from the picker URI or MediaStore. They are labels and filters for the chooser and a check for [BUG-20](#bug-20), but too weak to link anything on their own (an edit changes the size, a crop changes the dimensions).
   - **Unique ids written into the file:** EXIF `ImageUniqueID`, XMP `DocumentID` / `OriginalDocumentID` (MediaStore also has them as `DOCUMENT_ID` / `ORIGINAL_DOCUMENT_ID`). They are the only fields that could link an edited copy automatically with confidence. First check on a Samsung phone that its camera writes them and that its Gallery keeps them when it edits or copies a photo; if not, don't store them.
   - **Perceptual hash** (64-bit hash of a tiny greyscale copy). It survives re-encoding and resizing but not crops. Use it only to rank candidates in [UX-19](#ux-19), never to link on its own: shots taken seconds apart of the same scene look alike to it, and those are the ones a user keeps and deletes.

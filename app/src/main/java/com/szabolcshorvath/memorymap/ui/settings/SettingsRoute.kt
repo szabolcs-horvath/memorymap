@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.szabolcshorvath.memorymap.R
+import com.szabolcshorvath.memorymap.backup.BackupRetention
 import com.szabolcshorvath.memorymap.ui.color.Hsv
 import com.szabolcshorvath.memorymap.ui.common.ConfirmDialog
 import com.szabolcshorvath.memorymap.ui.common.LocalMessages
@@ -186,9 +187,9 @@ private fun settingsActions(
     ask: (Question) -> Unit,
     shareLogs: () -> Unit,
 ) = object : SettingsActions, ColorPresetActions {
-    override fun setShowFragmentMarkers(show: Boolean) = viewModel.mapPreferences.setShowFragmentMarkers(show)
-    override fun setMarkerClustering(enabled: Boolean) = viewModel.mapPreferences.setMarkerClustering(enabled)
-    override fun setDefaultFilter(option: DateFilterOption) = viewModel.mapPreferences.setDefaultFilter(option)
+    override fun setShowFragmentMarkers(show: Boolean) = viewModel.settings.setShowFragmentMarkers(show)
+    override fun setMarkerClustering(enabled: Boolean) = viewModel.settings.setMarkerClustering(enabled)
+    override fun setDefaultFilter(option: DateFilterOption) = viewModel.settings.setDefaultFilter(option)
     override fun togglePresets() = viewModel.colorPresets.toggle()
     override fun selectPreset(id: Int) = viewModel.colorPresets.select(id)
     override fun setColor(color: Hsv) = viewModel.colorPresets.setColor(color)
@@ -204,6 +205,7 @@ private fun settingsActions(
     override fun signIn() = accounts.signIn()
     override fun signOut() = accounts.signOut()
     override fun backUpNow() = accounts.backUpNow()
+    override fun setBackupRetention(retention: BackupRetention) = viewModel.settings.setBackupRetention(retention)
     override fun refreshBackups() = viewModel.refreshBackups()
     override fun allowDriveAccess() = accounts.allowDriveAccess()
     override fun restoreBackup(backup: BackupItem) = ask(Question.Restore(backup.id, backup.name, backup.modifiedMillis))
