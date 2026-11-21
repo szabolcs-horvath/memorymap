@@ -40,7 +40,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 
 ## <a id="index"></a>Index
 
-✅ 95 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 1 open
+✅ 96 fixed · 🟡 2 partly fixed · ❔ 0 to verify · ⬜ 0 open
 
 **SEC — Security / privacy** · 8 of 8 fixed
 
@@ -162,7 +162,7 @@ When a status changes, update the item's **Status** line, the marker in its head
 | ✅ | [BUILD-2](#build-2) | Medium | `MAPS_API_KEY` wiring is inconsistent |
 | ✅ | [BUILD-3](#build-3) | Low | Supply-chain hygiene |
 | ✅ | [BUILD-4](#build-4) | Low | Robolectric cannot run against `targetSdk 37` |
-| ⬜ | [BUILD-5](#build-5) | Low | Material3 is pinned to a release candidate ahead of the Compose BOM |
+| ✅ | [BUILD-5](#build-5) | Low | Material3 is pinned to a release candidate ahead of the Compose BOM |
 | ✅ | [BUILD-6](#build-6) | Low | Nothing checks the declared dependencies against what the code uses |
 
 **TEST — Coverage gaps** · 4 of 6 fixed
@@ -965,10 +965,11 @@ When a status changes, update the item's **Status** line, the marker in its head
 - **Note (2026-10-24):** Could not reproduce. With Robolectric 4.17, `ColorUtilTest` (91 tests) and `MemoryGroupDaoTest` run and pass locally. Probably resolved by a dependency upgrade; close it after a CI run confirms.
 - **Status:** Fixed (2026-10-25) by the Robolectric 4.17 upgrade, no code change needed. The "Tests" CI workflow runs all unit tests, including the Robolectric ones, against `targetSdk 37` on JDK 21, and they pass.
 
-### <a id="build-5"></a>⬜ BUILD-5 · Low · Material3 is pinned to a release candidate ahead of the Compose BOM
+### <a id="build-5"></a>✅ BUILD-5 · Low · Material3 is pinned to a release candidate ahead of the Compose BOM
 - **Where:** `gradle/libs.versions.toml` (`composeMaterial3`)
 - **What:** The Compose BOM takes only stable releases, and the app needs Material 3 1.5 (Material 3 Expressive's button groups, wavy progress indicators and `SegmentedListItem`). So Material3 is pinned on its own, to `1.5.0-rc01`, while the rest of Compose comes from the BOM (`2026.09.00`, the latest on 2026-11-12, still on Material3 1.4). A release candidate can still change, and the pin has to be moved by hand.
 - **Fix:** Once a BOM has Material3 1.5 (stable), drop `composeMaterial3` and take Material3 from the BOM again; check that the unit tests, lint and the UI suite still pass. Until then, move the pin to 1.5.0 when it is released.
+- **Status:** Fixed (2026-11-21). The Compose BOM 2026.11.01 has Material3 1.5.0 (and its navigation suite): `composeMaterial3` is gone, and both come from the BOM. It also moves Compose to 1.13, which needs the app compiled against API 37.1 (`compileSdkMinor = 1`); the target stays 37. The unit tests, detekt, lint, the minified release build and the whole UI suite pass.
 
 ### <a id="build-6"></a>✅ BUILD-6 · Low · Nothing checks the declared dependencies against what the code uses
 - **Where:** `gradle/libs.versions.toml`, `build.gradle.kts`, `app/build.gradle.kts`
