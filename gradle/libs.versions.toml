@@ -70,7 +70,7 @@ robolectric = "4.18.1"
 robolectricExtensionGradlePlugin = "0.9.0"
 
 # Debug
-leakcanary = "1.0.0"
+leakcanary = "1.1.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
