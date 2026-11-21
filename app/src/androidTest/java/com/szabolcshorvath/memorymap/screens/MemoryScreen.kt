@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
@@ -37,9 +38,21 @@ object MemoryScreen {
 
     private fun title(title: String) = hasTestTag("memory_title") and hasText(title)
 
-    fun showOnMap() = tap("\"$SHOW_ON_MAP\"", hasText(SHOW_ON_MAP))
+    /** Taps the map button at the end of the memory's place line (a fragment's row has one of its own). */
+    fun showOnMap() = tap("The memory's \"$SHOW_ON_MAP\" button", hasContentDescription(SHOW_ON_MAP) and !inFragment)
 
-    fun showOnTimeline() = tap("\"Show on timeline\"", hasText("Show on timeline"))
+    /** Taps the timeline button at the end of the memory's date line. */
+    fun showOnTimeline() = tap("The \"$SHOW_ON_TIMELINE\" button", hasContentDescription(SHOW_ON_TIMELINE))
+
+    /** A long press on each icon button of the memory's details names it in a tooltip, which then closes by itself. */
+    fun assertDetailButtonTooltips() {
+        listOf(SHOW_ON_MAP, SHOW_ON_TIMELINE).forEach { label ->
+            ComposeUi.waitFor("The \"$label\" button", hasContentDescription(label) and !inFragment)
+                .performTouchInput { longClick() }
+            ComposeUi.waitFor("The \"$label\" tooltip", hasText(label))
+            ComposeUi.assertGone("The \"$label\" tooltip", hasText(label))
+        }
+    }
 
     fun edit() = tap("The Edit button", hasContentDescription(EDIT))
 
@@ -243,6 +256,7 @@ object MemoryScreen {
     private const val PLACE = "memory_location"
     private const val TILE_DETAILS = "media_tile_details"
     private const val SHOW_ON_MAP = "Show on map"
+    private const val SHOW_ON_TIMELINE = "Show on timeline"
     private const val RELINK = "Re-link"
     private const val OPEN_PHOTO = "Open photo"
     private const val OPEN_VIDEO = "Open video"

@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.ui.memory
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -31,27 +31,27 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,7 +70,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.szabolcshorvath.memorymap.R
 import com.szabolcshorvath.memorymap.data.MediaItem
 import com.szabolcshorvath.memorymap.data.MemoryFragment
@@ -99,10 +98,11 @@ private const val TAG_FRAGMENT_COLOR = "memory_fragment_color"
 private const val KEY_MEDIA = "media_"
 private const val KEY_FRAGMENT = "fragment_"
 
-private val LINK_MIN_FONT = 11.sp
+private val CARD_PADDING = 16.dp
+private val DESCRIPTION_GAP = 12.dp
 
-/** How far the 48 dp touch target of an extra-small button reaches past it, above and below. */
-private val LINK_TOUCH_MARGIN = (48.dp - ButtonDefaults.ExtraSmallContainerHeight) / 2
+/** How far an icon button reaches past its 24 dp icon on each side, to its 48 dp touch target. */
+private val LINE_BUTTON_INSET = 12.dp
 
 /** The gap between a segmented list's items and between the photo tiles: Material 3 Expressive's, as on the Timeline. */
 internal val GAP = 4.dp
@@ -338,25 +338,41 @@ private fun DetailsCard(group: MemoryGroup, actions: MemoryActions) {
                     .fillMaxHeight()
                     .background(Color(group.markerColor()))
             )
-            // The buttons are drawn smaller than the 48 dp they take for touch: the space around them is reduced by the
-            // difference, so the card looks evenly spaced.
-            Column(Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp - LINK_TOUCH_MARGIN)) {
-                group.description?.takeIf { it.isNotEmpty() }?.let {
-                    Text(it, Modifier.testTag(TAG_DESCRIPTION), style = MaterialTheme.typography.bodyLarge)
-                    Spacer(Modifier.height(12.dp))
+            // The date and place lines end in icon buttons that take 48 dp for touch, more than the lines' text: the
+            // card's padding around them is reduced by the difference, so the card still looks evenly spaced. The icons
+            // line up with the text's 16 dp margin.
+            val description = group.description?.takeIf { it.isNotEmpty() }
+            Column(
+                Modifier.padding(
+                    start = CARD_PADDING,
+                    end = CARD_PADDING - LINE_BUTTON_INSET,
+                    top = if (description != null) CARD_PADDING else CARD_PADDING - LINE_BUTTON_INSET,
+                    bottom = CARD_PADDING - LINE_BUTTON_INSET,
+                )
+            ) {
+                description?.let {
+                    Text(
+                        it,
+                        Modifier
+                            .padding(end = LINE_BUTTON_INSET)
+                            .testTag(TAG_DESCRIPTION),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Spacer(Modifier.height(DESCRIPTION_GAP - LINE_BUTTON_INSET))
                 }
-                InfoLine(R.drawable.ic_calendar_month, group.getFormattedDate(context).orEmpty(), TAG_DATE)
-                Spacer(Modifier.height(4.dp))
-                InfoLine(R.drawable.ic_location_on, placeOf(group), TAG_LOCATION)
-                Spacer(Modifier.height(12.dp - LINK_TOUCH_MARGIN))
-                // Two ways to see the memory elsewhere, joined as Material 3 Expressive's connected button group: equal halves
-                // of the card's width.
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
-                    val leading = ButtonGroupDefaults.connectedLeadingButtonShapes().let { ButtonShapes(it.shape, it.pressedShape) }
-                    val trailing = ButtonGroupDefaults.connectedTrailingButtonShapes().let { ButtonShapes(it.shape, it.pressedShape) }
-                    TonalButton(R.drawable.ic_map, R.string.show_on_map, leading, actions::showOnMap, Modifier.weight(1f))
-                    TonalButton(R.drawable.ic_view_agenda, R.string.show_on_timeline, trailing, actions::showOnTimeline, Modifier.weight(1f))
-                }
+                // The date goes with the timeline and the place with the map, as a fragment's place does.
+                InfoLine(
+                    R.drawable.ic_calendar_month,
+                    group.getFormattedDate(context).orEmpty(),
+                    TAG_DATE,
+                    LineAction(R.drawable.ic_view_agenda, R.string.show_on_timeline, actions::showOnTimeline),
+                )
+                InfoLine(
+                    R.drawable.ic_location_on,
+                    placeOf(group),
+                    TAG_LOCATION,
+                    LineAction(R.drawable.ic_map, R.string.show_on_map, actions::showOnMap),
+                )
             }
         }
     }
@@ -379,9 +395,10 @@ private fun placeOf(group: MemoryGroup): String {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun InfoLine(@DrawableRes icon: Int, text: String, tag: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun InfoLine(@DrawableRes icon: Int, text: String, tag: String, action: LineAction) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(
             painterResource(icon),
             contentDescription = null,
@@ -391,34 +408,29 @@ private fun InfoLine(@DrawableRes icon: Int, text: String, tag: String) {
         Spacer(Modifier.width(8.dp))
         Text(
             text,
-            Modifier.testTag(tag),
+            Modifier
+                .weight(1f)
+                .testTag(tag),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Icon-only, so a long press names it in a tooltip, as Material asks of icon buttons. Its icon has the colour of
+        // the line's own icon, as a list item's trailing icon does.
+        val label = stringResource(action.label)
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+            tooltip = { PlainTooltip { Text(label) } },
+            state = rememberTooltipState(),
+        ) {
+            IconButton(onClick = action.onClick) {
+                Icon(painterResource(action.icon), label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
 
-@Composable
-private fun TonalButton(@DrawableRes icon: Int, label: Int, shapes: ButtonShapes, onClick: () -> Unit, modifier: Modifier) {
-    // Material 3 Expressive's extra-small size: two secondary actions in a card. The touch target stays 48 dp. Half a
-    // card is narrow, so the label shrinks rather than wraps where it still doesn't fit (a large font size).
-    val height = ButtonDefaults.ExtraSmallContainerHeight
-    FilledTonalButton(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = height),
-        shapes = shapes,
-        contentPadding = ButtonDefaults.contentPaddingFor(height, hasStartIcon = true),
-    ) {
-        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(ButtonDefaults.iconSizeFor(height)))
-        Spacer(Modifier.width(ButtonDefaults.iconSpacingFor(height)))
-        val style = LocalTextStyle.current
-        Text(
-            stringResource(label),
-            maxLines = 1,
-            autoSize = TextAutoSize.StepBased(minFontSize = LINK_MIN_FONT, maxFontSize = style.fontSize),
-        )
-    }
-}
+/** The icon button at the end of a details line: what it shows ([icon], named by [label] for screen readers) and does. */
+private class LineAction(@param:DrawableRes val icon: Int, @param:StringRes val label: Int, val onClick: () -> Unit)
 
 /**
  * A fragment: its place, its own dates if it has them, and a bar in its marker colour. [onClick] shows it on the map;
