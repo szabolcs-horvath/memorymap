@@ -26,6 +26,7 @@ kotlin {
     android {
         namespace = "com.szabolcshorvath.memorymap"
         compileSdk = 37
+        compileSdkMinor = 1
 
         defaultConfig {
             applicationId = "com.szabolcshorvath.memorymap"
