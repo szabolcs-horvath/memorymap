@@ -146,6 +146,16 @@ class MemoryScreenTest {
         AddScreen.assertLocationIsOnlyTheAddress(STREET_ONLY.address, repeatedName = STREET_ONLY.name!!)
     }
 
+    /** The details' icon buttons (Show on map, Show on timeline) are named in a tooltip on a long press. */
+    @Test
+    fun theDetailsIconButtonsShowTheirNamesOnALongPress() {
+        TestData.memory(NEWEST)
+        app.launch()
+        Flows.openMemory(NEWEST)
+
+        MemoryScreen.assertDetailButtonTooltips()
+    }
+
     /** Deletes the open memory, which goes back to the timeline with an Undo message. */
     private fun deleteOpenMemory() {
         MemoryScreen.delete()
