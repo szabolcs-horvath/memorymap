@@ -1,6 +1,7 @@
 package com.szabolcshorvath.memorymap.location
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.szabolcshorvath.memorymap.fakes.FakeLocationService
 import com.szabolcshorvath.memorymap.screens.AddScreen
 import com.szabolcshorvath.memorymap.screens.BottomNav
 import com.szabolcshorvath.memorymap.screens.BottomNav.Tab
@@ -8,6 +9,7 @@ import com.szabolcshorvath.memorymap.screens.LocationAccess
 import com.szabolcshorvath.memorymap.screens.LocationPickerScreen
 import com.szabolcshorvath.memorymap.screens.MapScreen
 import com.szabolcshorvath.memorymap.screens.Snackbar
+import com.szabolcshorvath.memorymap.screens.Ui
 import com.szabolcshorvath.memorymap.testing.MemoryMapAppRule
 import com.szabolcshorvath.memorymap.testing.TestData
 import com.szabolcshorvath.memorymap.testing.TestData.Place
@@ -165,6 +167,27 @@ class MyLocationTest {
         LocationPickerScreen.confirm()
 
         AddScreen.assertLocationIs(Place.BUDAPEST)
+    }
+
+    /**
+     * A pin tapped before the phone has said where it is stays shown: the location, once it arrives, no longer moves
+     * the map to the area around the phone.
+     */
+    @Test
+    fun aPinTappedBeforeThePhonesLocationArrivesStaysShownWhenItDoes() {
+        TestData.phoneAt(Place.BUDAPEST)
+        TestData.grantLocationAccess()
+        FakeLocationService.answersLate = true
+        openMapWithMemories()
+
+        MapScreen.tapMarker(ROME_TRIP)
+        MapScreen.assertOverlayShows(ROME_TRIP)
+        Ui.waitUntil { FakeLocationService.isAskedForLastLocation }
+        FakeLocationService.answerLastLocation()
+
+        MapScreen.assertMarkersInView(listOf(ROME_TRIP))
+        MapScreen.assertMarkerStaysGone(BUDAPEST_TRIP)
+        MapScreen.assertOverlayShows(ROME_TRIP)
     }
 
     private fun addMemories() {

@@ -90,7 +90,11 @@ class MapViewModel(
     private val preferences: AppPreferences
 ) : AndroidViewModel(application) {
 
-    /** The camera has made its first move (to the phone, to all the pins, or to a memory shown from elsewhere). */
+    /**
+     * The camera has made its first move (to the phone, to all the pins, or to a memory shown from elsewhere), or the
+     * user moved it first (a tapped pin or cluster, a drag or a zoom): the phone's location, if it arrives later,
+     * then no longer moves it.
+     */
     private var isInitialZoomDone = false
 
     /** Location access is granted, but the phone couldn't say where it is (location off, no fix yet). */
@@ -211,6 +215,7 @@ class MapViewModel(
 
     fun onMapMovedByHand() {
         showsAllPins = false
+        isInitialZoomDone = true
     }
 
     /** The map's size when last laid out. Kept here, since a turned phone builds the screen again. */
@@ -246,11 +251,13 @@ class MapViewModel(
     }
 
     fun tapPin(pin: MarkerableCluster) {
+        isInitialZoomDone = true
         select(pin.position, pin.items)
         moveCamera(MapCameraRequest.Show(pin.position, MAX_FIT_ZOOM))
     }
 
     fun tapCluster(position: LatLng) {
+        isInitialZoomDone = true
         clearSelection()
         moveCamera(MapCameraRequest.ZoomIn(position))
     }
